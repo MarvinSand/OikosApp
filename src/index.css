@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg:           #FBF7F0;
+  --color-paper:        #F5EFE4;
+  --color-warm-1:       #C8956A;
+  --color-warm-2:       #A0694A;
+  --color-warm-3:       #E8D5B7;
+  --color-warm-4:       #F0E6D0;
+  --color-accent:       #7A9E7E;
+  --color-accent-light: #B5CEB8;
+  --color-accent-dark:  #4E7A53;
+  --color-gold:         #D4A853;
+  --color-gold-light:   #EDD9A3;
+  --color-text:         #3A2E24;
+  --color-text-muted:   #8A7060;
+  --color-text-light:   #B0A090;
+  --color-white:        #FFFDF8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: 'Lora', Georgia, serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input, button, textarea, select {
+  font-family: 'Lora', Georgia, serif;
+}
+
+/* Smooth transitions for interactive elements */
+button {
+  transition: all 0.15s ease;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+}
+
+@keyframes stagePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 149, 106, 0.5); }
+  50%       { box-shadow: 0 0 0 6px rgba(200, 149, 106, 0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateX(-50%) translateY(100%); }
+  to   { transform: translateX(-50%) translateY(0); }
+}
