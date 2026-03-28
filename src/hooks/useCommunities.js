@@ -37,12 +37,13 @@ export function useCommunities() {
     setLoading(false)
   }
 
-  async function createCommunity({ name, description }) {
+  async function createCommunity({ name, description, is_public = false }) {
     const invite_code = Math.random().toString(36).substring(2, 8).toUpperCase()
     const { data, error } = await supabase.rpc('create_community', {
       p_name: name,
       p_description: description || '',
       p_invite_code: invite_code,
+      p_is_public: is_public,
     })
     if (error) throw error
     const community = typeof data === 'string' ? JSON.parse(data) : data

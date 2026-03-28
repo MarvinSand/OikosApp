@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { X, Pencil, Check } from 'lucide-react'
+import { X, Pencil, Trash2, User } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 import PrayerRequestsSection from '../person/PrayerRequestsSection'
@@ -74,7 +75,496 @@ function EditPersonForm({ person, onSave, onCancel }) {
   )
 }
 
-export default function PersonDetailSheet({ person: initialPerson, onClose, onDelete, onUpdate }) {
+// --- Connections Section ---
+function ConnectionsSection({ person, people, connections, onDeleteConnection, onCreateConnection }) {
+  const [showAddSearch, setShowAddSearch] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [labelModal, setLabelModal] = useState(null) // { targetId }
+  const [labelInput, setLabelInput] = useState('')
+
+  const myConnections = connections.filter(
+    c => c.source_person_id === person.id || c.target_person_id === person.id
+  )
+
+  const connectedIds = new Set(myConnections.map(c =>
+    c.source_person_id === person.id ? c.target_person_id : c.source_person_id
+  ))
+
+  const availablePeople = people.filter(p => p.id !== person.id && !connectedIds.has(p.id))
+  const filteredPeople = searchQuery.trim()
+    ? availablePeople.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : availablePeople
+
+  function getOtherPerson(conn) {
+    const otherId = conn.source_person_id === person.id ? conn.target_person_id : conn.source_person_id
+    return people.find(p => p.id === otherId)
+  }
+
+  function handleAddPerson(targetPerson) {
+    setLabelModal({ targetId: targetPerson.id })
+    setLabelInput('')
+    setShowAddSearch(false)
+    setSearchQuery('')
+  }
+
+  async function handleCreateWithLabel(label) {
+    if (!labelModal) return
+    try {
+      await onCreateConnection?.(person.id, labelModal.targetId, label || null)
+    } catch (err) {
+      // ignore
+    }
+    setLabelModal(null)
+    setLabelInput('')
+  }
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        Verbindungen
+      </h4>
+
+      {myConnections.length === 0 && (
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', marginBottom: 12 }}>
+          Keine Verbindungen.
+        </p>
+      )}
+
+      {myConnections.map(conn => {
+        const other = getOtherPerson(conn)
+        if (!other) return null
+        return (
+          <div key={conn.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)' }}>
+                ↔ {other.name}
+              </span>
+              {conn.label && (
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', marginLeft: 6 }}>
+                  {conn.label}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => onDeleteConnection?.(conn.id)}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: '#C0392B', flexShrink: 0 }}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )
+      })}
+
+      {/* Add connection button */}
+      {!showAddSearch && (
+        <button
+          onClick={() => setShowAddSearch(true)}
+          style={{ marginTop: 10, padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600 }}
+        >
+          + Verbindung hinzufügen
+        </button>
+      )}
+
+      {/* Inline search */}
+      {showAddSearch && (
+        <div style={{ marginTop: 10, backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 12 }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Person suchen…"
+            autoFocus
+            style={{ ...inp, marginBottom: 8 }}
+          />
+          {filteredPeople.length === 0 ? (
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>
+              Keine weiteren Personen.
+            </p>
+          ) : (
+            filteredPeople.map(p => (
+              <button
+                key={p.id}
+                onClick={() => handleAddPerson(p)}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-white)', marginBottom: 4, fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer' }}
+              >
+                {p.name}
+              </button>
+            ))
+          )}
+          <button
+            onClick={() => { setShowAddSearch(false); setSearchQuery('') }}
+            style={{ marginTop: 4, padding: '6px 12px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', cursor: 'pointer' }}
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
+
+      {/* Inline label modal */}
+      {labelModal && (
+        <>
+          <div
+            onClick={() => { setLabelModal(null); setLabelInput('') }}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }}
+          />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'var(--color-white)',
+            borderRadius: 16, padding: 24, width: 300, maxWidth: '90vw',
+            zIndex: 70, boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
+          }}>
+            <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
+              Verbindung hinzufügen
+            </h3>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+              {person.name} ↔ {people.find(p => p.id === labelModal.targetId)?.name}
+            </p>
+            <input
+              type="text"
+              value={labelInput}
+              onChange={e => setLabelInput(e.target.value)}
+              placeholder="Wie sind sie verbunden? (optional)"
+              autoFocus
+              style={{ ...inp, marginBottom: 14 }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => handleCreateWithLabel(null)}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}
+              >
+                Überspringen
+              </button>
+              <button
+                onClick={() => handleCreateWithLabel(labelInput.trim())}
+                style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Verbinden
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// --- Account Linking Section ---
+function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkAccount, onUpdateOverlay }) {
+  const navigate = useNavigate()
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [confirmUnlink, setConfirmUnlink] = useState(false)
+
+  // Overlay state (initialized from person props)
+  const [overlayEnabled, setOverlayEnabled] = useState((person.overlay_map_ids?.length ?? 0) > 0)
+  const [jimMaps, setJimMaps] = useState([])
+  const [loadingMaps, setLoadingMaps] = useState(false)
+  const [selectedMapIds, setSelectedMapIds] = useState(person.overlay_map_ids || [])
+  const [showChristian, setShowChristian] = useState(person.overlay_show_christian !== false)
+  const [showNonChristian, setShowNonChristian] = useState(person.overlay_show_non_christian !== false)
+
+  async function handleSearch(query) {
+    setSearchQuery(query)
+    if (!query.trim()) { setSearchResults([]); return }
+    setSearching(true)
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, username, avatar_url')
+      .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+      .limit(8)
+    setSearchResults(data || [])
+    setSearching(false)
+  }
+
+  function handleSelectProfile(profile) {
+    onLinkAccount?.(person.id, profile.id)
+    setShowSearch(false)
+    setSearchQuery('')
+    setSearchResults([])
+  }
+
+  async function loadJimMaps() {
+    if (!person.linked_user_id) return
+    setLoadingMaps(true)
+    const { data } = await supabase
+      .from('oikos_maps')
+      .select('id, name, visibility')
+      .eq('user_id', person.linked_user_id)
+      .neq('visibility', 'private')
+    setJimMaps(data || [])
+    setLoadingMaps(false)
+  }
+
+  function handleToggleOverlay(val) {
+    setOverlayEnabled(val)
+    if (!val) {
+      setSelectedMapIds([])
+      onUpdateOverlay?.(person.id, { overlay_map_ids: [], overlay_show_christian: true, overlay_show_non_christian: true })
+    } else {
+      loadJimMaps()
+    }
+  }
+
+  function handleToggleMap(mapId) {
+    const next = selectedMapIds.includes(mapId)
+      ? selectedMapIds.filter(id => id !== mapId)
+      : [...selectedMapIds, mapId]
+    setSelectedMapIds(next)
+    onUpdateOverlay?.(person.id, { overlay_map_ids: next, overlay_show_christian: showChristian, overlay_show_non_christian: showNonChristian })
+  }
+
+  function handleToggleChristian(val) {
+    setShowChristian(val)
+    if (selectedMapIds.length > 0) {
+      onUpdateOverlay?.(person.id, { overlay_map_ids: selectedMapIds, overlay_show_christian: val, overlay_show_non_christian: showNonChristian })
+    }
+  }
+
+  function handleToggleNonChristian(val) {
+    setShowNonChristian(val)
+    if (selectedMapIds.length > 0) {
+      onUpdateOverlay?.(person.id, { overlay_map_ids: selectedMapIds, overlay_show_christian: showChristian, overlay_show_non_christian: val })
+    }
+  }
+
+  if (person.linked_user_id && linkedProfile) {
+    return (
+      <div style={{ marginBottom: 8 }}>
+        <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          OIKOS App Account
+        </h4>
+
+        {/* Profile row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
+            {linkedProfile.avatar_url
+              ? <img src={linkedProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : getInitials(linkedProfile.full_name || linkedProfile.username || '?')
+            }
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', fontWeight: 600 }}>
+              {linkedProfile.full_name || linkedProfile.username}
+            </div>
+            {linkedProfile.username && (
+              <div style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>@{linkedProfile.username}</div>
+            )}
+          </div>
+          <button
+            onClick={() => navigate(`/user/${person.linked_user_id}`)}
+            style={{ padding: '7px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+          >
+            Profil →
+          </button>
+        </div>
+
+        {/* OIKOS einblenden toggle */}
+        <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: overlayEnabled ? 10 : 0 }}>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+              OIKOS einblenden
+            </span>
+            <button onClick={() => handleToggleOverlay(!overlayEnabled)} style={toggleTrack(overlayEnabled)}>
+              <div style={toggleThumb(overlayEnabled)} />
+            </button>
+          </div>
+
+          {/* Map picker */}
+          {overlayEnabled && (
+            <div>
+              {loadingMaps && (
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '0 0 8px' }}>
+                  Lade Maps…
+                </p>
+              )}
+              {!loadingMaps && jimMaps.length === 0 && (
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '0 0 8px' }}>
+                  Keine öffentlichen Maps verfügbar.
+                </p>
+              )}
+              {!loadingMaps && jimMaps.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: selectedMapIds.length > 0 ? 10 : 0 }}>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 4px' }}>
+                    Maps auswählen
+                  </p>
+                  {jimMaps.map(m => {
+                    const isSelected = selectedMapIds.includes(m.id)
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => handleToggleMap(m.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '8px 12px', borderRadius: 10,
+                          border: `1.5px solid ${isSelected ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
+                          backgroundColor: isSelected ? 'var(--color-warm-1)' : 'var(--color-white)',
+                          color: isSelected ? 'white' : 'var(--color-text)',
+                          fontFamily: 'Lora, serif', fontSize: 13,
+                          fontWeight: isSelected ? 600 : 400,
+                          cursor: 'pointer', textAlign: 'left',
+                        }}
+                      >
+                        <span style={{ fontSize: 13 }}>{isSelected ? '✓' : '○'}</span>
+                        <span style={{ fontSize: 14 }}>🗺</span>
+                        {m.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Christ / Nicht Christ filter */}
+              {selectedMapIds.length > 0 && (
+                <div>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 8px' }}>
+                    Anzeigen
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => handleToggleChristian(!showChristian)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6, flex: 1,
+                        padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
+                        border: `1.5px solid ${showChristian ? 'var(--color-accent)' : 'var(--color-warm-3)'}`,
+                        backgroundColor: showChristian ? 'var(--color-accent-light)' : 'var(--color-white)',
+                        color: showChristian ? 'var(--color-accent-dark)' : 'var(--color-text-muted)',
+                        fontFamily: 'Lora, serif', fontSize: 12, fontWeight: showChristian ? 600 : 400,
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>{showChristian ? '✓' : '○'}</span>
+                      Christ 🌿
+                    </button>
+                    <button
+                      onClick={() => handleToggleNonChristian(!showNonChristian)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6, flex: 1,
+                        padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
+                        border: `1.5px solid ${showNonChristian ? 'var(--color-gold)' : 'var(--color-warm-3)'}`,
+                        backgroundColor: showNonChristian ? 'var(--color-gold-light)' : 'var(--color-white)',
+                        color: showNonChristian ? '#8A6020' : 'var(--color-text-muted)',
+                        fontFamily: 'Lora, serif', fontSize: 12, fontWeight: showNonChristian ? 600 : 400,
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>{showNonChristian ? '✓' : '○'}</span>
+                      Noch nicht 🌱
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Unlink */}
+        {!confirmUnlink ? (
+          <button
+            onClick={() => setConfirmUnlink(true)}
+            style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: '#C0392B', cursor: 'pointer' }}
+          >
+            Verknüpfung aufheben
+          </button>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>Wirklich aufheben?</span>
+            <button
+              onClick={() => { onUnlinkAccount?.(person.id); setConfirmUnlink(false); setOverlayEnabled(false); setSelectedMapId(null) }}
+              style={{ padding: '5px 10px', borderRadius: 8, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}
+            >
+              Ja
+            </button>
+            <button
+              onClick={() => setConfirmUnlink(false)}
+              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}
+            >
+              Nein
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        OIKOS App Account
+      </h4>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 10 }}>
+        Hat {person.name} einen OIKOS-Account?
+      </p>
+      {!showSearch ? (
+        <button
+          onClick={() => setShowSearch(true)}
+          style={{ padding: '8px 16px', borderRadius: 10, border: '1.5px solid var(--color-warm-1)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600 }}
+        >
+          Account verknüpfen
+        </button>
+      ) : (
+        <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 12 }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => handleSearch(e.target.value)}
+            placeholder="Benutzername oder Name suchen…"
+            autoFocus
+            style={{ ...inp, marginBottom: 8 }}
+          />
+          {searching && (
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Suche…</p>
+          )}
+          {!searching && searchResults.map(profile => (
+            <button
+              key={profile.id}
+              onClick={() => handleSelectProfile(profile)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-white)', marginBottom: 4, cursor: 'pointer', textAlign: 'left' }}
+            >
+              <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
+                {profile.avatar_url
+                  ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : getInitials(profile.full_name || profile.username || '?')
+                }
+              </div>
+              <div>
+                <div style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>
+                  {profile.full_name || profile.username}
+                </div>
+                {profile.username && (
+                  <div style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                    @{profile.username}
+                  </div>
+                )}
+              </div>
+            </button>
+          ))}
+          <button
+            onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]) }}
+            style={{ marginTop: 4, padding: '6px 12px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', cursor: 'pointer' }}
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function PersonDetailSheet({
+  person: initialPerson,
+  onClose,
+  onDelete,
+  onUpdate,
+  connections = [],
+  people = [],
+  onDeleteConnection,
+  onCreateConnection,
+  linkedProfile,
+  onLinkAccount,
+  onUnlinkAccount,
+  onUpdateOverlay,
+}) {
   const { user } = useAuth()
   const { showToast } = useToast()
   const [person, setPerson] = useState(initialPerson)
@@ -187,6 +677,34 @@ export default function PersonDetailSheet({ person: initialPerson, onClose, onDe
           }}
         />
 
+        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
+
+        {/* Verbindungen */}
+        <ConnectionsSection
+          person={person}
+          people={people}
+          connections={connections}
+          onDeleteConnection={onDeleteConnection}
+          onCreateConnection={onCreateConnection}
+        />
+
+        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
+
+        {/* OIKOS Account Verknüpfung */}
+        <AccountLinkingSection
+          person={person}
+          linkedProfile={linkedProfile}
+          onLinkAccount={(personId, profileId) => {
+            onLinkAccount?.(personId, profileId)
+            setPerson(p => ({ ...p, linked_user_id: profileId }))
+          }}
+          onUnlinkAccount={(personId) => {
+            onUnlinkAccount?.(personId)
+            setPerson(p => ({ ...p, linked_user_id: null, overlay_map_id: null }))
+          }}
+          onUpdateOverlay={onUpdateOverlay}
+        />
+
         {/* Person löschen */}
         {isOwner && (
           <button onClick={handleDelete} style={{ width: '100%', padding: '12px 0', borderRadius: 12, border: '1px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer', marginTop: 8 }}>
@@ -212,6 +730,6 @@ const sheet = {
 const handle = { width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 18px' }
 const iconBtn = { border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: 8 }
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }
-const inp = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }
+const inp = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block', boxSizing: 'border-box' }
 const toggleTrack = (on) => ({ width: 42, height: 24, borderRadius: 12, backgroundColor: on ? 'var(--color-accent)' : 'var(--color-warm-3)', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s' })
 const toggleThumb = (on) => ({ position: 'absolute', top: 2, left: on ? 20 : 2, width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', transition: 'left 0.2s' })

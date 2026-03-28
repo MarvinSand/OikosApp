@@ -582,7 +582,7 @@ function ProfilePreviewSheet({ profile, onClose }) {
               </button>
             ) : (
               <button onClick={handleFriendAction} disabled={actionLoading} style={{ width: '100%', padding: '11px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <UserPlus size={15} /> {actionLoading ? '…' : 'Geschwister werden'}
+                <UserPlus size={15} /> {actionLoading ? '…' : 'Verbinden'}
               </button>
             )}
           </div>

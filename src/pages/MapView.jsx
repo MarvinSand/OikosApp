@@ -1,19 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
+import { supabase } from '../lib/supabase'
 import MapCanvas from '../components/map/MapCanvas'
 import NewMapModal from '../components/map/NewMapModal'
 import AddPersonModal from '../components/map/AddPersonModal'
 import PersonDetailSheet from '../components/map/PersonDetailSheet'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
+import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
 
 export default function MapView() {
   const { user } = useAuth()
   const {
     maps, activeMapId, setActiveMapId, activeMap,
-    people, loading,
+    people, connections, overlayData, loading,
     createMap, updateMap, addPerson, updatePerson, deletePerson,
+    movePersonPosition, createConnection, deleteConnection,
+    linkAccount, unlinkAccount, updatePersonOverlay,
   } = useOikosMaps()
 
   const [showMapMenu, setShowMapMenu] = useState(false)
@@ -21,8 +25,45 @@ export default function MapView() {
   const [showAddPerson, setShowAddPerson] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
+  const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
+  // linkedProfile cache: { [userId]: profile }
+  const [linkedProfiles, setLinkedProfiles] = useState({})
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Du'
+
+  // Load linked profiles whenever people changes
+  useEffect(() => {
+    const linkedIds = people
+      .filter(p => p.linked_user_id)
+      .map(p => p.linked_user_id)
+      .filter(id => !linkedProfiles[id])
+
+    if (linkedIds.length === 0) return
+
+    supabase
+      .from('profiles')
+      .select('id, full_name, username, avatar_url')
+      .in('id', linkedIds)
+      .then(({ data }) => {
+        if (!data) return
+        setLinkedProfiles(prev => {
+          const next = { ...prev }
+          data.forEach(profile => { next[profile.id] = profile })
+          return next
+        })
+      })
+  }, [people])
+
+  // Keep selectedPerson in sync with people state (e.g. after updates)
+  useEffect(() => {
+    if (!selectedPerson) return
+    const updated = people.find(p => p.id === selectedPerson.id)
+    if (updated) setSelectedPerson(updated)
+  }, [people])
+
+  const selectedLinkedProfile = selectedPerson?.linked_user_id
+    ? linkedProfiles[selectedPerson.linked_user_id] || null
+    : null
 
   if (loading) {
     return (
@@ -160,7 +201,12 @@ export default function MapView() {
           <MapCanvas
             userName={userName}
             people={people}
+            connections={connections}
+            overlayData={overlayData}
             onPersonClick={setSelectedPerson}
+            onPersonMoved={(personId, x, y) => movePersonPosition(personId, x, y)}
+            onCreateConnection={(sourceId, targetId, label) => createConnection(sourceId, targetId, label)}
+            onOverlayPersonClick={setSelectedOverlayPerson}
           />
         )}
       </div>
@@ -175,12 +221,36 @@ export default function MapView() {
       {showAddPerson && (
         <AddPersonModal onClose={() => setShowAddPerson(false)} onAdd={addPerson} />
       )}
+      {selectedOverlayPerson && (
+        <OverlayPersonSheet
+          person={selectedOverlayPerson}
+          onClose={() => setSelectedOverlayPerson(null)}
+        />
+      )}
       {selectedPerson && (
         <PersonDetailSheet
           person={selectedPerson}
           onClose={() => setSelectedPerson(null)}
           onUpdate={(updates) => updatePerson(selectedPerson.id, updates)}
           onDelete={() => { deletePerson(selectedPerson.id); setSelectedPerson(null) }}
+          connections={connections}
+          people={people}
+          onDeleteConnection={deleteConnection}
+          onCreateConnection={createConnection}
+          linkedProfile={selectedLinkedProfile}
+          onLinkAccount={(personId, profileId) => {
+            linkAccount(personId, profileId)
+            supabase
+              .from('profiles')
+              .select('id, full_name, username, avatar_url')
+              .eq('id', profileId)
+              .single()
+              .then(({ data }) => {
+                if (data) setLinkedProfiles(prev => ({ ...prev, [data.id]: data }))
+              })
+          }}
+          onUnlinkAccount={unlinkAccount}
+          onUpdateOverlay={updatePersonOverlay}
         />
       )}
     </div>

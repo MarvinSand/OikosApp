@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
+import { useNotifications } from '../hooks/useNotifications'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 
@@ -20,18 +21,91 @@ function Avatar({ name, size = 40, isChristian }) {
   )
 }
 
+// ─── Notifications Sheet ─────────────────────────────────────
+function NotificationsSheet({ onClose }) {
+  const { notifications, loading, unreadCount, markAllRead, markRead } = useNotifications()
+
+  useEffect(() => {
+    if (unreadCount > 0) markAllRead()
+  }, [])
+
+  function formatDate(iso) {
+    const d = new Date(iso)
+    const now = new Date()
+    const diffMs = now - d
+    const diffMin = Math.floor(diffMs / 60000)
+    if (diffMin < 1) return 'Gerade eben'
+    if (diffMin < 60) return `vor ${diffMin} Min.`
+    const diffH = Math.floor(diffMin / 60)
+    if (diffH < 24) return `vor ${diffH} Std.`
+    return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+  }
+
+  const icons = {
+    friend_request: '👤',
+    friend_accepted: '🤝',
+    community_invite: '👥',
+    community_event: '📅',
+    prayer_shared: '🙏',
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px', maxHeight: '75vh', overflowY: 'auto', animation: 'sheetSlideUp 0.3s ease-out' }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
+        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>Benachrichtigungen</h3>
+
+        {loading && <div style={{ height: 60, borderRadius: 12, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />}
+
+        {!loading && notifications.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '30px 0' }}>
+            <p style={{ fontSize: 32, margin: '0 0 10px' }}>🔔</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Noch keine Benachrichtigungen.</p>
+          </div>
+        )}
+
+        {notifications.map(n => (
+          <div
+            key={n.id}
+            onClick={() => !n.is_read && markRead(n.id)}
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0',
+              borderBottom: '1px solid var(--color-warm-3)',
+              backgroundColor: n.is_read ? 'transparent' : 'rgba(175,138,100,0.05)',
+              borderRadius: 4,
+            }}
+          >
+            <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+              {icons[n.type] || '🔔'}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: n.is_read ? 400 : 600, color: 'var(--color-text)', margin: '0 0 3px' }}>{n.title}</p>
+              {n.body && <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 3px', lineHeight: 1.4 }}>{n.body}</p>}
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: 0 }}>{formatDate(n.created_at)}</p>
+            </div>
+            {!n.is_read && (
+              <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', flexShrink: 0, marginTop: 6 }} />
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 // ─── FriendsTab ─────────────────────────────────────────────
 function FriendsTab() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { friends, pendingReceived, loading, getFriendshipStatus, getFriendship, searchUsers, sendRequest, acceptRequest, declineRequest, removeFriend } = useFriendships()
+  const { friends, pendingReceived, loading, getFriendshipStatus, searchUsers, sendRequest, acceptRequest, declineRequest, removeFriend } = useFriendships()
 
   const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
-  const [sending, setSending] = useState(null) // userId being sent request
-  const [openMenu, setOpenMenu] = useState(null) // friendshipId
+  const [sending, setSending] = useState(null)
+  const [openMenu, setOpenMenu] = useState(null)
   const timerRef = useRef(null)
 
   function handleQuery(val) {
@@ -106,8 +180,8 @@ function FriendsTab() {
                   <p style={usernameText}>@{u.username}</p>
                 </div>
                 {status === 'none' && (
-                  <button onClick={() => handleSend(u.id)} disabled={sending === u.id} style={sendBtn}>
-                    {sending === u.id ? '…' : 'Anfragen'}
+                  <button onClick={() => handleSend(u.id)} disabled={sending === u.id} style={connectBtn}>
+                    {sending === u.id ? '…' : 'Verbinden'}
                   </button>
                 )}
                 {status === 'sent' && <span style={pendingBadge}>Ausstehend</span>}
@@ -145,11 +219,11 @@ function FriendsTab() {
 
       {/* Freundesliste */}
       <div>
-        <p style={sectionLabel}>Meine Geschwister ({friends.length})</p>
+        <p style={sectionLabel}>Meine Verbindungen ({friends.length})</p>
         {loading && <div style={skeleton} />}
         {!loading && friends.length === 0 && (
           <p style={{ ...mutedText, textAlign: 'center', padding: '16px 0' }}>
-            Noch keine Geschwister. Suche nach Nutzern um sie hinzuzufügen. ↑
+            Noch keine Verbindungen. Suche nach Nutzern. ↑
           </p>
         )}
         {friends.map(f => {
@@ -198,7 +272,40 @@ function FriendsTab() {
 // ─── CommunitiesTab ──────────────────────────────────────────
 function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
   const navigate = useNavigate()
-  const { myCommunities, loading } = useCommunities()
+  const { user } = useAuth()
+  const { myCommunities, loading, joinByCode } = useCommunities()
+  const { showToast } = useToast()
+  const [publicCommunities, setPublicCommunities] = useState([])
+  const [loadingPublic, setLoadingPublic] = useState(false)
+
+  useEffect(() => {
+    loadPublic()
+  }, [myCommunities])
+
+  async function loadPublic() {
+    setLoadingPublic(true)
+    const myIds = myCommunities.map(c => c.id)
+    const { data } = await supabase
+      .from('communities')
+      .select('id, name, description')
+      .eq('is_public', true)
+      .limit(20)
+    const filtered = (data || []).filter(c => !myIds.includes(c.id))
+    setPublicCommunities(filtered)
+    setLoadingPublic(false)
+  }
+
+  async function handleJoinPublic(communityId, communityName) {
+    const { error } = await supabase
+      .from('community_members')
+      .insert({ community_id: communityId, user_id: user.id, role: 'member' })
+    if (!error) {
+      showToast(`Willkommen in ${communityName}!`)
+      navigate(`/community/${communityId}`)
+    } else {
+      showToast('Fehler beim Beitreten', 'error')
+    }
+  }
 
   return (
     <div>
@@ -211,13 +318,14 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
         </button>
       </div>
 
+      {/* Meine Communities */}
+      <p style={sectionLabel}>Meine Communities ({myCommunities.length})</p>
       {loading && <div style={skeleton} />}
       {!loading && myCommunities.length === 0 && (
-        <p style={{ ...mutedText, textAlign: 'center', padding: '20px 0', lineHeight: 1.6 }}>
-          Du bist noch in keiner Community.{'\n'}Erstelle eine oder tritt einer per Code bei.
+        <p style={{ ...mutedText, textAlign: 'center', padding: '16px 0 24px', lineHeight: 1.6 }}>
+          Du bist noch in keiner Community.
         </p>
       )}
-
       {myCommunities.map(c => {
         const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
         return (
@@ -236,6 +344,36 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
           </button>
         )
       })}
+
+      {/* Öffentliche Communities entdecken */}
+      {publicCommunities.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <p style={sectionLabel}>
+            <Globe size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Öffentliche Communities
+          </p>
+          {publicCommunities.map(c => {
+            const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+            return (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
+                <div style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-warm-1)', flexShrink: 0 }}>
+                  {initials}
+                </div>
+                <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+                  <p style={{ ...nameText, marginBottom: 2 }}>{c.name}</p>
+                  {c.description && <p style={{ ...usernameText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.description}</p>}
+                </div>
+                <button
+                  onClick={() => handleJoinPublic(c.id, c.name)}
+                  style={{ padding: '7px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer', flexShrink: 0, fontWeight: 500 }}
+                >
+                  Beitreten
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -247,13 +385,14 @@ function CreateCommunitySheet({ onClose }) {
   const { showToast } = useToast()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [isPublic, setIsPublic] = useState(false)
   const [saving, setSaving] = useState(false)
 
   async function handleCreate() {
     if (!name.trim()) return
     setSaving(true)
     try {
-      const community = await createCommunity({ name: name.trim(), description: description.trim() || null })
+      const community = await createCommunity({ name: name.trim(), description: description.trim() || null, is_public: isPublic })
       showToast('Community erstellt ✓')
       onClose()
       navigate(`/community/${community.id}`)
@@ -269,7 +408,7 @@ function CreateCommunitySheet({ onClose }) {
       <div onClick={onClose} style={backdrop} />
       <div style={bottomSheet}>
         <div style={sheetHandle} />
-        <h3 style={sheetTitle}>Community erstellen</h3>
+        <h3 style={sheetTitleStyle}>Community erstellen</h3>
 
         <label style={lbl}>Name *</label>
         <input autoFocus type="text" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. Hausgemeinde Mitte" style={inp} />
@@ -277,6 +416,20 @@ function CreateCommunitySheet({ onClose }) {
         <label style={{ ...lbl, marginTop: 14 }}>Beschreibung</label>
         <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 200))} placeholder="Worum geht es in eurer Community?" rows={3} style={{ ...inp, resize: 'none' }} />
         <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', textAlign: 'right', marginTop: 2 }}>{description.length}/200</p>
+
+        {/* Public toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
+          <div>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>Öffentlich</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>Für alle sichtbar und beitrittsfähig</p>
+          </div>
+          <button
+            onClick={() => setIsPublic(v => !v)}
+            style={{ width: 44, height: 26, borderRadius: 13, border: 'none', backgroundColor: isPublic ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}
+          >
+            <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: isPublic ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+          </button>
+        </div>
 
         <button
           onClick={handleCreate}
@@ -318,7 +471,7 @@ function JoinCommunityModal({ onClose }) {
   return (
     <div style={overlay}>
       <div style={modal}>
-        <h3 style={sheetTitle}>Community beitreten</h3>
+        <h3 style={sheetTitleStyle}>Community beitreten</h3>
         <label style={lbl}>Einladungscode</label>
         <input autoFocus type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setError('') }} placeholder="z.B. 550E8400" onKeyDown={e => e.key === 'Enter' && handleJoin()} style={{ ...inp, letterSpacing: 2, textTransform: 'uppercase' }} />
         {error && <p style={{ color: '#C0392B', fontFamily: 'Lora, serif', fontSize: 13, marginTop: 6, fontStyle: 'italic' }}>{error}</p>}
@@ -338,15 +491,28 @@ export default function FriendsView() {
   const [activeTab, setActiveTab] = useState('friends')
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const { unreadCount } = useNotifications()
 
   return (
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%', paddingBottom: 90 }}>
       <div style={{ backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)', padding: '16px 16px 0', position: 'sticky', top: 0, zIndex: 5 }}>
-        <h2 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 12 }}>
-          Geschwister
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h2 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+            Geschwister
+          </h2>
+          <button
+            onClick={() => setShowNotifications(true)}
+            style={{ position: 'relative', border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}
+          >
+            <Bell size={20} />
+            {unreadCount > 0 && (
+              <div style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', backgroundColor: '#C0392B', border: '1.5px solid white' }} />
+            )}
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: 0 }}>
-          {[{ key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }].map(t => (
+          {[{ key: 'friends', label: 'Verbindungen' }, { key: 'communities', label: 'Communities' }].map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
@@ -367,6 +533,12 @@ export default function FriendsView() {
 
       {showCreate && <CreateCommunitySheet onClose={() => setShowCreate(false)} />}
       {showJoin && <JoinCommunityModal onClose={() => setShowJoin(false)} />}
+      {showNotifications && <NotificationsSheet onClose={() => setShowNotifications(false)} />}
+
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+        @keyframes sheetSlideUp { from{transform:translateX(-50%) translateY(100%)} to{transform:translateX(-50%) translateY(0)} }
+      `}</style>
     </div>
   )
 }
@@ -377,7 +549,7 @@ const nameText = { fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, col
 const usernameText = { fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }
 const sectionLabel = { fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }
 const mutedText = { fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }
-const sendBtn = { padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }
+const connectBtn = { padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }
 const pendingBadge = { fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic', flexShrink: 0 }
 const friendsBadge = { fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-accent-dark)', fontWeight: 600, flexShrink: 0 }
 const actionBtn = { width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }
@@ -387,6 +559,6 @@ const bottomSheet = { position: 'fixed', bottom: 0, left: '50%', transform: 'tra
 const overlay = { position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(58,46,36,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }
 const modal = { backgroundColor: 'var(--color-white)', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 380, boxShadow: '0 8px 32px rgba(58,46,36,0.15)' }
 const sheetHandle = { width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 18px' }
-const sheetTitle = { fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 600, color: 'var(--color-text)', marginBottom: 16 }
+const sheetTitleStyle = { fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 600, color: 'var(--color-text)', marginBottom: 16 }
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }
 const inp = { width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }
