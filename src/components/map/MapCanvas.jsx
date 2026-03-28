@@ -43,6 +43,12 @@ export default function MapCanvas({
   const [labelInput, setLabelInput] = useState('')
   // Inline add connection in sheet (not used here but connection mode handled here)
 
+  // Zoom + pan
+  const [zoom, setZoom] = useState(1)
+  const [viewOrigin, setViewOrigin] = useState({ x: 0, y: 0 })
+  const [panning, setPanning] = useState(null) // { startClientX, startClientY, startOriginX, startOriginY }
+  const pinchRef = useRef(null) // { dist, svgMidX, svgMidY, zoom, originX, originY }
+
   const svgRef = useRef(null)
   const debouncedMoveRef = useRef(null)
 
@@ -94,17 +100,52 @@ export default function MapCanvas({
     return first.length > 9 ? first.slice(0, 8) + '…' : first
   }
 
-  // Convert SVG coordinates from client coordinates
+  // Convert client coordinates to SVG coordinates (accounts for zoom/pan)
   function clientToSVG(clientX, clientY) {
     const svg = svgRef.current
     if (!svg) return { x: 0, y: 0 }
     const rect = svg.getBoundingClientRect()
-    const scaleX = vbSize / rect.width
-    const scaleY = vbSize / rect.height
+    const viewW = vbSize / zoom
+    const viewH = vbSize / zoom
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
+      x: viewOrigin.x + (clientX - rect.left) / rect.width * viewW,
+      y: viewOrigin.y + (clientY - rect.top) / rect.height * viewH,
     }
+  }
+
+  function clampOrigin(ox, oy, z) {
+    const viewW = vbSize / z
+    const viewH = vbSize / z
+    const minX = -(vbSize * 0.3)
+    const minY = -(vbSize * 0.3)
+    const maxX = vbSize - viewW + vbSize * 0.3
+    const maxY = vbSize - viewH + vbSize * 0.3
+    return {
+      x: Math.max(minX, Math.min(maxX, ox)),
+      y: Math.max(minY, Math.min(maxY, oy)),
+    }
+  }
+
+  function handleWheel(e) {
+    e.preventDefault()
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
+    const newZoom = Math.min(5, Math.max(0.4, zoom * factor))
+    const rect = svgRef.current.getBoundingClientRect()
+    const viewW = vbSize / zoom
+    const viewH = vbSize / zoom
+    const cursorSVGX = viewOrigin.x + (e.clientX - rect.left) / rect.width * viewW
+    const cursorSVGY = viewOrigin.y + (e.clientY - rect.top) / rect.height * viewH
+    const newViewW = vbSize / newZoom
+    const newViewH = vbSize / newZoom
+    const fracX = (e.clientX - rect.left) / rect.width
+    const fracY = (e.clientY - rect.top) / rect.height
+    const raw = {
+      x: cursorSVGX - fracX * newViewW,
+      y: cursorSVGY - fracY * newViewH,
+    }
+    const clamped = clampOrigin(raw.x, raw.y, newZoom)
+    setZoom(newZoom)
+    setViewOrigin(clamped)
   }
 
   // --- Drag handlers ---
@@ -143,65 +184,132 @@ export default function MapCanvas({
   }
 
   function handleMouseMove(e) {
-    if (!dragging) return
-    const svgPos = clientToSVG(e.clientX, e.clientY)
-    const dx = svgPos.x - dragging.startSVGX
-    const dy = svgPos.y - dragging.startSVGY
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    const newX = dragging.startPersonX + dx
-    const newY = dragging.startPersonY + dy
-
-    setDragging(prev => ({ ...prev, moved: dist > 5 }))
-    setPositions(prev => ({ ...prev, [dragging.id]: { x: newX, y: newY } }))
+    if (dragging) {
+      const svgPos = clientToSVG(e.clientX, e.clientY)
+      const dx = svgPos.x - dragging.startSVGX
+      const dy = svgPos.y - dragging.startSVGY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      setDragging(prev => ({ ...prev, moved: dist > 5 }))
+      setPositions(prev => ({ ...prev, [dragging.id]: {
+        x: dragging.startPersonX + dx,
+        y: dragging.startPersonY + dy,
+      }}))
+    } else if (panning) {
+      const rect = svgRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const viewW = vbSize / zoom
+      const viewH = vbSize / zoom
+      const dxClient = e.clientX - panning.startClientX
+      const dyClient = e.clientY - panning.startClientY
+      const raw = {
+        x: panning.startOriginX - dxClient / rect.width * viewW,
+        y: panning.startOriginY - dyClient / rect.height * viewH,
+      }
+      setViewOrigin(clampOrigin(raw.x, raw.y, zoom))
+    }
   }
 
   function handleTouchMove(e) {
-    if (!dragging) return
     e.preventDefault()
+    if (e.touches.length === 2) {
+      // Pinch zoom
+      const t0 = e.touches[0]
+      const t1 = e.touches[1]
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+      const midClientX = (t0.clientX + t1.clientX) / 2
+      const midClientY = (t0.clientY + t1.clientY) / 2
+
+      if (pinchRef.current) {
+        const { dist: prevDist, zoom: prevZoom, originX, originY } = pinchRef.current
+        const newZoom = Math.min(5, Math.max(0.4, prevZoom * (dist / prevDist)))
+        const rect = svgRef.current?.getBoundingClientRect()
+        if (rect) {
+          const prevViewW = vbSize / prevZoom
+          const prevViewH = vbSize / prevZoom
+          const svgMidX = originX + (midClientX - rect.left) / rect.width * prevViewW
+          const svgMidY = originY + (midClientY - rect.top) / rect.height * prevViewH
+          const newViewW = vbSize / newZoom
+          const newViewH = vbSize / newZoom
+          const raw = {
+            x: svgMidX - (midClientX - rect.left) / rect.width * newViewW,
+            y: svgMidY - (midClientY - rect.top) / rect.height * newViewH,
+          }
+          const clamped = clampOrigin(raw.x, raw.y, newZoom)
+          setZoom(newZoom)
+          setViewOrigin(clamped)
+          pinchRef.current = { dist, zoom: newZoom, originX: clamped.x, originY: clamped.y }
+        }
+      } else {
+        pinchRef.current = { dist, zoom, originX: viewOrigin.x, originY: viewOrigin.y }
+      }
+      return
+    }
+
+    if (!dragging) return
     const touch = e.touches[0]
     const svgPos = clientToSVG(touch.clientX, touch.clientY)
     const dx = svgPos.x - dragging.startSVGX
     const dy = svgPos.y - dragging.startSVGY
     const dist = Math.sqrt(dx * dx + dy * dy)
-    const newX = dragging.startPersonX + dx
-    const newY = dragging.startPersonY + dy
-
     setDragging(prev => ({ ...prev, moved: dist > 5 }))
-    setPositions(prev => ({ ...prev, [dragging.id]: { x: newX, y: newY } }))
+    setPositions(prev => ({ ...prev, [dragging.id]: {
+      x: dragging.startPersonX + dx,
+      y: dragging.startPersonY + dy,
+    }}))
   }
 
-  function handleMouseUp(e) {
-    if (!dragging) return
-    const elapsed = Date.now() - dragging.startTime
-    const wasClick = !dragging.moved && elapsed < 200
-
-    if (wasClick) {
-      const person = people.find(p => p.id === dragging.id)
-      if (person) onPersonClick?.(person)
-    } else {
-      const pos = positions[dragging.id]
-      if (pos) {
-        debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
+  function handleMouseUp() {
+    if (dragging) {
+      const elapsed = Date.now() - dragging.startTime
+      const wasClick = !dragging.moved && elapsed < 200
+      if (wasClick) {
+        const person = people.find(p => p.id === dragging.id)
+        if (person) onPersonClick?.(person)
+      } else {
+        const pos = positions[dragging.id]
+        if (pos) debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
       }
+      setDragging(null)
     }
-    setDragging(null)
+    if (panning) setPanning(null)
   }
 
-  function handleTouchEnd(e) {
+  function handleTouchEnd() {
+    pinchRef.current = null
     if (!dragging) return
     const elapsed = Date.now() - dragging.startTime
     const wasClick = !dragging.moved && elapsed < 200
-
     if (wasClick) {
       const person = people.find(p => p.id === dragging.id)
       if (person) handlePersonTap(person)
     } else {
       const pos = positions[dragging.id]
-      if (pos) {
-        debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
-      }
+      if (pos) debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
     }
     setDragging(null)
+  }
+
+  function handleBackgroundMouseDown(e) {
+    if (connectionMode || dragging) return
+    setPanning({
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startOriginX: viewOrigin.x,
+      startOriginY: viewOrigin.y,
+    })
+  }
+
+  function changeZoom(factor) {
+    const newZoom = Math.min(5, Math.max(0.4, zoom * factor))
+    const newViewW = vbSize / newZoom
+    const newViewH = vbSize / newZoom
+    // Zoom toward center
+    const raw = {
+      x: viewOrigin.x + (vbSize / zoom - newViewW) / 2,
+      y: viewOrigin.y + (vbSize / zoom - newViewH) / 2,
+    }
+    setZoom(newZoom)
+    setViewOrigin(clampOrigin(raw.x, raw.y, newZoom))
   }
 
   // --- Connection mode tap ---
@@ -245,12 +353,37 @@ export default function MapCanvas({
 
   return (
     <div
-      style={{ position: 'relative', width: '100%', height: '100%', touchAction: dragging ? 'none' : 'auto' }}
+      style={{ position: 'relative', width: '100%', height: '100%', touchAction: 'none' }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onMouseDown={handleBackgroundMouseDown}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Zoom buttons */}
+      <div style={{
+        position: 'absolute', bottom: 24, right: 16, zIndex: 10,
+        display: 'flex', flexDirection: 'column', gap: 6,
+      }}>
+        {[['＋', 1.3], ['－', 1 / 1.3]].map(([label, factor]) => (
+          <button
+            key={label}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={() => changeZoom(factor)}
+            style={{
+              width: 38, height: 38, borderRadius: 12,
+              border: '1.5px solid var(--color-warm-3)',
+              backgroundColor: 'var(--color-white)',
+              color: 'var(--color-text)',
+              fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 600,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(58,46,36,0.10)',
+              lineHeight: 1,
+            }}
+          >{label}</button>
+        ))}
+      </div>
+
       {/* Toolbar */}
       <div style={{
         position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
@@ -289,10 +422,19 @@ export default function MapCanvas({
       {/* SVG Map */}
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${vbSize} ${vbSize}`}
-        style={{ width: '100%', height: '100%', cursor: dragging?.moved ? 'grabbing' : 'default' }}
+        viewBox={`${viewOrigin.x} ${viewOrigin.y} ${vbSize / zoom} ${vbSize / zoom}`}
+        style={{ width: '100%', height: '100%', cursor: dragging?.moved ? 'grabbing' : panning ? 'grabbing' : 'grab' }}
         xmlns="http://www.w3.org/2000/svg"
+        onWheel={handleWheel}
       >
+        {/* Transparent background to catch pan gestures */}
+        <rect
+          x={viewOrigin.x} y={viewOrigin.y}
+          width={vbSize / zoom} height={vbSize / zoom}
+          fill="transparent"
+          onMouseDown={e => { e.stopPropagation(); handleBackgroundMouseDown(e) }}
+        />
+
         {/* Gestrichelter Ring um Zentrum */}
         <circle
           cx={cx} cy={cy}

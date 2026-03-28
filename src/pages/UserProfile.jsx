@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, UserCheck, UserPlus, Clock, X, ChevronRight, MessageCircle } from 'lucide-react'
+import { ArrowLeft, UserCheck, UserPlus, Clock, X, ChevronRight, MessageCircle, Bell, BellOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useToast } from '../context/ToastContext'
+import { useNotificationPrefs } from '../hooks/useNotificationPrefs'
 
 // ─── Helpers ─────────────────────────────────────────────────
 function Avatar({ name, size = 64, isChristian }) {
@@ -215,6 +216,8 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [chatLoading, setChatLoading] = useState(false)
+  const [showNotifPrefs, setShowNotifPrefs] = useState(false)
+  const { prefs, updatePref } = useNotificationPrefs(targetId)
 
   useEffect(() => {
     if (user && targetId === user.id) navigate('/profile', { replace: true })
@@ -376,14 +379,62 @@ export default function UserProfile() {
       <div style={headerStyle}>
         <button onClick={() => navigate(-1)} style={backBtn}><ArrowLeft size={20} /></button>
         <span style={headerTitle}>@{profile.username}</span>
-        {status === 'friends' ? (
-          <button onClick={handleStartChat} disabled={chatLoading} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-warm-1)', display: 'flex', alignItems: 'center' }}>
-            <MessageCircle size={22} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {status === 'friends' && (
+            <button onClick={handleStartChat} disabled={chatLoading} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-warm-1)', display: 'flex', alignItems: 'center' }}>
+              <MessageCircle size={20} />
+            </button>
+          )}
+          <button
+            onClick={() => setShowNotifPrefs(true)}
+            style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center', position: 'relative',
+              color: (prefs.notify_prayer_requests || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos) ? 'var(--color-warm-1)' : 'var(--color-text-light)' }}
+            title="Benachrichtigungen"
+          >
+            <Bell size={20} />
+            {(prefs.notify_prayer_requests || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos) && (
+              <div style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)' }} />
+            )}
           </button>
-        ) : (
-          <div style={{ width: 36 }} />
-        )}
+        </div>
       </div>
+
+      {/* Notification Preferences Sheet */}
+      {showNotifPrefs && (
+        <>
+          <div onClick={() => setShowNotifPrefs(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
+          <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 18px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+              <Bell size={18} color="var(--color-warm-1)" />
+              <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                Benachrichtigungen für {displayName}
+              </h3>
+            </div>
+            {[
+              { field: 'notify_prayer_requests', label: 'Neue Gebetsanliegen', desc: 'Wenn neue Anliegen hinzugefügt werden' },
+              { field: 'notify_oikos_entries', label: 'Neue OIKOS-Einträge', desc: 'Wenn Personen zur OIKOS-Map hinzugefügt werden' },
+              { field: 'notify_prayers_for_oikos', label: 'Gebete für OIKOS', desc: 'Wenn jemand für eine Person aus diesem OIKOS betet' },
+            ].map(({ field, label, desc }) => (
+              <div key={field} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
+                <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>{label}</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{desc}</p>
+                </div>
+                <button
+                  onClick={() => updatePref(field, !prefs[field])}
+                  style={{ width: 44, height: 26, borderRadius: 13, border: 'none', backgroundColor: prefs[field] ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}
+                >
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: prefs[field] ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </button>
+              </div>
+            ))}
+            <button onClick={() => setShowNotifPrefs(false)} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 20, backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+              Fertig
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Profil-Karte */}
       <div style={{ backgroundColor: 'var(--color-white)', margin: 16, borderRadius: 20, overflow: 'hidden', boxShadow: '0 2px 12px rgba(58,46,36,0.08)' }}>

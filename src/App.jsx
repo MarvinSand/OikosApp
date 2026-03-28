@@ -12,6 +12,7 @@ import PrayerView from './pages/PrayerView'
 import PublicMapView from './pages/PublicMapView'
 import ChatView from './pages/ChatView'
 import ConversationView from './pages/ConversationView'
+import NotificationsPage from './pages/NotificationsPage'
 import BottomNav from './components/layout/BottomNav'
 
 function LoadingSpinner() {
@@ -67,6 +68,7 @@ function AppShell() {
           <Route path="/chat" element={<ChatView />} />
           <Route path="/chat/:conversationId" element={<ConversationView />} />
           <Route path="/friends" element={<FriendsView />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/community/:id" element={<CommunityDetail />} />
           <Route path="/user/:id" element={<UserProfile />} />
           <Route path="/user/:id/map/:mapId" element={<PublicMapView />} />

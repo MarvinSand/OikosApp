@@ -150,6 +150,41 @@ function FriendsTab() {
 
   const showSearch = query.trim().length >= 2
 
+  // Load users from shared communities who are not yet connected
+  const [notConnected, setNotConnected] = useState([])
+  useEffect(() => {
+    if (!user || loading) return
+    loadNotConnected()
+  }, [user?.id, loading, friends.length])
+
+  async function loadNotConnected() {
+    const { data: myComms } = await supabase
+      .from('community_members').select('community_id').eq('user_id', user.id)
+    if (!myComms?.length) return
+    const comIds = myComms.map(c => c.community_id)
+    const { data: members } = await supabase
+      .from('community_members')
+      .select('user_id, profiles(id, username, full_name, is_christian)')
+      .in('community_id', comIds)
+      .neq('user_id', user.id)
+    if (!members) return
+    const connectedIds = new Set(friends.map(f =>
+      f.requester_id === user.id ? f.addressee_id : f.requester_id
+    ))
+    const pendingIds = new Set([...pendingSent, ...pendingReceived].map(f =>
+      f.requester_id === user.id ? f.addressee_id : f.requester_id
+    ))
+    const seen = new Set()
+    const unique = []
+    for (const m of members) {
+      if (!connectedIds.has(m.user_id) && !pendingIds.has(m.user_id) && !seen.has(m.user_id)) {
+        seen.add(m.user_id)
+        unique.push({ id: m.user_id, ...m.profiles })
+      }
+    }
+    setNotConnected(unique)
+  }
+
   return (
     <div>
       {/* Suchfeld */}
@@ -219,7 +254,7 @@ function FriendsTab() {
 
       {/* Freundesliste */}
       <div>
-        <p style={sectionLabel}>Meine Verbindungen ({friends.length})</p>
+        <p style={sectionLabel}>Connected ({friends.length})</p>
         {loading && <div style={skeleton} />}
         {!loading && friends.length === 0 && (
           <p style={{ ...mutedText, textAlign: 'center', padding: '16px 0' }}>
@@ -265,6 +300,31 @@ function FriendsTab() {
           )
         })}
       </div>
+
+      {/* Not Connected – aus gemeinsamen Communities */}
+      {notConnected.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <p style={sectionLabel}>Not Connected ({notConnected.length})</p>
+          {notConnected.map(u => (
+            <div key={u.id} style={personRow}>
+              <button onClick={() => navigate(`/user/${u.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+                <Avatar name={u.full_name || u.username} isChristian={u.is_christian} />
+                <div style={{ minWidth: 0 }}>
+                  <p style={nameText}>{u.full_name || u.username}</p>
+                  <p style={usernameText}>@{u.username}</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleSend(u.id)}
+                disabled={sending === u.id}
+                style={connectBtn}
+              >
+                {sending === u.id ? '…' : 'Verbinden'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -346,13 +406,18 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
       })}
 
       {/* Öffentliche Communities entdecken */}
-      {publicCommunities.length > 0 && (
-        <div style={{ marginTop: 24 }}>
-          <p style={sectionLabel}>
-            <Globe size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-            Öffentliche Communities
+      <div style={{ marginTop: 24 }}>
+        <p style={sectionLabel}>
+          <Globe size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+          Öffentliche Communities
+        </p>
+        {loadingPublic && <div style={skeleton} />}
+        {!loadingPublic && publicCommunities.length === 0 && (
+          <p style={{ ...mutedText, textAlign: 'center', padding: '12px 0' }}>
+            Keine öffentlichen Communities verfügbar.
           </p>
-          {publicCommunities.map(c => {
+        )}
+        {publicCommunities.map(c => {
             const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
             return (
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
@@ -372,8 +437,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
               </div>
             )
           })}
-        </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -512,7 +576,7 @@ export default function FriendsView() {
           </button>
         </div>
         <div style={{ display: 'flex', gap: 0 }}>
-          {[{ key: 'friends', label: 'Verbindungen' }, { key: 'communities', label: 'Communities' }].map(t => (
+          {[{ key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }].map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
