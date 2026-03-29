@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
 import { useNotifications } from '../hooks/useNotifications'
+import { useConversations } from '../hooks/useConversations'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 
@@ -99,7 +100,7 @@ function FriendsTab() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { friends, pendingReceived, loading, getFriendshipStatus, searchUsers, sendRequest, acceptRequest, declineRequest, removeFriend } = useFriendships()
+  const { friends, pendingReceived, pendingSent, loading, getFriendshipStatus, searchUsers, sendRequest, acceptRequest, declineRequest, removeFriend } = useFriendships()
 
   const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -387,7 +388,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
         </p>
       )}
       {myCommunities.map(c => {
-        const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+        const initials = (c.name || 'Unbekannt').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
         return (
           <button key={c.id} onClick={() => navigate(`/community/${c.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)' }}>
             <div style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-warm-1)', flexShrink: 0 }}>
@@ -418,7 +419,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
           </p>
         )}
         {publicCommunities.map(c => {
-            const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+            const initials = (c.name || 'Unbekannt').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
             return (
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
                 <div style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-warm-1)', flexShrink: 0 }}>
@@ -469,8 +470,8 @@ function CreateCommunitySheet({ onClose }) {
 
   return (
     <>
-      <div onClick={onClose} style={backdrop} />
-      <div style={bottomSheet}>
+      <div onClick={onClose} className="fixed inset-0 bg-dark/40 backdrop-blur-[2px] z-40 transition-opacity" />
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white rounded-t-[32px] z-50 pt-4 px-6 pb-20 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
         <div style={sheetHandle} />
         <h3 style={sheetTitleStyle}>Community erstellen</h3>
 
@@ -550,49 +551,274 @@ function JoinCommunityModal({ onClose }) {
   )
 }
 
+// ─── ChatsTab ────────────────────────────────────────────────
+function ChatsAvatar({ name, size = 40, isChristian }) {
+  const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+    }}>{initials}</div>
+  )
+}
+
+function ChatsTab() {
+  const navigate = useNavigate()
+  const { directChats, communityChats, loading, startDirectChat } = useConversations()
+  const { friends } = useFriendships()
+  const [query, setQuery] = useState('')
+  const [showNewChat, setShowNewChat] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [friendQuery, setFriendQuery] = useState('')
+
+  function timeAgo(isoString) {
+    if (!isoString) return ''
+    const now = new Date()
+    const date = new Date(isoString)
+    const diffMs = now - date
+    const diffMin = Math.floor(diffMs / 60000)
+    const diffHrs = Math.floor(diffMs / 3600000)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today.getTime() - 86400000)
+    const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    if (diffMin < 1) return 'gerade'
+    if (diffMin < 60) return `vor ${diffMin} Min.`
+    if (diffHrs < 24 && msgDate.getTime() === today.getTime()) return `vor ${diffHrs} Std.`
+    if (msgDate.getTime() === yesterday.getTime()) return 'gestern'
+    return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+  }
+
+  function lastMessagePreview(msg) {
+    if (!msg) return ''
+    if (msg.is_deleted) return '(Nachricht gelöscht)'
+    if (msg.type === 'prayer_request') return '🙏 Gebetsanliegen'
+    if (msg.type === 'bible_verse') return '📖 Bibelvers'
+    return msg.text || ''
+  }
+
+  const filterConvs = (list) =>
+    list.filter(conv => {
+      const name = conv.type === 'direct'
+        ? (conv.otherUser?.full_name || conv.otherUser?.username || '')
+        : (conv.community?.name || '')
+      return name.toLowerCase().includes(query.toLowerCase())
+    })
+
+  const filteredDirect = filterConvs(directChats)
+  const filteredCommunity = filterConvs(communityChats)
+  const hasAny = directChats.length > 0 || communityChats.length > 0
+
+  async function handleSelectFriend(friendId) {
+    setShowNewChat(false)
+    if (!friendId) return
+    setStarting(true)
+    try {
+      const convId = await startDirectChat(friendId)
+      if (convId) navigate(`/chat/${convId}`)
+    } catch (e) {
+      console.error('Fehler beim Starten des Chats:', e)
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  const filteredFriends = friends.filter(f => {
+    const name = f.otherUser?.full_name || f.otherUser?.username || ''
+    return name.toLowerCase().includes(friendQuery.toLowerCase())
+  })
+
+  return (
+    <div style={{ paddingBottom: 20 }}>
+      {/* Search */}
+      <div style={{ position: 'relative', marginBottom: 16 }}>
+        <Search size={15} color="var(--color-text-light)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Geschwister oder Community suchen..."
+          style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
+        />
+      </div>
+
+      {loading && (
+        <div>
+          {[1,2,3].map(i => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ height: 14, borderRadius: 7, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite', marginBottom: 6, width: '60%' }} />
+                <div style={{ height: 12, borderRadius: 6, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite', width: '80%' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && !hasAny && (
+        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <MessageCircle size={40} color="var(--color-warm-3)" style={{ marginBottom: 12 }} />
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6 }}>
+            Noch keine Nachrichten. Starte ein Gespräch! 💬
+          </p>
+        </div>
+      )}
+
+      {!loading && filteredDirect.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <p style={sectionLabel}>Direktnachrichten</p>
+          {filteredDirect.map(conv => {
+            const isDirect = conv.type === 'direct'
+            const name = isDirect ? (conv.otherUser?.full_name || conv.otherUser?.username || 'Unbekannt') : (conv.community?.name || 'Community')
+            const preview = lastMessagePreview(conv.lastMessage)
+            const time = timeAgo(conv.lastMessage?.created_at)
+            return (
+              <button key={conv.id} onClick={() => navigate(`/chat/${conv.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left', position: 'relative' }}>
+                {conv.unread && <div style={{ position: 'absolute', left: -4, top: '50%', transform: 'translateY(-50%)', width: 10, height: 10, borderRadius: '50%', backgroundColor: '#2563EB' }} />}
+                <ChatsAvatar name={name} size={40} isChristian={isDirect ? conv.otherUser?.is_christian : false} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: conv.unread ? 700 : 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{name}</p>
+                    <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', flexShrink: 0 }}>{time}</span>
+                  </div>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: conv.unread ? 'var(--color-text-muted)' : 'var(--color-text-light)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: conv.unread ? 500 : 400 }}>
+                    {preview || 'Noch keine Nachrichten'}
+                  </p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {!loading && filteredCommunity.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <p style={sectionLabel}>Community Chats</p>
+          {filteredCommunity.map(conv => {
+            const name = conv.community?.name || 'Community'
+            const preview = lastMessagePreview(conv.lastMessage)
+            const time = timeAgo(conv.lastMessage?.created_at)
+            return (
+              <button key={conv.id} onClick={() => navigate(`/chat/${conv.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left', position: 'relative' }}>
+                {conv.unread && <div style={{ position: 'absolute', left: -4, top: '50%', transform: 'translateY(-50%)', width: 10, height: 10, borderRadius: '50%', backgroundColor: '#2563EB' }} />}
+                <ChatsAvatar name={name} size={40} isChristian={false} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: conv.unread ? 700 : 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{name}</p>
+                    <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', flexShrink: 0 }}>{time}</span>
+                  </div>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: conv.unread ? 'var(--color-text-muted)' : 'var(--color-text-light)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: conv.unread ? 500 : 400 }}>
+                    {preview || 'Noch keine Nachrichten'}
+                  </p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* FAB neue Nachricht */}
+      <button
+        onClick={() => setShowNewChat(true)}
+        disabled={starting}
+        style={{ position: 'fixed', bottom: 90, right: 20, width: 52, height: 52, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(58,46,36,0.25)', zIndex: 10, color: 'white' }}
+      >
+        <Plus size={24} />
+      </button>
+
+      {showNewChat && (
+        <>
+          <div onClick={() => setShowNewChat(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
+          <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
+            <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: 'var(--color-text)', marginBottom: 14 }}>Neue Nachricht</h3>
+            <div style={{ position: 'relative', marginBottom: 14 }}>
+              <Search size={14} color="var(--color-text-light)" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }} />
+              <input type="text" value={friendQuery} onChange={e => setFriendQuery(e.target.value)} placeholder="Geschwister suchen…" style={{ width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }} />
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {filteredFriends.length === 0 && (
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
+                  Keine Geschwister gefunden.
+                </p>
+              )}
+              {filteredFriends.map(f => {
+                const other = f.otherUser
+                return (
+                  <button key={f.id} onClick={() => handleSelectFriend(other?.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left' }}>
+                    <ChatsAvatar name={other?.full_name || other?.username} size={38} isChristian={other?.is_christian} />
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {other?.full_name || other?.username || '…'}
+                      </p>
+                      <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+                        @{other?.username}
+                      </p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── FriendsView (Main) ──────────────────────────────────────
 export default function FriendsView() {
-  const [activeTab, setActiveTab] = useState('friends')
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') === 'chats' ? 'chats' : 'friends'
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const { unreadCount } = useNotifications()
+  const { hasUnread } = useConversations()
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%', paddingBottom: 90 }}>
-      <div style={{ backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)', padding: '16px 16px 0', position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h2 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+    <div className="bg-bg min-h-full pb-24">
+      <div className="bg-white/80 backdrop-blur-md border-b border-warm-3 pt-4 px-4 sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-serif text-[22px] font-bold text-dark m-0">
             Geschwister
           </h2>
           <button
             onClick={() => setShowNotifications(true)}
-            style={{ position: 'relative', border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}
+            className="relative p-1.5 text-dark-muted hover:bg-black/5 rounded-full transition-colors flex items-center"
           >
-            <Bell size={20} />
+            <Bell size={22} />
             {unreadCount > 0 && (
-              <div style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', backgroundColor: '#C0392B', border: '1.5px solid white' }} />
+              <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white ring-1 ring-red-500/20" />
             )}
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 0 }}>
-          {[{ key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }].map(t => (
+        <div className="flex gap-2">
+          {[{ key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }, { key: 'chats', label: 'Chats' }].map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              style={{ flex: 1, padding: '10px 0', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: activeTab === t.key ? 600 : 400, color: activeTab === t.key ? 'var(--color-warm-1)' : 'var(--color-text-muted)', cursor: 'pointer', borderBottom: activeTab === t.key ? '2px solid var(--color-warm-1)' : '2px solid transparent', transition: 'all 0.15s' }}
+              className={`flex-1 pb-2.5 border-b-2 transition-all duration-200 font-serif text-[14.5px] relative
+                ${activeTab === t.key 
+                  ? 'border-warm-1 text-warm-1 font-bold' 
+                  : 'border-transparent text-dark-muted hover:text-dark font-medium'}`}
             >
               {t.label}
+              {t.key === 'chats' && hasUnread && (
+                <div className="absolute top-1 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
+              )}
             </button>
           ))}
         </div>
       </div>
 
       <div style={{ padding: '20px 16px' }}>
-        {activeTab === 'friends'
-          ? <FriendsTab />
-          : <CommunitiesTab onCreateOpen={() => setShowCreate(true)} onJoinOpen={() => setShowJoin(true)} />
-        }
+        {activeTab === 'friends' && <FriendsTab />}
+        {activeTab === 'communities' && <CommunitiesTab onCreateOpen={() => setShowCreate(true)} onJoinOpen={() => setShowJoin(true)} />}
+        {activeTab === 'chats' && <ChatsTab />}
       </div>
 
       {showCreate && <CreateCommunitySheet onClose={() => setShowCreate(false)} />}

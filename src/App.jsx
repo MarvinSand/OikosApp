@@ -10,49 +10,23 @@ import CommunityDetail from './pages/CommunityDetail'
 import UserProfile from './pages/UserProfile'
 import PrayerView from './pages/PrayerView'
 import PublicMapView from './pages/PublicMapView'
-import ChatView from './pages/ChatView'
 import ConversationView from './pages/ConversationView'
 import NotificationsPage from './pages/NotificationsPage'
 import BottomNav from './components/layout/BottomNav'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 function LoadingSpinner() {
   return (
-    <div style={{
-      height: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'var(--color-bg)',
-    }}>
-      <div style={{
-        width: 40,
-        height: 40,
-        borderRadius: '50%',
-        border: '3px solid var(--color-warm-3)',
-        borderTopColor: 'var(--color-warm-1)',
-        animation: 'spin 0.8s linear infinite',
-      }} />
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+    <div className="min-h-screen flex items-center justify-center bg-bg relative">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-20 w-32 h-32 bg-warm-2 rounded-full blur-3xl" />
+      <div className="w-12 h-12 rounded-full border-[3px] border-warm-3 border-t-warm-1 animate-spin z-10 shadow-glass-sm" />
     </div>
   )
 }
 
 function PlaceholderPage({ title }) {
   return (
-    <div style={{
-      height: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'var(--color-bg)',
-      color: 'var(--color-text-muted)',
-      fontStyle: 'italic',
-      paddingBottom: 80,
-    }}>
+    <div className="min-h-screen flex items-center justify-center bg-bg text-dark-muted italic pb-20">
       {title}
     </div>
   )
@@ -60,12 +34,12 @@ function PlaceholderPage({ title }) {
 
 function AppShell() {
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+    <div className="h-[100dvh] flex flex-col bg-bg w-full max-w-md mx-auto relative overflow-hidden shadow-glass">
+      <div className="flex-1 overflow-y-auto w-full hide-scrollbar">
         <Routes>
           <Route path="/" element={<MapView />} />
           <Route path="/prayer" element={<PrayerView />} />
-          <Route path="/chat" element={<ChatView />} />
+          <Route path="/chat" element={<Navigate to="/friends?tab=chats" replace />} />
           <Route path="/chat/:conversationId" element={<ConversationView />} />
           <Route path="/friends" element={<FriendsView />} />
           <Route path="/notifications" element={<NotificationsPage />} />
@@ -76,6 +50,7 @@ function AppShell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
+      <div className="h-[84px] sm:h-[92px] shrink-0 pointer-events-none" />
       <BottomNav />
     </div>
   )
@@ -87,20 +62,27 @@ export default function App() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <ToastProvider>
-    <BrowserRouter>
-      <Routes>
-        <Route
-          path="/auth"
-          element={user ? <Navigate to="/" replace /> : <Auth />}
-        />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route
-          path="/*"
-          element={user ? <AppShell /> : <Navigate to="/auth" replace />}
-        />
-      </Routes>
-    </BrowserRouter>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <div className="min-h-screen bg-bg w-full flex justify-center selection:bg-warm-1/20 selection:text-dark">
+          {/* Centered container for desktop view, full width on mobile */}
+          <div className="w-full max-w-md h-[100dvh] relative shadow-glass overflow-hidden bg-bg">
+            <BrowserRouter>
+              <Routes>
+                <Route
+                  path="/auth"
+                  element={user ? <Navigate to="/" replace /> : <Auth />}
+                />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route
+                  path="/*"
+                  element={user ? <AppShell /> : <Navigate to="/auth" replace />}
+                />
+              </Routes>
+            </BrowserRouter>
+          </div>
+        </div>
+      </ToastProvider>
+    </ErrorBoundary>
   )
 }

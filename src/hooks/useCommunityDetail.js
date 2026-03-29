@@ -26,7 +26,7 @@ export function useCommunityDetail(communityId) {
       supabase.from('communities').select('*').eq('id', communityId).single(),
       supabase
         .from('community_members')
-        .select('id, role, joined_at, user_id, profiles(id, username, full_name, is_christian, gender)')
+        .select('*')
         .eq('community_id', communityId)
         .order('joined_at'),
       supabase
@@ -37,10 +37,11 @@ export function useCommunityDetail(communityId) {
         .maybeSingle(),
       supabase
         .from('community_posts')
-        .select('id, content, created_at, author_id, profiles(id, username, full_name, is_christian)')
+        .select('id, title, content, is_pinned, created_at, author_id, profiles:author_id(id, username, full_name, is_christian)')
         .eq('community_id', communityId)
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(30),
+        .limit(50),
       supabase
         .from('community_events')
         .select('id, title, description, starts_at, location, created_by, created_at')
@@ -51,8 +52,27 @@ export function useCommunityDetail(communityId) {
     ])
 
     setCommunity(communityData)
-    setMembers((membersData || []).map(m => ({ ...m, profile: m.profiles })))
     setPosts(postsResult.data || [])
+
+    // Fetch members' profiles manually to avoid nested join implicit failures
+    let finalMembers = []
+    if (membersData && membersData.length > 0) {
+      const userIds = membersData.map(m => m.user_id)
+      const { data: profs, error: profErr } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, is_christian, gender, bio')
+        .in('id', userIds)
+      
+      if (profErr) console.error('Error fetching profiles for members:', profErr)
+
+      const profMap = {}
+      if (profs) profs.forEach(p => { profMap[p.id] = p })
+      finalMembers = membersData.map(m => ({ ...m, profile: profMap[m.user_id] }))
+    } else if (membersData === null) {
+      console.error('membersData returned null. Error from db might be suppressed by Promise.all.')
+    }
+
+    setMembers(finalMembers)
 
     const ev = eventsResult.data || []
     setEvents(ev)
@@ -107,18 +127,32 @@ export function useCommunityDetail(communityId) {
       .eq('user_id', userId)
   }
 
-  async function createPost(content) {
+  async function updateCommunity(updates) {
+    const { data, error } = await supabase
+      .from('communities')
+      .update(updates)
+      .eq('id', communityId)
+      .select('*')
+      .single()
+    if (!error && data) {
+      setCommunity(data)
+    }
+    return { error, data }
+  }
+
+  async function createPost({ title, content, is_pinned = false }) {
     const tempId = `temp-${Date.now()}`
     const myProfile = members.find(m => m.user_id === user.id)?.profile
-    setPosts(prev => [{
-      id: tempId, content, author_id: user.id,
-      created_at: new Date().toISOString(), profiles: myProfile || null,
-    }, ...prev])
+    const optimistic = {
+      id: tempId, title: title || null, content, is_pinned,
+      author_id: user.id, created_at: new Date().toISOString(), profiles: myProfile || null,
+    }
+    setPosts(prev => is_pinned ? [optimistic, ...prev] : [optimistic, ...prev])
 
     const { data, error } = await supabase
       .from('community_posts')
-      .insert({ community_id: communityId, author_id: user.id, content })
-      .select('id, content, created_at, author_id, profiles(id, username, full_name, is_christian)')
+      .insert({ community_id: communityId, author_id: user.id, title: title || null, content, is_pinned })
+      .select('id, title, content, is_pinned, created_at, author_id, profiles:author_id(id, username, full_name, is_christian)')
       .single()
 
     if (!error && data) {
@@ -132,6 +166,11 @@ export function useCommunityDetail(communityId) {
   async function deletePost(postId) {
     setPosts(prev => prev.filter(p => p.id !== postId))
     await supabase.from('community_posts').delete().eq('id', postId)
+  }
+
+  async function togglePinPost(postId, isPinned) {
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, is_pinned: isPinned } : p))
+    await supabase.from('community_posts').update({ is_pinned: isPinned }).eq('id', postId)
   }
 
   async function createEvent(eventData) {
@@ -174,7 +213,8 @@ export function useCommunityDetail(communityId) {
   return {
     community, members, myMembership, isAdmin, adminCount,
     loading, conversationId, reload: load, changeRole, removeMember,
-    posts, createPost, deletePost,
+    posts, createPost, deletePost, togglePinPost,
     events, myRsvps, createEvent, deleteEvent, rsvpEvent,
+    updateCommunity,
   }
 }

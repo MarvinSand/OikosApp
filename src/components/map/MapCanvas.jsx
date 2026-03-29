@@ -361,10 +361,7 @@ export default function MapCanvas({
       onTouchEnd={handleTouchEnd}
     >
       {/* Zoom buttons */}
-      <div style={{
-        position: 'absolute', bottom: 24, right: 16, zIndex: 10,
-        display: 'flex', flexDirection: 'column', gap: 6,
-      }}>
+      <div style={{ position: 'absolute', bottom: 106, right: 16, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 10 }}>
         {[['＋', 1.3], ['－', 1 / 1.3]].map(([label, factor]) => (
           <button
             key={label}

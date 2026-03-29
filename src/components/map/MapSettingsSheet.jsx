@@ -62,7 +62,7 @@ export default function MapSettingsSheet({ map, updateMap, onClose }) {
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)',
         borderRadius: '20px 20px 0 0', zIndex: 50,
-        padding: '16px 20px 48px',
+        padding: '16px 20px 16px',
         animation: 'sheetSlideUp 0.3s ease-out',
         maxHeight: '85vh', overflowY: 'auto',
       }}>
@@ -188,6 +188,7 @@ export default function MapSettingsSheet({ map, updateMap, onClose }) {
         >
           {saving ? 'Speichere…' : 'Speichern'}
         </button>
+        <div style={{ height: 80 }} />
       </div>
     </>
   )
