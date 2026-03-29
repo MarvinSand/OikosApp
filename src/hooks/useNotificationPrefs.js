@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 const DEFAULT_PREFS = {
-  notify_prayer_requests: false,
+  notify_prayer_requests: true,
   notify_oikos_entries: false,
   notify_prayers_for_oikos: false,
 }
