@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 import PrayerRequestsSection from '../person/PrayerRequestsSection'
 import ImpactMapSection from '../person/ImpactMapSection'
+import StoryLineSection from '../person/StoryLineSection'
 
 const RELATIONSHIP_TYPES = ['Freund/in', 'Kollege/in', 'Familie', 'Nachbar/in', 'Bekannte/r', 'Sonstige/r']
 
@@ -19,7 +20,7 @@ const BADGE_COLORS = {
 }
 
 function getInitials(name) {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  return (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
 function EditPersonForm({ person, onSave, onCancel }) {
@@ -668,6 +669,11 @@ export default function PersonDetailSheet({
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
+        {/* Story-Line */}
+        <StoryLineSection personId={person.id} isOwner={isOwner} />
+
+        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
+
         {/* Impact Map */}
         <ImpactMapSection
           personId={person.id} isOwner={isOwner} personName={person.name}
@@ -716,16 +722,20 @@ export default function PersonDetailSheet({
   )
 }
 
-const backdrop = { position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }
+const backdrop = { position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.3)', backdropFilter: 'blur(3px)', zIndex: 40 }
 const sheet = {
-  position: 'fixed', bottom: 0,
+  position: 'fixed', bottom: 12,
   left: '50%', transform: 'translateX(-50%)',
-  width: '100%', maxWidth: 480,
-  backgroundColor: 'var(--color-white)',
-  borderRadius: '20px 20px 0 0',
-  zIndex: 50, maxHeight: '90vh', overflowY: 'auto',
-  padding: '16px 20px 40px',
-  animation: 'sheetSlideUp 0.3s ease-out',
+  width: 'calc(100% - 24px)', maxWidth: 480,
+  backgroundColor: 'rgba(255, 253, 248, 0.92)',
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
+  border: '1px solid rgba(255, 255, 255, 0.6)',
+  borderRadius: 32,
+  zIndex: 50, maxHeight: 'calc(90vh - 24px)', overflowY: 'auto',
+  padding: '20px 24px 32px',
+  boxShadow: '0 24px 48px -12px rgba(58,46,36,0.25), 0 0 0 1px rgba(232, 213, 183, 0.3)',
+  animation: 'sheetSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
 }
 const handle = { width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 18px' }
 const iconBtn = { border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: 8 }

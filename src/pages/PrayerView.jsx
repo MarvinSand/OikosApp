@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, X, MoreVertical, Check, Pencil, ChevronRight, UserPlus, UserCheck, Clock, MessageCircle } from 'lucide-react'
+import { Plus, X, MoreVertical, Check, Pencil, ChevronRight, UserPlus, UserCheck, Clock, MessageCircle, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { usePrayerFeed } from '../hooks/usePrayerFeed'
 import { usePersonalPrayer } from '../hooks/usePersonalPrayer'
 import { useFriendships } from '../hooks/useFriendships'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
+import Confetti from '../components/ui/Confetti'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -252,44 +253,49 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
   const shortDesc = desc.length > 120 ? desc.slice(0, 120) + '…' : desc
 
   return (
-    <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 16, padding: '16px', marginBottom: 12, boxShadow: '0 2px 8px rgba(58,46,36,0.06)' }}>
+    <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 mb-4 shadow-glass-sm border border-white/60 hover:shadow-glass hover:bg-white/95 transition-all duration-300">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+      <div className="flex items-start gap-3 mb-4">
         <div
           onClick={() => !isOwn && onAuthorClick?.()}
-          style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1, minWidth: 0, cursor: isOwn ? 'default' : 'pointer' }}
+          className={`flex gap-3 items-center flex-1 min-w-0 ${isOwn ? 'cursor-default' : 'cursor-pointer group'}`}
         >
-          <Avatar name={authorName} size={40} isChristian={author?.is_christian} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+          <div className="relative">
+            <Avatar name={authorName} size={42} isChristian={author?.is_christian} />
+            {!isOwn && (
+              <div className="absolute inset-0 rounded-full border-2 border-transparent group-hover:border-warm-2/30 transition-colors" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <p className="font-serif text-[15px] font-bold text-dark m-0 leading-tight">
                 {isOwn ? 'Du' : authorName}
               </p>
               {author?.gender === 'brother' && !isOwn && (
-                <span style={{ fontFamily: 'Lora, serif', fontSize: 10, padding: '1px 6px', borderRadius: 20, backgroundColor: '#DBEAFE', color: '#1E40AF', fontWeight: 600 }}>Bruder</span>
+                <span className="font-serif text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100/50">Bruder</span>
               )}
               {author?.gender === 'sister' && !isOwn && (
-                <span style={{ fontFamily: 'Lora, serif', fontSize: 10, padding: '1px 6px', borderRadius: 20, backgroundColor: '#FCE7F3', color: '#9D174D', fontWeight: 600 }}>Schwester</span>
+                <span className="font-serif text-[10px] px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 font-semibold border border-pink-100/50">Schwester</span>
               )}
             </div>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>
+            <p className="font-sans text-[11px] font-medium text-dark-muted/80 uppercase tracking-wide m-0">
               {!isOwn && `@${author?.username} · `}{timeAgo(request.created_at)}
             </p>
           </div>
         </div>
         {isOwn && (
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)' }}>
-              <MoreVertical size={16} />
+          <div className="relative">
+            <button onClick={() => setShowMenu(v => !v)} className="border-none bg-transparent cursor-pointer p-1.5 text-dark-muted hover:bg-black/5 rounded-full transition-colors">
+              <MoreVertical size={18} />
             </button>
             {showMenu && (
               <>
-                <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 180 }}>
-                  <button onClick={() => { setShowMenu(false); onMarkAnswered(request.id) }} style={menuItem}>
-                    ✓ Als erhört markieren
+                <div onClick={() => setShowMenu(false)} className="fixed inset-0 z-10" />
+                <div className="absolute right-0 top-full mt-1 bg-white/95 backdrop-blur-md rounded-xl shadow-glass border border-warm-3 z-20 min-w-[180px] overflow-hidden">
+                  <button onClick={() => { setShowMenu(false); onMarkAnswered(request.id) }} className="w-full px-4 py-3 text-left border-none bg-transparent hover:bg-black/5 font-serif text-[14px] text-dark cursor-pointer flex items-center gap-2">
+                    <Check size={16} className="text-warm-1" /> Als erhört markieren
                   </button>
-                  <button onClick={() => { setShowMenu(false); onDelete(request.id) }} style={{ ...menuItem, color: '#C0392B', borderTop: '1px solid var(--color-warm-3)' }}>
+                  <button onClick={() => { setShowMenu(false); onDelete(request.id) }} className="w-full px-4 py-3 text-left border-none bg-transparent hover:bg-red-50 font-serif text-[14px] text-red-600 cursor-pointer border-t border-warm-3">
                     Löschen
                   </button>
                 </div>
@@ -300,16 +306,16 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
       </div>
 
       {/* Inhalt */}
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: desc ? 6 : 0 }}>
+      <h3 className={`font-serif text-[17px] font-bold text-dark leading-tight ${desc ? 'mb-2' : 'mb-0'}`}>
         {request.title}
-      </p>
+      </h3>
       {desc && (
-        <div>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
+        <div className="mb-2">
+          <p className="font-serif text-[14.5px] text-dark-muted leading-relaxed m-0 whitespace-pre-wrap">
             {expanded ? desc : shortDesc}
           </p>
           {desc.length > 120 && (
-            <button onClick={() => setExpanded(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', padding: '2px 0', fontWeight: 500 }}>
+            <button onClick={() => setExpanded(v => !v)} className="border-none bg-transparent cursor-pointer font-serif text-[13px] text-warm-1 font-semibold py-1 mt-1 hover:opacity-80 transition-opacity">
               {expanded ? 'Weniger anzeigen' : 'Mehr anzeigen'}
             </button>
           )}
@@ -317,21 +323,21 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
       )}
 
       {/* Gebets-Zeile */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--color-warm-3)' }}>
+      <div className="flex items-center justify-between mt-5 pt-4 border-t border-warm-3/60">
         {/* Linke Seite: Wer hat gebetet */}
         <button
           onClick={() => prayCount > 0 && setShowWhoPrayed(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: prayCount > 0 ? 'pointer' : 'default', padding: 0 }}
+          className={`flex items-center gap-2.5 border-none bg-transparent p-0 ${prayCount > 0 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
         >
           {prayCount > 0 ? (
             <>
               <OverlappingAvatars logs={logs || []} currentUserId={currentUserId} />
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>
+              <span className="font-serif text-[13.5px] font-medium text-dark-muted pt-[1px]">
                 {prayCount} {prayCount === 1 ? 'Gebet' : 'Gebete'}
               </span>
             </>
           ) : (
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>
+            <span className="font-serif text-[13.5px] text-dark-light italic bg-warm-5/50 px-3 py-1 rounded-full border border-warm-3/30">
               Noch keine Gebete
             </span>
           )}
@@ -684,8 +690,13 @@ function PostRequestSheet({ onClose, onPost }) {
 }
 
 // ─── OwnRequestDetailSheet ────────────────────────────────────
-function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete }) {
+function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete, onUpdate }) {
   const [prayCount, setPrayCount] = useState(0)
+  const [editMode, setEditMode] = useState(false)
+  const [title, setTitle] = useState(request.title || '')
+  const [description, setDescription] = useState(request.description || '')
+  const [saving, setSaving] = useState(false)
+  const [confetti, setConfetti] = useState(false)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -700,40 +711,74 @@ function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete }) {
   }
 
   async function handleAnswered() {
+    if (!request.is_answered) { setConfetti(true); setTimeout(() => setConfetti(false), 3200) }
     onMarkAnswered(request.id)
-    showToast('Als erhört markiert ✓')
+    showToast(request.is_answered ? 'Als offen markiert' : '🎉 Als erhört markiert!')
     onClose()
+  }
+
+  async function handleSaveEdit() {
+    if (!title.trim()) return
+    setSaving(true)
+    await onUpdate(request.id, { title: title.trim(), description: description.trim() || null })
+    setSaving(false)
+    setEditMode(false)
+    showToast('Anliegen aktualisiert ✓')
   }
 
   return (
     <>
+      <Confetti show={confetti} />
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.3s ease-out' }}>
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>{request.title}</p>
-            {request.description && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.6 }}>{request.description}</p>}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {!editMode ? (
+              <>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>{request.title}</p>
+                {request.description && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.6 }}>{request.description}</p>}
+              </>
+            ) : (
+              <>
+                <input value={title} onChange={e => setTitle(e.target.value)} autoFocus style={{ ...inp, marginBottom: 8 }} />
+                <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={3} style={{ ...inp, resize: 'none' }} />
+              </>
+            )}
           </div>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><X size={18} /></button>
+          <div style={{ display: 'flex', gap: 4, marginLeft: 8, flexShrink: 0 }}>
+            {!editMode && (
+              <button onClick={() => setEditMode(true)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><Pencil size={16} /></button>
+            )}
+            <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><X size={18} /></button>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
-          {request.is_answered && <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: '#8A6020' }}>Erhört ✓</span>}
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>🙏 {prayCount} Gebete · {timeAgo(request.created_at)}</span>
-        </div>
+        {!editMode && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
+            {request.is_answered && <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: '#8A6020' }}>🎉 Erhört</span>}
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>🙏 {prayCount} Gebete · {timeAgo(request.created_at)}</span>
+          </div>
+        )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {!request.is_answered && (
-            <button onClick={handleAnswered} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <Check size={15} /> Als erhört markieren
+        {editMode ? (
+          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+            <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
+            <button onClick={handleSaveEdit} disabled={!title.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
+              {saving ? 'Speichere…' : 'Speichern'}
             </button>
-          )}
-          <button onClick={handleDelete} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: '1.5px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer' }}>
-            Löschen
-          </button>
-        </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button onClick={handleAnswered} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: request.is_answered ? 'var(--color-warm-3)' : 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <Check size={15} /> {request.is_answered ? 'Als offen markieren' : 'Als erhört markieren ✓'}
+            </button>
+            <button onClick={handleDelete} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: '1.5px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer' }}>
+              Löschen
+            </button>
+          </div>
+        )}
       </div>
     </>
   )
@@ -742,7 +787,7 @@ function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete }) {
 // ─── MyPrayerSection ──────────────────────────────────────────
 const VIS_LABEL = { public: '🌐', siblings: '👥', communities: '🏘', private: '🔒' }
 
-function MyPrayerSection({ myRequests, markAnswered, deleteRequest, onNew }) {
+function MyPrayerSection({ myRequests, markAnswered, updateRequest, deleteRequest, onNew }) {
   const [selected, setSelected] = useState(null)
   const [expanded, setExpanded] = useState(false)
 
@@ -833,6 +878,7 @@ function MyPrayerSection({ myRequests, markAnswered, deleteRequest, onNew }) {
           onClose={() => setSelected(null)}
           onMarkAnswered={markAnswered}
           onDelete={deleteRequest}
+          onUpdate={updateRequest}
         />
       )}
     </div>
@@ -856,6 +902,115 @@ function SkeletonCard() {
   )
 }
 
+// ─── FilterSheet ──────────────────────────────────────────────
+const FILTER_DEFAULTS = { status: 'open', faith: ['christian', 'non_christian'], date: 'all' }
+
+function loadSavedFilter() {
+  try { return { ...FILTER_DEFAULTS, ...JSON.parse(localStorage.getItem('prayer_filter') || '{}') } }
+  catch { return { ...FILTER_DEFAULTS } }
+}
+
+function FilterSheet({ filter, onApply, onClose }) {
+  const [status, setStatus] = useState(filter.status)
+  const [faith, setFaith] = useState(filter.faith)
+  const [date, setDate] = useState(filter.date)
+
+  function toggleFaith(val) {
+    setFaith(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val])
+  }
+
+  function handleApply() {
+    const f = { status, faith, date }
+    localStorage.setItem('prayer_filter', JSON.stringify(f))
+    onApply(f)
+    onClose()
+  }
+
+  function handleReset() {
+    const f = { ...FILTER_DEFAULTS }
+    localStorage.setItem('prayer_filter', JSON.stringify(f))
+    onApply(f)
+    onClose()
+  }
+
+  const checkStyle = (active) => ({
+    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10,
+    border: `1.5px solid ${active ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
+    backgroundColor: active ? 'var(--color-warm-4)' : 'var(--color-bg)',
+    cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 14,
+    color: active ? 'var(--color-warm-1)' : 'var(--color-text)',
+    fontWeight: active ? 600 : 400,
+    marginBottom: 6, width: '100%', textAlign: 'left',
+  })
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(70px + env(safe-area-inset-bottom,0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '85vh', overflowY: 'auto' }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Filter</h3>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><X size={18} /></button>
+        </div>
+
+        {/* Status */}
+        <p style={filterLabel}>Nach Status</p>
+        <button style={checkStyle(status === 'open')} onClick={() => setStatus('open')}>☑ Offene Anliegen</button>
+        <button style={checkStyle(status === 'answered')} onClick={() => setStatus('answered')}>✅ Erhörte Anliegen</button>
+        <button style={checkStyle(status === 'all')} onClick={() => setStatus('all')}>Alle Anliegen</button>
+
+        {/* Glaubensstand */}
+        <p style={{ ...filterLabel, marginTop: 16 }}>Nach Glaubensstand</p>
+        <button style={checkStyle(faith.includes('christian'))} onClick={() => toggleFaith('christian')}>
+          {faith.includes('christian') ? '☑' : '☐'} Christen 🌿
+        </button>
+        <button style={checkStyle(faith.includes('non_christian'))} onClick={() => toggleFaith('non_christian')}>
+          {faith.includes('non_christian') ? '☑' : '☐'} Noch nicht Christen 🌱
+        </button>
+
+        {/* Datum */}
+        <p style={{ ...filterLabel, marginTop: 16 }}>Nach Datum</p>
+        {[['all', 'Alle'], ['today', 'Heute'], ['week', 'Diese Woche'], ['month', 'Dieser Monat']].map(([val, label]) => (
+          <button key={val} style={checkStyle(date === val)} onClick={() => setDate(val)}>
+            {date === val ? '●' : '○'} {label}
+          </button>
+        ))}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button onClick={handleReset} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Zurücksetzen</button>
+          <button onClick={handleApply} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Filter anwenden</button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+const filterLabel = { fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }
+
+function applyFilter(requests, filter) {
+  let r = requests
+  if (filter.status === 'open') r = r.filter(x => !x.is_answered)
+  if (filter.status === 'answered') r = r.filter(x => x.is_answered)
+  if (!filter.faith.includes('christian')) r = r.filter(x => !x.profiles?.is_christian)
+  if (!filter.faith.includes('non_christian')) r = r.filter(x => x.profiles?.is_christian)
+  if (filter.date !== 'all') {
+    const now = new Date()
+    const startOf = {
+      today: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+      week: new Date(now.getTime() - 7 * 86400000),
+      month: new Date(now.getFullYear(), now.getMonth(), 1),
+    }[filter.date]
+    if (startOf) r = r.filter(x => new Date(x.created_at) >= startOf)
+  }
+  return r
+}
+
+function isDefaultFilter(f) {
+  return f.status === FILTER_DEFAULTS.status &&
+    JSON.stringify([...f.faith].sort()) === JSON.stringify([...FILTER_DEFAULTS.faith].sort()) &&
+    f.date === FILTER_DEFAULTS.date
+}
+
 // ─── PrayerView (Main) ────────────────────────────────────────
 const TABS = [
   { key: 'siblings',    label: 'Geschwister' },
@@ -869,9 +1024,15 @@ export default function PrayerView() {
   const [activeTab, setActiveTab] = useState('siblings')
   const [showPost, setShowPost] = useState(false)
   const [previewProfile, setPreviewProfile] = useState(null)
+  const [showFilter, setShowFilter] = useState(false)
+  const [filter, setFilter] = useState(loadSavedFilter)
 
   const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote } = usePrayerFeed(activeTab)
-  const { myRequests, createRequest, markAnswered, deleteRequest } = usePersonalPrayer()
+  const { myRequests, createRequest, markAnswered, updateRequest, deleteRequest } = usePersonalPrayer()
+
+  const filteredRequests = applyFilter(requests, filter)
+  const filterActive = !isDefaultFilter(filter)
+  const filterCount = (filter.status !== 'all' ? 1 : 0) + (filter.faith.length < 2 ? 1 : 0) + (filter.date !== 'all' ? 1 : 0)
 
   async function handleNote(requestId, text, isPublic) {
     try {
@@ -884,48 +1045,78 @@ export default function PrayerView() {
   }
 
   function getEmptyMessage() {
+    if (filterActive) return 'Keine Anliegen entsprechen deinen Filterkriterien.'
     if (activeTab === 'siblings') return 'Deine Geschwister haben noch keine Anliegen geteilt.\nBete für sie! 🙏'
     if (activeTab === 'communities') return 'Deine Communities haben noch keine Anliegen geteilt.'
     return 'Sei der Erste der ein Anliegen teilt 🙏'
   }
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%', paddingBottom: 90 }}>
+    <div className="bg-bg min-h-full pb-24">
       {/* Header */}
-      <div style={{ backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)', padding: '14px 16px 0', position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h2 style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Gebete</h2>
+      <div className="bg-white/90 backdrop-blur-md border-b border-warm-3 pt-3.5 px-4 sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-serif text-[22px] font-bold text-dark m-0">Gebete</h2>
           <button
             onClick={() => setShowPost(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            className="flex items-center gap-1.5 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3.5 py-2 font-serif text-[13px] font-semibold cursor-pointer shadow-sm transition-all active:scale-95"
           >
-            <Plus size={14} /> Anliegen
+            <Plus size={16} /> Anliegen
           </button>
         </div>
 
-        {/* Tab-Leiste */}
-        <div style={{ display: 'flex' }}>
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              style={{
-                flex: 1, padding: '10px 0', border: 'none', background: 'none', cursor: 'pointer',
-                fontFamily: 'Lora, serif', fontSize: 14,
-                fontWeight: activeTab === t.key ? 600 : 400,
-                color: activeTab === t.key ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
-                borderBottom: activeTab === t.key ? '2px solid var(--color-warm-1)' : '2px solid transparent',
-                transition: 'all 0.15s',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+        {/* Tab-Leiste + Filter */}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-2 flex-1">
+            {TABS.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex-1 pb-2.5 border-b-2 transition-all duration-200 font-serif text-[14.5px] cursor-pointer
+                  ${activeTab === t.key
+                    ? 'border-warm-1 text-warm-1 font-bold'
+                    : 'border-transparent text-dark-muted hover:text-dark font-medium'}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowFilter(true)}
+            style={{ position: 'relative', border: 'none', background: filterActive ? 'var(--color-warm-1)' : 'none', cursor: 'pointer', padding: '5px 7px', borderRadius: 8, color: filterActive ? 'white' : 'var(--color-text-muted)', flexShrink: 0, marginBottom: 4 }}
+          >
+            <SlidersHorizontal size={18} />
+            {filterActive && (
+              <span style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {filterCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Active filter chips */}
+        {filterActive && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingBottom: 8, paddingTop: 2 }}>
+            {filter.status !== 'all' && (
+              <span style={chip}>{filter.status === 'open' ? 'Offen' : 'Erhört'}</span>
+            )}
+            {!filter.faith.includes('christian') && <span style={chip}>Nur Nicht-Christen</span>}
+            {!filter.faith.includes('non_christian') && <span style={chip}>Nur Christen</span>}
+            {filter.date !== 'all' && <span style={chip}>{{ today: 'Heute', week: 'Diese Woche', month: 'Dieser Monat' }[filter.date]}</span>}
+            <button onClick={() => { setFilter({ ...FILTER_DEFAULTS }); localStorage.removeItem('prayer_filter') }} style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-warm-1)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontWeight: 500 }}>
+              Zurücksetzen ✕
+            </button>
+          </div>
+        )}
+        {filterActive && (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', paddingBottom: 6, margin: 0 }}>
+            {filteredRequests.length} Anliegen
+          </p>
+        )}
       </div>
 
       {/* Eigene Anliegen */}
-      <MyPrayerSection myRequests={myRequests} markAnswered={markAnswered} deleteRequest={deleteRequest} onNew={() => setShowPost(true)} />
+      <MyPrayerSection myRequests={myRequests} markAnswered={markAnswered} updateRequest={updateRequest} deleteRequest={deleteRequest} onNew={() => setShowPost(true)} />
 
       {/* Feed */}
       <div style={{ padding: '16px 16px 0' }}>
@@ -933,12 +1124,17 @@ export default function PrayerView() {
           <>{[1, 2, 3].map(i => <SkeletonCard key={i} />)}</>
         )}
 
-        {!loading && requests.length === 0 && (
+        {!loading && filteredRequests.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
               {getEmptyMessage()}
             </p>
-            {activeTab === 'all' && (
+            {filterActive && (
+              <button onClick={() => { setFilter({ ...FILTER_DEFAULTS }); localStorage.removeItem('prayer_filter') }} style={{ marginTop: 12, padding: '10px 20px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer' }}>
+                Filter zurücksetzen
+              </button>
+            )}
+            {!filterActive && activeTab === 'all' && (
               <button onClick={() => setShowPost(true)} style={{ marginTop: 16, padding: '12px 24px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                 + Anliegen teilen
               </button>
@@ -946,7 +1142,7 @@ export default function PrayerView() {
           </div>
         )}
 
-        {requests.map(r => (
+        {filteredRequests.map(r => (
           <PrayerCard
             key={r.id}
             request={r}
@@ -961,7 +1157,7 @@ export default function PrayerView() {
           />
         ))}
 
-        {hasMore && (
+        {hasMore && !filterActive && (
           <button
             onClick={loadMore}
             disabled={loading}
@@ -973,17 +1169,13 @@ export default function PrayerView() {
       </div>
 
       {showPost && (
-        <PostRequestSheet
-          onClose={() => setShowPost(false)}
-          onPost={createRequest}
-        />
+        <PostRequestSheet onClose={() => setShowPost(false)} onPost={createRequest} />
       )}
-
       {previewProfile && (
-        <ProfilePreviewSheet
-          profile={previewProfile}
-          onClose={() => setPreviewProfile(null)}
-        />
+        <ProfilePreviewSheet profile={previewProfile} onClose={() => setPreviewProfile(null)} />
+      )}
+      {showFilter && (
+        <FilterSheet filter={filter} onApply={setFilter} onClose={() => setShowFilter(false)} />
       )}
     </div>
   )
@@ -993,3 +1185,4 @@ export default function PrayerView() {
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }
 const inp = { width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }
 const menuItem = { display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left' }
+const chip = { fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-1)', color: 'white' }
