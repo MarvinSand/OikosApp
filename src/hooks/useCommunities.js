@@ -21,17 +21,25 @@ export function useCommunities() {
 
     if (!data || data.length === 0) { setMyCommunities([]); setLoading(false); return }
 
-    const counts = await Promise.all(
-      data.map(m =>
-        supabase.from('community_members').select('*', { count: 'exact', head: true }).eq('community_id', m.community_id)
-      )
-    )
+    // Batch query to prevent N+1 requests
+    const commIds = data.map(m => m.community_id)
+    const { data: allMembers } = await supabase
+      .from('community_members')
+      .select('community_id')
+      .in('community_id', commIds)
 
-    setMyCommunities(data.map((m, i) => ({
+    const countMap = {}
+    if (allMembers) {
+      allMembers.forEach(m => {
+        countMap[m.community_id] = (countMap[m.community_id] || 0) + 1
+      })
+    }
+
+    setMyCommunities(data.map((m) => ({
       membershipId: m.id,
       role: m.role,
       joinedAt: m.joined_at,
-      memberCount: counts[i].count || 0,
+      memberCount: countMap[m.community_id] || 1,
       ...m.communities,
     })))
     setLoading(false)

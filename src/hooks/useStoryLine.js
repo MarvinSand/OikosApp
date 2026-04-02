@@ -39,7 +39,11 @@ export function useStoryLine(personId) {
       .insert({ person_id: personId, owner_id: user.id, text, entry_date, is_public })
       .select().single()
 
-    if (error) { setEntries(e => e.filter(x => x.id !== tempId)); throw error }
+    if (error) { 
+      console.error('Supabase Storyline Insert Error:', error);
+      setEntries(e => e.filter(x => x.id !== tempId)); 
+      throw error; 
+    }
     setEntries(e => e.map(x => x.id === tempId ? data : x))
     return data
   }

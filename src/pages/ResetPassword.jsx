@@ -42,54 +42,45 @@ export default function ResetPassword() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--color-bg)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      {/* Dekorationskreise */}
-      <div style={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280, borderRadius: '50%', backgroundColor: 'var(--color-warm-3)', opacity: 0.3, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: -100, left: -100, width: 320, height: 320, borderRadius: '50%', backgroundColor: 'var(--color-warm-3)', opacity: 0.3, pointerEvents: 'none' }} />
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Decorative circles */}
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
+      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-warm-2/20 pointer-events-none blur-3xl animate-pulse" />
 
       {/* Logo */}
-      <div style={{ textAlign: 'center', marginBottom: 36, position: 'relative', zIndex: 1 }}>
-        <h1 style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 52, fontWeight: 700, color: 'var(--color-warm-1)', letterSpacing: '-1px', lineHeight: 1, marginBottom: 8 }}>
+      <div className="text-center mb-10 relative z-10 animate-fade-in">
+        <h1 className="font-serif text-5xl font-bold text-warm-1 tracking-tight leading-none mb-3 drop-shadow-sm">
           OIKOS
         </h1>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-          <Cross size={20} color="var(--color-warm-2)" strokeWidth={2.5} />
+        <div className="flex justify-center mb-4">
+          <Cross size={24} className="text-warm-2" strokeWidth={2.5} />
         </div>
       </div>
 
-      {/* Card */}
-      <div style={{ width: '100%', maxWidth: 400, backgroundColor: 'var(--color-white)', borderRadius: 20, padding: '28px 24px', boxShadow: '0 4px 24px rgba(58, 46, 36, 0.08)', position: 'relative', zIndex: 1 }}>
-
+      {/* Main Card */}
+      <div className="w-full max-w-sm glass-panel rounded-3xl p-7 relative z-10 animate-slide-up">
         {done ? (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <p style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 32, marginBottom: 12 }}>✓</p>
-            <p style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 16, fontWeight: 600, color: 'var(--color-text)', marginBottom: 8 }}>
+          <div className="text-center py-6 animate-fade-in">
+            <div className="w-16 h-16 bg-accent-light/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <p className="font-serif text-3xl text-accent font-bold">✓</p>
+            </div>
+            <p className="text-lg font-bold text-dark mb-2">
               Passwort geändert!
             </p>
-            <p style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+            <p className="text-sm text-dark-muted italic">
               Du wirst weitergeleitet…
             </p>
           </div>
         ) : (
-          <>
-            <h3 style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 20 }}>
+          <div className="animate-fade-in">
+            <h3 className="text-2xl font-bold text-dark mb-6">
               Neues Passwort setzen
             </h3>
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>Neues Passwort</label>
-                <div style={{ position: 'relative' }}>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-dark-muted ml-1">Neues Passwort</label>
+                <div className="relative">
                   <input
                     autoFocus
                     type={showPassword ? 'text' : 'password'}
@@ -98,79 +89,53 @@ export default function ResetPassword() {
                     placeholder="Mindestens 8 Zeichen"
                     required
                     minLength={8}
-                    style={{ ...inputStyle, paddingRight: 44, boxSizing: 'border-box' }}
-                    onFocus={e => e.target.style.borderColor = 'var(--color-warm-1)'}
-                    onBlur={e => e.target.style.borderColor = 'var(--color-warm-3)'}
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
                   />
-                  <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-warm-1 transition-colors rounded-lg">
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
 
-              <div>
-                <label style={labelStyle}>Passwort bestätigen</label>
-                <div style={{ position: 'relative' }}>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-dark-muted ml-1">Passwort bestätigen</label>
+                <div className="relative">
                   <input
                     type={showConfirm ? 'text' : 'password'}
                     value={confirm}
                     onChange={e => { setConfirm(e.target.value); setError('') }}
                     placeholder="Passwort wiederholen"
                     required
-                    style={{ ...inputStyle, paddingRight: 44, boxSizing: 'border-box' }}
-                    onFocus={e => e.target.style.borderColor = 'var(--color-warm-1)'}
-                    onBlur={e => e.target.style.borderColor = 'var(--color-warm-3)'}
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
                   />
-                  <button type="button" onClick={() => setShowConfirm(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+                  <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-warm-1 transition-colors rounded-lg">
                     {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
 
               {error && (
-                <div>
-                  <p style={{ color: '#C0392B', fontFamily: 'Lora, Georgia, serif', fontSize: 13, fontStyle: 'italic', textAlign: 'center', lineHeight: 1.4, marginBottom: 4 }}>
-                    {error}
-                  </p>
-                  {error.toLowerCase().includes('expired') || error.toLowerCase().includes('invalid') ? (
-                    <p style={{ textAlign: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 13 }}>
-                      <a href="/auth" style={{ color: 'var(--color-warm-1)', fontWeight: 600 }}>
-                        Neuen Reset-Link anfordern
-                      </a>
-                    </p>
-                  ) : null}
+                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-red-100 flex flex-col gap-2">
+                  <p>{error}</p>
+                  {(error.toLowerCase().includes('expired') || error.toLowerCase().includes('invalid')) && (
+                    <a href="/auth" className="text-warm-1 hover:text-warm-2 font-bold underline transition-colors">
+                      Neuen Reset-Link anfordern
+                    </a>
+                  )}
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={isLoading}
-                style={{
-                  width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  backgroundColor: isLoading ? 'var(--color-warm-3)' : 'var(--color-warm-1)',
-                  color: 'var(--color-white)', fontFamily: 'Lora, Georgia, serif',
-                  fontSize: 16, fontWeight: 600, marginTop: 4, letterSpacing: '0.3px',
-                }}
+                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Speichere…' : 'Speichern'}
               </button>
             </form>
-          </>
+          </div>
         )}
       </div>
     </div>
   )
-}
-
-const labelStyle = {
-  display: 'block', fontFamily: 'Lora, Georgia, serif', fontSize: 13,
-  fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6,
-}
-
-const inputStyle = {
-  width: '100%', padding: '12px 14px', borderRadius: 12,
-  border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)',
-  fontFamily: 'Lora, Georgia, serif', fontSize: 15, color: 'var(--color-text)',
-  transition: 'border-color 0.15s ease',
 }

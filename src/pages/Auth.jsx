@@ -4,14 +4,12 @@ import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 
-// ─── Haupt-Komponente ─────────────────────────────────────────
 export default function Auth() {
-  // 'login' | 'register' | 'reset' | 'reset-sent'
   const [view, setView] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
-  const [gender, setGender] = useState(null) // 'brother' | 'sister'
+  const [gender, setGender] = useState(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -19,26 +17,16 @@ export default function Auth() {
   const { login, register } = useAuth()
   const { showToast } = useToast()
 
-  function goToReset() {
-    setError('')
-    setView('reset')
-  }
-
-  function goToLogin() {
-    setError('')
-    setView('login')
-  }
+  function goToReset() { setError(''); setView('reset') }
+  function goToLogin() { setError(''); setView('login') }
 
   async function handleLoginOrRegister(e) {
     e.preventDefault()
     setError('')
     setIsLoading(true)
     try {
-      if (view === 'login') {
-        await login(email, password)
-      } else {
-        await register(email, password, fullName, gender)
-      }
+      if (view === 'login') await login(email, password)
+      else await register(email, password, fullName, gender)
     } catch (err) {
       setError(err.message || 'Ein Fehler ist aufgetreten.')
     } finally {
@@ -78,129 +66,137 @@ export default function Auth() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--color-bg)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      {/* Dekorationskreise */}
-      <div style={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280, borderRadius: '50%', backgroundColor: 'var(--color-warm-3)', opacity: 0.3, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: -100, left: -100, width: 320, height: 320, borderRadius: '50%', backgroundColor: 'var(--color-warm-3)', opacity: 0.3, pointerEvents: 'none' }} />
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Decorative circles */}
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
+      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-warm-2/20 pointer-events-none blur-3xl animate-pulse" />
 
-      {/* Logo */}
-      <div style={{ textAlign: 'center', marginBottom: 36, position: 'relative', zIndex: 1 }}>
-        <h1 style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 52, fontWeight: 700, color: 'var(--color-warm-1)', letterSpacing: '-1px', lineHeight: 1, marginBottom: 8 }}>
+      {/* Logo Section */}
+      <div className="text-center mb-10 relative z-10 animate-fade-in">
+        <h1 className="font-serif text-5xl font-bold text-warm-1 tracking-tight leading-none mb-3 drop-shadow-sm">
           OIKOS
         </h1>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-          <Cross size={20} color="var(--color-warm-2)" strokeWidth={2.5} />
+        <div className="flex justify-center mb-4">
+          <Cross size={24} className="text-warm-2" strokeWidth={2.5} />
         </div>
-        <p style={{ fontFamily: 'Lora, Georgia, serif', fontStyle: 'italic', fontSize: 15, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+        <p className="font-serif italic text-base text-dark-muted leading-relaxed">
           „Dein Umfeld. Dein Gebet. Deine Mission."
         </p>
       </div>
 
-      {/* Card */}
-      <div style={{ width: '100%', maxWidth: 400, backgroundColor: 'var(--color-white)', borderRadius: 20, padding: '28px 24px', boxShadow: '0 4px 24px rgba(58, 46, 36, 0.08)', position: 'relative', zIndex: 1 }}>
-
-        {/* ── Zustand 1+2: Login / Register ── */}
+      {/* Main Card */}
+      <div className="w-full max-w-sm glass-panel rounded-3xl p-7 relative z-10 animate-slide-up">
+        
+        {/* Login & Register Logic */}
         {(view === 'login' || view === 'register') && (
           <>
             {/* Tab Switch */}
-            <div style={{ display: 'flex', backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 4, marginBottom: 24 }}>
+            <div className="flex bg-warm-4/50 p-1.5 rounded-2xl mb-7 backdrop-blur-sm">
               {[['login', 'Anmelden'], ['register', 'Registrieren']].map(([t, label]) => (
                 <button
                   key={t}
                   onClick={() => { setView(t); setError('') }}
-                  style={{
-                    flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
-                    fontFamily: 'Lora, Georgia, serif', fontSize: 14,
-                    fontWeight: view === t ? 600 : 400,
-                    backgroundColor: view === t ? 'var(--color-white)' : 'transparent',
-                    color: view === t ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
-                    boxShadow: view === t ? '0 2px 8px rgba(58, 46, 36, 0.08)' : 'none',
-                    transition: 'all 0.2s ease',
-                  }}
-                >{label}</button>
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    view === t 
+                      ? 'bg-white text-warm-1 shadow-sm font-semibold' 
+                      : 'text-dark-muted hover:text-dark'
+                  }`}
+                >
+                  {label}
+                </button>
               ))}
             </div>
 
-            <form onSubmit={handleLoginOrRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <form onSubmit={handleLoginOrRegister} className="flex flex-col gap-4">
               {view === 'register' && (
                 <>
-                  <div>
-                    <label style={labelStyle}>Vollständiger Name</label>
-                    <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Max Mustermann" required style={inputStyle}
-                      onFocus={e => e.target.style.borderColor = 'var(--color-warm-1)'}
-                      onBlur={e => e.target.style.borderColor = 'var(--color-warm-3)'}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-dark-muted ml-1">Vollständiger Name</label>
+                    <input 
+                      type="text" 
+                      value={fullName} 
+                      onChange={e => setFullName(e.target.value)} 
+                      placeholder="Max Mustermann" 
+                      required 
+                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                     />
                   </div>
-                  <div>
-                    <label style={labelStyle}>Ich bin...</label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {[['brother', '🙋‍♂️ Bruder in Christus'], ['sister', '🙋‍♀️ Schwester in Christus']].map(([val, label]) => (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-dark-muted ml-1">Geschlecht</label>
+                    <div className="flex gap-2">
+                      {[['brother', '🙋‍♂️ Bruder'], ['sister', '🙋‍♀️ Schwester']].map(([val, label]) => (
                         <button
                           key={val}
                           type="button"
                           onClick={() => setGender(val)}
-                          style={{
-                            flex: 1, padding: '10px 8px', borderRadius: 12, cursor: 'pointer',
-                            fontFamily: 'Lora, Georgia, serif', fontSize: 13,
-                            border: `1.5px solid ${gender === val ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
-                            backgroundColor: gender === val ? 'var(--color-warm-4)' : 'var(--color-bg)',
-                            color: gender === val ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
-                            fontWeight: gender === val ? 600 : 400,
-                            transition: 'all 0.15s',
-                          }}
-                        >{label}</button>
+                          className={`flex-1 py-3 px-2 rounded-xl text-sm font-medium transition-all border ${
+                            gender === val 
+                              ? 'bg-warm-1 text-white border-warm-1 shadow-md shadow-warm-1/20' 
+                              : 'bg-white/50 text-dark-muted border-warm-3 hover:border-warm-2/50'
+                          }`}
+                        >
+                          {label}
+                        </button>
                       ))}
                     </div>
                   </div>
                 </>
               )}
 
-              <div>
-                <label style={labelStyle}>E-Mail</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@beispiel.de" required style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = 'var(--color-warm-1)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--color-warm-3)'}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-dark-muted ml-1">E-Mail</label>
+                <input 
+                  type="email" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  placeholder="name@beispiel.de" 
+                  required 
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
 
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                  <label style={{ ...labelStyle, marginBottom: 0 }}>Passwort</label>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-baseline px-1">
+                  <label className="text-sm font-medium text-dark-muted">Passwort</label>
                   {view === 'login' && (
-                    <button type="button" onClick={goToReset} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Lora, Georgia, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: 0 }}
-                      onMouseEnter={e => e.target.style.color = 'var(--color-warm-1)'}
-                      onMouseLeave={e => e.target.style.color = 'var(--color-text-muted)'}
+                    <button 
+                      type="button" 
+                      onClick={goToReset} 
+                      className="text-xs font-medium text-warm-1 hover:text-warm-2 transition-colors"
                     >
                       Passwort vergessen?
                     </button>
                   )}
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mindestens 6 Zeichen" required minLength={6} style={{ ...inputStyle, paddingRight: 44, boxSizing: 'border-box' }}
-                    onFocus={e => e.target.style.borderColor = 'var(--color-warm-1)'}
-                    onBlur={e => e.target.style.borderColor = 'var(--color-warm-3)'}
+                <div className="relative">
+                  <input 
+                    type={showPassword ? 'text' : 'password'} 
+                    value={password} 
+                    onChange={e => setPassword(e.target.value)} 
+                    placeholder="Mindestens 6 Zeichen" 
+                    required minLength={6} 
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                   />
-                  <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(v => !v)} 
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-warm-1 transition-colors rounded-lg"
+                  >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
 
-              {error && <p style={errorStyle}>{error}</p>}
+              {error && (
+                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-red-100">
+                  {error}
+                </div>
+              )}
 
-              <button type="submit" disabled={isLoading || (view === 'register' && !gender)} style={submitBtn(isLoading || (view === 'register' && !gender))}
-                onMouseEnter={e => { if (!isLoading) e.target.style.backgroundColor = 'var(--color-warm-2)' }}
-                onMouseLeave={e => { if (!isLoading) e.target.style.backgroundColor = 'var(--color-warm-1)' }}
+              <button 
+                type="submit" 
+                disabled={isLoading || (view === 'register' && !gender)} 
+                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}
               </button>
@@ -208,94 +204,79 @@ export default function Auth() {
           </>
         )}
 
-        {/* ── Zustand 2: E-Mail eingeben ── */}
+        {/* Password Reset Logic */}
         {view === 'reset' && (
-          <>
-            <button onClick={goToLogin} style={backBtn}>← Zurück zum Login</button>
-            <h3 style={cardTitle}>Passwort zurücksetzen</h3>
-            <p style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.5, marginBottom: 20 }}>
-              Wir schicken dir einen Link per E-Mail.
+          <div className="animate-fade-in">
+            <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-warm-1 transition-colors mb-6">
+              ← Zurück
+            </button>
+            <h3 className="text-2xl font-bold text-dark mb-2">Passwort zurücksetzen</h3>
+            <p className="text-sm text-dark-muted mb-6 leading-relaxed">
+              Gib deine E-Mail-Adresse ein, und wir senden dir einen Link zum Zurücksetzen deines Passworts.
             </p>
 
-            <form onSubmit={handleSendReset} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>E-Mail</label>
-                <input autoFocus type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@beispiel.de" required style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = 'var(--color-warm-1)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--color-warm-3)'}
+            <form onSubmit={handleSendReset} className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-dark-muted ml-1">E-Mail</label>
+                <input 
+                  autoFocus 
+                  type="email" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  placeholder="name@beispiel.de" 
+                  required 
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
-              {error && <p style={errorStyle}>{error}</p>}
-              <button type="submit" disabled={isLoading || !email.trim()} style={submitBtn(isLoading || !email.trim())}>
+              
+              {error && (
+                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-red-100">
+                  {error}
+                </div>
+              )}
+              
+              <button 
+                type="submit" 
+                disabled={isLoading || !email.trim()} 
+                className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+              >
                 {isLoading ? 'Sende…' : 'Link senden'}
               </button>
             </form>
-          </>
-        )}
-
-        {/* ── Zustand 3: Bestätigung ── */}
-        {view === 'reset-sent' && (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-              <MailCheck size={52} color="var(--color-gold)" strokeWidth={1.5} />
-            </div>
-            <h3 style={{ ...cardTitle, textAlign: 'center', marginBottom: 10 }}>Schau in dein Postfach</h3>
-            <p style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 14, color: 'var(--color-text)', lineHeight: 1.6, marginBottom: 6 }}>
-              Wir haben dir einen Link geschickt. Klicke darauf um ein neues Passwort zu setzen.
-            </p>
-            <p style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', marginBottom: 24 }}>
-              {email}
-            </p>
-            <p style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 20 }}>
-              Keine Mail erhalten?{' '}
-              <button onClick={handleResend} disabled={isLoading} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Lora, Georgia, serif', fontSize: 13, color: 'var(--color-warm-1)', fontWeight: 600, padding: 0 }}>
-                Erneut senden
-              </button>
-            </p>
-            <button onClick={goToLogin} style={backBtn}>← Zurück zum Login</button>
           </div>
         )}
 
+        {/* Reset Confirmation Logic */}
+        {view === 'reset-sent' && (
+          <div className="text-center animate-fade-in py-4">
+            <div className="w-20 h-20 bg-gold-light/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <MailCheck size={40} className="text-gold" strokeWidth={2} />
+            </div>
+            <h3 className="text-2xl font-bold text-dark mb-3">Schau in dein Postfach</h3>
+            <p className="text-sm text-dark-muted leading-relaxed mb-6">
+              Wir haben dir einen Link an <strong className="text-dark">{email}</strong> geschickt. Klicke darauf, um ein neues Passwort zu setzen.
+            </p>
+            
+            <div className="bg-warm-4/40 p-4 rounded-xl mb-6">
+              <p className="text-xs text-dark-muted mb-1">Keine Mail erhalten?</p>
+              <button 
+                onClick={handleResend} 
+                disabled={isLoading} 
+                className="text-sm font-bold text-warm-1 hover:text-warm-2 transition-colors disabled:opacity-50"
+              >
+                Erneut senden
+              </button>
+            </div>
+            
+            <button 
+              onClick={goToLogin} 
+              className="w-full py-3.5 rounded-xl font-semibold text-dark border-1.5 border-warm-3 hover:bg-warm-4/50 transition-colors"
+            >
+              Zurück zum Login
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
-}
-
-// ─── Styles ───────────────────────────────────────────────────
-const labelStyle = {
-  display: 'block', fontFamily: 'Lora, Georgia, serif', fontSize: 13,
-  fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6,
-}
-
-const inputStyle = {
-  width: '100%', padding: '12px 14px', borderRadius: 12,
-  border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)',
-  fontFamily: 'Lora, Georgia, serif', fontSize: 15, color: 'var(--color-text)',
-  transition: 'border-color 0.15s ease',
-}
-
-const errorStyle = {
-  color: '#C0392B', fontFamily: 'Lora, Georgia, serif', fontSize: 13,
-  fontStyle: 'italic', textAlign: 'center', lineHeight: 1.4, margin: 0,
-}
-
-const submitBtn = (disabled) => ({
-  width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  backgroundColor: disabled ? 'var(--color-warm-3)' : 'var(--color-warm-1)',
-  color: 'var(--color-white)', fontFamily: 'Lora, Georgia, serif',
-  fontSize: 16, fontWeight: 600, marginTop: 4, letterSpacing: '0.3px',
-  transition: 'background-color 0.15s ease',
-})
-
-const backBtn = {
-  background: 'none', border: 'none', cursor: 'pointer',
-  fontFamily: 'Lora, Georgia, serif', fontSize: 13,
-  color: 'var(--color-text-muted)', padding: 0, marginBottom: 20,
-  display: 'inline-flex', alignItems: 'center', gap: 4,
-}
-
-const cardTitle = {
-  fontFamily: 'Lora, Georgia, serif', fontSize: 20, fontWeight: 700,
-  color: 'var(--color-text)', marginBottom: 6,
 }

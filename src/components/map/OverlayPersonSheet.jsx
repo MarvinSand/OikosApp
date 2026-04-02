@@ -67,7 +67,7 @@ export default function OverlayPersonSheet({ person, onClose }) {
         </div>
 
         {/* Scrollable content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px calc(88px + env(safe-area-inset-bottom, 0px))' }}>
           <PrayerRequestsSection personId={person.id} isOwner={false} />
           <ImpactMapSection personId={person.id} isOwner={false} personName={person.name} />
         </div>

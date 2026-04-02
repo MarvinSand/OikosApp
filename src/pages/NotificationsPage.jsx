@@ -33,76 +33,33 @@ function NotificationItem({ n, onClick }) {
   return (
     <div
       onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 12,
-        padding: '14px 16px',
-        borderBottom: '1px solid var(--color-warm-3)',
-        backgroundColor: n.is_read ? 'transparent' : 'rgba(175,138,100,0.08)',
-        cursor: n.related_url ? 'pointer' : 'default',
-        transition: 'background-color 0.15s',
-      }}
+      className={`group flex items-start gap-3.5 p-4 border-b border-warm-3 transition-all duration-200 ${
+        n.is_read ? 'bg-transparent hover:bg-white/50' : 'bg-warm-1/10'
+      } ${n.related_url ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default'}`}
     >
       {/* Icon bubble */}
-      <div style={{
-        width: 44,
-        height: 44,
-        borderRadius: '50%',
-        backgroundColor: 'var(--color-warm-4)',
-        border: '1.5px solid var(--color-warm-3)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 20,
-        flexShrink: 0,
-      }}>
+      <div className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-warm-4 to-warm-3 shadow-sm border border-warm-2/20 flex items-center justify-center text-xl relative">
         {ICONS[n.type] || '🔔'}
       </div>
 
       {/* Text */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          fontFamily: 'Lora, serif',
-          fontSize: 14,
-          fontWeight: n.is_read ? 500 : 700,
-          color: 'var(--color-text)',
-          margin: '0 0 3px',
-          lineHeight: 1.4,
-        }}>
+      <div className="flex-1 min-w-0 pt-0.5">
+        <p className={`font-serif text-[15px] leading-snug mb-1 ${n.is_read ? 'font-medium text-dark' : 'font-bold text-dark'}`}>
           {n.title}
         </p>
         {n.body && (
-          <p style={{
-            fontFamily: 'Lora, serif',
-            fontSize: 13,
-            color: 'var(--color-text-muted)',
-            margin: '0 0 5px',
-            lineHeight: 1.5,
-          }}>
+          <p className="font-serif text-[13.5px] text-dark-muted leading-relaxed mb-1.5 opacity-90 line-clamp-2">
             {n.body}
           </p>
         )}
-        <p style={{
-          fontFamily: 'Lora, serif',
-          fontSize: 11,
-          color: 'var(--color-text-light)',
-          margin: 0,
-        }}>
+        <p className="font-sans text-[11px] font-medium text-warm-2/80 uppercase tracking-widest mt-0.5">
           {formatTime(n.created_at)}
         </p>
       </div>
 
       {/* Unread dot */}
       {!n.is_read && (
-        <div style={{
-          width: 9,
-          height: 9,
-          borderRadius: '50%',
-          backgroundColor: 'var(--color-warm-1)',
-          flexShrink: 0,
-          marginTop: 8,
-        }} />
+        <div className="w-2.5 h-2.5 shrink-0 rounded-full bg-warm-1 shadow-sm mt-2 ring-4 ring-bg" />
       )}
     </div>
   )

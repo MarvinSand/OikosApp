@@ -79,7 +79,7 @@ function PersonPublicSheet({ person, currentUserId, onClose }) {
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)',
         borderRadius: '20px 20px 0 0', zIndex: 50,
-        padding: '16px 20px 48px',
+        padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))',
         animation: 'sheetSlideUp 0.3s ease-out',
         maxHeight: '75vh', overflowY: 'auto',
       }}>
@@ -144,7 +144,7 @@ function PersonTile({ person, onClick }) {
     >
       <SmallAvatar name={person.name} isChristian={person.is_christian} size={44} />
       <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-text)', margin: 0, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
-        {person.name.split(' ')[0]}
+        {(person.name || 'Unbekannt').split(' ')[0]}
       </p>
       {person.impact_stage > 0 && (
         <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: '#8A6020' }}>
@@ -403,7 +403,7 @@ export default function UserProfile() {
       {showNotifPrefs && (
         <>
           <div onClick={() => setShowNotifPrefs(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
-          <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px' }}>
+          <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))' }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 18px' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <Bell size={18} color="var(--color-warm-1)" />

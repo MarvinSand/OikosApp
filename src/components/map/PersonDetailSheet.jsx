@@ -733,7 +733,7 @@ const sheet = {
   border: '1px solid rgba(255, 255, 255, 0.6)',
   borderRadius: 32,
   zIndex: 50, maxHeight: 'calc(90vh - 24px)', overflowY: 'auto',
-  padding: '20px 24px 32px',
+  padding: '20px 24px calc(80px + env(safe-area-inset-bottom, 0px))',
   boxShadow: '0 24px 48px -12px rgba(58,46,36,0.25), 0 0 0 1px rgba(232, 213, 183, 0.3)',
   animation: 'sheetSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
 }

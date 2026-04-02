@@ -259,7 +259,7 @@ export default function MapView() {
             </button>
             <button
               onClick={() => setShowAddPerson(true)}
-              className="flex items-center gap-1.5 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3.5 py-2 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
+              className="tour-map-add flex items-center gap-1.5 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3.5 py-2 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
             >
               <Plus size={16} />
               Person
@@ -323,6 +323,7 @@ export default function MapView() {
             </p>
             <button
               onClick={() => setShowNewMap(true)}
+              className="tour-map-add"
               style={{
                 backgroundColor: 'var(--color-warm-1)', color: 'var(--color-white)',
                 border: 'none', borderRadius: 14, padding: '14px 32px',

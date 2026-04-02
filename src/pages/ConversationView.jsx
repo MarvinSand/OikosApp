@@ -833,70 +833,52 @@ export default function ConversationView() {
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--color-bg)' }}>
+    <div className="h-full flex flex-col bg-bg">
       {/* Header */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        backgroundColor: 'var(--color-white)',
-        borderBottom: '1px solid var(--color-warm-3)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '10px 14px',
-      }}>
-        <button
-          onClick={() => navigate('/chat')}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-warm-1)', padding: 4, display: 'flex', alignItems: 'center' }}
-        >
-          <ArrowLeft size={22} />
-        </button>
+      <div className="bg-gradient-to-br from-[#F0E6D8] to-[#FBF6EF] px-3 pt-3 pb-3 shrink-0 relative overflow-hidden border-b border-warm-3">
+        {/* Deko circles */}
+        <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full bg-warm-3/35 pointer-events-none blur-xl" />
 
-        {!infoLoading && convInfo && (
-          <button
-            onClick={() => {
-              if (convInfo.type === 'direct' && convInfo.otherUserId) {
-                navigate(`/user/${convInfo.otherUserId}`)
-              }
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              flex: 1,
-              border: 'none',
-              background: 'none',
-              cursor: convInfo.type === 'direct' ? 'pointer' : 'default',
-              padding: 0,
-              textAlign: 'left',
-            }}
+        <div className="flex items-center gap-2 relative z-10">
+          <button 
+            onClick={() => navigate('/chat')} 
+            className="p-1.5 text-dark hover:bg-black/5 rounded-full transition-colors flex shrink-0"
           >
-            <Avatar
-              name={convInfo.name}
-              size={36}
-              isChristian={convInfo.otherUser?.is_christian}
-            />
-            <span style={{
-              fontFamily: 'Lora, serif',
-              fontSize: 16,
-              fontWeight: 600,
-              color: 'var(--color-text)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {convInfo.name}
-            </span>
+            <ArrowLeft size={22} />
           </button>
-        )}
 
-        {infoLoading && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-            <div style={{ height: 16, width: 120, borderRadius: 8, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-          </div>
-        )}
+          {infoLoading ? (
+            <div className="flex items-center gap-3 flex-1">
+              <div className="w-10 h-10 rounded-full bg-warm-3/50 animate-pulse" />
+              <div className="w-24 h-4 rounded bg-warm-3/50 animate-pulse" />
+            </div>
+          ) : (
+            <div 
+              className="flex items-center gap-3 flex-1 cursor-pointer transition-opacity hover:opacity-80 p-1 -ml-1 pr-4 rounded-xl"
+              onClick={() => {
+                if (convInfo?.type === 'direct' && convInfo?.otherUserId) {
+                  navigate(`/user/${convInfo.otherUserId}`)
+                } else if (convInfo?.type === 'community' && convInfo?.communityId) {
+                  navigate(`/community/${convInfo.communityId}`)
+                }
+              }}
+            >
+              <Avatar 
+                name={convInfo?.name} 
+                size={40} 
+                isChristian={convInfo?.type === 'direct' ? convInfo?.otherUser?.is_christian : false} 
+              />
+              <div className="min-w-0">
+                <h2 className="font-serif text-[17px] font-bold text-dark m-0 leading-tight truncate">
+                  {convInfo?.name}
+                </h2>
+                <p className="font-serif text-[12px] text-dark-muted m-0 mt-0.5 opacity-90 truncate">
+                  {convInfo?.type === 'community' ? 'Community Chat' : 'Direktnachricht'}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Messages area */}

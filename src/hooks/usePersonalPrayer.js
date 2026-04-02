@@ -98,8 +98,9 @@ export function usePersonalPrayer() {
   }
 
   async function deleteRequest(id) {
-    await supabase.from('personal_prayer_requests').delete().eq('id', id)
     setMyRequests(prev => prev.filter(r => r.id !== id))
+    const { error } = await supabase.from('personal_prayer_requests').delete().eq('id', id)
+    if (error) { console.error('Delete prayer error:', error); await load() }
   }
 
   return { myRequests, loading, createRequest, markAnswered, updateRequest, deleteRequest, reload: load }

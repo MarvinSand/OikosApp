@@ -14,6 +14,7 @@ import ConversationView from './pages/ConversationView'
 import NotificationsPage from './pages/NotificationsPage'
 import BottomNav from './components/layout/BottomNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import OnboardingTutorial from './components/tutorial/OnboardingTutorial'
 
 function LoadingSpinner() {
   return (
@@ -35,7 +36,7 @@ function PlaceholderPage({ title }) {
 function AppShell() {
   return (
     <div className="h-[100dvh] flex flex-col bg-bg w-full max-w-md mx-auto relative overflow-hidden shadow-glass">
-      <div className="flex-1 overflow-y-auto w-full hide-scrollbar">
+      <div className="flex-1 overflow-y-auto w-full hide-scrollbar" style={{ paddingBottom: 'calc(110px + env(safe-area-inset-bottom, 0px))' }}>
         <Routes>
           <Route path="/" element={<MapView />} />
           <Route path="/prayer" element={<PrayerView />} />
@@ -50,8 +51,8 @@ function AppShell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-      <div className="h-[84px] sm:h-[92px] shrink-0 pointer-events-none" />
       <BottomNav />
+      <OnboardingTutorial />
     </div>
   )
 }

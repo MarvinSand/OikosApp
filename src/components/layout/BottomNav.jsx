@@ -18,7 +18,7 @@ export default function BottomNav() {
   const { unreadCount } = useNotifications()
 
   return (
-    <nav className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md glass-panel rounded-3xl flex justify-around items-center px-3 py-3.5 z-[100] shadow-2xl border-white/60 bg-white/85">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md glass-panel rounded-t-3xl rounded-b-none flex justify-around items-center px-3 pt-3.5 z-40 shadow-2xl border-white/60 bg-white/85" style={{ paddingBottom: 'calc(14px + env(safe-area-inset-bottom, 0px))' }}>
       {tabs.map(({ path, icon: Icon, label }) => {
         const isActive = location.pathname === path || location.pathname.startsWith(path + '/')
         const isGeschwisterTab = path === '/friends'
@@ -28,7 +28,7 @@ export default function BottomNav() {
           <button
             key={path}
             onClick={() => navigate(path)}
-            className={`flex flex-col items-center gap-1.5 p-2 flex-1 relative transition-all duration-300 rounded-xl ${
+            className={`tour-nav-${path.replace('/', '') || 'map'} flex flex-col items-center gap-1.5 p-2 flex-1 relative transition-all duration-300 rounded-xl ${
               isActive ? 'text-warm-1 bg-warm-1/10 shadow-sm' : 'text-dark-muted hover:text-warm-2 hover:bg-black/5'
             }`}
           >

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Camera } from 'lucide-react'
+import { Camera, Play } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../hooks/useProfile'
 import { useToast } from '../context/ToastContext'
@@ -122,62 +122,45 @@ export default function ProfileView() {
   }
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%', paddingBottom: 90 }}>
+    <div className="bg-bg min-h-full pb-24">
 
       {/* Header */}
-      <div style={{
-        background: 'linear-gradient(160deg, var(--color-warm-4) 0%, var(--color-paper) 100%)',
-        padding: '16px 20px 28px',
-        position: 'relative', overflow: 'hidden',
-      }}>
+      <div className="bg-gradient-to-br from-warm-4 to-[#FBF6EF] px-5 pt-4 pb-8 relative overflow-hidden shadow-sm">
         {/* Dekorative Kreise */}
-        <div style={{ position: 'absolute', top: -50, right: -50, width: 160, height: 160, borderRadius: '50%', backgroundColor: 'var(--color-warm-3)', opacity: 0.3, pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -40, left: -40, width: 120, height: 120, borderRadius: '50%', backgroundColor: 'var(--color-warm-3)', opacity: 0.25, pointerEvents: 'none' }} />
+        <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
+        <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-warm-3/25 pointer-events-none blur-xl" />
 
         {/* Logo */}
-        <div style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-warm-1)', letterSpacing: 3, marginBottom: 20, position: 'relative', zIndex: 1 }}>
+        <div className="font-serif text-[13px] font-bold text-warm-1 tracking-widest mb-5 relative z-10">
           OIKOS
         </div>
 
         {/* Avatar + Info */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 1 }}>
-          <div style={{ position: 'relative', marginBottom: 14 }}>
-            <div style={{
-              width: 80, height: 80, borderRadius: '50%',
-              background: 'linear-gradient(135deg, var(--color-gold), var(--color-warm-1))',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontFamily: 'Lora, serif', fontSize: 28, fontWeight: 700,
-              boxShadow: '0 4px 16px rgba(200, 149, 106, 0.3)',
-            }}>
+        <div className="flex flex-col items-center relative z-10">
+          <div className="relative mb-3.5 group">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gold to-warm-1 flex items-center justify-center text-white font-serif text-[28px] font-bold shadow-xl shadow-warm-1/20 border-2 border-white">
               {getInitials(profile?.full_name || profile?.username)}
             </div>
             <button
               onClick={() => showToast('Profilfoto hochladen kommt bald!', 'info')}
-              style={{
-                position: 'absolute', bottom: 0, right: 0,
-                width: 26, height: 26, borderRadius: '50%',
-                backgroundColor: 'var(--color-warm-1)',
-                border: '2px solid var(--color-paper)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer',
-              }}
+              className="absolute bottom-0 right-0 w-[26px] h-[26px] rounded-full bg-warm-1 border-2 border-white flex items-center justify-center cursor-pointer shadow-sm hover:scale-110 transition-transform"
             >
               <Camera size={12} color="white" />
             </button>
           </div>
 
-          <h2 style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4, textAlign: 'center' }}>
+          <h2 className="font-serif text-[22px] font-bold text-dark mb-1 text-center tracking-tight">
             {profile?.full_name || profile?.username || '–'}
           </h2>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', marginBottom: profile?.bio ? 10 : 0 }}>
+          <p className="font-serif text-[13px] text-dark-muted mb-2 opacity-90">
             @{profile?.username}
           </p>
           {profile?.bio ? (
-            <p style={{ fontFamily: 'Lora, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--color-text-muted)', textAlign: 'center', maxWidth: 260, lineHeight: 1.5 }}>
+            <p className="font-serif italic text-[14px] text-dark-muted text-center max-w-[260px] leading-relaxed">
               {profile.bio}
             </p>
           ) : (
-            <p style={{ fontFamily: 'Lora, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-light)' }}>
+            <p className="font-serif italic text-[13px] text-dark-muted/60">
               „Noch keine Bio hinzugefügt"
             </p>
           )}
@@ -267,7 +250,7 @@ export default function ProfileView() {
                   onClick={() => setField('gender', form.gender === val ? null : val)}
                   style={{
                     flex: 1, padding: '10px 8px', borderRadius: 12, cursor: 'pointer',
-                    fontFamily: 'Lora, serif', fontSize: 13, border: 'none',
+                    fontFamily: 'Lora, serif', fontSize: 13,
                     border: `1.5px solid ${form.gender === val ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
                     backgroundColor: form.gender === val ? 'var(--color-warm-4)' : 'var(--color-bg)',
                     color: form.gender === val ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
@@ -310,6 +293,21 @@ export default function ProfileView() {
             }}
           >
             Ausloggen
+          </button>
+
+          <button
+            onClick={() => window.dispatchEvent(new Event('show-tutorial'))}
+            style={{
+              width: '100%', padding: '13px 0', borderRadius: 12, marginBottom: 10,
+              backgroundColor: 'var(--color-warm-4)',
+              border: '1.5px solid var(--color-warm-3)',
+              fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              fontWeight: 500
+            }}
+          >
+            <Play size={18} className="text-primary" />
+            Tutorial erneut ansehen
           </button>
 
           <button

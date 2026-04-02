@@ -84,7 +84,7 @@ function WhoPrayedSheet({ requestId, requestOwnerId, currentUserId, onClose, onA
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '75vh', overflowY: 'auto' }}>
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '75vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
@@ -113,7 +113,7 @@ function WhoPrayedSheet({ requestId, requestOwnerId, currentUserId, onClose, onA
                 {isMe && !myNote && (
                   <button
                     onClick={() => { onClose(); onAddNote() }}
-                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-2)', padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-warm-3)' }}
+                    style={{ background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-2)', padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-warm-3)' }}
                   >
                     + Notiz
                   </button>
@@ -280,6 +280,9 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
             </div>
             <p className="font-sans text-[11px] font-medium text-dark-muted/80 uppercase tracking-wide m-0">
               {!isOwn && `@${author?.username} · `}{timeAgo(request.created_at)}
+              {request._sourceType === 'sibling_oikos' && request.oikos_people?.name && (
+                <span style={{ marginLeft: 6, color: 'var(--color-accent)', fontWeight: 600 }}>· für {request.oikos_people.name}</span>
+              )}
             </p>
           </div>
         </div>
@@ -498,7 +501,7 @@ function ProfilePreviewSheet({ profile, onClose }) {
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)',
         borderRadius: '20px 20px 0 0', zIndex: 50,
-        padding: '16px 20px 40px',
+        padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))',
         animation: 'sheetSlideUp 0.3s ease-out',
         maxHeight: '65vh', overflowY: 'auto',
       }}>
@@ -656,7 +659,7 @@ function PostRequestSheet({ onClose, onPost }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Anliegen teilen</h3>
@@ -693,6 +696,7 @@ function PostRequestSheet({ onClose, onPost }) {
 function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete, onUpdate }) {
   const [prayCount, setPrayCount] = useState(0)
   const [editMode, setEditMode] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [title, setTitle] = useState(request.title || '')
   const [description, setDescription] = useState(request.description || '')
   const [saving, setSaving] = useState(false)
@@ -705,7 +709,6 @@ function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete, onU
   }, [request.id])
 
   async function handleDelete() {
-    if (!window.confirm('Anliegen wirklich löschen?')) return
     onDelete(request.id)
     onClose()
   }
@@ -730,7 +733,7 @@ function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete, onU
     <>
       <Confetti show={confetti} />
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '85vh', overflowY: 'auto' }}>
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -774,9 +777,16 @@ function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete, onU
             <button onClick={handleAnswered} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: request.is_answered ? 'var(--color-warm-3)' : 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <Check size={15} /> {request.is_answered ? 'Als offen markieren' : 'Als erhört markieren ✓'}
             </button>
-            <button onClick={handleDelete} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: '1.5px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer' }}>
-              Löschen
-            </button>
+            {!confirmDelete ? (
+              <button onClick={() => setConfirmDelete(true)} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: '1.5px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer' }}>
+                Löschen
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '13px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
+                <button onClick={handleDelete} style={{ flex: 1, padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Ja, löschen</button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -814,6 +824,7 @@ function MyPrayerSection({ myRequests, markAnswered, updateRequest, deleteReques
         </div>
         <button
           onClick={onNew}
+          className="tour-prayer-add"
           style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
         >
           <Plus size={12} /> Neu
@@ -903,24 +914,31 @@ function SkeletonCard() {
 }
 
 // ─── FilterSheet ──────────────────────────────────────────────
-const FILTER_DEFAULTS = { status: 'open', faith: ['christian', 'non_christian'], date: 'all' }
+const FILTER_DEFAULTS = { status: 'open', faith: ['christian', 'non_christian'], date: 'all', sources: ['sibling_personal', 'sibling_oikos'] }
 
 function loadSavedFilter() {
-  try { return { ...FILTER_DEFAULTS, ...JSON.parse(localStorage.getItem('prayer_filter') || '{}') } }
-  catch { return { ...FILTER_DEFAULTS } }
+  try {
+    const saved = JSON.parse(localStorage.getItem('prayer_filter') || '{}')
+    return { ...FILTER_DEFAULTS, ...saved, sources: saved.sources ?? FILTER_DEFAULTS.sources }
+  } catch { return { ...FILTER_DEFAULTS } }
 }
 
 function FilterSheet({ filter, onApply, onClose }) {
   const [status, setStatus] = useState(filter.status)
   const [faith, setFaith] = useState(filter.faith)
   const [date, setDate] = useState(filter.date)
+  const [sources, setSources] = useState(filter.sources ?? FILTER_DEFAULTS.sources)
 
   function toggleFaith(val) {
     setFaith(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val])
   }
 
+  function toggleSource(val) {
+    setSources(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val])
+  }
+
   function handleApply() {
-    const f = { status, faith, date }
+    const f = { status, faith, date, sources }
     localStorage.setItem('prayer_filter', JSON.stringify(f))
     onApply(f)
     onClose()
@@ -928,6 +946,7 @@ function FilterSheet({ filter, onApply, onClose }) {
 
   function handleReset() {
     const f = { ...FILTER_DEFAULTS }
+    setSources(FILTER_DEFAULTS.sources)
     localStorage.setItem('prayer_filter', JSON.stringify(f))
     onApply(f)
     onClose()
@@ -946,7 +965,7 @@ function FilterSheet({ filter, onApply, onClose }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(70px + env(safe-area-inset-bottom,0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '85vh', overflowY: 'auto' }}>
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Filter</h3>
@@ -976,6 +995,24 @@ function FilterSheet({ filter, onApply, onClose }) {
           </button>
         ))}
 
+        {/* Quelle */}
+        <p style={{ ...filterLabel, marginTop: 16 }}>Nach Quelle</p>
+        {[
+          ['sibling_personal', 'Persönliche Anliegen meiner Geschwister', 'Dinge, die ein Geschwister für sich selbst teilt'],
+          ['sibling_oikos', 'OIKOS-Anliegen meiner Geschwister', 'Gebete für Menschen aus dem Umfeld (Familie, Freunde …)'],
+          ['own_personal', 'Eigene persönliche Anliegen', null],
+          ['own_oikos', 'Anliegen für meine OIKOS-Personen', null],
+          ['community', 'Community-Anliegen', null],
+          ['all_public', 'Alle öffentlichen Anliegen', null],
+        ].map(([val, label, hint]) => (
+          <div key={val}>
+            <button style={checkStyle(sources.includes(val))} onClick={() => toggleSource(val)}>
+              {sources.includes(val) ? '☑' : '☐'} {label}
+            </button>
+            {hint && <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '-2px 0 6px 24px', lineHeight: 1.4 }}>{hint}</p>}
+          </div>
+        ))}
+
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <button onClick={handleReset} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Zurücksetzen</button>
           <button onClick={handleApply} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Filter anwenden</button>
@@ -1002,13 +1039,18 @@ function applyFilter(requests, filter) {
     }[filter.date]
     if (startOf) r = r.filter(x => new Date(x.created_at) >= startOf)
   }
+  const activeSources = filter.sources ?? FILTER_DEFAULTS.sources
+  if (activeSources.length < 6) {
+    r = r.filter(x => activeSources.includes(x._sourceType || 'sibling_personal'))
+  }
   return r
 }
 
 function isDefaultFilter(f) {
   return f.status === FILTER_DEFAULTS.status &&
     JSON.stringify([...f.faith].sort()) === JSON.stringify([...FILTER_DEFAULTS.faith].sort()) &&
-    f.date === FILTER_DEFAULTS.date
+    f.date === FILTER_DEFAULTS.date &&
+    JSON.stringify([...(f.sources ?? FILTER_DEFAULTS.sources)].sort()) === JSON.stringify([...FILTER_DEFAULTS.sources].sort())
 }
 
 // ─── PrayerView (Main) ────────────────────────────────────────
@@ -1032,7 +1074,8 @@ export default function PrayerView() {
 
   const filteredRequests = applyFilter(requests, filter)
   const filterActive = !isDefaultFilter(filter)
-  const filterCount = (filter.status !== 'all' ? 1 : 0) + (filter.faith.length < 2 ? 1 : 0) + (filter.date !== 'all' ? 1 : 0)
+  const sourcesDefault = JSON.stringify([...(filter.sources ?? FILTER_DEFAULTS.sources)].sort()) === JSON.stringify([...FILTER_DEFAULTS.sources].sort())
+  const filterCount = (filter.status !== 'all' ? 1 : 0) + (filter.faith.length < 2 ? 1 : 0) + (filter.date !== 'all' ? 1 : 0) + (sourcesDefault ? 0 : 1)
 
   async function handleNote(requestId, text, isPublic) {
     try {
@@ -1103,6 +1146,7 @@ export default function PrayerView() {
             {!filter.faith.includes('christian') && <span style={chip}>Nur Nicht-Christen</span>}
             {!filter.faith.includes('non_christian') && <span style={chip}>Nur Christen</span>}
             {filter.date !== 'all' && <span style={chip}>{{ today: 'Heute', week: 'Diese Woche', month: 'Dieser Monat' }[filter.date]}</span>}
+            {!sourcesDefault && <span style={chip}>{(filter.sources ?? []).length} Quellen</span>}
             <button onClick={() => { setFilter({ ...FILTER_DEFAULTS }); localStorage.removeItem('prayer_filter') }} style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-warm-1)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontWeight: 500 }}>
               Zurücksetzen ✕
             </button>
