@@ -810,7 +810,7 @@ function MyPrayerSection({ myRequests, markAnswered, updateRequest, deleteReques
   return (
     <div style={{ margin: '12px 16px 4px', borderRadius: 18, overflow: 'hidden', boxShadow: '0 2px 12px rgba(58,46,36,0.08)', backgroundColor: 'var(--color-white)' }}>
       {/* Header */}
-      <div style={{ padding: '14px 16px 12px', background: 'linear-gradient(135deg, var(--color-warm-4) 0%, #FFF8F0 100%)', borderBottom: '1px solid var(--color-warm-3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ padding: '14px 16px 12px', background: 'linear-gradient(135deg, var(--color-warm-4) 0%, var(--color-bg) 100%)', borderBottom: '1px solid var(--color-warm-3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18, lineHeight: 1 }}>📖</span>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>

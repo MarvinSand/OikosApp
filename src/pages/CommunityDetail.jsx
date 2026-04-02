@@ -198,8 +198,8 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
       borderRadius: 14,
       padding: '14px 16px',
       marginBottom: 12,
-      border: `1px solid ${isPinned ? '#C9A84C' : 'var(--color-warm-3)'}`,
-      borderLeft: `4px solid ${isPinned ? '#C9A84C' : 'var(--color-warm-1)'}`,
+      border: `1px solid ${isPinned ? 'var(--color-accent)' : 'var(--color-warm-3)'}`,
+      borderLeft: `4px solid ${isPinned ? 'var(--color-accent)' : 'var(--color-warm-1)'}`,
       boxShadow: '0 1px 4px rgba(58,46,36,0.06)',
       position: 'relative',
     }}>
@@ -311,7 +311,7 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
           </div>
           <button
             onClick={() => setIsPinned(v => !v)}
-            style={{ width: 44, height: 26, borderRadius: 13, border: 'none', backgroundColor: isPinned ? '#C9A84C' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}
+            style={{ width: 44, height: 26, borderRadius: 13, border: 'none', backgroundColor: isPinned ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}
           >
             <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: isPinned ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
           </button>
@@ -340,7 +340,7 @@ function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }
 
   const rsvpOptions = [
     { status: 'going', label: '✓ Dabei', activeColor: 'var(--color-accent)' },
-    { status: 'maybe', label: '? Vielleicht', activeColor: '#C9A84C' },
+    { status: 'maybe', label: '? Vielleicht', activeColor: 'var(--color-accent)' },
     { status: 'not_going', label: '✗ Absagen', activeColor: '#C0392B' },
   ]
 
@@ -842,7 +842,7 @@ export default function CommunityDetail() {
     <div className="h-full flex flex-col bg-bg relative">
 
       {/* ── Header ──────────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-[#F0E6D8] to-[#FBF6EF] px-4 pt-3 pb-3.5 shrink-0 relative overflow-hidden border-b border-warm-3">
+      <div className="bg-gradient-to-br from-[#F7F3EC] to-[var(--color-bg)] px-4 pt-3 pb-3.5 shrink-0 relative overflow-hidden border-b border-warm-3">
         {/* Deko circles */}
         <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full bg-warm-3/35 pointer-events-none blur-xl" />
         <div className="absolute -bottom-5 -left-3 w-16 h-16 rounded-full bg-warm-3/25 pointer-events-none blur-lg" />
@@ -879,7 +879,7 @@ export default function CommunityDetail() {
                 {community.is_public ? <><Globe size={11} /> Öffentlich</> : <><Lock size={11} /> Privat</>}
               </span>
               {myMembership?.role === 'admin' && (
-                <span className="font-serif text-[11px] font-bold px-2.5 py-1 rounded-full bg-gold-light/40 text-[#8A6020] border border-[#C9A84C]/40 shadow-sm flex items-center gap-1.5">
+                <span className="font-serif text-[11px] font-bold px-2.5 py-1 rounded-full bg-gold-light/40 text-[#8A6020] border border-[var(--color-accent)]/40 shadow-sm flex items-center gap-1.5">
                   <Shield size={11}/> Admin
                 </span>
               )}

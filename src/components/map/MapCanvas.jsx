@@ -474,8 +474,8 @@ export default function MapCanvas({
             const ox = parentPos.x + r * Math.cos(angle)
             const oy = parentPos.y + r * Math.sin(angle)
             const overlayR = 20
-            const fillColor = op.is_christian ? '#D4EDDA' : 'var(--color-warm-4)'
-            const strokeColor = op.is_christian ? '#4E7A53' : '#C9A84C'
+            const fillColor = op.is_christian ? 'var(--color-warm-4)' : 'var(--color-warm-4)'
+            const strokeColor = op.is_christian ? 'var(--color-warm-1)' : 'var(--color-accent)'
 
             return (
               <g
@@ -487,7 +487,7 @@ export default function MapCanvas({
                 <line
                   x1={parentPos.x} y1={parentPos.y}
                   x2={ox} y2={oy}
-                  stroke="#C9A84C"
+                  stroke="var(--color-accent)"
                   strokeWidth={1}
                   strokeDasharray="4,3"
                   opacity={0.5}

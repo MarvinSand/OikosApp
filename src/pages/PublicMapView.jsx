@@ -8,7 +8,7 @@ import MapCanvas from '../components/map/MapCanvas'
 import { STAGES } from '../hooks/useImpactMap'
 
 const BADGE_COLORS = {
-  'Freund/in':  { bg: '#E8F4E8', color: '#4E7A53' },
+  'Freund/in':  { bg: '#E8F4E8', color: 'var(--color-warm-1)' },
   'Kollege/in': { bg: '#EAF0F8', color: '#3A5F8A' },
   'Familie':    { bg: '#FBF0E8', color: '#A0694A' },
   'Nachbar/in': { bg: '#F5F0E0', color: '#8A7040' },

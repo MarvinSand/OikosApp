@@ -125,7 +125,7 @@ export default function ProfileView() {
     <div className="bg-bg min-h-full pb-24">
 
       {/* Header */}
-      <div className="bg-gradient-to-br from-warm-4 to-[#FBF6EF] px-5 pt-4 pb-8 relative overflow-hidden shadow-sm">
+      <div className="bg-gradient-to-br from-warm-4 to-[var(--color-bg)] px-5 pt-4 pb-8 relative overflow-hidden shadow-sm">
         {/* Dekorative Kreise */}
         <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
         <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-warm-3/25 pointer-events-none blur-xl" />

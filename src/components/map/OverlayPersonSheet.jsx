@@ -38,8 +38,8 @@ export default function OverlayPersonSheet({ person, onClose }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 44, height: 44, borderRadius: '50%',
-              backgroundColor: person.is_christian ? '#D4EDDA' : 'var(--color-warm-4)',
-              border: `2px solid ${person.is_christian ? '#4E7A53' : 'var(--color-warm-3)'}`,
+              backgroundColor: person.is_christian ? 'var(--color-warm-4)' : 'var(--color-warm-4)',
+              border: `2px solid ${person.is_christian ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'Lora, serif', fontSize: 18,
             }}>
@@ -51,7 +51,7 @@ export default function OverlayPersonSheet({ person, onClose }) {
               </h2>
               <span style={{
                 fontFamily: 'Lora, serif', fontSize: 12,
-                color: person.is_christian ? '#4E7A53' : 'var(--color-text-muted)',
+                color: person.is_christian ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
                 fontStyle: 'italic',
               }}>
                 {person.is_christian ? 'Christ/in' : 'Noch nicht Christ/in'}
