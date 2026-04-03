@@ -194,6 +194,7 @@ export function useOikosMaps() {
 
   return {
     maps,
+    setMaps,
     activeMapId,
     setActiveMapId,
     activeMap: maps.find(m => m.id === activeMapId),

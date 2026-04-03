@@ -165,7 +165,7 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
 export default function MapView() {
   const { user } = useAuth()
   const {
-    maps, activeMapId, setActiveMapId, activeMap,
+    maps, setMaps, activeMapId, setActiveMapId, activeMap,
     people, connections, overlayData, loading,
     createMap, updateMap, addPerson, updatePerson, deletePerson,
     movePersonPosition, createConnection, deleteConnection,
@@ -253,6 +253,26 @@ export default function MapView() {
     return () => window.removeEventListener('tour-reload-map', handler)
   }, [])
 
+  // Tutorial: open/close NewMapModal + inject a newly created map into state
+  useEffect(() => {
+    const openHandler = () => setShowNewMap(true)
+    const closeHandler = () => setShowNewMap(false)
+    const mapCreatedHandler = (e) => {
+      const m = e.detail?.map
+      if (!m) return
+      setMaps(prev => [...prev, m])
+      setActiveMapId(m.id)
+    }
+    window.addEventListener('tour-open-new-map', openHandler)
+    window.addEventListener('tour-close-new-map', closeHandler)
+    window.addEventListener('tour-map-created', mapCreatedHandler)
+    return () => {
+      window.removeEventListener('tour-open-new-map', openHandler)
+      window.removeEventListener('tour-close-new-map', closeHandler)
+      window.removeEventListener('tour-map-created', mapCreatedHandler)
+    }
+  }, [])
+
   const selectedLinkedProfile = selectedPerson?.linked_user_id
     ? linkedProfiles[selectedPerson.linked_user_id] || null
     : null
@@ -270,7 +290,7 @@ export default function MapView() {
     <div className="h-full flex flex-col bg-bg relative">
 
       {/* Header Island */}
-      <div className="absolute top-4 sm:top-5 left-4 right-4 bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl">
+      <div className="tour-map-header absolute top-4 sm:top-5 left-4 right-4 bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl">
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
           className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[65%] hover:opacity-80 transition-opacity"

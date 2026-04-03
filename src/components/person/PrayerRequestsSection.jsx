@@ -314,6 +314,18 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [lastPrayedMap, setLastPrayedMap] = useState({})
 
+  // Tutorial can open/close the add form remotely
+  useEffect(() => {
+    const openHandler = () => setShowAddForm(true)
+    const closeHandler = () => setShowAddForm(false)
+    window.addEventListener('tour-open-prayer-form', openHandler)
+    window.addEventListener('tour-close-prayer-form', closeHandler)
+    return () => {
+      window.removeEventListener('tour-open-prayer-form', openHandler)
+      window.removeEventListener('tour-close-prayer-form', closeHandler)
+    }
+  }, [])
+
   const reqIds = requests.map(r => r.id).join(',')
   useEffect(() => {
     if (!requests.length || !user) return
@@ -363,7 +375,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
       <div style={sectionHeader}>
         <h4 style={sectionTitle}>Gebetsanliegen</h4>
         {isOwner && !showAddForm && (
-          <button onClick={() => setShowAddForm(true)} style={addBtn}>
+          <button className="tour-prayer-add" onClick={() => setShowAddForm(true)} style={addBtn}>
             <Plus size={13} /> Hinzufügen
           </button>
         )}
@@ -385,7 +397,9 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
           ))}
 
           {showAddForm && (
-            <AddRequestForm onSave={handleAdd} onCancel={() => setShowAddForm(false)} />
+            <div className="tour-prayer-form">
+              <AddRequestForm onSave={handleAdd} onCancel={() => setShowAddForm(false)} />
+            </div>
           )}
 
           {answered.length > 0 && (

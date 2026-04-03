@@ -584,6 +584,7 @@ export default function MapCanvas({
           return (
             <g
               key={p.id}
+              data-person-id={p.id}
               style={{ cursor: isDraggingThis ? 'grabbing' : (connectionMode ? 'pointer' : 'grab') }}
               onMouseDown={e => handlePersonMouseDown(e, p)}
               onTouchStart={e => handlePersonTouchStart(e, p)}

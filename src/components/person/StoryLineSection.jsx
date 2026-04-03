@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, MoreVertical, Globe, Lock, Pencil, Trash2 } from 'lucide-react'
 import { useStoryLine } from '../../hooks/useStoryLine'
 import { useToast } from '../../context/ToastContext'
@@ -40,6 +40,7 @@ function EntryForm({ initial, onSave, onCancel }) {
       marginLeft: 24,
     }}>
       <input
+        className="tour-storyline-date"
         type="date"
         value={date}
         max={today()}
@@ -47,6 +48,7 @@ function EntryForm({ initial, onSave, onCancel }) {
         style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', display: 'block', marginBottom: 8 }}
       />
       <textarea
+        className="tour-storyline-text"
         autoFocus
         value={text}
         onChange={e => setText(e.target.value.slice(0, 600))}
@@ -56,6 +58,7 @@ function EntryForm({ initial, onSave, onCancel }) {
       />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
         <button
+          className="tour-storyline-visibility"
           onClick={() => setIsPublic(v => !v)}
           style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: 0 }}
         >
@@ -182,6 +185,13 @@ export default function StoryLineSection({ personId, isOwner }) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [showAll, setShowAll] = useState(false)
 
+  // Tutorial can close the add form remotely
+  useEffect(() => {
+    const handler = () => setShowAddForm(false)
+    window.addEventListener('tour-close-storyline-form', handler)
+    return () => window.removeEventListener('tour-close-storyline-form', handler)
+  }, [])
+
   const visible = showAll ? entries : entries.slice(0, 3)
   const hasMore = entries.length > 3
 
@@ -210,6 +220,7 @@ export default function StoryLineSection({ personId, isOwner }) {
         </h4>
         {isOwner && !showAddForm && (
           <button
+            className="tour-storyline-add"
             onClick={() => setShowAddForm(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer' }}
           >
