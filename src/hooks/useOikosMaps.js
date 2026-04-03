@@ -212,5 +212,6 @@ export function useOikosMaps() {
     linkAccount,
     unlinkAccount,
     updatePersonOverlay,
+    reloadMap: loadMaps,
   }
 }

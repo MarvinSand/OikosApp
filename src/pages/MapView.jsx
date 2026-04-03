@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus, ChevronDown, SlidersHorizontal, Layers, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
@@ -169,7 +169,7 @@ export default function MapView() {
     people, connections, overlayData, loading,
     createMap, updateMap, addPerson, updatePerson, deletePerson,
     movePersonPosition, createConnection, deleteConnection,
-    linkAccount, unlinkAccount, updatePersonOverlay,
+    linkAccount, unlinkAccount, updatePersonOverlay, reloadMap,
   } = useOikosMaps()
 
   const [showMapMenu, setShowMapMenu] = useState(false)
@@ -243,6 +243,15 @@ export default function MapView() {
       window.removeEventListener('tour-close-person', handleClose)
     }
   }, [people, user])
+
+  // Tutorial: reload map canvas when a person was created outside of normal flow
+  const reloadMapRef = useRef(reloadMap)
+  useEffect(() => { reloadMapRef.current = reloadMap }, [reloadMap])
+  useEffect(() => {
+    const handler = () => reloadMapRef.current?.()
+    window.addEventListener('tour-reload-map', handler)
+    return () => window.removeEventListener('tour-reload-map', handler)
+  }, [])
 
   const selectedLinkedProfile = selectedPerson?.linked_user_id
     ? linkedProfiles[selectedPerson.linked_user_id] || null

@@ -665,23 +665,29 @@ export default function PersonDetailSheet({
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* Gebetsanliegen */}
-        <PrayerRequestsSection personId={person.id} isOwner={isOwner} />
+        <div className="tour-person-prayer">
+          <PrayerRequestsSection personId={person.id} isOwner={isOwner} />
+        </div>
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* Story-Line */}
-        <StoryLineSection personId={person.id} isOwner={isOwner} />
+        <div className="tour-person-storyline">
+          <StoryLineSection personId={person.id} isOwner={isOwner} />
+        </div>
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* Impact Map */}
-        <ImpactMapSection
-          personId={person.id} isOwner={isOwner} personName={person.name}
-          onStageCompleted={(nextStage) => {
-            setPerson(p => ({ ...p, impact_stage: nextStage }))
-            onUpdate?.({ impact_stage: nextStage })
-          }}
-        />
+        <div className="tour-person-impact">
+          <ImpactMapSection
+            personId={person.id} isOwner={isOwner} personName={person.name}
+            onStageCompleted={(nextStage) => {
+              setPerson(p => ({ ...p, impact_stage: nextStage }))
+              onUpdate?.({ impact_stage: nextStage })
+            }}
+          />
+        </div>
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
@@ -697,19 +703,21 @@ export default function PersonDetailSheet({
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* OIKOS Account Verknüpfung */}
-        <AccountLinkingSection
-          person={person}
-          linkedProfile={linkedProfile}
-          onLinkAccount={(personId, profileId) => {
-            onLinkAccount?.(personId, profileId)
-            setPerson(p => ({ ...p, linked_user_id: profileId }))
-          }}
-          onUnlinkAccount={(personId) => {
-            onUnlinkAccount?.(personId)
-            setPerson(p => ({ ...p, linked_user_id: null, overlay_map_id: null }))
-          }}
-          onUpdateOverlay={onUpdateOverlay}
-        />
+        <div className="tour-person-link">
+          <AccountLinkingSection
+            person={person}
+            linkedProfile={linkedProfile}
+            onLinkAccount={(personId, profileId) => {
+              onLinkAccount?.(personId, profileId)
+              setPerson(p => ({ ...p, linked_user_id: profileId }))
+            }}
+            onUnlinkAccount={(personId) => {
+              onUnlinkAccount?.(personId)
+              setPerson(p => ({ ...p, linked_user_id: null, overlay_map_id: null }))
+            }}
+            onUpdateOverlay={onUpdateOverlay}
+          />
+        </div>
 
         {/* Person löschen */}
         {isOwner && (
