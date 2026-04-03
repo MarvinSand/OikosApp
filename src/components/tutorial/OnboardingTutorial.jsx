@@ -52,11 +52,11 @@ const STEPS = [
     action: 'openPersonProfile', actionLabel: '👤 Profil öffnen',
     selectorFn: 'mariaNode',
   },
-  // 6 – Maria's profile open
+  // 6 – Maria's profile open (noOverlay so user can actually see the sheet)
   {
     icon: '👤', title: 'Marias Profil',
-    body: 'Das ist Marias Profil. Hier findest du Gebetsanliegen, Story Line, Impact Map und mehr.\n\n💡 Minimiere das Tutorial mit "–" um das Profil frei zu erkunden.',
-    placement: 'bottom', route: '/', onEnter: 'openPerson',
+    body: 'Das ist Marias Profil. Hier findest du Gebetsanliegen, Story Line, Impact Map und mehr.\n\n💡 Tippe auf "–" um das Tutorial zu minimieren und das Profil frei zu erkunden.',
+    placement: 'bottom', route: '/', onEnter: 'openPerson', noOverlay: true,
   },
   // 7 – Scroll to prayer section, click + Anliegen
   {
@@ -276,7 +276,7 @@ function TutorialCard({ step, rect, stepNum, total, loading, canGoBack, onAction
   // Calculate position
   let style = { position: 'fixed', zIndex: 9999, width: W }
 
-  if (rect && step.selector && step.placement !== 'top' && step.placement !== 'bottom') {
+  if (rect && (step.selector || step.selectorFn) && step.placement !== 'top' && step.placement !== 'bottom') {
     const gap = 12
     const CARD_H = 220
     const vw = window.innerWidth
@@ -299,8 +299,9 @@ function TutorialCard({ step, rect, stepNum, total, loading, canGoBack, onAction
     style = { ...style, top: 16, left: '50%', transform: 'translateX(-50%)' }
   }
 
-  const arrowOnBottom = rect && step.placement === 'above' && style.top < rect.top
-  const arrowOnTop = rect && step.placement === 'below'
+  const hasTarget = !!(step.selector || step.selectorFn)
+  const arrowOnBottom = rect && hasTarget && step.placement === 'above' && style.top < rect.top
+  const arrowOnTop    = rect && hasTarget && step.placement === 'below'
 
   return (
     <div style={style}>
@@ -567,12 +568,15 @@ export default function OnboardingTutorial() {
     <>
       <style>{`@keyframes tspin{to{transform:rotate(360deg)}}`}</style>
 
-      {/* Click-through blocker for non-action, non-last steps */}
-      {!step.action && !step.isLast && (
+      {/* Click-through blocker for non-action, non-last steps (not for noOverlay steps) */}
+      {!step.action && !step.isLast && !step.noOverlay && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9997 }} onClick={advance} />
       )}
 
-      <Spotlight rect={step.selector || step.selectorFn ? rect : null} />
+      {/* Dark overlay + spotlight hole (skip for noOverlay steps so the app is visible) */}
+      {!step.noOverlay && (
+        <Spotlight rect={step.selector || step.selectorFn ? rect : null} />
+      )}
 
       <TutorialCard
         step={step}
