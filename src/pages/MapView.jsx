@@ -210,9 +210,39 @@ export default function MapView() {
   // Keep selectedPerson in sync with people state (e.g. after updates)
   useEffect(() => {
     if (!selectedPerson) return
+    if (selectedPerson.id === 'dummy-tutorial') return
     const updated = people.find(p => p.id === selectedPerson.id)
     if (updated) setSelectedPerson(updated)
   }, [people])
+
+  // Tutorial listener for opening the modal programmatically
+  useEffect(() => {
+    const handleOpen = (e) => {
+      if (e.detail?.person) {
+        setSelectedPerson(e.detail.person)
+      } else if (people && people.length > 0) {
+        setSelectedPerson(people[0])
+      } else {
+        setSelectedPerson({
+          id: 'dummy-tutorial',
+          name: 'Maria (Beispiel)',
+          relationship_type: 'Freund/in',
+          is_christian: false,
+          impact_stage: 2,
+          notes: 'Dies ist ein Beispiel für das Tutorial.',
+          user_id: user?.id,
+        })
+      }
+    }
+    const handleClose = () => setSelectedPerson(null)
+
+    window.addEventListener('tour-open-person', handleOpen)
+    window.addEventListener('tour-close-person', handleClose)
+    return () => {
+      window.removeEventListener('tour-open-person', handleOpen)
+      window.removeEventListener('tour-close-person', handleClose)
+    }
+  }, [people, user])
 
   const selectedLinkedProfile = selectedPerson?.linked_user_id
     ? linkedProfiles[selectedPerson.linked_user_id] || null
