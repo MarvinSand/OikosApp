@@ -76,8 +76,31 @@ export function usePrayerLogs(prayerRequestId) {
       setLogs(l => l.filter(x => x.id !== tempId))
       throw error
     }
-    // Keep optimistic profile data (we already know the current user's profile)
     setLogs(l => l.map(x => x.id === tempId ? { ...data, profiles: optimistic.profiles } : x))
+
+    // Notify the prayer request owner (if it's not the current user)
+    try {
+      const { data: req } = await supabase
+        .from('prayer_requests')
+        .select('owner_id, person_id, title')
+        .eq('id', prayerRequestId)
+        .single()
+      if (req && req.owner_id && req.owner_id !== user.id) {
+        const { data: myProfile } = await supabase
+          .from('profiles')
+          .select('full_name, username')
+          .eq('id', user.id)
+          .single()
+        const myName = myProfile?.full_name || myProfile?.username || 'Jemand'
+        await supabase.from('notifications').insert({
+          user_id: req.owner_id,
+          type: 'prayer_log',
+          title: `${myName} hat für „${req.title}" gebetet`,
+          body: null,
+          related_url: req.person_id ? `/?openPerson=${req.person_id}` : '/prayer',
+        })
+      }
+    } catch { /* non-critical */ }
   }
 
   return { logs, loading, hasPrayedToday, countToday, prayersByUser, logPrayer }

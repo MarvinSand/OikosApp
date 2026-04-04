@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { X, Trash2 } from 'lucide-react'
 import { useFriendships } from '../../hooks/useFriendships'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useToast } from '../../context/ToastContext'
@@ -12,7 +12,7 @@ const VISIBILITY_OPTIONS = [
   { value: 'community',        icon: '🏘', label: 'Nur eine Community' },
 ]
 
-export default function MapSettingsSheet({ map, updateMap, onClose }) {
+export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose }) {
   const { showToast } = useToast()
   const { friends } = useFriendships()
   const { myCommunities } = useCommunities()
@@ -22,6 +22,8 @@ export default function MapSettingsSheet({ map, updateMap, onClose }) {
   const [selectedIds, setSelectedIds] = useState(map.visibility_user_ids || [])
   const [communityId, setCommunityId] = useState(map.visibility_community_id || '')
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   function toggleId(id) {
     setSelectedIds(prev =>
@@ -45,6 +47,19 @@ export default function MapSettingsSheet({ map, updateMap, onClose }) {
       showToast('Fehler beim Speichern', 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteMap) return
+    setDeleting(true)
+    try {
+      await deleteMap(map.id)
+      showToast('Map gelöscht')
+      onClose()
+    } catch {
+      showToast('Fehler beim Löschen', 'error')
+      setDeleting(false)
     }
   }
 
@@ -188,6 +203,48 @@ export default function MapSettingsSheet({ map, updateMap, onClose }) {
         >
           {saving ? 'Speichere…' : 'Speichern'}
         </button>
+
+        {/* Danger Zone – Map löschen */}
+        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '24px 0 16px' }} />
+        <p style={{ ...sectionLabel, color: '#C0392B', marginBottom: 10 }}>Gefahrenzone</p>
+
+        {!confirmDelete ? (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            style={{
+              width: '100%', padding: '12px 0', borderRadius: 12, border: '1.5px solid #E8C0B8',
+              background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 14,
+              color: '#C0392B', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <Trash2 size={15} /> Map löschen
+          </button>
+        ) : (
+          <div style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: '14px 16px', border: '1.5px solid #FECACA' }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: '#991B1B', fontWeight: 600, marginBottom: 4 }}>
+              Map wirklich löschen?
+            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#B91C1C', marginBottom: 14, lineHeight: 1.5 }}>
+              Alle Personen, Verbindungen und Gebetsanliegen auf dieser Map werden unwiderruflich gelöscht.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid #FECACA', background: 'white', fontFamily: 'Lora, serif', fontSize: 13, color: '#991B1B', cursor: 'pointer' }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: '#DC2626', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.7 : 1 }}
+              >
+                {deleting ? 'Lösche…' : 'Ja, endgültig löschen'}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ height: 80 }} />
       </div>
     </>

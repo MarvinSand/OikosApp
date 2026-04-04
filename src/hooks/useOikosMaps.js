@@ -84,6 +84,16 @@ export function useOikosMaps() {
     return data
   }
 
+  async function deleteMap(mapId) {
+    const { error } = await supabase.from('oikos_maps').delete().eq('id', mapId)
+    if (error) throw error
+    const remaining = maps.filter(m => m.id !== mapId)
+    setMaps(remaining)
+    if (activeMapId === mapId) {
+      setActiveMapId(remaining.length > 0 ? remaining[0].id : null)
+    }
+  }
+
   async function updateMap(mapId, updates) {
     const { data, error } = await supabase
       .from('oikos_maps')
@@ -204,6 +214,7 @@ export function useOikosMaps() {
     loading,
     createMap,
     updateMap,
+    deleteMap,
     addPerson,
     updatePerson,
     deletePerson,

@@ -30,12 +30,13 @@ const STEPS = [
     selector: '.tour-map-header', placement: 'below', route: '/',
     action: 'openNewMapModal', actionLabel: '🗺️ Neue Map öffnen',
   },
-  // 3 – Explain visibility (NewMapModal is open)
+  // 3 – Explain NewMapModal (modal is open, noOverlay so it stays fully visible)
   {
-    icon: '🔒', title: 'Wer kann deine Map sehen?',
-    body: 'Für jede Map entscheidest du selbst, ob sie nur für dich sichtbar ist oder ob auch andere sie sehen können.\n\n🔒 Nur ich\n👥 Alle Geschwister\n✅ Nur bestimmte Geschwister\n🚫 Alle außer…\n🏘️ Nur eine Community',
-    selector: '.tour-map-visibility', placement: 'above', route: '/',
+    icon: '🗺️', title: 'Neue Map',
+    body: 'Oben gibst du deiner Map einen Namen.\nUnten wählst du, wer sie sehen kann.\n\nWir erstellen sie jetzt für dich.',
+    placement: 'bottom', route: '/',
     action: 'createTutorialMap', actionLabel: '✅ Map erstellen',
+    noOverlay: true,
   },
   // 4 – + Person button → create Maria
   {

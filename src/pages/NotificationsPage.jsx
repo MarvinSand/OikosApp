@@ -3,6 +3,29 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 
+// Derive the best navigation target for a notification
+function resolveDestination(n) {
+  // If there's an explicit related_url, use it
+  if (n.related_url) return n.related_url
+
+  // Fallback by type
+  switch (n.type) {
+    case 'friend_request':
+    case 'friend_accepted':
+      return '/friends'
+    case 'community_invite':
+    case 'community_event':
+      return '/friends'
+    case 'prayer_shared':
+    case 'prayer_log':
+      return '/prayer'
+    case 'oikos_entry':
+      return '/'
+    default:
+      return null
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────
 
 function formatTime(iso) {
@@ -33,9 +56,9 @@ function NotificationItem({ n, onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`group flex items-start gap-3.5 p-4 border-b border-warm-3 transition-all duration-200 ${
-        n.is_read ? 'bg-transparent hover:bg-white/50' : 'bg-warm-1/10'
-      } ${n.related_url ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default'}`}
+      className={`group flex items-start gap-3.5 p-4 border-b border-warm-3 transition-all duration-200 cursor-pointer active:scale-[0.99] ${
+        n.is_read ? 'bg-transparent hover:bg-white/50' : 'bg-warm-1/10 hover:bg-warm-1/15'
+      }`}
     >
       {/* Icon bubble */}
       <div className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-warm-4 to-warm-3 shadow-sm border border-warm-2/20 flex items-center justify-center text-xl relative">
@@ -124,7 +147,7 @@ function LoadingSkeleton() {
 
 export default function NotificationsPage() {
   const navigate = useNavigate()
-  const { notifications, loading, markAllRead } = useNotifications()
+  const { notifications, loading, markAllRead, markRead } = useNotifications()
 
   // Mark all as read when the page mounts
   useEffect(() => {
@@ -132,9 +155,9 @@ export default function NotificationsPage() {
   }, [])
 
   function handleNotificationClick(n) {
-    if (n.related_url) {
-      navigate(n.related_url)
-    }
+    if (!n.is_read) markRead(n.id)
+    const dest = resolveDestination(n)
+    if (dest) navigate(dest)
   }
 
   // Group notifications by type label

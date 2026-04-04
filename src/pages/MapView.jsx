@@ -3,6 +3,7 @@ import { Plus, ChevronDown, SlidersHorizontal, Layers, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { supabase } from '../lib/supabase'
+import { useSearchParams } from 'react-router-dom'
 import MapCanvas from '../components/map/MapCanvas'
 import NewMapModal from '../components/map/NewMapModal'
 import AddPersonModal from '../components/map/AddPersonModal'
@@ -167,7 +168,7 @@ export default function MapView() {
   const {
     maps, setMaps, activeMapId, setActiveMapId, activeMap,
     people, connections, overlayData, loading,
-    createMap, updateMap, addPerson, updatePerson, deletePerson,
+    createMap, updateMap, deleteMap, addPerson, updatePerson, deletePerson,
     movePersonPosition, createConnection, deleteConnection,
     linkAccount, unlinkAccount, updatePersonOverlay, reloadMap,
   } = useOikosMaps()
@@ -181,6 +182,7 @@ export default function MapView() {
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
   // linkedProfile cache: { [userId]: profile }
   const [linkedProfiles, setLinkedProfiles] = useState({})
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Du'
 
@@ -206,6 +208,18 @@ export default function MapView() {
         })
       })
   }, [people])
+
+  // Deep-link: ?openPerson=PERSON_ID → open that person's sheet
+  useEffect(() => {
+    const personId = searchParams.get('openPerson')
+    if (!personId || !people.length) return
+    const person = people.find(p => p.id === personId)
+    if (person) {
+      setSelectedPerson(person)
+      // Remove the param so refreshing doesn't re-open
+      setSearchParams(prev => { prev.delete('openPerson'); return prev }, { replace: true })
+    }
+  }, [searchParams, people])
 
   // Keep selectedPerson in sync with people state (e.g. after updates)
   useEffect(() => {
@@ -421,7 +435,7 @@ export default function MapView() {
         <NewMapModal onClose={() => setShowNewMap(false)} onCreate={createMap} />
       )}
       {showSettings && activeMap && (
-        <MapSettingsSheet map={activeMap} updateMap={updateMap} onClose={() => setShowSettings(false)} />
+        <MapSettingsSheet map={activeMap} updateMap={updateMap} deleteMap={deleteMap} onClose={() => setShowSettings(false)} />
       )}
       {showAddPerson && (
         <AddPersonModal onClose={() => setShowAddPerson(false)} onAdd={addPerson} />
