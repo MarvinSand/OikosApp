@@ -45,13 +45,13 @@ const STEPS = [
     selector: '.tour-map-add', placement: 'below', route: '/',
     action: 'createPerson', actionLabel: '👤 Maria anlegen',
   },
-  // 5 – Maria on map canvas
+  // 5 – Maria on map canvas (profile must be closed here)
   {
     icon: '🗺️', title: 'Maria ist auf der Map!',
     body: 'Du siehst jetzt Maria auf deiner OIKOS Map. Tippe auf ihren Namen um ihr Profil zu öffnen.',
     placement: 'bottom', route: '/',
     action: 'openPersonProfile', actionLabel: '👤 Profil öffnen',
-    selectorFn: 'mariaNode',
+    selectorFn: 'mariaNode', onEnter: 'closePerson',
   },
   // 6 – Maria's profile open (noOverlay so user can actually see the sheet)
   {
