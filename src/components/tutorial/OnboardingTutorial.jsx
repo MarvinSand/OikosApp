@@ -11,10 +11,10 @@ import { supabase } from '../../lib/supabase'
 // actionLabel:  label on the action button
 // onEnter:      side-effect when step is entered
 const STEPS = [
-  // 0 – Welcome
+  // 0 – Welcome (replaces old first step with the full intro text)
   {
-    icon: '👋', title: 'Willkommen bei OIKOS!',
-    body: 'Wir machen einen interaktiven Rundgang durch die App – mit echten Daten, die du am Ende behalten oder löschen kannst.',
+    icon: '🌱', title: 'Willkommen bei OIKOS!',
+    body: 'Schön, dass du hier bist!\n\nOIKOS hilft dir, dein Umfeld mit neuen Augen zu sehen. Die Menschen, die Gott dir anvertraut hat, bewusster wahrzunehmen und sie im Gebet vor ihn zu bringen.\n\nSchritt für Schritt begleitet dich die App dabei, Personen in deinem Leben, die Jesus noch nicht kennen, näher zu ihm zu führen. Ganz natürlich, in deinem Alltag.\n\nGleichzeitig verbindet OIKOS dich mit deinen Glaubensgeschwistern. Auch über Entfernungen hinweg. Du siehst, wie und wo Gott in ihrem Umfeld wirkt, kennst ihre Gebetsanliegen und kannst sie geistlich mittragen. So unterstützt ihr euch gegenseitig. Verbunden im Gebet, egal wo ihr gerade seid.\n\nLass uns gemeinsam erleben, was Gott tut. 🙏',
     placement: 'top', route: '/', onEnter: 'closePerson',
   },
   // 1 – Map tab
@@ -25,15 +25,15 @@ const STEPS = [
   },
   // 2 – Open new map modal
   {
-    icon: '➕', title: 'Neue Map anlegen',
-    body: 'Tippe oben auf den Map-Namen um das Menü zu öffnen. Dort findest du "Neue Map". Wir öffnen das jetzt für dich.',
+    icon: '➕', title: 'Erstelle deine eigene Map',
+    body: 'Du kannst so viele Maps anlegen, wie du möchtest – zum Beispiel eine für deine Familie, eine für Kollegen oder eine für deine Hausgemeinde.\n\nTippe einfach oben auf den Namen deiner aktuellen Map, um das Menü zu öffnen. Dort kannst du bestehende Maps verwalten oder neue erstellen.',
     selector: '.tour-map-header', placement: 'below', route: '/',
     action: 'openNewMapModal', actionLabel: '🗺️ Neue Map öffnen',
   },
   // 3 – Explain visibility (NewMapModal is open)
   {
     icon: '🔒', title: 'Wer kann deine Map sehen?',
-    body: '🔒 Nur ich – nur du.\n👥 Alle Geschwister – alle verbundenen Nutzer.\n✅ Nur bestimmte – du wählst wer.\n🚫 Alle außer – du nimmst bestimmte aus.\n🏘️ Nur eine Community.',
+    body: 'Für jede Map entscheidest du selbst, ob sie nur für dich sichtbar ist oder ob auch andere sie sehen können.\n\n🔒 Nur ich\n👥 Alle Geschwister\n✅ Nur bestimmte Geschwister\n🚫 Alle außer…\n🏘️ Nur eine Community',
     selector: '.tour-map-visibility', placement: 'above', route: '/',
     action: 'createTutorialMap', actionLabel: '✅ Map erstellen',
   },
@@ -47,7 +47,7 @@ const STEPS = [
   // 5 – Maria on map canvas
   {
     icon: '🗺️', title: 'Maria ist auf der Map!',
-    body: 'Maria erscheint jetzt auf deiner OIKOS Map. Tippe auf ihren Knoten – wir öffnen ihr Profil jetzt für dich.',
+    body: 'Du siehst jetzt Maria auf deiner OIKOS Map. Tippe auf ihren Namen um ihr Profil zu öffnen.',
     placement: 'bottom', route: '/',
     action: 'openPersonProfile', actionLabel: '👤 Profil öffnen',
     selectorFn: 'mariaNode',
@@ -115,7 +115,7 @@ const STEPS = [
   // 15 – Impact Map
   {
     icon: '🌱', title: 'Impact Map',
-    body: 'Die Impact Map zeigt Marias geistliche Reise – von ersten Berührungspunkten bis zur Jesus-Nachfolge. Maria ist aktuell auf Stufe 2: Neugier auf den Glauben.',
+    body: 'Sechs Schritte, die dich dabei begleiten, Maria bewusst im Gebet und im Alltag näher zu Jesus zu führen. Jede Stufe stellt dir eine Frage und gibt dir Raum für deine Gedanken.',
     selector: '.tour-person-impact', scrollTo: '.tour-person-impact', placement: 'above', route: '/',
   },
   // 16 – Link account
@@ -223,13 +223,18 @@ async function doAction(action, user, testData, setTestData) {
   }
 
   if (action === 'createStoryline') {
-    if (testData.storylineEntry) { window.dispatchEvent(new Event('tour-close-storyline-form')); return {} }
+    if (testData.storylineEntry) {
+      window.dispatchEvent(new Event('tour-close-storyline-form'))
+      window.dispatchEvent(new Event('tour-reload-storyline'))
+      return {}
+    }
     const { data: entry, error } = await supabase.from('person_storyline')
       .insert({ person_id: testData.person.id, owner_id: user.id, text: 'Wir haben heute über den Sinn des Lebens gesprochen – Maria war sehr offen und stellte viele Fragen.', entry_date: new Date().toISOString().split('T')[0], is_public: false })
       .select().single()
     if (error) throw error
     setTestData(d => ({ ...d, storylineEntry: entry }))
     window.dispatchEvent(new Event('tour-close-storyline-form'))
+    window.dispatchEvent(new Event('tour-reload-storyline'))
     return { storylineEntry: entry }
   }
 }
@@ -312,7 +317,7 @@ function TutorialCard({ step, rect, stepNum, total, loading, canGoBack, onAction
         <div style={{ position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderBottom: '9px solid white' }} />
       )}
 
-      <div style={{ backgroundColor: 'white', borderRadius: 18, padding: '14px 16px 12px', boxShadow: '0 12px 40px rgba(44,36,22,0.28)', fontFamily: 'Lora, serif' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: 18, padding: '14px 16px 12px', boxShadow: '0 12px 40px rgba(44,36,22,0.28)', fontFamily: 'Lora, serif', maxHeight: '80vh', overflowY: 'auto' }}>
         {/* Top row: progress + minimize */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <div style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', overflow: 'hidden' }}>

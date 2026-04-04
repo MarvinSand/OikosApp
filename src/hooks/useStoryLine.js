@@ -62,5 +62,5 @@ export function useStoryLine(personId) {
     await supabase.from('person_storyline').delete().eq('id', id)
   }
 
-  return { entries, loading, addEntry, updateEntry, deleteEntry }
+  return { entries, loading, addEntry, updateEntry, deleteEntry, reload: load }
 }
