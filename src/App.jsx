@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { ToastProvider } from './context/ToastContext'
 import Auth from './pages/Auth'
@@ -33,10 +33,16 @@ function PlaceholderPage({ title }) {
   )
 }
 
-function AppShell() {
+function AppShellInner() {
+  const location = useLocation()
+  const isMapRoute = location.pathname === '/'
+
   return (
     <div className="h-[100dvh] flex flex-col bg-bg w-full max-w-md mx-auto relative overflow-hidden shadow-glass">
-      <div className="flex-1 overflow-y-auto w-full hide-scrollbar" style={{ paddingBottom: 'calc(110px + env(safe-area-inset-bottom, 0px))' }}>
+      <div
+        className={`flex-1 w-full hide-scrollbar ${isMapRoute ? 'overflow-hidden' : 'overflow-y-auto'}`}
+        style={isMapRoute ? {} : { paddingBottom: 'calc(110px + env(safe-area-inset-bottom, 0px))' }}
+      >
         <Routes>
           <Route path="/" element={<MapView />} />
           <Route path="/prayer" element={<PrayerView />} />
@@ -55,6 +61,10 @@ function AppShell() {
       <OnboardingTutorial />
     </div>
   )
+}
+
+function AppShell() {
+  return <AppShellInner />
 }
 
 export default function App() {

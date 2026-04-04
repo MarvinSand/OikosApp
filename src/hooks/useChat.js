@@ -214,6 +214,15 @@ export function useChat(conversationId) {
       .eq('sender_id', user.id)
   }
 
+  async function updateMessage(id, { text, bible_verse_text }) {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, text, bible_verse_text } : m))
+    await supabase
+      .from('messages')
+      .update({ text, bible_verse_text })
+      .eq('id', id)
+      .eq('sender_id', user.id)
+  }
+
   return {
     messages,
     loading,
@@ -223,6 +232,7 @@ export function useChat(conversationId) {
     sendPrayerRequest,
     sendBibleVerse,
     deleteMessage,
+    updateMessage,
     markAsRead,
   }
 }

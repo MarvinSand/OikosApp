@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Settings, Copy, LogOut, SendHorizontal,
   MoreVertical, Shield, Plus, Trash2, MapPin, Clock, Pin, Globe, Lock, Users,
-  ShieldOff, UserMinus, User, MessageSquare, RefreshCw
+  ShieldOff, UserMinus, User, MessageSquare, RefreshCw, Pencil, X, Check, ChevronRight
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunityDetail } from '../hooks/useCommunityDetail'
@@ -448,26 +448,208 @@ function CreateEventForm({ onClose, onSubmit }) {
   )
 }
 
-// ─── Prayer Card (Redesigned) ─────────────────────────────────
-function PrayerCard({ msg, currentUserId }) {
-  const name = msg.profiles?.full_name || msg.profiles?.username || 'Unbekannt'
-  const isOwn = msg.sender_id === currentUserId
+// ─── Community Prayer Detail Sheet ────────────────────────────
+function CommunityPrayerDetailSheet({ msg, onClose, onDelete, onUpdate }) {
+  const [editMode, setEditMode] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [title, setTitle] = useState(msg.text || '')
+  const [description, setDescription] = useState(msg.bible_verse_text || '')
+  const [saving, setSaving] = useState(false)
+  const { showToast } = useToast()
+
+  async function handleSaveEdit() {
+    if (!title.trim()) return
+    setSaving(true)
+    await onUpdate(msg.id, { text: title.trim(), bible_verse_text: description.trim() || null })
+    setSaving(false)
+    setEditMode(false)
+    showToast('Gebet aktualisiert ✓')
+  }
+
+  async function handleDelete() {
+    await onDelete(msg.id)
+    showToast('Gebet gelöscht')
+    onClose()
+  }
+
   return (
-    <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 14, padding: '14px 16px', marginBottom: 12, borderLeft: '4px solid var(--color-warm-1)', border: '1px solid var(--color-warm-3)', borderLeftWidth: 4, boxShadow: '0 1px 4px rgba(58,46,36,0.06)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <Avatar name={name} size={32} isChristian={msg.profiles?.is_christian} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {name} {isOwn && <span style={{ fontWeight: 400, color: 'var(--color-text-light)', fontSize: 11 }}>(Du)</span>}
-          </p>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: 0 }}>{timeAgo(msg.created_at)}</p>
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }} />
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 70, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.25s ease-out', maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {!editMode ? (
+              <>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>{msg.text}</p>
+                {msg.bible_verse_text && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.6 }}>{msg.bible_verse_text}</p>}
+              </>
+            ) : (
+              <>
+                <input value={title} onChange={e => setTitle(e.target.value)} autoFocus style={{ width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block', marginBottom: 8 }} />
+                <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={3} placeholder="Beschreibung (optional)" style={{ width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block', resize: 'none' }} />
+              </>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 4, marginLeft: 8, flexShrink: 0 }}>
+            {!editMode && (
+              <button onClick={() => setEditMode(true)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><Pencil size={16} /></button>
+            )}
+            <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><X size={18} /></button>
+          </div>
         </div>
-        <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px', color: 'var(--color-warm-1)', flexShrink: 0 }}>🙏</span>
+
+        {!editMode && (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 20 }}>
+            🙏 {timeAgo(msg.created_at)}
+          </p>
+        )}
+
+        {editMode ? (
+          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+            <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
+            <button onClick={handleSaveEdit} disabled={!title.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
+              {saving ? 'Speichere…' : 'Speichern'}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {!confirmDelete ? (
+              <button onClick={() => setConfirmDelete(true)} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: '1.5px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer' }}>
+                Löschen
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '13px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
+                <button onClick={handleDelete} style={{ flex: 1, padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Ja, löschen</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px', lineHeight: 1.4 }}>{msg.text}</p>
-      {msg.bible_verse_text && (
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5, fontStyle: 'italic' }}>{msg.bible_verse_text}</p>
+    </>
+  )
+}
+
+// ─── Prayer Card (exakt wie Beten-Tab) ───────────────────────────────────────
+function getPrayedMap() {
+  try { return JSON.parse(localStorage.getItem('comm_prayed') || '{}') } catch { return {} }
+}
+function setPrayedMap(map) {
+  try { localStorage.setItem('comm_prayed', JSON.stringify(map)) } catch {}
+}
+
+function PrayerCard({ msg, currentUserId, onSelect }) {
+  const [expanded, setExpanded] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [hasPrayed, setHasPrayed] = useState(() => !!getPrayedMap()[msg.id])
+  const [prayCount, setPrayCount] = useState(0)
+
+  const name = msg.profiles?.full_name || msg.profiles?.username || 'Unbekannt'
+  const username = msg.profiles?.username
+  const isOwn = msg.sender_id === currentUserId
+  const desc = msg.bible_verse_text || ''
+  const shortDesc = desc.length > 120 ? desc.slice(0, 120) + '…' : desc
+
+  function handlePray() {
+    if (hasPrayed || isOwn) return
+    const map = getPrayedMap()
+    map[msg.id] = true
+    setPrayedMap(map)
+    setHasPrayed(true)
+    setPrayCount(c => c + 1)
+  }
+
+  return (
+    <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 mb-4 shadow-glass-sm border border-white/60 hover:shadow-glass hover:bg-white/95 transition-all duration-300">
+      {/* Header */}
+      <div className="flex items-start gap-3 mb-4">
+        <div className="flex gap-3 items-center flex-1 min-w-0">
+          <Avatar name={name} size={42} isChristian={msg.profiles?.is_christian} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <p className="font-serif text-[15px] font-bold text-dark m-0 leading-tight">
+                {isOwn ? 'Du' : name}
+              </p>
+              {msg.profiles?.gender === 'brother' && !isOwn && (
+                <span className="font-serif text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100/50">Bruder</span>
+              )}
+              {msg.profiles?.gender === 'sister' && !isOwn && (
+                <span className="font-serif text-[10px] px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 font-semibold border border-pink-100/50">Schwester</span>
+              )}
+            </div>
+            <p className="font-sans text-[11px] font-medium text-dark-muted/80 uppercase tracking-wide m-0">
+              {!isOwn && username && `@${username} · `}{timeAgo(msg.created_at)}
+            </p>
+          </div>
+        </div>
+
+        {/* Menü für eigene Gebete */}
+        {isOwn && (
+          <div className="relative">
+            <button onClick={() => setShowMenu(v => !v)} className="border-none bg-transparent cursor-pointer p-1.5 text-dark-muted hover:bg-black/5 rounded-full transition-colors">
+              <MoreVertical size={18} />
+            </button>
+            {showMenu && (
+              <>
+                <div onClick={() => setShowMenu(false)} className="fixed inset-0 z-10" />
+                <div className="absolute right-0 top-full mt-1 bg-white/95 backdrop-blur-md rounded-xl shadow-glass border border-warm-3 z-20 min-w-[180px] overflow-hidden">
+                  <button
+                    onClick={() => { setShowMenu(false); onSelect(msg) }}
+                    className="w-full px-4 py-3 text-left border-none bg-transparent hover:bg-black/5 font-serif text-[14px] text-dark cursor-pointer flex items-center gap-2"
+                  >
+                    <Pencil size={16} className="text-warm-1" /> Bearbeiten / Löschen
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Inhalt */}
+      <h3 className={`font-serif text-[17px] font-bold text-dark leading-tight ${desc ? 'mb-2' : 'mb-0'}`}>
+        {msg.text}
+      </h3>
+      {desc && (
+        <div className="mb-2">
+          <p className="font-serif text-[14.5px] text-dark-muted leading-relaxed m-0 whitespace-pre-wrap">
+            {expanded ? desc : shortDesc}
+          </p>
+          {desc.length > 120 && (
+            <button onClick={() => setExpanded(v => !v)} className="border-none bg-transparent cursor-pointer font-serif text-[13px] text-warm-1 font-semibold py-1 mt-1 hover:opacity-80 transition-opacity">
+              {expanded ? 'Weniger anzeigen' : 'Mehr anzeigen'}
+            </button>
+          )}
+        </div>
       )}
+
+      {/* Gebets-Zeile – exakt wie Beten-Tab */}
+      <div className="flex items-center justify-between mt-5 pt-4 border-t border-warm-3/60">
+        <span className={`font-serif text-[13.5px] ${prayCount > 0 ? 'font-medium text-dark-muted' : 'text-dark-light italic bg-warm-5/50 px-3 py-1 rounded-full border border-warm-3/30'}`}>
+          {prayCount > 0 ? `${prayCount} ${prayCount === 1 ? 'Gebet' : 'Gebete'}` : 'Noch keine Gebete'}
+        </span>
+
+        {!isOwn && (
+          <button
+            onClick={handlePray}
+            disabled={hasPrayed}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 20,
+              border: hasPrayed ? 'none' : '1.5px solid var(--color-warm-1)',
+              backgroundColor: hasPrayed ? 'var(--color-gold-light)' : 'transparent',
+              color: hasPrayed ? '#8A6020' : 'var(--color-warm-1)',
+              fontFamily: 'Lora, serif', fontSize: 13, fontWeight: hasPrayed ? 700 : 500,
+              cursor: hasPrayed ? 'default' : 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            🙏 {hasPrayed ? 'Gebetet ✓' : 'Beten'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -711,13 +893,14 @@ export default function CommunityDetail() {
     events, myRsvps, createEvent, deleteEvent, rsvpEvent,
     updateCommunity,
   } = useCommunityDetail(id)
-  const { messages, loading: chatLoading, sendMessage } = useChat(conversationId)
+  const { messages, loading: chatLoading, sendMessage, deleteMessage, updateMessage } = useChat(conversationId)
 
   const [activeTab, setActiveTab] = useState('chat')
   const [showSettings, setShowSettings] = useState(false)
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [showCreatePost, setShowCreatePost] = useState(false)
   const [showAddPrayer, setShowAddPrayer] = useState(false)
+  const [selectedPrayer, setSelectedPrayer] = useState(null)
   const [showPastEvents, setShowPastEvents] = useState(false)
   const [selectedMember, setSelectedMember] = useState(null)
   const [showMembers, setShowMembers] = useState(false)
@@ -1066,7 +1249,7 @@ export default function CommunityDetail() {
                   </p>
                 </div>
               ) : (
-                prayerMessages.map(m => <PrayerCard key={m.id} msg={m} currentUserId={user?.id} />)
+                prayerMessages.map(m => <PrayerCard key={m.id} msg={m} currentUserId={user?.id} onSelect={setSelectedPrayer} />)
               )}
             </div>
           )}
@@ -1138,6 +1321,14 @@ export default function CommunityDetail() {
       )}
       {showAddPrayer && (
         <AddPrayerSheet onClose={() => setShowAddPrayer(false)} onSubmit={handleAddPrayer} />
+      )}
+      {selectedPrayer && (
+        <CommunityPrayerDetailSheet
+          msg={selectedPrayer}
+          onClose={() => setSelectedPrayer(null)}
+          onDelete={deleteMessage}
+          onUpdate={updateMessage}
+        />
       )}
 
       <style>{`

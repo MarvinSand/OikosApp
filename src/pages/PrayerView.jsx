@@ -329,8 +329,8 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
       <div className="flex items-center justify-between mt-5 pt-4 border-t border-warm-3/60">
         {/* Linke Seite: Wer hat gebetet */}
         <button
-          onClick={() => prayCount > 0 && setShowWhoPrayed(true)}
-          className={`flex items-center gap-2.5 border-none bg-transparent p-0 ${prayCount > 0 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+          onClick={() => prayCount > 0 && request._sourceType !== 'community_message' && setShowWhoPrayed(true)}
+          className={`flex items-center gap-2.5 border-none bg-transparent p-0 ${prayCount > 0 && request._sourceType !== 'community_message' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
         >
           {prayCount > 0 ? (
             <>
@@ -368,7 +368,7 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
       </div>
 
       {/* Follow-up Prompt nach Beten */}
-      {justPrayed && !isOwn && (
+      {justPrayed && !isOwn && request._sourceType !== 'community_message' && (
         <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 12, backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', margin: 0 }}>
             Möchtest du eine Notiz hinterlassen?
@@ -914,31 +914,114 @@ function SkeletonCard() {
 }
 
 // ─── FilterSheet ──────────────────────────────────────────────
-const FILTER_DEFAULTS = { status: 'open', faith: ['christian', 'non_christian'], date: 'all', sources: ['sibling_personal', 'sibling_oikos'] }
+const FILTER_DEFAULTS = { status: 'open', date: 'all', sources: ['sibling_personal', 'sibling_oikos'], oikosFilter: {} }
 
 function loadSavedFilter() {
   try {
     const saved = JSON.parse(localStorage.getItem('prayer_filter') || '{}')
-    return { ...FILTER_DEFAULTS, ...saved, sources: saved.sources ?? FILTER_DEFAULTS.sources }
+    return { ...FILTER_DEFAULTS, ...saved, sources: saved.sources ?? FILTER_DEFAULTS.sources, oikosFilter: saved.oikosFilter ?? {} }
   } catch { return { ...FILTER_DEFAULTS } }
 }
 
 function FilterSheet({ filter, onApply, onClose }) {
+  const { user } = useAuth()
   const [status, setStatus] = useState(filter.status)
-  const [faith, setFaith] = useState(filter.faith)
   const [date, setDate] = useState(filter.date)
   const [sources, setSources] = useState(filter.sources ?? FILTER_DEFAULTS.sources)
+  const [oikosFilter, setOikosFilter] = useState(filter.oikosFilter ?? {})
+  const [siblingsWithMaps, setSiblingsWithMaps] = useState([])
+  const [loadingOikos, setLoadingOikos] = useState(false)
 
-  function toggleFaith(val) {
-    setFaith(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val])
+  const siblingOikosActive = sources.includes('sibling_oikos')
+
+  useEffect(() => {
+    if (siblingOikosActive && siblingsWithMaps.length === 0 && !loadingOikos) {
+      loadSiblingsWithMaps()
+    }
+  }, [siblingOikosActive])
+
+  async function loadSiblingsWithMaps() {
+    setLoadingOikos(true)
+    try {
+      const { data: friendships } = await supabase
+        .from('friendships')
+        .select('requester_id, addressee_id')
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .eq('status', 'accepted')
+      const siblingIds = (friendships || []).map(f =>
+        f.requester_id === user.id ? f.addressee_id : f.requester_id
+      )
+      if (!siblingIds.length) { setLoadingOikos(false); return }
+
+      const { data: memberships } = await supabase
+        .from('community_members').select('community_id').eq('user_id', user.id)
+      const myCommunityIds = (memberships || []).map(m => m.community_id)
+
+      const { data: maps } = await supabase
+        .from('oikos_maps')
+        .select('id, name, user_id, visibility, visibility_user_ids, visibility_community_id')
+        .in('user_id', siblingIds)
+        .neq('visibility', 'private')
+
+      const visibleMaps = (maps || []).filter(map => {
+        if (map.visibility === 'all_siblings') return true
+        if (map.visibility === 'specific_include') return (map.visibility_user_ids || []).includes(user.id)
+        if (map.visibility === 'specific_exclude') return !(map.visibility_user_ids || []).includes(user.id)
+        if (map.visibility === 'community') return myCommunityIds.includes(map.visibility_community_id)
+        return false
+      })
+
+      const siblingMap = {}
+      for (const map of visibleMaps) {
+        if (!siblingMap[map.user_id]) siblingMap[map.user_id] = { id: map.user_id, name: '', maps: [] }
+        siblingMap[map.user_id].maps.push({ id: map.id, name: map.name })
+      }
+
+      const siblingsWithVisible = Object.keys(siblingMap)
+      if (siblingsWithVisible.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles').select('id, full_name, username').in('id', siblingsWithVisible)
+        for (const p of (profiles || [])) {
+          if (siblingMap[p.id]) siblingMap[p.id].name = p.full_name || p.username || p.id
+        }
+      }
+
+      setSiblingsWithMaps(Object.values(siblingMap))
+    } finally {
+      setLoadingOikos(false)
+    }
   }
 
   function toggleSource(val) {
     setSources(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val])
   }
 
+  function toggleOikosPerson(userId) {
+    setOikosFilter(prev => {
+      const next = { ...prev }
+      if (next[userId] !== undefined) { delete next[userId] } else { next[userId] = [] }
+      return next
+    })
+  }
+
+  function toggleOikosMap(userId, mapId, allMapIds) {
+    setOikosFilter(prev => {
+      const current = prev[userId] || []
+      let next
+      if (current.length === 0) {
+        next = allMapIds.filter(id => id !== mapId)
+      } else {
+        const toggled = current.includes(mapId)
+          ? current.filter(id => id !== mapId)
+          : [...current, mapId]
+        next = toggled.length === allMapIds.length ? [] : toggled
+      }
+      return { ...prev, [userId]: next }
+    })
+  }
+
   function handleApply() {
-    const f = { status, faith, date, sources }
+    const f = { status, date, sources, oikosFilter }
     localStorage.setItem('prayer_filter', JSON.stringify(f))
     onApply(f)
     onClose()
@@ -947,6 +1030,7 @@ function FilterSheet({ filter, onApply, onClose }) {
   function handleReset() {
     const f = { ...FILTER_DEFAULTS }
     setSources(FILTER_DEFAULTS.sources)
+    setOikosFilter({})
     localStorage.setItem('prayer_filter', JSON.stringify(f))
     onApply(f)
     onClose()
@@ -961,6 +1045,8 @@ function FilterSheet({ filter, onApply, onClose }) {
     fontWeight: active ? 600 : 400,
     marginBottom: 6, width: '100%', textAlign: 'left',
   })
+
+  const hintStyle = { fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '-2px 0 6px 24px', lineHeight: 1.4 }
 
   return (
     <>
@@ -978,15 +1064,6 @@ function FilterSheet({ filter, onApply, onClose }) {
         <button style={checkStyle(status === 'answered')} onClick={() => setStatus('answered')}>✅ Erhörte Anliegen</button>
         <button style={checkStyle(status === 'all')} onClick={() => setStatus('all')}>Alle Anliegen</button>
 
-        {/* Glaubensstand */}
-        <p style={{ ...filterLabel, marginTop: 16 }}>Nach Glaubensstand</p>
-        <button style={checkStyle(faith.includes('christian'))} onClick={() => toggleFaith('christian')}>
-          {faith.includes('christian') ? '☑' : '☐'} Christen 🌿
-        </button>
-        <button style={checkStyle(faith.includes('non_christian'))} onClick={() => toggleFaith('non_christian')}>
-          {faith.includes('non_christian') ? '☑' : '☐'} Noch nicht Christen 🌱
-        </button>
-
         {/* Datum */}
         <p style={{ ...filterLabel, marginTop: 16 }}>Nach Datum</p>
         {[['all', 'Alle'], ['today', 'Heute'], ['week', 'Diese Woche'], ['month', 'Dieser Monat']].map(([val, label]) => (
@@ -997,21 +1074,56 @@ function FilterSheet({ filter, onApply, onClose }) {
 
         {/* Quelle */}
         <p style={{ ...filterLabel, marginTop: 16 }}>Nach Quelle</p>
-        {[
-          ['sibling_personal', 'Persönliche Anliegen meiner Geschwister', 'Dinge, die ein Geschwister für sich selbst teilt'],
-          ['sibling_oikos', 'OIKOS-Anliegen meiner Geschwister', 'Gebete für Menschen aus dem Umfeld (Familie, Freunde …)'],
-          ['own_personal', 'Eigene persönliche Anliegen', null],
-          ['own_oikos', 'Anliegen für meine OIKOS-Personen', null],
-          ['community', 'Community-Anliegen', null],
-          ['all_public', 'Alle öffentlichen Anliegen', null],
-        ].map(([val, label, hint]) => (
-          <div key={val}>
-            <button style={checkStyle(sources.includes(val))} onClick={() => toggleSource(val)}>
-              {sources.includes(val) ? '☑' : '☐'} {label}
-            </button>
-            {hint && <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '-2px 0 6px 24px', lineHeight: 1.4 }}>{hint}</p>}
-          </div>
-        ))}
+
+        <div>
+          <button style={checkStyle(sources.includes('sibling_personal'))} onClick={() => toggleSource('sibling_personal')}>
+            {sources.includes('sibling_personal') ? '☑' : '☐'} Persönliche Anliegen meiner Geschwister
+          </button>
+          <p style={hintStyle}>Dinge, die ein Geschwister für sich selbst teilt</p>
+        </div>
+
+        <div>
+          <button style={checkStyle(siblingOikosActive)} onClick={() => toggleSource('sibling_oikos')}>
+            {siblingOikosActive ? '☑' : '☐'} OIKOS-Anliegen meiner Geschwister
+          </button>
+          <p style={hintStyle}>Gebete für Menschen aus dem Umfeld (Familie, Freunde …)</p>
+
+          {siblingOikosActive && (
+            <div style={{ marginLeft: 12, marginBottom: 4 }}>
+              {loadingOikos ? (
+                <p style={{ ...hintStyle, margin: '4px 0 8px' }}>Lade…</p>
+              ) : siblingsWithMaps.length === 0 ? (
+                <p style={{ ...hintStyle, margin: '4px 0 8px' }}>Keine Geschwister haben ihre OIKOS-Karte geteilt.</p>
+              ) : (
+                siblingsWithMaps.map(sibling => {
+                  const isSelected = oikosFilter[sibling.id] !== undefined
+                  const allMapIds = sibling.maps.map(m => m.id)
+                  return (
+                    <div key={sibling.id} style={{ marginBottom: 4 }}>
+                      <button style={checkStyle(isSelected)} onClick={() => toggleOikosPerson(sibling.id)}>
+                        {isSelected ? '☑' : '☐'} {sibling.name}
+                      </button>
+                      {isSelected && sibling.maps.length > 0 && (
+                        <div style={{ marginLeft: 20, marginTop: 2 }}>
+                          {sibling.maps.map(map => {
+                            const selectedMaps = oikosFilter[sibling.id] || []
+                            const isMapActive = selectedMaps.length === 0 || selectedMaps.includes(map.id)
+                            return (
+                              <button key={map.id} style={{ ...checkStyle(isMapActive), fontSize: 13, padding: '8px 10px' }}
+                                onClick={() => toggleOikosMap(sibling.id, map.id, allMapIds)}>
+                                {isMapActive ? '☑' : '☐'} {map.name}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )}
+        </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <button onClick={handleReset} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Zurücksetzen</button>
@@ -1028,8 +1140,6 @@ function applyFilter(requests, filter) {
   let r = requests
   if (filter.status === 'open') r = r.filter(x => !x.is_answered)
   if (filter.status === 'answered') r = r.filter(x => x.is_answered)
-  if (!filter.faith.includes('christian')) r = r.filter(x => !x.profiles?.is_christian)
-  if (!filter.faith.includes('non_christian')) r = r.filter(x => x.profiles?.is_christian)
   if (filter.date !== 'all') {
     const now = new Date()
     const startOf = {
@@ -1040,17 +1150,27 @@ function applyFilter(requests, filter) {
     if (startOf) r = r.filter(x => new Date(x.created_at) >= startOf)
   }
   const activeSources = filter.sources ?? FILTER_DEFAULTS.sources
-  if (activeSources.length < 6) {
+  if (activeSources.length < 2) {
     r = r.filter(x => activeSources.includes(x._sourceType || 'sibling_personal'))
+  }
+  const oikosFilter = filter.oikosFilter ?? {}
+  if (Object.keys(oikosFilter).length > 0) {
+    r = r.filter(x => {
+      if (x._sourceType !== 'sibling_oikos') return true
+      const selectedMaps = oikosFilter[x.owner_id]
+      if (selectedMaps === undefined) return false
+      if (selectedMaps.length === 0) return true
+      return selectedMaps.includes(x.oikos_people?.map_id)
+    })
   }
   return r
 }
 
 function isDefaultFilter(f) {
   return f.status === FILTER_DEFAULTS.status &&
-    JSON.stringify([...f.faith].sort()) === JSON.stringify([...FILTER_DEFAULTS.faith].sort()) &&
     f.date === FILTER_DEFAULTS.date &&
-    JSON.stringify([...(f.sources ?? FILTER_DEFAULTS.sources)].sort()) === JSON.stringify([...FILTER_DEFAULTS.sources].sort())
+    JSON.stringify([...(f.sources ?? FILTER_DEFAULTS.sources)].sort()) === JSON.stringify([...FILTER_DEFAULTS.sources].sort()) &&
+    Object.keys(f.oikosFilter ?? {}).length === 0
 }
 
 // ─── PrayerView (Main) ────────────────────────────────────────
@@ -1075,7 +1195,7 @@ export default function PrayerView() {
   const filteredRequests = applyFilter(requests, filter)
   const filterActive = !isDefaultFilter(filter)
   const sourcesDefault = JSON.stringify([...(filter.sources ?? FILTER_DEFAULTS.sources)].sort()) === JSON.stringify([...FILTER_DEFAULTS.sources].sort())
-  const filterCount = (filter.status !== 'all' ? 1 : 0) + (filter.faith.length < 2 ? 1 : 0) + (filter.date !== 'all' ? 1 : 0) + (sourcesDefault ? 0 : 1)
+  const filterCount = (filter.status !== 'all' ? 1 : 0) + (filter.date !== 'all' ? 1 : 0) + (sourcesDefault ? 0 : 1) + (Object.keys(filter.oikosFilter ?? {}).length > 0 ? 1 : 0)
 
   async function handleNote(requestId, text, isPublic) {
     try {
@@ -1143,10 +1263,9 @@ export default function PrayerView() {
             {filter.status !== 'all' && (
               <span style={chip}>{filter.status === 'open' ? 'Offen' : 'Erhört'}</span>
             )}
-            {!filter.faith.includes('christian') && <span style={chip}>Nur Nicht-Christen</span>}
-            {!filter.faith.includes('non_christian') && <span style={chip}>Nur Christen</span>}
             {filter.date !== 'all' && <span style={chip}>{{ today: 'Heute', week: 'Diese Woche', month: 'Dieser Monat' }[filter.date]}</span>}
             {!sourcesDefault && <span style={chip}>{(filter.sources ?? []).length} Quellen</span>}
+            {Object.keys(filter.oikosFilter ?? {}).length > 0 && <span style={chip}>{Object.keys(filter.oikosFilter).length} Personen</span>}
             <button onClick={() => { setFilter({ ...FILTER_DEFAULTS }); localStorage.removeItem('prayer_filter') }} style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-warm-1)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontWeight: 500 }}>
               Zurücksetzen ✕
             </button>
