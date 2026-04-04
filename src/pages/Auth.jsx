@@ -5,7 +5,8 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 
 export default function Auth() {
-  const [view, setView] = useState('login')
+  const hasSeenWelcome = typeof window !== 'undefined' && localStorage.getItem('oikos_welcome_seen')
+  const [view, setView] = useState(hasSeenWelcome ? 'login' : 'welcome')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -19,6 +20,8 @@ export default function Auth() {
 
   function goToReset() { setError(''); setView('reset') }
   function goToLogin() { setError(''); setView('login') }
+  function goToRegister() { localStorage.setItem('oikos_welcome_seen', 'true'); setError(''); setView('register') }
+  function goFromWelcomeToLogin() { localStorage.setItem('oikos_welcome_seen', 'true'); setError(''); setView('login') }
 
   async function handleLoginOrRegister(e) {
     e.preventDefault()
@@ -86,7 +89,41 @@ export default function Auth() {
 
       {/* Main Card */}
       <div className="w-full max-w-sm glass-panel rounded-3xl p-7 relative z-10 animate-slide-up">
-        
+
+        {/* Welcome Screen */}
+        {view === 'welcome' && (
+          <div className="animate-fade-in flex flex-col gap-5">
+            <div>
+              <h2 className="font-serif text-xl font-bold text-warm-1 mb-1">Willkommen bei OIKOS 🌱</h2>
+              <p className="font-serif text-sm font-semibold text-dark">Schön, dass du hier bist!</p>
+            </div>
+            <div className="flex flex-col gap-3 text-sm text-dark-muted leading-relaxed font-serif">
+              <p>
+                OIKOS hilft dir, dein Umfeld mit neuen Augen zu sehen. Die Menschen, die Gott dir anvertraut hat, bewusster wahrzunehmen und sie im Gebet vor ihn zu bringen.
+              </p>
+              <p>
+                Schritt für Schritt begleitet dich die App dabei, Personen in deinem Leben, die Jesus noch nicht kennen, näher zu ihm zu führen. Ganz natürlich, in deinem Alltag.
+              </p>
+              <p>
+                Gleichzeitig verbindet OIKOS dich mit deinen Glaubensgeschwistern. Auch über Entfernungen hinweg. Du siehst, wie und wo Gott in ihrem Umfeld wirkt, kennst ihre Gebetsanliegen und kannst sie geistlich mittragen. So unterstützt ihr euch gegenseitig. Verbunden im Gebet, egal wo ihr gerade seid.
+              </p>
+              <p className="text-dark font-medium">Lass uns gemeinsam erleben, was Gott tut. 🙏</p>
+            </div>
+            <button
+              onClick={goToRegister}
+              className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+            >
+              Jetzt starten →
+            </button>
+            <button
+              onClick={goFromWelcomeToLogin}
+              className="w-full py-2.5 rounded-xl text-sm font-medium text-dark-muted hover:text-warm-1 transition-colors"
+            >
+              Bereits registriert? Anmelden
+            </button>
+          </div>
+        )}
+
         {/* Login & Register Logic */}
         {(view === 'login' || view === 'register') && (
           <>
