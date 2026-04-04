@@ -62,7 +62,7 @@ const STEPS = [
   // 7 – Scroll to prayer section, click + Anliegen
   {
     icon: '🙏', title: 'Gebetsanliegen',
-    body: 'Hier trägst du konkrete Gebetsanliegen für Maria ein. Wir klicken jetzt auf "+ Hinzufügen".',
+    body: 'Hier trägst du konkrete Gebetsanliegen für Maria ein.',
     selector: '.tour-prayer-add', scrollTo: '.tour-person-prayer', placement: 'above', route: '/',
     action: 'openPrayerForm', actionLabel: '🙏 Formular öffnen',
   },
@@ -73,17 +73,17 @@ const STEPS = [
     selector: '.tour-prayer-form', scrollTo: '.tour-prayer-form', placement: 'above', route: '/',
     action: 'createPrayer', actionLabel: '✅ Anliegen anlegen',
   },
-  // 9 – Prayer saved
+  // 9 – Prayer saved (reopenPerson takes 500ms, use longer measureDelay)
   {
     icon: '✅', title: 'Anliegen gespeichert!',
     body: 'Das Gebetsanliegen erscheint jetzt in Marias Profil. Du kannst es als beantwortet markieren, bearbeiten oder löschen.',
     selector: '.tour-person-prayer', scrollTo: '.tour-person-prayer', placement: 'above', route: '/',
-    onEnter: 'reopenPerson',
+    onEnter: 'reopenPerson', measureDelay: 1200,
   },
   // 10 – Storyline: click + Eintrag
   {
     icon: '📖', title: 'Story Line – Eintrag',
-    body: 'Die Story Line hält wichtige Gespräche und Momente fest. Wir klicken jetzt auf "+ Eintrag".',
+    body: 'Die Story Line hält wichtige Gespräche und Momente fest.',
     selector: '.tour-storyline-add', scrollTo: '.tour-person-storyline', placement: 'above', route: '/',
     action: 'openStorylineForm', actionLabel: '📖 Formular öffnen',
   },
@@ -99,19 +99,19 @@ const STEPS = [
     body: 'Schreibe hier, was du erlebt, gehört oder beobachtet hast. Diese Notizen helfen dir, Marias Reise im Blick zu behalten.',
     selector: '.tour-storyline-text', scrollTo: '.tour-person-storyline', placement: 'above', route: '/',
   },
-  // 13 – Explain visibility + create
+  // 13 – Explain visibility + create (scroll to the button itself so it's in view)
   {
     icon: '🔓', title: 'Öffentlich oder Privat?',
     body: '🌐 Öffentlich – alle Geschwister mit Zugang zu dieser Map sehen den Eintrag.\n🔒 Privat – nur du siehst ihn.\n\nWir legen den Eintrag jetzt an.',
-    selector: '.tour-storyline-visibility', scrollTo: '.tour-person-storyline', placement: 'above', route: '/',
+    selector: '.tour-storyline-visibility', scrollTo: '.tour-storyline-visibility', placement: 'above', route: '/',
     action: 'createStoryline', actionLabel: '✅ Eintrag anlegen',
   },
-  // 14 – Storyline saved
+  // 14 – Storyline saved (reopenPerson takes 500ms, use longer measureDelay)
   {
     icon: '✅', title: 'Eintrag gespeichert!',
     body: 'Der Eintrag erscheint jetzt in der Story Line. So dokumentierst du Marias Reise Schritt für Schritt.',
     selector: '.tour-person-storyline', scrollTo: '.tour-person-storyline', placement: 'above', route: '/',
-    onEnter: 'reopenPerson',
+    onEnter: 'reopenPerson', measureDelay: 1200,
   },
   // 15 – Impact Map
   {
@@ -497,10 +497,11 @@ export default function OnboardingTutorial() {
       setRect(r)
     }
 
+    const delay = step.measureDelay ?? 650
     if (step.scrollTo) {
-      scrollToEl(step.scrollTo, measure, 650)
+      scrollToEl(step.scrollTo, measure, delay)
     } else {
-      setTimeout(measure, 300)
+      setTimeout(measure, step.measureDelay ?? 300)
     }
   }, [navigate, resolveSelector])
 
