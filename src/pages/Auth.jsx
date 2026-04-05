@@ -28,8 +28,13 @@ export default function Auth() {
     setError('')
     setIsLoading(true)
     try {
-      if (view === 'login') await login(email, password)
-      else await register(email, password, fullName, gender)
+      if (view === 'login') {
+        await login(email, password)
+      } else {
+        await register(email, password, fullName, gender)
+        setView('email-sent')
+        return
+      }
     } catch (err) {
       setError(err.message || 'Ein Fehler ist aufgetreten.')
     } finally {
@@ -280,6 +285,26 @@ export default function Auth() {
                 {isLoading ? 'Sende…' : 'Link senden'}
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Email Confirmation Sent */}
+        {view === 'email-sent' && (
+          <div className="text-center animate-fade-in py-4">
+            <div className="w-20 h-20 bg-gold-light/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <MailCheck size={40} className="text-gold" strokeWidth={2} />
+            </div>
+            <h3 className="text-2xl font-bold text-dark mb-3">Fast geschafft!</h3>
+            <p className="text-sm text-dark-muted leading-relaxed mb-6">
+              Wir haben dir eine Bestätigungs-E-Mail an <strong className="text-dark">{email}</strong> geschickt.
+              Bitte klicke auf den Link in der E-Mail, um dein Konto zu aktivieren.
+            </p>
+            <button
+              onClick={goToLogin}
+              className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+            >
+              Zum Login
+            </button>
           </div>
         )}
 

@@ -287,17 +287,23 @@ function TutorialCard({ step, rect, stepNum, total, loading, canGoBack, onAction
 
   if (rect && (step.selector || step.selectorFn) && step.placement !== 'top' && step.placement !== 'bottom') {
     const gap = 12
-    const CARD_H = 220
+    const CARD_H = 260
     const vw = window.innerWidth
+    const vh = window.innerHeight
+    const maxTop = vh - CARD_H - 90 // leave room for nav bar
 
     if (step.placement === 'above') {
       let top = rect.top - gap - CARD_H
       if (top < 60) top = rect.bottom + gap
+      top = Math.min(top, maxTop)
+      top = Math.max(16, top)
       let left = rect.left + rect.width / 2 - W / 2
       left = Math.max(12, Math.min(left, vw - W - 12))
       style = { ...style, top, left }
     } else {
       let top = rect.bottom + gap
+      top = Math.min(top, maxTop)
+      top = Math.max(16, top)
       let left = rect.left + rect.width / 2 - W / 2
       left = Math.max(12, Math.min(left, vw - W - 12))
       style = { ...style, top, left }
@@ -321,7 +327,7 @@ function TutorialCard({ step, rect, stepNum, total, loading, canGoBack, onAction
         <div style={{ position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderBottom: '9px solid white' }} />
       )}
 
-      <div style={{ backgroundColor: 'white', borderRadius: 18, padding: '14px 16px 12px', boxShadow: '0 12px 40px rgba(44,36,22,0.28)', fontFamily: 'Lora, serif', maxHeight: '80vh', overflowY: 'auto' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: 18, padding: '10px 14px 10px', boxShadow: '0 12px 40px rgba(44,36,22,0.28)', fontFamily: 'Lora, serif', maxHeight: '55vh', overflowY: 'auto' }}>
         {/* Top row: progress + minimize */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <div style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', overflow: 'hidden' }}>
@@ -336,9 +342,9 @@ function TutorialCard({ step, rect, stepNum, total, loading, canGoBack, onAction
           </button>
         </div>
 
-        {step.icon && <div style={{ fontSize: 20, marginBottom: 5 }}>{step.icon}</div>}
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', marginBottom: 5, lineHeight: 1.3 }}>{step.title}</p>
-        <p style={{ fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: 12 }}>
+        {step.icon && <div style={{ fontSize: 18, marginBottom: 4 }}>{step.icon}</div>}
+        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4, lineHeight: 1.3 }}>{step.title}</p>
+        <p style={{ fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: 10 }}>
           {bodyLines.map((line, i) => (
             <span key={i}>{line}{i < bodyLines.length - 1 && <br />}</span>
           ))}
@@ -580,7 +586,11 @@ export default function OnboardingTutorial() {
 
       {/* Click-through blocker for non-action, non-last steps (not for noOverlay steps) */}
       {!step.action && !step.isLast && !step.noOverlay && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9997 }} onClick={advance} />
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9997, touchAction: 'none' }}
+          onClick={advance}
+          onTouchEnd={e => { e.preventDefault(); advance() }}
+        />
       )}
 
       {/* Dark overlay + spotlight hole (skip for noOverlay steps so the app is visible) */}

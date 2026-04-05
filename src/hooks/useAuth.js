@@ -36,6 +36,7 @@ export function useAuth() {
       password,
       options: {
         data: { full_name: fullName },
+        emailRedirectTo: window.location.origin + '/auth/callback',
       },
     })
     if (error) throw error

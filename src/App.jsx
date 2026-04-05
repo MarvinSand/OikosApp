@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth'
 import { ToastProvider } from './context/ToastContext'
 import Auth from './pages/Auth'
 import ResetPassword from './pages/ResetPassword'
+import AuthCallback from './pages/AuthCallback'
 import MapView from './pages/MapView'
 import ProfileView from './pages/ProfileView'
 import FriendsView from './pages/FriendsView'
@@ -93,6 +94,7 @@ export default function App() {
                   element={user ? <Navigate to="/" replace /> : <Auth />}
                 />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route
                   path="/*"
                   element={user ? <AppShell /> : <Navigate to="/auth" replace />}
