@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { usePrayerFeed } from '../hooks/usePrayerFeed'
 import { usePersonalPrayer } from '../hooks/usePersonalPrayer'
 import { useFriendships } from '../hooks/useFriendships'
+import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import Confetti from '../components/ui/Confetti'
@@ -697,25 +698,68 @@ function ProfilePreviewSheet({ profile, onClose }) {
 }
 
 // ─── PostRequestSheet ─────────────────────────────────────────
-const VIS_OPTIONS = [
-  { value: 'public',       icon: '🌐', label: 'Alle OIKOS Nutzer' },
-  { value: 'siblings',     icon: '👥', label: 'Nur meine Geschwister' },
-  { value: 'communities',  icon: '🏘', label: 'Nur meine Communities' },
-  { value: 'private',      icon: '🔒', label: 'Nur ich (privat)' },
+const PRAYER_VIS_OPTIONS = [
+  {
+    value: 'private',
+    icon: '🔒',
+    label: 'Nur ich',
+    hint: 'Nur du kannst dieses Anliegen sehen.',
+  },
+  {
+    value: 'all_siblings',
+    icon: '👥',
+    label: 'Alle meine Geschwister',
+    hint: 'Alle mit dir verbundenen Christen können es sehen.',
+  },
+  {
+    value: 'specific_include',
+    icon: '✅',
+    label: 'Nur bestimmte Geschwister',
+    hint: 'Du wählst genau, wer Zugriff bekommt.',
+  },
+  {
+    value: 'specific_exclude',
+    icon: '🚫',
+    label: 'Alle außer…',
+    hint: 'Alle sehen es – außer den Personen, die du ausschließt.',
+  },
+  {
+    value: 'community',
+    icon: '🏘',
+    label: 'Nur eine Community',
+    hint: 'Nur Mitglieder der gewählten Community haben Zugriff.',
+  },
 ]
 
 function PostRequestSheet({ onClose, onPost }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [visibility, setVisibility] = useState('public')
+  const [visibility, setVisibility] = useState('all_siblings')
+  const [selectedIds, setSelectedIds] = useState([])
+  const [communityId, setCommunityId] = useState('')
   const [saving, setSaving] = useState(false)
   const { showToast } = useToast()
+  const { friends } = useFriendships()
+  const { myCommunities } = useCommunities()
+
+  function toggleId(id) {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const showFriendsList = visibility === 'specific_include' || visibility === 'specific_exclude'
+  const showCommunityPicker = visibility === 'community'
 
   async function handlePost() {
     if (!title.trim()) return
     setSaving(true)
     try {
-      await onPost({ title: title.trim(), description: description.trim() || null, visibility })
+      await onPost({
+        title: title.trim(),
+        description: description.trim() || null,
+        visibility,
+        visibility_user_ids: ['specific_include', 'specific_exclude'].includes(visibility) ? selectedIds : [],
+        visibility_community_id: visibility === 'community' ? (communityId || null) : null,
+      })
       showToast('Anliegen geteilt 🙏')
       onClose()
     } catch {
@@ -744,14 +788,96 @@ function PostRequestSheet({ onClose, onPost }) {
           <span style={{ position: 'absolute', bottom: 8, right: 12, fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)' }}>{description.length}/500</span>
         </div>
 
-        <label style={{ ...lbl, marginTop: 14 }}>Sichtbarkeit</label>
+        <label style={{ ...lbl, marginTop: 14 }}>Wer kann dieses Anliegen sehen?</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {VIS_OPTIONS.map(opt => (
-            <button key={opt.value} type="button" onClick={() => setVisibility(opt.value)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${visibility === opt.value ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, backgroundColor: visibility === opt.value ? 'var(--color-warm-4)' : 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, textAlign: 'left', color: visibility === opt.value ? 'var(--color-warm-1)' : 'var(--color-text)', fontWeight: visibility === opt.value ? 600 : 400 }}>
-              <span>{opt.icon}</span><span>{opt.label}</span>
+          {PRAYER_VIS_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setVisibility(opt.value)}
+              style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                border: `1.5px solid ${visibility === opt.value ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
+                backgroundColor: visibility === opt.value ? 'var(--color-warm-4)' : 'var(--color-bg)',
+                fontFamily: 'Lora, serif', textAlign: 'left',
+                transition: 'all 0.15s',
+              }}
+            >
+              <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{opt.icon}</span>
+              <div>
+                <div style={{
+                  fontSize: 14,
+                  color: visibility === opt.value ? 'var(--color-warm-1)' : 'var(--color-text)',
+                  fontWeight: visibility === opt.value ? 600 : 400,
+                }}>
+                  {opt.label}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                  {opt.hint}
+                </div>
+              </div>
             </button>
           ))}
         </div>
+
+        {showFriendsList && (
+          <div style={{ marginTop: 14 }}>
+            <label style={{ ...lbl, marginBottom: 8 }}>
+              {visibility === 'specific_include' ? 'Sichtbar für:' : 'Ausgenommen:'}
+            </label>
+            {friends.length === 0 ? (
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                Noch keine verbundenen Geschwister.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {friends.map(f => {
+                  const uid = f.otherUser?.id
+                  const checked = selectedIds.includes(uid)
+                  return (
+                    <label key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)' }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleId(uid)}
+                        style={{ width: 16, height: 16, accentColor: 'var(--color-warm-1)', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', flex: 1 }}>
+                        {f.otherUser?.full_name || f.otherUser?.username}
+                      </span>
+                      <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                        @{f.otherUser?.username}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {showCommunityPicker && (
+          <div style={{ marginTop: 14 }}>
+            <label style={lbl}>Community auswählen</label>
+            {myCommunities.length === 0 ? (
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                Du bist noch in keiner Community.
+              </p>
+            ) : (
+              <select
+                value={communityId}
+                onChange={e => setCommunityId(e.target.value)}
+                style={{ ...inp, appearance: 'none' }}
+              >
+                <option value="">— Auswählen —</option>
+                {myCommunities.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
 
         <button onClick={handlePost} disabled={!title.trim() || saving} style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 20, cursor: title.trim() ? 'pointer' : 'not-allowed', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600 }}>
           {saving ? 'Teile…' : 'Anliegen teilen 🙏'}
