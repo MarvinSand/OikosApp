@@ -69,7 +69,7 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-start p-6 pt-10 pb-10 relative overflow-y-auto">
       {/* Decorative circles */}
       <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-warm-2/20 pointer-events-none blur-3xl animate-pulse" />

@@ -14,7 +14,7 @@ const STEPS = [
   // 0 – Welcome (replaces old first step with the full intro text)
   {
     icon: '🌱', title: 'Willkommen bei OIKOS!',
-    body: 'Schön, dass du hier bist!\n\nOIKOS hilft dir, dein Umfeld mit neuen Augen zu sehen. Die Menschen, die Gott dir anvertraut hat, bewusster wahrzunehmen und sie im Gebet vor ihn zu bringen.\n\nSchritt für Schritt begleitet dich die App dabei, Personen in deinem Leben, die Jesus noch nicht kennen, näher zu ihm zu führen. Ganz natürlich, in deinem Alltag.\n\nGleichzeitig verbindet OIKOS dich mit deinen Glaubensgeschwistern. Auch über Entfernungen hinweg. Du siehst, wie und wo Gott in ihrem Umfeld wirkt, kennst ihre Gebetsanliegen und kannst sie geistlich mittragen. So unterstützt ihr euch gegenseitig. Verbunden im Gebet, egal wo ihr gerade seid.\n\nLass uns gemeinsam erleben, was Gott tut. 🙏',
+    body: 'Schön, dass du da bist!\n\nWir führen dich jetzt kurz durch die wichtigsten Funktionen der App.\n\nDu kannst das Tutorial jederzeit unten links überspringen.',
     placement: 'top', route: '/', onEnter: 'closePerson',
   },
   // 1 – Map tab
