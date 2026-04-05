@@ -69,35 +69,35 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-start p-6 pt-10 pb-10 relative overflow-y-auto">
+    <div className={`bg-bg flex flex-col items-center relative ${view === 'welcome' ? 'h-[100dvh] overflow-hidden justify-center px-5 py-4' : 'min-h-screen justify-start p-6 pt-10 pb-10 overflow-y-auto'}`}>
       {/* Decorative circles */}
       <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-warm-2/20 pointer-events-none blur-3xl animate-pulse" />
 
       {/* Logo Section */}
-      <div className="text-center mb-10 relative z-10 animate-fade-in">
-        <h1 className="font-serif text-5xl font-bold text-warm-1 tracking-tight leading-none mb-3 drop-shadow-sm">
+      <div className={`text-center relative z-10 animate-fade-in ${view === 'welcome' ? 'mb-4' : 'mb-10'}`}>
+        <h1 className="font-serif text-5xl font-bold text-warm-1 tracking-tight leading-none mb-2 drop-shadow-sm">
           OIKOS
         </h1>
-        <div className="flex justify-center mb-4">
-          <Cross size={24} className="text-warm-2" strokeWidth={2.5} />
+        <div className="flex justify-center mb-2">
+          <Cross size={22} className="text-warm-2" strokeWidth={2.5} />
         </div>
-        <p className="font-serif italic text-base text-dark-muted leading-relaxed">
+        <p className="font-serif italic text-sm text-dark-muted leading-relaxed">
           „Dein Umfeld. Dein Gebet. Deine Mission."
         </p>
       </div>
 
       {/* Main Card */}
-      <div className="w-full max-w-sm glass-panel rounded-3xl p-7 relative z-10 animate-slide-up">
+      <div className={`w-full max-w-sm glass-panel rounded-3xl relative z-10 animate-slide-up ${view === 'welcome' ? 'p-5' : 'p-7'}`}>
 
         {/* Welcome Screen */}
         {view === 'welcome' && (
-          <div className="animate-fade-in flex flex-col gap-5">
+          <div className="animate-fade-in flex flex-col gap-3">
             <div>
-              <h2 className="font-serif text-xl font-bold text-warm-1 mb-1">Willkommen bei OIKOS 🌱</h2>
-              <p className="font-serif text-sm font-semibold text-dark">Schön, dass du hier bist!</p>
+              <h2 className="font-serif text-lg font-bold text-warm-1 mb-0.5">Willkommen bei OIKOS 🌱</h2>
+              <p className="font-serif text-xs font-semibold text-dark">Schön, dass du hier bist!</p>
             </div>
-            <div className="flex flex-col gap-3 text-sm text-dark-muted leading-relaxed font-serif">
+            <div className="flex flex-col gap-2 text-xs text-dark-muted leading-relaxed font-serif">
               <p>
                 OIKOS hilft dir, dein Umfeld mit neuen Augen zu sehen. Die Menschen, die Gott dir anvertraut hat, bewusster wahrzunehmen und sie im Gebet vor ihn zu bringen.
               </p>
@@ -105,19 +105,19 @@ export default function Auth() {
                 Schritt für Schritt begleitet dich die App dabei, Personen in deinem Leben, die Jesus noch nicht kennen, näher zu ihm zu führen. Ganz natürlich, in deinem Alltag.
               </p>
               <p>
-                Gleichzeitig verbindet OIKOS dich mit deinen Glaubensgeschwistern. Auch über Entfernungen hinweg. Du siehst, wie und wo Gott in ihrem Umfeld wirkt, kennst ihre Gebetsanliegen und kannst sie geistlich mittragen. So unterstützt ihr euch gegenseitig. Verbunden im Gebet, egal wo ihr gerade seid.
+                Gleichzeitig verbindet OIKOS dich mit deinen Glaubensgeschwistern. Auch über Entfernungen hinweg. Du siehst, wie und wo Gott in ihrem Umfeld wirkt, kennst ihre Gebetsanliegen und kannst sie geistlich mittragen.
               </p>
               <p className="text-dark font-medium">Lass uns gemeinsam erleben, was Gott tut. 🙏</p>
             </div>
             <button
               onClick={goToRegister}
-              className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+              className="w-full py-3 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
             >
               Jetzt starten →
             </button>
             <button
               onClick={goFromWelcomeToLogin}
-              className="w-full py-2.5 rounded-xl text-sm font-medium text-dark-muted hover:text-warm-1 transition-colors"
+              className="w-full py-2 rounded-xl text-sm font-medium text-dark-muted hover:text-warm-1 transition-colors"
             >
               Bereits registriert? Anmelden
             </button>
