@@ -73,5 +73,5 @@ export function usePrayerRequests(personId) {
     await updateRequest(id, { is_public: !req.is_public })
   }
 
-  return { requests, loading, addRequest, updateRequest, deleteRequest, toggleAnswered, togglePublic }
+  return { requests, loading, addRequest, updateRequest, deleteRequest, toggleAnswered, togglePublic, reload: load }
 }

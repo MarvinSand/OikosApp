@@ -309,22 +309,25 @@ function AddRequestForm({ onSave, onCancel }) {
 // ─── PrayerRequestsSection ────────────────────────────────────
 export default function PrayerRequestsSection({ personId, isOwner }) {
   const { user } = useAuth()
-  const { requests, loading, addRequest, updateRequest, deleteRequest, toggleAnswered } = usePrayerRequests(personId)
+  const { requests, loading, addRequest, updateRequest, deleteRequest, toggleAnswered, reload } = usePrayerRequests(personId)
   const { showToast } = useToast()
   const [showAddForm, setShowAddForm] = useState(false)
   const [lastPrayedMap, setLastPrayedMap] = useState({})
 
-  // Tutorial can open/close the add form remotely
+  // Tutorial can open/close the add form remotely, and reload entries after direct insert
   useEffect(() => {
     const openHandler = () => setShowAddForm(true)
     const closeHandler = () => setShowAddForm(false)
+    const reloadHandler = () => reload()
     window.addEventListener('tour-open-prayer-form', openHandler)
     window.addEventListener('tour-close-prayer-form', closeHandler)
+    window.addEventListener('tour-reload-prayer', reloadHandler)
     return () => {
       window.removeEventListener('tour-open-prayer-form', openHandler)
       window.removeEventListener('tour-close-prayer-form', closeHandler)
+      window.removeEventListener('tour-reload-prayer', reloadHandler)
     }
-  }, [])
+  }, [reload])
 
   const reqIds = requests.map(r => r.id).join(',')
   useEffect(() => {

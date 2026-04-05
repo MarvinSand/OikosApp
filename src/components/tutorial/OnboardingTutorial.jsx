@@ -73,12 +73,11 @@ const STEPS = [
     selector: '.tour-prayer-form', scrollTo: '.tour-prayer-form', placement: 'above', route: '/',
     action: 'createPrayer', actionLabel: '✅ Anliegen anlegen',
   },
-  // 9 – Prayer saved (reopenPerson takes 500ms, use longer measureDelay)
+  // 9 – Prayer saved (profile stays open, tour-reload-prayer already fired)
   {
     icon: '✅', title: 'Anliegen gespeichert!',
     body: 'Das Gebetsanliegen erscheint jetzt in Marias Profil. Du kannst es als beantwortet markieren, bearbeiten oder löschen.',
     selector: '.tour-person-prayer', scrollTo: '.tour-person-prayer', placement: 'above', route: '/',
-    onEnter: 'reopenPerson', measureDelay: 1200,
   },
   // 10 – Storyline: click + Eintrag
   {
@@ -106,12 +105,11 @@ const STEPS = [
     selector: '.tour-storyline-visibility', scrollTo: '.tour-storyline-visibility', placement: 'above', route: '/',
     action: 'createStoryline', actionLabel: '✅ Eintrag anlegen',
   },
-  // 14 – Storyline saved (reopenPerson takes 500ms, use longer measureDelay)
+  // 14 – Storyline saved (profile stays open, tour-reload-storyline already fired)
   {
     icon: '✅', title: 'Eintrag gespeichert!',
     body: 'Der Eintrag erscheint jetzt in der Story Line. So dokumentierst du Marias Reise Schritt für Schritt.',
     selector: '.tour-person-storyline', scrollTo: '.tour-person-storyline', placement: 'above', route: '/',
-    onEnter: 'reopenPerson', measureDelay: 1200,
   },
   // 15 – Impact Map
   {
@@ -207,13 +205,18 @@ async function doAction(action, user, testData, setTestData) {
   }
 
   if (action === 'createPrayer') {
-    if (testData.prayerRequest) { window.dispatchEvent(new Event('tour-close-prayer-form')); return {} }
+    if (testData.prayerRequest) {
+      window.dispatchEvent(new Event('tour-close-prayer-form'))
+      window.dispatchEvent(new Event('tour-reload-prayer'))
+      return {}
+    }
     const { data: req, error } = await supabase.from('prayer_requests')
       .insert({ person_id: testData.person.id, owner_id: user.id, title: 'Marias Offenheit für den Glauben', description: 'Bitte bete, dass Maria offen wird für Gespräche über Gott.', is_public: false, is_answered: false })
       .select().single()
     if (error) throw error
     setTestData(d => ({ ...d, prayerRequest: req }))
     window.dispatchEvent(new Event('tour-close-prayer-form'))
+    window.dispatchEvent(new Event('tour-reload-prayer'))
     return { prayerRequest: req }
   }
 
