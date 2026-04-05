@@ -84,13 +84,19 @@ export default function OverlayPersonSheet({ person: initialPerson, onClose }) {
 
       {/* Sheet */}
       <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        backgroundColor: 'var(--color-white)',
-        borderTopLeftRadius: 22, borderTopRightRadius: 22,
+        position: 'fixed', bottom: 12,
+        left: '50%', transform: 'translateX(-50%)',
+        width: 'calc(100% - 24px)', maxWidth: 480,
+        backgroundColor: 'rgba(255, 253, 248, 0.92)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.6)',
+        borderRadius: 32,
         zIndex: 50,
-        maxHeight: '85vh',
+        maxHeight: 'calc(90vh - 24px)',
         display: 'flex', flexDirection: 'column',
-        boxShadow: '0 -4px 24px rgba(58,46,36,0.14)',
+        boxShadow: '0 24px 48px -12px rgba(58,46,36,0.25), 0 0 0 1px rgba(232, 213, 183, 0.3)',
+        animation: 'sheetSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
       }}>
         {/* Handle */}
         <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px', flexShrink: 0 }}>
