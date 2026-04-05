@@ -138,6 +138,66 @@ function WhoPrayedSheet({ requestId, requestOwnerId, currentUserId, onClose, onA
   )
 }
 
+// ─── LocalWhoPrayedSheet ──────────────────────────────────────
+// Used for community_message prayers where logs come from localStorage (no DB)
+function LocalWhoPrayedSheet({ logs, notes, currentUserId, onClose, onAddNote }) {
+  const myNote = (notes || []).find(n => n.request_id === (logs[0]?.request_id))
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '75vh', overflowY: 'auto' }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+            {(logs || []).length} {(logs || []).length === 1 ? 'Person hat' : 'Personen haben'} gebetet
+          </h3>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {(logs || []).length === 0 && (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
+            Noch keine Gebete.
+          </p>
+        )}
+
+        {(logs || []).map(log => {
+          const isMe = log.user_id === currentUserId
+          const name = isMe ? 'Du' : (log.profiles?.full_name || log.profiles?.username || 'Unbekannt')
+          const noteForUser = (notes || []).find(n => n.request_id === log.request_id && isMe)
+
+          return (
+            <div key={log.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Avatar name={name} size={36} isChristian={false} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: isMe ? 700 : 600, color: 'var(--color-text)', margin: 0 }}>{name}</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{timeAgo(log.created_at)}</p>
+                </div>
+                {isMe && !noteForUser && (
+                  <button
+                    onClick={() => { onClose(); onAddNote() }}
+                    style={{ background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-2)', padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-warm-3)' }}
+                  >
+                    + Notiz
+                  </button>
+                )}
+              </div>
+              {noteForUser && (
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.5, margin: '8px 0 0 46px' }}>
+                  „{noteForUser.text}"
+                </p>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
 // ─── NoteModal ────────────────────────────────────────────────
 function NoteModal({ requestId, ownerName, onSave, onClose }) {
   const [text, setText] = useState('')
@@ -329,8 +389,8 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
       <div className="flex items-center justify-between mt-5 pt-4 border-t border-warm-3/60">
         {/* Linke Seite: Wer hat gebetet */}
         <button
-          onClick={() => prayCount > 0 && request._sourceType !== 'community_message' && setShowWhoPrayed(true)}
-          className={`flex items-center gap-2.5 border-none bg-transparent p-0 ${prayCount > 0 && request._sourceType !== 'community_message' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+          onClick={() => prayCount > 0 && setShowWhoPrayed(true)}
+          className={`flex items-center gap-2.5 border-none bg-transparent p-0 ${prayCount > 0 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
         >
           {prayCount > 0 ? (
             <>
@@ -368,7 +428,7 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
       </div>
 
       {/* Follow-up Prompt nach Beten */}
-      {justPrayed && !isOwn && request._sourceType !== 'community_message' && (
+      {justPrayed && !isOwn && (
         <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 12, backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', margin: 0 }}>
             Möchtest du eine Notiz hinterlassen?
@@ -400,7 +460,16 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
       )}
 
       {/* Sheets & Modals */}
-      {showWhoPrayed && (
+      {showWhoPrayed && request._sourceType === 'community_message' && (
+        <LocalWhoPrayedSheet
+          logs={logs || []}
+          notes={notes || []}
+          currentUserId={currentUserId}
+          onClose={() => setShowWhoPrayed(false)}
+          onAddNote={() => setShowNoteModal(true)}
+        />
+      )}
+      {showWhoPrayed && request._sourceType !== 'community_message' && (
         <WhoPrayedSheet
           requestId={request.id}
           requestOwnerId={request.owner_id}
@@ -1215,7 +1284,7 @@ export default function PrayerView() {
   }
 
   return (
-    <div className="bg-bg min-h-full pb-24">
+    <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
       <div className="bg-white/90 backdrop-blur-md border-b border-warm-3 pt-3.5 px-4 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between mb-3">

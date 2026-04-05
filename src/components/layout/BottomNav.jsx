@@ -18,7 +18,7 @@ export default function BottomNav() {
   const { unreadCount } = useNotifications()
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md glass-panel rounded-t-3xl rounded-b-none flex justify-around items-center px-3 pt-3.5 z-40 shadow-2xl border-white/60 bg-white/85" style={{ paddingBottom: 'calc(14px + env(safe-area-inset-bottom, 0px))' }}>
+    <nav className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md glass-panel rounded-t-3xl rounded-b-none flex justify-around items-center px-3 pt-3.5 z-40 shadow-2xl border-white/60 bg-white/85" style={{ paddingBottom: 'calc(14px + env(safe-area-inset-bottom, 0px))' }}>
       {tabs.map(({ path, icon: Icon, label }) => {
         const isActive = location.pathname === path || location.pathname.startsWith(path + '/')
         const isGeschwisterTab = path === '/friends'

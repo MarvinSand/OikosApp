@@ -184,7 +184,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%', paddingBottom: 100 }}>
+    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }} className="pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
       <div style={headerStyle}>
         <button onClick={() => navigate(-1)} style={backBtn}>

@@ -780,21 +780,12 @@ export default function FriendsView() {
   const { hasUnread } = useConversations()
 
   return (
-    <div className="bg-bg min-h-full pb-24">
+    <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       <div className="bg-white/80 backdrop-blur-md border-b border-warm-3 pt-4 px-4 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-serif text-[22px] font-bold text-dark m-0">
             Geschwister
           </h2>
-          <button
-            onClick={() => setShowNotifications(true)}
-            className="relative p-1.5 text-dark-muted hover:bg-black/5 rounded-full transition-colors flex items-center"
-          >
-            <Bell size={22} />
-            {unreadCount > 0 && (
-              <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white ring-1 ring-red-500/20" />
-            )}
-          </button>
         </div>
         <div className="flex gap-2">
           {[{ key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }, { key: 'chats', label: 'Chats' }].map(t => (

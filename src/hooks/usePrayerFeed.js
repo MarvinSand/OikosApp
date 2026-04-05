@@ -103,6 +103,8 @@ export function usePrayerFeed(tab) {
     // Path A: conversation_members (works if user has opened community chat before)
     // Path B: community_members → conversations (works if user is a community member)
     let communityMsgItems = []
+    let localCommLogs = {}   // built here, merged into setLogsMap below
+    let localCommNotes = {}  // built here, merged into setNotesMap below
     if (tab === 'communities' && reset) {
       const [
         { data: convMemberships },
@@ -164,16 +166,16 @@ export function usePrayerFeed(tab) {
               _sourceType: 'community_message',
             }))
           }
-          // Pre-populate logsMap from localStorage for community message prayers
+          // Build localStorage-based logs/notes – merged into setLogsMap/setNotesMap below
           const localPrayed = (() => { try { return JSON.parse(localStorage.getItem('comm_prayed') || '{}') } catch { return {} } })()
-          const localLogs = {}
+          const localSavedNotes = (() => { try { return JSON.parse(localStorage.getItem('comm_notes') || '{}') } catch { return {} } })()
           for (const item of communityMsgItems) {
             if (localPrayed[item.id]) {
-              localLogs[item.id] = [{ id: 'local_' + item.id, request_id: item.id, user_id: user.id, created_at: new Date().toISOString(), profiles: null }]
+              localCommLogs[item.id] = [{ id: 'local_' + item.id, request_id: item.id, user_id: user.id, created_at: new Date().toISOString(), profiles: null }]
             }
-          }
-          if (Object.keys(localLogs).length > 0) {
-            setLogsMap(prev => reset ? { ...prev, ...localLogs } : { ...prev, ...localLogs })
+            if (localSavedNotes[item.id]) {
+              localCommNotes[item.id] = [{ id: 'local_note_' + item.id, request_id: item.id, text: localSavedNotes[item.id].text, created_at: localSavedNotes[item.id].created_at, profiles: null }]
+            }
           }
         }
       }
@@ -205,7 +207,7 @@ export function usePrayerFeed(tab) {
           : Promise.resolve({ data: [] }),
         oikosIds.length > 0
           ? supabase.from('prayer_logs')
-              .select('id, prayer_request_id, user_id, created_at, profiles!user_id(id, username, full_name)')
+              .select('id, prayer_request_id, user_id, created_at')
               .in('prayer_request_id', oikosIds).order('created_at', { ascending: false })
           : Promise.resolve({ data: [] }),
         personalIds.length > 0
@@ -231,10 +233,12 @@ export function usePrayerFeed(tab) {
         if (!newNotes[n.request_id]) newNotes[n.request_id] = []
         newNotes[n.request_id].push(n)
       }
-      setLogsMap(prev => reset ? newLogs : { ...prev, ...newLogs })
-      setNotesMap(prev => reset ? newNotes : { ...prev, ...newNotes })
+      // Merge community message localStorage logs/notes so they survive the reset
+      setLogsMap(prev => reset ? { ...newLogs, ...localCommLogs } : { ...prev, ...newLogs, ...localCommLogs })
+      setNotesMap(prev => reset ? { ...newNotes, ...localCommNotes } : { ...prev, ...newNotes, ...localCommNotes })
     } else if (reset) {
-      setLogsMap({}); setNotesMap({})
+      setLogsMap(localCommLogs)
+      setNotesMap(localCommNotes)
     }
 
     setRequests(prev => reset ? allNewItems : [...prev, ...personalItems])
@@ -268,6 +272,16 @@ export function usePrayerFeed(tab) {
   }
 
   async function addNote(requestId, text, isPublic) {
+    const item = requests.find(r => r.id === requestId)
+    if (item?._sourceType === 'community_message') {
+      // localStorage-based note for community message prayers
+      const notesStore = (() => { try { return JSON.parse(localStorage.getItem('comm_notes') || '{}') } catch { return {} } })()
+      const note = { id: 'local_note_' + Date.now(), request_id: requestId, text, created_at: new Date().toISOString(), profiles: null }
+      notesStore[requestId] = { text, created_at: note.created_at }
+      try { localStorage.setItem('comm_notes', JSON.stringify(notesStore)) } catch {}
+      setNotesMap(prev => ({ ...prev, [requestId]: [note, ...(prev[requestId] || [])] }))
+      return note
+    }
     const { data, error } = await supabase.from('prayer_notes')
       .insert({ request_id: requestId, author_id: user.id, text, is_public: isPublic })
       .select('id, request_id, text, created_at, profiles!author_id(id, username, full_name)')

@@ -122,7 +122,7 @@ export default function ProfileView() {
   }
 
   return (
-    <div className="bg-bg min-h-full pb-24">
+    <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
 
       {/* Header */}
       <div className="bg-gradient-to-br from-warm-4 to-[var(--color-bg)] px-5 pt-4 pb-8 relative overflow-hidden shadow-sm">

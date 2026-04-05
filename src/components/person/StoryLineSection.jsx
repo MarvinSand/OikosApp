@@ -51,7 +51,7 @@ function EntryForm({ initial, onSave, onCancel }) {
         className="tour-storyline-text"
         autoFocus
         value={text}
-        onChange={e => setText(e.target.value.slice(0, 600))}
+        onChange={e => setText(e.target.value.slice(0, 5000))}
         placeholder="Was erlebt diese Person gerade?"
         rows={3}
         style={{ width: '100%', padding: '9px 11px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', resize: 'vertical', display: 'block', lineHeight: 1.5 }}

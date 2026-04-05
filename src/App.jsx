@@ -13,6 +13,7 @@ import PublicMapView from './pages/PublicMapView'
 import ConversationView from './pages/ConversationView'
 import NotificationsPage from './pages/NotificationsPage'
 import BottomNav from './components/layout/BottomNav'
+import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import OnboardingTutorial from './components/tutorial/OnboardingTutorial'
 
@@ -38,10 +39,15 @@ function AppShellInner() {
   const isMapRoute = location.pathname === '/'
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-bg w-full max-w-md mx-auto relative overflow-hidden shadow-glass">
+    <div className="h-[100dvh] flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
+      {/* Sidebar – nur auf Desktop sichtbar */}
+      <SideNav />
+
+      {/* Hauptbereich */}
       <div
-        className={`flex-1 w-full hide-scrollbar ${isMapRoute ? 'overflow-hidden' : 'overflow-y-auto'}`}
-        style={isMapRoute ? {} : { paddingBottom: 'calc(110px + env(safe-area-inset-bottom, 0px))' }}
+        className={`flex-1 min-h-0 min-w-0 hide-scrollbar ${
+          isMapRoute ? 'overflow-hidden' : 'overflow-y-auto mobile-nav-padding'
+        }`}
       >
         <Routes>
           <Route path="/" element={<MapView />} />
@@ -57,6 +63,8 @@ function AppShellInner() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
+
+      {/* Bottom-Nav – nur auf Mobilgeräten */}
       <BottomNav />
       <OnboardingTutorial />
     </div>
@@ -75,9 +83,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <div className="min-h-screen bg-bg w-full flex justify-center selection:bg-warm-1/20 selection:text-dark">
-          {/* Centered container for desktop view, full width on mobile */}
-          <div className="w-full max-w-md h-[100dvh] relative shadow-glass overflow-hidden bg-bg">
+        <div className="min-h-screen bg-bg w-full flex justify-center md:block selection:bg-warm-1/20 selection:text-dark">
+          {/* Auf Mobile: zentrierte max-w-md Karte; auf Desktop: volle Breite */}
+          <div className="w-full max-w-md md:max-w-none h-[100dvh] relative md:shadow-none shadow-glass overflow-hidden bg-bg">
             <BrowserRouter>
               <Routes>
                 <Route

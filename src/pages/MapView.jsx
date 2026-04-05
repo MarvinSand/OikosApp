@@ -304,7 +304,7 @@ export default function MapView() {
     <div className="h-full flex flex-col bg-bg relative">
 
       {/* Header Island */}
-      <div className="tour-map-header absolute top-4 sm:top-5 left-4 right-4 bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl">
+      <div className="tour-map-header absolute top-4 sm:top-5 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl">
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
           className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[65%] hover:opacity-80 transition-opacity"
@@ -345,8 +345,8 @@ export default function MapView() {
       {showMapMenu && (
         <>
           <div onClick={() => setShowMapMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-          <div className="absolute top-[72px] left-4 right-4 bg-white rounded-2xl z-30 shadow-glass border border-warm-3 overflow-hidden">
-            {maps.map((m, i) => (
+          <div className="absolute top-[72px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white rounded-2xl z-30 shadow-glass border border-warm-3 overflow-hidden">
+            {maps.map((m) => (
               <button
                 key={m.id}
                 onClick={() => { setActiveMapId(m.id); setShowMapMenu(false) }}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, UserCheck, UserPlus, Clock, X, ChevronRight, MessageCircle, Bell, BellOff } from 'lucide-react'
+import { ArrowLeft, UserCheck, UserPlus, Clock, X, ChevronRight, MessageCircle, Bell } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
@@ -374,29 +374,12 @@ export default function UserProfile() {
   }
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%', paddingBottom: 90 }}>
+    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }} className="pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
       <div style={headerStyle}>
         <button onClick={() => navigate(-1)} style={backBtn}><ArrowLeft size={20} /></button>
         <span style={headerTitle}>@{profile.username}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {status === 'friends' && (
-            <button onClick={handleStartChat} disabled={chatLoading} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-warm-1)', display: 'flex', alignItems: 'center' }}>
-              <MessageCircle size={20} />
-            </button>
-          )}
-          <button
-            onClick={() => setShowNotifPrefs(true)}
-            style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center', position: 'relative',
-              color: (prefs.notify_prayer_requests || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos) ? 'var(--color-warm-1)' : 'var(--color-text-light)' }}
-            title="Benachrichtigungen"
-          >
-            <Bell size={20} />
-            {(prefs.notify_prayer_requests || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos) && (
-              <div style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)' }} />
-            )}
-          </button>
-        </div>
+        <div style={{ width: 36 }} />
       </div>
 
       {/* Notification Preferences Sheet */}
@@ -414,7 +397,8 @@ export default function UserProfile() {
             {[
               { field: 'notify_prayer_requests', label: 'Neue Gebetsanliegen', desc: 'Wenn neue Anliegen hinzugefügt werden' },
               { field: 'notify_oikos_entries', label: 'Neue OIKOS-Einträge', desc: 'Wenn Personen zur OIKOS-Map hinzugefügt werden' },
-              { field: 'notify_prayers_for_oikos', label: 'Gebete für OIKOS', desc: 'Wenn jemand für eine Person aus diesem OIKOS betet' },
+              { field: 'notify_prayers_for_oikos', label: 'Gebetsanliegen für OIKOS', desc: 'Wenn ein neues Gebetsanliegen für eine Person im OIKOS gepostet wird' },
+              { field: 'notify_storyline_entries', label: 'Neue Story-Line Einträge', desc: 'Wenn ein neuer Story-Line Eintrag für eine OIKOS-Person hinzugefügt wird' },
             ].map(({ field, label, desc }) => (
               <div key={field} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
                 <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
@@ -444,9 +428,27 @@ export default function UserProfile() {
             <Avatar name={displayName} size={72} isChristian={profile.is_christian} />
             <FriendButton />
           </div>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 2px' }}>
-            {displayName}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+              {displayName}
+            </p>
+            {status === 'friends' && (
+              <button onClick={handleStartChat} disabled={chatLoading} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-warm-1)', display: 'flex', alignItems: 'center' }}>
+                <MessageCircle size={18} />
+              </button>
+            )}
+            <button
+              onClick={() => setShowNotifPrefs(true)}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', position: 'relative',
+                color: (prefs.notify_prayer_requests || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos || prefs.notify_storyline_entries) ? 'var(--color-warm-1)' : 'var(--color-text-light)' }}
+              title="Benachrichtigungen"
+            >
+              <Bell size={18} />
+              {(prefs.notify_prayer_requests || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos || prefs.notify_storyline_entries) && (
+                <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)' }} />
+              )}
+            </button>
+          </div>
           {profile.username && (
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 8px' }}>
               @{profile.username}

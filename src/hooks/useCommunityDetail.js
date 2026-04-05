@@ -88,16 +88,23 @@ export function useCommunityDetail(communityId) {
       setMyRsvps(rsvpMap)
     }
 
-    if (convData?.id) {
-      setConversationId(convData.id)
-    } else {
+    let resolvedConvId = convData?.id || null
+    if (!resolvedConvId) {
       const { data: newConv } = await supabase
         .from('conversations')
         .insert({ type: 'community', community_id: communityId })
         .select('id')
         .single()
-      setConversationId(newConv?.id || null)
+      resolvedConvId = newConv?.id || null
     }
+    if (resolvedConvId && user?.id) {
+      // Ensure user is in conversation_members so Beten-Tab can read community prayers
+      supabase.from('conversation_members').upsert(
+        { conversation_id: resolvedConvId, user_id: user.id, last_read_at: new Date().toISOString() },
+        { onConflict: 'conversation_id,user_id' }
+      )
+    }
+    setConversationId(resolvedConvId)
 
     setLoading(false)
   }, [communityId, user?.id])

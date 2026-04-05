@@ -532,19 +532,120 @@ function CommunityPrayerDetailSheet({ msg, onClose, onDelete, onUpdate }) {
   )
 }
 
-// ─── Prayer Card (exakt wie Beten-Tab) ───────────────────────────────────────
-function getPrayedMap() {
+// ─── Lokale Helfer für Community-Gebete (localStorage) ───────────────────────
+function getCommPrayed() {
   try { return JSON.parse(localStorage.getItem('comm_prayed') || '{}') } catch { return {} }
 }
-function setPrayedMap(map) {
+function saveCommPrayed(map) {
   try { localStorage.setItem('comm_prayed', JSON.stringify(map)) } catch {}
 }
+function getCommNotes() {
+  try { return JSON.parse(localStorage.getItem('comm_notes') || '{}') } catch { return {} }
+}
+function saveCommNotes(map) {
+  try { localStorage.setItem('comm_notes', JSON.stringify(map)) } catch {}
+}
 
-function PrayerCard({ msg, currentUserId, onSelect }) {
+// ─── Overlapping Avatars (Community) ─────────────────────────────────────────
+function CommOverlappingAvatars({ prayedByMe, myName, onClick }) {
+  if (!prayedByMe) return null
+  return (
+    <button
+      onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+    >
+      <div style={{ border: '2px solid var(--color-white)', borderRadius: '50%' }}>
+        <Avatar name={myName || 'Du'} size={24} isChristian={false} />
+      </div>
+    </button>
+  )
+}
+
+// ─── Who Prayed Sheet (Community) ────────────────────────────────────────────
+function CommWhoPrayedSheet({ prayedByMe, myName, onClose }) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }} />
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 70, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.25s ease-out', maxHeight: '70vh', overflowY: 'auto' }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+            {prayedByMe ? '1 Person hat' : '0 Personen haben'} gebetet
+          </h3>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {prayedByMe ? (
+          <div style={{ padding: '12px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Avatar name={myName || 'Du'} size={36} isChristian={false} />
+              <div>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Du</p>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>gerade eben</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
+            Noch keine Gebete.
+          </p>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ─── Note Modal (Community) ───────────────────────────────────────────────────
+function CommNoteModal({ msgId, onSave, onClose }) {
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    if (!text.trim()) return
+    setSaving(true)
+    const notes = getCommNotes()
+    notes[msgId] = { text: text.trim(), created_at: new Date().toISOString() }
+    saveCommNotes(notes)
+    onSave(notes[msgId])
+    setSaving(false)
+    onClose()
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(58,46,36,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
+      <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 400, boxShadow: '0 8px 32px rgba(58,46,36,0.15)' }}>
+        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>Was hat Gott dir gezeigt?</h3>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 16, lineHeight: 1.5 }}>
+          Du kannst teilen, was du beim Beten empfangen hast.
+        </p>
+        <div style={{ position: 'relative' }}>
+          <textarea autoFocus value={text} onChange={e => setText(e.target.value.slice(0, 500))} placeholder="Schreib deine Notiz..." rows={4} style={{ width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', resize: 'none', display: 'block' }} />
+          <span style={{ position: 'absolute', bottom: 8, right: 12, fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)' }}>{text.length}/500</span>
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Überspringen</button>
+          <button onClick={handleSave} disabled={!text.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}>
+            {saving ? 'Speichere…' : 'Notiz speichern'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Prayer Card (exakt wie Beten-Tab) ───────────────────────────────────────
+function PrayerCard({ msg, currentUserId, currentUserName, onSelect }) {
   const [expanded, setExpanded] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
-  const [hasPrayed, setHasPrayed] = useState(() => !!getPrayedMap()[msg.id])
-  const [prayCount, setPrayCount] = useState(0)
+  const [hasPrayed, setHasPrayed] = useState(() => !!getCommPrayed()[msg.id])
+  const [prayCount, setPrayCount] = useState(() => getCommPrayed()[msg.id] ? 1 : 0)
+  const [justPrayed, setJustPrayed] = useState(false)
+  const [showNoteModal, setShowNoteModal] = useState(false)
+  const [showWhoPrayed, setShowWhoPrayed] = useState(false)
+  const [myNote, setMyNote] = useState(() => getCommNotes()[msg.id] || null)
+  const timerRef = useRef(null)
 
   const name = msg.profiles?.full_name || msg.profiles?.username || 'Unbekannt'
   const username = msg.profiles?.username
@@ -554,11 +655,18 @@ function PrayerCard({ msg, currentUserId, onSelect }) {
 
   function handlePray() {
     if (hasPrayed || isOwn) return
-    const map = getPrayedMap()
+    const map = getCommPrayed()
     map[msg.id] = true
-    setPrayedMap(map)
+    saveCommPrayed(map)
     setHasPrayed(true)
     setPrayCount(c => c + 1)
+    setJustPrayed(true)
+    timerRef.current = setTimeout(() => setJustPrayed(false), 6000)
+  }
+
+  function handleNoteSaved(note) {
+    setMyNote(note)
+    setJustPrayed(false)
   }
 
   return (
@@ -627,9 +735,23 @@ function PrayerCard({ msg, currentUserId, onSelect }) {
 
       {/* Gebets-Zeile – exakt wie Beten-Tab */}
       <div className="flex items-center justify-between mt-5 pt-4 border-t border-warm-3/60">
-        <span className={`font-serif text-[13.5px] ${prayCount > 0 ? 'font-medium text-dark-muted' : 'text-dark-light italic bg-warm-5/50 px-3 py-1 rounded-full border border-warm-3/30'}`}>
-          {prayCount > 0 ? `${prayCount} ${prayCount === 1 ? 'Gebet' : 'Gebete'}` : 'Noch keine Gebete'}
-        </span>
+        <button
+          onClick={() => prayCount > 0 && setShowWhoPrayed(true)}
+          className={`flex items-center gap-2.5 border-none bg-transparent p-0 ${prayCount > 0 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+        >
+          {prayCount > 0 ? (
+            <>
+              <CommOverlappingAvatars prayedByMe={hasPrayed} myName={currentUserName} onClick={() => setShowWhoPrayed(true)} />
+              <span className="font-serif text-[13.5px] font-medium text-dark-muted pt-[1px]">
+                {prayCount} {prayCount === 1 ? 'Gebet' : 'Gebete'}
+              </span>
+            </>
+          ) : (
+            <span className="font-serif text-[13.5px] text-dark-light italic bg-warm-5/50 px-3 py-1 rounded-full border border-warm-3/30">
+              Noch keine Gebete
+            </span>
+          )}
+        </button>
 
         {!isOwn && (
           <button
@@ -650,6 +772,38 @@ function PrayerCard({ msg, currentUserId, onSelect }) {
           </button>
         )}
       </div>
+
+      {/* Notiz-Prompt nach Beten */}
+      {justPrayed && !isOwn && (
+        <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 12, backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', margin: 0 }}>
+            Möchtest du eine Notiz hinterlassen?
+          </p>
+          <button onClick={() => { setJustPrayed(false); setShowNoteModal(true) }} style={{ border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', borderRadius: 8, padding: '6px 12px', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            Ja
+          </button>
+        </div>
+      )}
+
+      {/* Notiz-Vorschau */}
+      {myNote && (
+        <div style={{ marginTop: 10, borderTop: '1px solid var(--color-warm-3)', paddingTop: 10 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Avatar name={currentUserName || 'Du'} size={22} isChristian={false} />
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.5, margin: 0 }}>
+              <span style={{ fontWeight: 600, fontStyle: 'normal' }}>{currentUserName || 'Du'}</span>{' '}
+              „{myNote.text}"
+            </p>
+          </div>
+        </div>
+      )}
+
+      {showNoteModal && (
+        <CommNoteModal msgId={msg.id} onSave={handleNoteSaved} onClose={() => setShowNoteModal(false)} />
+      )}
+      {showWhoPrayed && (
+        <CommWhoPrayedSheet prayedByMe={hasPrayed} myName={currentUserName} onClose={() => setShowWhoPrayed(false)} />
+      )}
     </div>
   )
 }
@@ -1022,7 +1176,7 @@ export default function CommunityDetail() {
   const initials = (community.name || 'Unbekannt').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
   return (
-    <div className="h-full flex flex-col bg-bg relative">
+    <div className="h-full flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full">
 
       {/* ── Header ──────────────────────────────────────────── */}
       <div className="bg-gradient-to-br from-[#F7F3EC] to-[var(--color-bg)] px-4 pt-3 pb-3.5 shrink-0 relative overflow-hidden border-b border-warm-3">
@@ -1249,7 +1403,7 @@ export default function CommunityDetail() {
                   </p>
                 </div>
               ) : (
-                prayerMessages.map(m => <PrayerCard key={m.id} msg={m} currentUserId={user?.id} onSelect={setSelectedPrayer} />)
+                prayerMessages.map(m => <PrayerCard key={m.id} msg={m} currentUserId={user?.id} currentUserName={myMembership?.profile?.full_name || myMembership?.profile?.username || 'Du'} onSelect={setSelectedPrayer} />)
               )}
             </div>
           )}

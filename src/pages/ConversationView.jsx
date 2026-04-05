@@ -833,7 +833,7 @@ export default function ConversationView() {
   })
 
   return (
-    <div className="h-full flex flex-col bg-bg">
+    <div className="h-full flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#F7F3EC] to-[var(--color-bg)] px-3 pt-3 pb-3 shrink-0 relative overflow-hidden border-b border-warm-3">
         {/* Deko circles */}

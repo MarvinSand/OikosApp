@@ -244,7 +244,7 @@ export default function PublicMapView() {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)' }} className="md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
       <div style={headerStyle}>
         <button onClick={() => navigate(-1)} style={backBtn}><ArrowLeft size={20} /></button>
