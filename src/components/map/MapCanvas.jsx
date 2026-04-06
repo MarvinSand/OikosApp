@@ -519,7 +519,7 @@ export default function MapCanvas({
       {/* Connection mode banner + hint */}
       {connectionMode && (
         <div style={{
-          position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)',
           zIndex: 10, pointerEvents: 'none',
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
         }}>
