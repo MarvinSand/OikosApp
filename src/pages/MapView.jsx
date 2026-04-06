@@ -428,6 +428,7 @@ export default function MapView() {
               onOverlayPersonClick={setSelectedOverlayPerson}
               connectionMode={connectionMode}
               onConnectionColorChange={updateConnectionColor}
+              onDeleteConnection={deleteConnection}
             />
             {showGenerationen && (
               <GenerationenPanel
@@ -454,6 +455,9 @@ export default function MapView() {
         <OverlayPersonSheet
           person={selectedOverlayPerson}
           onClose={() => setSelectedOverlayPerson(null)}
+          hostConnections={connections}
+          hostPeople={people}
+          hostOverlayData={overlayData}
         />
       )}
       {selectedPerson && (

@@ -20,7 +20,13 @@ function getInitials(name) {
 
 const STAGE_NAMES = ['Freisetzung', 'Meine Rolle', 'Empathie', 'Perspektive', 'Wortkraft', 'Kontinuität']
 
-export default function OverlayPersonSheet({ person: initialPerson, onClose }) {
+export default function OverlayPersonSheet({
+  person: initialPerson,
+  onClose,
+  hostConnections = [],
+  hostPeople = [],
+  hostOverlayData = [],
+}) {
   const [person, setPerson] = useState(initialPerson)
   const [connections, setConnections] = useState([])
   const [mapPeople, setMapPeople] = useState([])
@@ -65,13 +71,36 @@ export default function OverlayPersonSheet({ person: initialPerson, onClose }) {
   const stageNum = person.impact_stage || 1
   const stageName = STAGE_NAMES[stageNum - 1]
 
+  // Own-map connections
   const myConnections = connections.filter(
     c => c.source_person_id === person.id || c.target_person_id === person.id
   )
 
+  // Host-map connections (e.g. connections created by the viewing user between overlay persons)
+  const myHostConnections = hostConnections.filter(
+    c => c.source_person_id === person.id || c.target_person_id === person.id
+  )
+
+  // All connections to display (deduplicated by id)
+  const allConnections = [
+    ...myConnections,
+    ...myHostConnections.filter(hc => !myConnections.find(c => c.id === hc.id)),
+  ]
+
   function getOtherPerson(conn) {
     const otherId = conn.source_person_id === person.id ? conn.target_person_id : conn.source_person_id
-    return mapPeople.find(p => p.id === otherId)
+    // Own map
+    const ownMapPerson = mapPeople.find(p => p.id === otherId)
+    if (ownMapPerson) return ownMapPerson
+    // Host map main people
+    const hostMain = hostPeople.find(p => p.id === otherId)
+    if (hostMain) return hostMain
+    // Host map overlay people
+    for (const od of hostOverlayData) {
+      const found = od.persons.find(op => op.id === otherId)
+      if (found) return found
+    }
+    return undefined
   }
 
   return (
@@ -177,13 +206,13 @@ export default function OverlayPersonSheet({ person: initialPerson, onClose }) {
               Verbindungen
             </h4>
 
-            {myConnections.length === 0 && (
+            {allConnections.length === 0 && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', marginBottom: 12 }}>
                 Keine Verbindungen.
               </p>
             )}
 
-            {myConnections.map(conn => {
+            {allConnections.map(conn => {
               const other = getOtherPerson(conn)
               if (!other) return null
               return (

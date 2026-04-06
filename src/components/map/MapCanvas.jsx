@@ -22,6 +22,7 @@ export default function MapCanvas({
   onCreateConnection,
   onOverlayPersonClick,
   onConnectionColorChange,
+  onDeleteConnection,
   readOnly = false,
   connectionMode = false,
 }) {
@@ -46,6 +47,8 @@ export default function MapCanvas({
   // Label modal for new connection
   const [labelModal, setLabelModal] = useState(null) // { sourceId, targetId } or null
   const [labelInput, setLabelInput] = useState('')
+  // "Already connected" remove modal
+  const [removeModal, setRemoveModal] = useState(null) // { conn } | null
   // Connection color picker: { conn, x, y } | null
   const [connColorPicker, setConnColorPicker] = useState(null)
   // Draft color while picker is open (not yet saved)
@@ -452,6 +455,16 @@ export default function MapCanvas({
     setViewOrigin(clampOrigin(raw.x, raw.y, newZoom))
   }
 
+  function resolvePersonName(personId) {
+    const main = people.find(p => p.id === personId)
+    if (main) return main.name
+    for (const od of overlayData) {
+      const found = od.persons.find(p => p.id === personId)
+      if (found) return found.name
+    }
+    return '?'
+  }
+
   // --- Connection mode tap ---
   function handlePersonTap(person) {
     if (!connectionMode) {
@@ -463,10 +476,20 @@ export default function MapCanvas({
     } else if (firstSelected === person.id) {
       setFirstSelected(null)
     } else {
-      // Open label modal
-      setLabelModal({ sourceId: firstSelected, targetId: person.id })
-      setLabelInput('')
-      setFirstSelected(null)
+      // Check if already connected
+      const existing = connections.find(c =>
+        (c.source_person_id === firstSelected && c.target_person_id === person.id) ||
+        (c.source_person_id === person.id && c.target_person_id === firstSelected)
+      )
+      if (existing) {
+        setRemoveModal({ conn: existing, nameA: resolvePersonName(firstSelected), nameB: resolvePersonName(person.id) })
+        setFirstSelected(null)
+      } else {
+        // Open label modal
+        setLabelModal({ sourceId: firstSelected, targetId: person.id })
+        setLabelInput('')
+        setFirstSelected(null)
+      }
     }
   }
 
@@ -892,6 +915,57 @@ export default function MapCanvas({
                 }}
               >
                 Verbinden
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Remove connection modal */}
+      {removeModal && (
+        <>
+          <div
+            onClick={() => setRemoveModal(null)}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }}
+          />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'var(--color-white)',
+            borderRadius: 16, padding: 24, width: 300, maxWidth: '90vw',
+            zIndex: 70, boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
+          }}>
+            <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
+              Bereits verbunden
+            </h3>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 18, lineHeight: 1.5 }}>
+              {removeModal.nameA} und {removeModal.nameB} sind bereits verbunden. Verbindung entfernen?
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setRemoveModal(null)}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 10,
+                  border: '1px solid var(--color-warm-3)', background: 'none',
+                  fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                }}
+              >
+                Nein
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteConnection?.(removeModal.conn.id)
+                  setRemoveModal(null)
+                }}
+                style={{
+                  flex: 2, padding: '10px 0', borderRadius: 10,
+                  border: 'none', backgroundColor: '#C0392B',
+                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Ja, entfernen
               </button>
             </div>
           </div>
