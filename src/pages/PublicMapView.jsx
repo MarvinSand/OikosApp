@@ -258,6 +258,7 @@ export default function PublicMapView() {
           userName={ownerName}
           people={people}
           onPersonClick={setSelectedPerson}
+          readOnly
         />
       </div>
 

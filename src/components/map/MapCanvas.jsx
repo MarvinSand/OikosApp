@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, User } from 'lucide-react'
+import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import ColorPicker from '../common/ColorPicker'
 
 // Debounce helper
 function debounce(fn, delay) {
@@ -20,6 +21,9 @@ export default function MapCanvas({
   onPersonMoved,
   onCreateConnection,
   onOverlayPersonClick,
+  onConnectionColorChange,
+  readOnly = false,
+  connectionMode = false,
 }) {
   const navigate = useNavigate()
   const n = people.length
@@ -33,15 +37,21 @@ export default function MapCanvas({
 
   // Local positions state (initialized/updated from people prop)
   const [positions, setPositions] = useState({})
+  // Overlay person positions (local only, not persisted to DB)
+  const [overlayPositions, setOverlayPositions] = useState({})
   // Dragging state
   const [dragging, setDragging] = useState(null)
-  // Connection mode
-  const [connectionMode, setConnectionMode] = useState(false)
+  // Connection mode selection state
   const [firstSelected, setFirstSelected] = useState(null)
   // Label modal for new connection
   const [labelModal, setLabelModal] = useState(null) // { sourceId, targetId } or null
   const [labelInput, setLabelInput] = useState('')
-  // Inline add connection in sheet (not used here but connection mode handled here)
+  // Connection color picker: { conn, x, y } | null
+  const [connColorPicker, setConnColorPicker] = useState(null)
+  // Draft color while picker is open (not yet saved)
+  const [connPickerDraft, setConnPickerDraft] = useState('#C8BFB0')
+  // Local connection color overrides (confirmed saves)
+  const [connColors, setConnColors] = useState({})
 
   // Zoom + pan
   const [zoom, setZoom] = useState(1)
@@ -74,6 +84,15 @@ export default function MapCanvas({
     })
   }, [people, cx, cy, ringRadius])
 
+  // Reset selection when connection mode turns off
+  useEffect(() => {
+    if (!connectionMode) {
+      setFirstSelected(null)
+      setLabelModal(null)
+      setLabelInput('')
+    }
+  }, [connectionMode])
+
   // Setup debounced save
   useEffect(() => {
     debouncedMoveRef.current = debounce((personId, x, y) => {
@@ -92,6 +111,61 @@ export default function MapCanvas({
   function getPos(person, index) {
     if (positions[person.id]) return positions[person.id]
     return getDefaultPos(index, people.length, cx, cy, ringRadius)
+  }
+
+  // Overlay helpers
+  function overlayKey(parentId, personId) {
+    return `${parentId}__${personId}`
+  }
+
+  function getDefaultOverlayPos(parentPos, idx, total) {
+    // Ensure nodes don't overlap: minimum circumference = total * (2*overlayR + 8)
+    const overlayR = 20
+    const minR = (total * (overlayR * 2 + 8)) / (2 * Math.PI)
+    const r = Math.max(80, minR)
+    const angle = (idx / Math.max(total, 1)) * 2 * Math.PI - Math.PI / 2
+    return {
+      x: parentPos.x + r * Math.cos(angle),
+      y: parentPos.y + r * Math.sin(angle),
+    }
+  }
+
+  function getOverlayPos(parentId, personId, parentPos, idx, total) {
+    const key = overlayKey(parentId, personId)
+    return overlayPositions[key] || getDefaultOverlayPos(parentPos, idx, total)
+  }
+
+  // Resolves any person ID to { person, pos } — works for both main and overlay persons
+  function resolvePersonPos(personId) {
+    const mainIdx = people.findIndex(p => p.id === personId)
+    if (mainIdx !== -1) {
+      return { person: people[mainIdx], pos: getPos(people[mainIdx], mainIdx) }
+    }
+    for (const od of overlayData) {
+      const parentPerson = people.find(p => p.id === od.parentPersonId)
+      if (!parentPerson) continue
+      const parentIdx = people.indexOf(parentPerson)
+      const parentPos = getPos(parentPerson, parentIdx)
+      const visible = od.persons.filter(op =>
+        (op.is_christian && od.showChristian) || (!op.is_christian && od.showNonChristian)
+      )
+      const opIdx = visible.findIndex(op => op.id === personId)
+      if (opIdx !== -1) {
+        return {
+          person: visible[opIdx],
+          pos: getOverlayPos(od.parentPersonId, personId, parentPos, opIdx, visible.length),
+        }
+      }
+    }
+    return null
+  }
+
+  function findOverlayPerson(personId) {
+    for (const od of overlayData) {
+      const found = od.persons.find(p => p.id === personId)
+      if (found) return found
+    }
+    return null
   }
 
   function shortName(name) {
@@ -157,6 +231,8 @@ export default function MapCanvas({
     const svgPos = clientToSVG(e.clientX, e.clientY)
     setDragging({
       id: person.id,
+      overlayKey: null,
+      overlayPersonObj: null,
       startSVGX: svgPos.x,
       startSVGY: svgPos.y,
       startPersonX: pos.x,
@@ -174,6 +250,44 @@ export default function MapCanvas({
     const svgPos = clientToSVG(touch.clientX, touch.clientY)
     setDragging({
       id: person.id,
+      overlayKey: null,
+      overlayPersonObj: null,
+      startSVGX: svgPos.x,
+      startSVGY: svgPos.y,
+      startPersonX: pos.x,
+      startPersonY: pos.y,
+      startTime: Date.now(),
+      moved: false,
+    })
+  }
+
+  function handleOverlayMouseDown(e, op, parentPersonId, pos) {
+    if (connectionMode) return
+    e.stopPropagation()
+    e.preventDefault()
+    const svgPos = clientToSVG(e.clientX, e.clientY)
+    setDragging({
+      id: op.id,
+      overlayKey: overlayKey(parentPersonId, op.id),
+      overlayPersonObj: op,
+      startSVGX: svgPos.x,
+      startSVGY: svgPos.y,
+      startPersonX: pos.x,
+      startPersonY: pos.y,
+      startTime: Date.now(),
+      moved: false,
+    })
+  }
+
+  function handleOverlayTouchStart(e, op, parentPersonId, pos) {
+    if (connectionMode) return
+    e.stopPropagation()
+    const touch = e.touches[0]
+    const svgPos = clientToSVG(touch.clientX, touch.clientY)
+    setDragging({
+      id: op.id,
+      overlayKey: overlayKey(parentPersonId, op.id),
+      overlayPersonObj: op,
       startSVGX: svgPos.x,
       startSVGY: svgPos.y,
       startPersonX: pos.x,
@@ -190,10 +304,12 @@ export default function MapCanvas({
       const dy = svgPos.y - dragging.startSVGY
       const dist = Math.sqrt(dx * dx + dy * dy)
       setDragging(prev => ({ ...prev, moved: dist > 5 }))
-      setPositions(prev => ({ ...prev, [dragging.id]: {
-        x: dragging.startPersonX + dx,
-        y: dragging.startPersonY + dy,
-      }}))
+      const newPos = { x: dragging.startPersonX + dx, y: dragging.startPersonY + dy }
+      if (dragging.overlayKey) {
+        setOverlayPositions(prev => ({ ...prev, [dragging.overlayKey]: newPos }))
+      } else {
+        setPositions(prev => ({ ...prev, [dragging.id]: newPos }))
+      }
     } else if (panning) {
       const rect = svgRef.current?.getBoundingClientRect()
       if (!rect) return
@@ -252,10 +368,12 @@ export default function MapCanvas({
     const dy = svgPos.y - dragging.startSVGY
     const dist = Math.sqrt(dx * dx + dy * dy)
     setDragging(prev => ({ ...prev, moved: dist > 5 }))
-    setPositions(prev => ({ ...prev, [dragging.id]: {
-      x: dragging.startPersonX + dx,
-      y: dragging.startPersonY + dy,
-    }}))
+    const newPos = { x: dragging.startPersonX + dx, y: dragging.startPersonY + dy }
+    if (dragging.overlayKey) {
+      setOverlayPositions(prev => ({ ...prev, [dragging.overlayKey]: newPos }))
+    } else {
+      setPositions(prev => ({ ...prev, [dragging.id]: newPos }))
+    }
   }
 
   function handleMouseUp() {
@@ -263,9 +381,17 @@ export default function MapCanvas({
       const elapsed = Date.now() - dragging.startTime
       const wasClick = !dragging.moved && elapsed < 200
       if (wasClick) {
-        const person = people.find(p => p.id === dragging.id)
-        if (person) onPersonClick?.(person)
-      } else {
+        if (dragging.overlayKey) {
+          const op = dragging.overlayPersonObj || findOverlayPerson(dragging.id)
+          if (op) {
+            if (connectionMode) handlePersonTap({ id: dragging.id })
+            else onOverlayPersonClick?.(op)
+          }
+        } else {
+          const person = people.find(p => p.id === dragging.id)
+          if (person) onPersonClick?.(person)
+        }
+      } else if (!dragging.overlayKey) {
         const pos = positions[dragging.id]
         if (pos) debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
       }
@@ -280,9 +406,17 @@ export default function MapCanvas({
     const elapsed = Date.now() - dragging.startTime
     const wasClick = !dragging.moved && elapsed < 200
     if (wasClick) {
-      const person = people.find(p => p.id === dragging.id)
-      if (person) handlePersonTap(person)
-    } else {
+      if (dragging.overlayKey) {
+        const op = dragging.overlayPersonObj || findOverlayPerson(dragging.id)
+        if (op) {
+          if (connectionMode) handlePersonTap({ id: dragging.id })
+          else onOverlayPersonClick?.(op)
+        }
+      } else {
+        const person = people.find(p => p.id === dragging.id)
+        if (person) handlePersonTap(person)
+      }
+    } else if (!dragging.overlayKey) {
       const pos = positions[dragging.id]
       if (pos) debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
     }
@@ -346,11 +480,6 @@ export default function MapCanvas({
     setLabelInput('')
   }
 
-  function toggleConnectionMode() {
-    setConnectionMode(prev => !prev)
-    setFirstSelected(null)
-  }
-
   return (
     <div
       style={{ position: 'relative', width: '100%', height: '100%', touchAction: 'none' }}
@@ -381,40 +510,22 @@ export default function MapCanvas({
         ))}
       </div>
 
-      {/* Toolbar */}
-      <div style={{
-        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-        pointerEvents: 'none',
-      }}>
-        <button
-          onClick={toggleConnectionMode}
-          style={{
-            pointerEvents: 'all',
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 14px', borderRadius: 20,
-            border: connectionMode ? 'none' : '1.5px solid var(--color-warm-3)',
-            backgroundColor: connectionMode ? 'var(--color-warm-1)' : 'var(--color-white)',
-            color: connectionMode ? 'white' : 'var(--color-text-muted)',
-            fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(58,46,36,0.10)',
-          }}
-        >
-          <Link size={14} />
-          Verbindungsmodus
-        </button>
-        {connectionMode && (
+      {/* Connection mode hint */}
+      {connectionMode && (
+        <div style={{
+          position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 10, pointerEvents: 'none',
+        }}>
           <span style={{
             fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)',
-            fontStyle: 'italic', backgroundColor: 'rgba(255,253,248,0.9)',
-            padding: '3px 10px', borderRadius: 12,
-            pointerEvents: 'none',
+            fontStyle: 'italic', backgroundColor: 'rgba(255,253,248,0.92)',
+            padding: '4px 12px', borderRadius: 12,
+            boxShadow: '0 1px 6px rgba(58,46,36,0.10)',
           }}>
             {firstSelected ? 'Wähle eine zweite Person' : 'Tippe zwei Personen an um sie zu verbinden'}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* SVG Map */}
       <svg
@@ -432,14 +543,13 @@ export default function MapCanvas({
           onMouseDown={e => { e.stopPropagation(); handleBackgroundMouseDown(e) }}
         />
 
-        {/* Gestrichelter Ring um Zentrum */}
+        {/* Ring um Zentrum */}
         <circle
           cx={cx} cy={cy}
           r={userR + 20}
           fill="none"
           stroke="var(--color-warm-3)"
           strokeWidth={1.2}
-          strokeDasharray="5 5"
         />
 
         {/* Center-to-person Verbindungslinien */}
@@ -469,19 +579,25 @@ export default function MapCanvas({
           )
 
           return visible.map((op, idx) => {
-            const angle = (idx / Math.max(visible.length, 1)) * 2 * Math.PI - Math.PI / 2
-            const r = 68
-            const ox = parentPos.x + r * Math.cos(angle)
-            const oy = parentPos.y + r * Math.sin(angle)
+            const pos = getOverlayPos(od.parentPersonId, op.id, parentPos, idx, visible.length)
+            const ox = pos.x
+            const oy = pos.y
             const overlayR = 20
-            const fillColor = op.is_christian ? 'var(--color-warm-4)' : 'var(--color-warm-4)'
             const strokeColor = op.is_christian ? 'var(--color-warm-1)' : 'var(--color-accent)'
+            const isDraggingThis = dragging?.overlayKey === overlayKey(od.parentPersonId, op.id) && dragging?.moved
+            const isSelected = firstSelected === op.id
 
             return (
               <g
                 key={`overlay_${od.parentPersonId}_${op.id}`}
-                style={{ cursor: 'pointer' }}
-                onClick={e => { e.stopPropagation(); onOverlayPersonClick?.(op) }}
+                style={{ cursor: isDraggingThis ? 'grabbing' : (connectionMode ? 'pointer' : 'grab') }}
+                onMouseDown={e => handleOverlayMouseDown(e, op, od.parentPersonId, pos)}
+                onTouchStart={e => handleOverlayTouchStart(e, op, od.parentPersonId, pos)}
+                onClick={e => {
+                  e.stopPropagation()
+                  if (connectionMode) handlePersonTap({ id: op.id })
+                  else onOverlayPersonClick?.(op)
+                }}
               >
                 {/* Line from parent to overlay person */}
                 <line
@@ -489,18 +605,21 @@ export default function MapCanvas({
                   x2={ox} y2={oy}
                   stroke="var(--color-accent)"
                   strokeWidth={1}
-                  strokeDasharray="4,3"
-                  opacity={0.5}
+                  opacity={0.6}
                   style={{ pointerEvents: 'none' }}
                 />
+                {/* Drop shadow when dragging */}
+                {isDraggingThis && (
+                  <circle cx={ox} cy={oy} r={overlayR * 1.4} fill="rgba(58,46,36,0.10)" />
+                )}
                 {/* Overlay person circle */}
                 <circle
-                  cx={ox} cy={oy} r={overlayR}
-                  fill={fillColor}
-                  stroke={strokeColor}
-                  strokeWidth={1.5}
-                  strokeDasharray="3,2"
+                  cx={ox} cy={oy} r={isDraggingThis ? overlayR * 1.1 : overlayR}
+                  fill="var(--color-warm-4)"
+                  stroke={isSelected ? 'var(--color-gold)' : strokeColor}
+                  strokeWidth={isSelected ? 3 : 1.5}
                   opacity={0.9}
+                  style={{ filter: isDraggingThis ? 'drop-shadow(0 4px 8px rgba(58,46,36,0.20))' : 'none' }}
                 />
                 {/* Name */}
                 <text
@@ -521,33 +640,54 @@ export default function MapCanvas({
 
         {/* Inter-person connections */}
         {connections.map(conn => {
-          const srcPerson = people.find(p => p.id === conn.source_person_id)
-          const tgtPerson = people.find(p => p.id === conn.target_person_id)
-          if (!srcPerson || !tgtPerson) return null
-          const srcIdx = people.indexOf(srcPerson)
-          const tgtIdx = people.indexOf(tgtPerson)
-          const srcPos = getPos(srcPerson, srcIdx)
-          const tgtPos = getPos(tgtPerson, tgtIdx)
+          const src = resolvePersonPos(conn.source_person_id)
+          const tgt = resolvePersonPos(conn.target_person_id)
+          if (!src || !tgt) return null
+          const srcPos = src.pos
+          const tgtPos = tgt.pos
           const midX = (srcPos.x + tgtPos.x) / 2
           const midY = (srcPos.y + tgtPos.y) / 2
+          const connColor = connColors[conn.id] || conn.color || '#C8BFB0'
+          const isPickerOpen = connColorPicker?.conn?.id === conn.id
           return (
             <g key={conn.id}>
+              {/* Wide invisible hit area for easy clicking */}
+              {!readOnly && (
+                <line
+                  x1={srcPos.x} y1={srcPos.y}
+                  x2={tgtPos.x} y2={tgtPos.y}
+                  stroke="transparent"
+                  strokeWidth={16}
+                  style={{ cursor: 'pointer' }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    if (isPickerOpen) {
+                      setConnColorPicker(null)
+                    } else {
+                      const initColor = connColors[conn.id] || conn.color || '#C8BFB0'
+                      setConnPickerDraft(initColor)
+                      setConnColorPicker({ conn, x: e.clientX, y: e.clientY })
+                    }
+                  }}
+                />
+              )}
               <line
                 x1={srcPos.x} y1={srcPos.y}
                 x2={tgtPos.x} y2={tgtPos.y}
-                stroke="var(--color-warm-3)"
-                strokeWidth={1.5}
-                strokeDasharray="5,4"
+                stroke={connColor}
+                strokeWidth={isPickerOpen ? 2.5 : 1.5}
+                style={{ pointerEvents: 'none' }}
               />
               {conn.label && (
                 <text
                   x={midX} y={midY}
                   textAnchor="middle"
                   dy="-4"
-                  fill="var(--color-text-muted)"
+                  fill={connColor}
                   fontSize={9}
                   fontFamily="Lora, Georgia, serif"
                   fontStyle="italic"
+                  style={{ pointerEvents: 'none' }}
                 >
                   {conn.label}
                 </text>
@@ -601,10 +741,9 @@ export default function MapCanvas({
               <circle
                 cx={pos.x} cy={pos.y}
                 r={isDraggingThis ? personR * 1.1 : personR}
-                fill="var(--color-warm-4)"
-                stroke={isFirstSelected ? 'var(--color-gold)' : 'var(--color-warm-3)'}
+                fill={p.circle_color || '#E8E4DC'}
+                stroke={isFirstSelected ? 'var(--color-gold)' : (p.circle_color ? p.circle_color : 'var(--color-warm-3)')}
                 strokeWidth={isFirstSelected ? 4 : 1.5}
-                strokeDasharray={isFirstSelected ? '6,3' : 'none'}
                 style={{
                   transition: 'r 0.15s ease',
                   filter: isDraggingThis ? 'drop-shadow(0 4px 8px rgba(58,46,36,0.20))' : 'none',
@@ -626,7 +765,7 @@ export default function MapCanvas({
                 x={pos.x} y={pos.y}
                 textAnchor="middle"
                 dy="0.35em"
-                fill="var(--color-text)"
+                fill={p.name_color || '#3A2E24'}
                 fontSize={10}
                 fontFamily="Lora, Georgia, serif"
               >
@@ -738,6 +877,68 @@ export default function MapCanvas({
           </div>
         </>
       )}
+
+      {/* Connection color picker */}
+      {connColorPicker && (() => {
+        const pickerW = 268
+        const vw = window.innerWidth
+        const vh = window.innerHeight
+        const left = Math.min(connColorPicker.x + 8, vw - pickerW - 12)
+        const top = Math.min(connColorPicker.y + 8, vh - 360)
+        return (
+          <>
+            <div
+              onClick={() => setConnColorPicker(null)}
+              style={{ position: 'fixed', inset: 0, zIndex: 50 }}
+            />
+            <div
+              onMouseDown={e => e.stopPropagation()}
+              style={{
+                position: 'fixed', left, top: Math.max(8, top),
+                width: pickerW, zIndex: 51,
+                backgroundColor: 'var(--color-white)',
+                borderRadius: 16,
+                boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
+                border: '1px solid var(--color-warm-3)',
+                padding: 16,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
+                  Verbindungsfarbe
+                </span>
+                <button onClick={() => setConnColorPicker(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', padding: 2, color: 'var(--color-text-muted)' }}>
+                  <X size={15} />
+                </button>
+              </div>
+              <ColorPicker
+                value={connPickerDraft}
+                onChange={hex => {
+                  setConnPickerDraft(hex)
+                  // Live preview on line
+                  setConnColors(prev => ({ ...prev, [connColorPicker.conn.id]: hex }))
+                }}
+              />
+              <button
+                onMouseDown={e => e.stopPropagation()}
+                onClick={() => {
+                  onConnectionColorChange?.(connColorPicker.conn.id, connPickerDraft)
+                  setConnColorPicker(null)
+                }}
+                style={{
+                  marginTop: 14, width: '100%',
+                  padding: '10px 0', borderRadius: 10,
+                  border: 'none', backgroundColor: 'var(--color-warm-1)',
+                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Speichern
+              </button>
+            </div>
+          </>
+        )
+      })()}
     </div>
   )
 }

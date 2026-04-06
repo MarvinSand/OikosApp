@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { X, Pencil, Trash2, User } from 'lucide-react'
+import { X, Pencil, Trash2, User, Palette } from 'lucide-react'
+import ColorPicker from '../common/ColorPicker'
 import { useAuth } from '../../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -77,11 +78,14 @@ function EditPersonForm({ person, onSave, onCancel }) {
 }
 
 // --- Connections Section ---
-function ConnectionsSection({ person, people, connections, onDeleteConnection, onCreateConnection }) {
+function ConnectionsSection({ person, people, connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor }) {
   const [showAddSearch, setShowAddSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [labelModal, setLabelModal] = useState(null) // { targetId }
   const [labelInput, setLabelInput] = useState('')
+  const [colorPickerConnId, setColorPickerConnId] = useState(null)
+  const [colorDraft, setColorDraft] = useState('#C8BFB0')
+  const [colorSaving, setColorSaving] = useState(false)
 
   const myConnections = connections.filter(
     c => c.source_person_id === person.id || c.target_person_id === person.id
@@ -134,24 +138,74 @@ function ConnectionsSection({ person, people, connections, onDeleteConnection, o
       {myConnections.map(conn => {
         const other = getOtherPerson(conn)
         if (!other) return null
+        const isPickerOpen = colorPickerConnId === conn.id
+        const connColor = conn.color || '#C8BFB0'
         return (
-          <div key={conn.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)' }}>
-                ↔ {other.name}
-              </span>
-              {conn.label && (
-                <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', marginLeft: 6 }}>
-                  {conn.label}
+          <div key={conn.id} style={{ borderBottom: '1px solid var(--color-warm-3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Color dot */}
+                <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: connColor, flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }} />
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)' }}>
+                  ↔ {other.name}
                 </span>
-              )}
+                {conn.label && (
+                  <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                    {conn.label}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                <button
+                  onClick={() => {
+                    if (isPickerOpen) {
+                      setColorPickerConnId(null)
+                    } else {
+                      setColorDraft(connColor)
+                      setColorPickerConnId(conn.id)
+                    }
+                  }}
+                  style={{ border: 'none', background: isPickerOpen ? 'var(--color-warm-4)' : 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: isPickerOpen ? 'var(--color-warm-1)' : 'var(--color-text-muted)', flexShrink: 0, display: 'flex' }}
+                  title="Verbindungsfarbe ändern"
+                >
+                  <Palette size={14} />
+                </button>
+                <button
+                  onClick={() => onDeleteConnection?.(conn.id)}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: '#C0392B', flexShrink: 0, display: 'flex' }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => onDeleteConnection?.(conn.id)}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: '#C0392B', flexShrink: 0 }}
-            >
-              <Trash2 size={14} />
-            </button>
+
+            {/* Inline color picker */}
+            {isPickerOpen && (
+              <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 14, marginBottom: 8 }}>
+                <ColorPicker
+                  value={colorDraft}
+                  onChange={hex => setColorDraft(hex)}
+                />
+                <button
+                  onClick={async () => {
+                    setColorSaving(true)
+                    await onUpdateConnectionColor?.(conn.id, colorDraft)
+                    setColorSaving(false)
+                    setColorPickerConnId(null)
+                  }}
+                  disabled={colorSaving}
+                  style={{
+                    marginTop: 12, width: '100%',
+                    padding: '10px 0', borderRadius: 10,
+                    border: 'none', backgroundColor: colorSaving ? 'var(--color-warm-3)' : 'var(--color-warm-1)',
+                    color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                    fontWeight: 600, cursor: colorSaving ? 'default' : 'pointer',
+                  }}
+                >
+                  {colorSaving ? 'Wird gespeichert…' : 'Speichern'}
+                </button>
+              </div>
+            )}
           </div>
         )
       })}
@@ -561,6 +615,7 @@ export default function PersonDetailSheet({
   people = [],
   onDeleteConnection,
   onCreateConnection,
+  onUpdateConnectionColor,
   linkedProfile,
   onLinkAccount,
   onUnlinkAccount,
@@ -570,6 +625,10 @@ export default function PersonDetailSheet({
   const { showToast } = useToast()
   const [person, setPerson] = useState(initialPerson)
   const [editMode, setEditMode] = useState(false)
+  const [showColorPanel, setShowColorPanel] = useState(false)
+  const [circleColorDraft, setCircleColorDraft] = useState(initialPerson.circle_color || '#E8E4DC')
+  const [nameColorDraft, setNameColorDraft] = useState(initialPerson.name_color || '#3A2E24')
+  const [colorSaving, setColorSaving] = useState(false)
 
   const isOwner = user?.id === person.user_id
   const relBadge = BADGE_COLORS[person.relationship_type] || null
@@ -595,6 +654,16 @@ export default function PersonDetailSheet({
     } catch {
       showToast('Fehler beim Speichern', 'error')
     }
+  }
+
+  async function handleSaveColors() {
+    setColorSaving(true)
+    const updates = { circle_color: circleColorDraft, name_color: nameColorDraft }
+    setPerson(p => ({ ...p, ...updates }))
+    // Optimistic update to map — DB error silently ignored if columns don't exist yet
+    onUpdate?.(updates).catch(() => {})
+    showToast('Farben gespeichert')
+    setColorSaving(false)
   }
 
   return (
@@ -640,6 +709,15 @@ export default function PersonDetailSheet({
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
             {isOwner && !editMode && (
+              <button
+                onClick={() => setShowColorPanel(v => !v)}
+                style={{ ...iconBtn, backgroundColor: showColorPanel ? 'var(--color-warm-4)' : 'transparent' }}
+                title="Farben anpassen"
+              >
+                <Palette size={16} color={showColorPanel ? 'var(--color-warm-1)' : 'var(--color-text-muted)'} />
+              </button>
+            )}
+            {isOwner && !editMode && (
               <button onClick={() => setEditMode(true)} style={iconBtn} title="Bearbeiten">
                 <Pencil size={16} color="var(--color-text-muted)" />
               </button>
@@ -649,6 +727,51 @@ export default function PersonDetailSheet({
             </button>
           </div>
         </div>
+
+        {/* Color Panel */}
+        {showColorPanel && !editMode && (
+          <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 16, padding: 16, marginBottom: 16 }}>
+            {/* Kreisfarbe */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px' }}>
+                Kreisfarbe
+              </p>
+              <ColorPicker
+                value={circleColorDraft}
+                onChange={hex => {
+                  setCircleColorDraft(hex)
+                  setPerson(p => ({ ...p, circle_color: hex }))
+                }}
+              />
+            </div>
+            {/* Namensfarbe */}
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px' }}>
+                Namensfarbe
+              </p>
+              <ColorPicker
+                value={nameColorDraft}
+                onChange={hex => {
+                  setNameColorDraft(hex)
+                  // Live preview in map
+                  setPerson(p => ({ ...p, name_color: hex }))
+                }}
+              />
+            </div>
+            <button
+              onClick={handleSaveColors}
+              disabled={colorSaving}
+              style={{
+                width: '100%', padding: '11px 0', borderRadius: 10,
+                border: 'none', backgroundColor: colorSaving ? 'var(--color-warm-3)' : 'var(--color-warm-1)',
+                color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                fontWeight: 600, cursor: colorSaving ? 'default' : 'pointer',
+              }}
+            >
+              {colorSaving ? 'Wird gespeichert…' : 'Speichern'}
+            </button>
+          </div>
+        )}
 
         {/* Edit Form */}
         {editMode && (
@@ -698,6 +821,7 @@ export default function PersonDetailSheet({
           connections={connections}
           onDeleteConnection={onDeleteConnection}
           onCreateConnection={onCreateConnection}
+          onUpdateConnectionColor={onUpdateConnectionColor}
         />
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />

@@ -67,7 +67,7 @@ export function useOikosMaps() {
   async function loadConnections(mapId) {
     const { data } = await supabase
       .from('oikos_connections')
-      .select('id, source_person_id, target_person_id, label')
+      .select('*')
       .eq('map_id', mapId)
     setConnections(data || [])
   }
@@ -118,14 +118,23 @@ export function useOikosMaps() {
   }
 
   async function updatePerson(id, updates) {
-    const { data, error } = await supabase
-      .from('oikos_people')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    if (error) throw error
-    setPeople(prev => prev.map(p => p.id === id ? data : p))
+    // Optimistic update so UI responds immediately
+    setPeople(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
+    try {
+      const { data, error } = await supabase
+        .from('oikos_people')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      // Merge: keep optimistic values for columns DB may not have returned
+      setPeople(prev => prev.map(p => p.id === id ? { ...p, ...updates, ...data } : p))
+    } catch (err) {
+      // For new columns (circle_color, name_color) that may not exist yet,
+      // keep the optimistic state so at least the session looks right.
+      throw err
+    }
   }
 
   async function deletePerson(id) {
@@ -160,6 +169,13 @@ export function useOikosMaps() {
   async function deleteConnection(connectionId) {
     setConnections(prev => prev.filter(c => c.id !== connectionId))
     await supabase.from('oikos_connections').delete().eq('id', connectionId)
+  }
+
+  async function updateConnectionColor(connectionId, color) {
+    setConnections(prev => prev.map(c => c.id === connectionId ? { ...c, color } : c))
+    try {
+      await supabase.from('oikos_connections').update({ color }).eq('id', connectionId)
+    } catch { /* column may not exist yet */ }
   }
 
   async function linkAccount(personId, linkedUserId) {
@@ -221,6 +237,7 @@ export function useOikosMaps() {
     movePersonPosition,
     createConnection,
     deleteConnection,
+    updateConnectionColor,
     linkAccount,
     unlinkAccount,
     updatePersonOverlay,

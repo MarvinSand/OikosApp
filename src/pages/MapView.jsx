@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, ChevronDown, SlidersHorizontal, Layers, X } from 'lucide-react'
+import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { supabase } from '../lib/supabase'
@@ -169,7 +169,7 @@ export default function MapView() {
     maps, setMaps, activeMapId, setActiveMapId, activeMap,
     people, connections, overlayData, loading,
     createMap, updateMap, deleteMap, addPerson, updatePerson, deletePerson,
-    movePersonPosition, createConnection, deleteConnection,
+    movePersonPosition, createConnection, deleteConnection, updateConnectionColor,
     linkAccount, unlinkAccount, updatePersonOverlay, reloadMap,
   } = useOikosMaps()
 
@@ -178,6 +178,7 @@ export default function MapView() {
   const [showAddPerson, setShowAddPerson] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showGenerationen, setShowGenerationen] = useState(false)
+  const [connectionMode, setConnectionMode] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
   // linkedProfile cache: { [userId]: profile }
@@ -318,6 +319,13 @@ export default function MapView() {
         {activeMap && (
           <div className="flex gap-2 items-center">
             <button
+              onClick={() => setConnectionMode(v => !v)}
+              title="Verbindungsmodus"
+              className={`p-1.5 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+            >
+              <Link size={20} />
+            </button>
+            <button
               onClick={() => setShowGenerationen(v => !v)}
               title="Generationen-Ansicht"
               className={`p-1.5 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
@@ -418,6 +426,8 @@ export default function MapView() {
               onPersonMoved={(personId, x, y) => movePersonPosition(personId, x, y)}
               onCreateConnection={(sourceId, targetId, label) => createConnection(sourceId, targetId, label)}
               onOverlayPersonClick={setSelectedOverlayPerson}
+              connectionMode={connectionMode}
+              onConnectionColorChange={updateConnectionColor}
             />
             {showGenerationen && (
               <GenerationenPanel
@@ -456,6 +466,7 @@ export default function MapView() {
           people={people}
           onDeleteConnection={deleteConnection}
           onCreateConnection={createConnection}
+          onUpdateConnectionColor={updateConnectionColor}
           linkedProfile={selectedLinkedProfile}
           onLinkAccount={(personId, profileId) => {
             linkAccount(personId, profileId)
