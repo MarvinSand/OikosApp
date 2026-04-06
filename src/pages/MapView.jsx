@@ -464,6 +464,7 @@ export default function MapView() {
           onDelete={() => { deletePerson(selectedPerson.id); setSelectedPerson(null) }}
           connections={connections}
           people={people}
+          overlayData={overlayData}
           onDeleteConnection={deleteConnection}
           onCreateConnection={createConnection}
           onUpdateConnectionColor={updateConnectionColor}

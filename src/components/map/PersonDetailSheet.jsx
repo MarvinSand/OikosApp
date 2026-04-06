@@ -78,7 +78,7 @@ function EditPersonForm({ person, onSave, onCancel }) {
 }
 
 // --- Connections Section ---
-function ConnectionsSection({ person, people, connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor }) {
+function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor }) {
   const [showAddSearch, setShowAddSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [labelModal, setLabelModal] = useState(null) // { targetId }
@@ -102,7 +102,13 @@ function ConnectionsSection({ person, people, connections, onDeleteConnection, o
 
   function getOtherPerson(conn) {
     const otherId = conn.source_person_id === person.id ? conn.target_person_id : conn.source_person_id
-    return people.find(p => p.id === otherId)
+    const main = people.find(p => p.id === otherId)
+    if (main) return main
+    for (const od of overlayData) {
+      const found = od.persons.find(op => op.id === otherId)
+      if (found) return found
+    }
+    return undefined
   }
 
   function handleAddPerson(targetPerson) {
@@ -613,6 +619,7 @@ export default function PersonDetailSheet({
   onUpdate,
   connections = [],
   people = [],
+  overlayData = [],
   onDeleteConnection,
   onCreateConnection,
   onUpdateConnectionColor,
@@ -818,6 +825,7 @@ export default function PersonDetailSheet({
         <ConnectionsSection
           person={person}
           people={people}
+          overlayData={overlayData}
           connections={connections}
           onDeleteConnection={onDeleteConnection}
           onCreateConnection={onCreateConnection}

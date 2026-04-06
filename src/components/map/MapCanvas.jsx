@@ -84,12 +84,18 @@ export default function MapCanvas({
     })
   }, [people, cx, cy, ringRadius])
 
-  // Reset selection when connection mode turns off
+  // Reset selection when connection mode turns off; show banner when it turns on
+  const [showActiveBanner, setShowActiveBanner] = useState(false)
   useEffect(() => {
     if (!connectionMode) {
       setFirstSelected(null)
       setLabelModal(null)
       setLabelInput('')
+      setShowActiveBanner(false)
+    } else {
+      setShowActiveBanner(true)
+      const t = setTimeout(() => setShowActiveBanner(false), 2200)
+      return () => clearTimeout(t)
     }
   }, [connectionMode])
 
@@ -510,12 +516,26 @@ export default function MapCanvas({
         ))}
       </div>
 
-      {/* Connection mode hint */}
+      {/* Connection mode banner + hint */}
       {connectionMode && (
         <div style={{
           position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
           zIndex: 10, pointerEvents: 'none',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
         }}>
+          {/* "Aktiv" banner — fades out after 2s */}
+          <span style={{
+            fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700,
+            color: 'white',
+            backgroundColor: 'var(--color-warm-1)',
+            padding: '6px 16px', borderRadius: 20,
+            boxShadow: '0 2px 10px rgba(58,46,36,0.20)',
+            opacity: showActiveBanner ? 1 : 0,
+            transition: 'opacity 0.5s ease',
+          }}>
+            Verbindungsmodus ist Aktiv
+          </span>
+          {/* Ongoing hint */}
           <span style={{
             fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)',
             fontStyle: 'italic', backgroundColor: 'rgba(255,253,248,0.92)',
