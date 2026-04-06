@@ -455,6 +455,10 @@ export default function MapCanvas({
     setViewOrigin(clampOrigin(raw.x, raw.y, newZoom))
   }
 
+  function resolvePersonRadius(personId) {
+    return people.find(p => p.id === personId) ? personR : 20 // overlayR = 20
+  }
+
   function resolvePersonName(personId) {
     const main = people.find(p => p.id === personId)
     if (main) return main.name
@@ -688,8 +692,19 @@ export default function MapCanvas({
           if (!src || !tgt) return null
           const srcPos = src.pos
           const tgtPos = tgt.pos
-          const midX = (srcPos.x + tgtPos.x) / 2
-          const midY = (srcPos.y + tgtPos.y) / 2
+          const dx = tgtPos.x - srcPos.x
+          const dy = tgtPos.y - srcPos.y
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          const ux = dx / dist
+          const uy = dy / dist
+          const srcR = resolvePersonRadius(conn.source_person_id)
+          const tgtR = resolvePersonRadius(conn.target_person_id)
+          const x1 = srcPos.x + ux * srcR
+          const y1 = srcPos.y + uy * srcR
+          const x2 = tgtPos.x - ux * tgtR
+          const y2 = tgtPos.y - uy * tgtR
+          const midX = (x1 + x2) / 2
+          const midY = (y1 + y2) / 2
           const connColor = connColors[conn.id] || conn.color || '#C8BFB0'
           const isPickerOpen = connColorPicker?.conn?.id === conn.id
           return (
@@ -697,8 +712,8 @@ export default function MapCanvas({
               {/* Wide invisible hit area for easy clicking */}
               {!readOnly && (
                 <line
-                  x1={srcPos.x} y1={srcPos.y}
-                  x2={tgtPos.x} y2={tgtPos.y}
+                  x1={x1} y1={y1}
+                  x2={x2} y2={y2}
                   stroke="transparent"
                   strokeWidth={16}
                   style={{ cursor: 'pointer' }}
@@ -715,8 +730,8 @@ export default function MapCanvas({
                 />
               )}
               <line
-                x1={srcPos.x} y1={srcPos.y}
-                x2={tgtPos.x} y2={tgtPos.y}
+                x1={x1} y1={y1}
+                x2={x2} y2={y2}
                 stroke={connColor}
                 strokeWidth={isPickerOpen ? 2.5 : 1.5}
                 style={{ pointerEvents: 'none' }}
