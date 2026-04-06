@@ -151,39 +151,23 @@ function FriendsTab() {
 
   const showSearch = query.trim().length >= 2
 
-  // Load users from shared communities who are not yet connected
+  // Load all users who are not yet connected
   const [notConnected, setNotConnected] = useState([])
   useEffect(() => {
     if (!user || loading) return
     loadNotConnected()
-  }, [user?.id, loading, friends.length])
+  }, [user?.id, loading, friends.length, pendingSent.length])
 
   async function loadNotConnected() {
-    const { data: myComms } = await supabase
-      .from('community_members').select('community_id').eq('user_id', user.id)
-    if (!myComms?.length) return
-    const comIds = myComms.map(c => c.community_id)
-    const { data: members } = await supabase
-      .from('community_members')
-      .select('user_id, profiles(id, username, full_name, is_christian)')
-      .in('community_id', comIds)
-      .neq('user_id', user.id)
-    if (!members) return
+    const { data: allProfiles } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, is_christian')
+      .neq('id', user.id)
+    if (!allProfiles) return
     const connectedIds = new Set(friends.map(f =>
       f.requester_id === user.id ? f.addressee_id : f.requester_id
     ))
-    const pendingIds = new Set([...pendingSent, ...pendingReceived].map(f =>
-      f.requester_id === user.id ? f.addressee_id : f.requester_id
-    ))
-    const seen = new Set()
-    const unique = []
-    for (const m of members) {
-      if (!connectedIds.has(m.user_id) && !pendingIds.has(m.user_id) && !seen.has(m.user_id)) {
-        seen.add(m.user_id)
-        unique.push({ id: m.user_id, ...m.profiles })
-      }
-    }
-    setNotConnected(unique)
+    setNotConnected(allProfiles.filter(p => !connectedIds.has(p.id)))
   }
 
   return (
@@ -302,10 +286,10 @@ function FriendsTab() {
         })}
       </div>
 
-      {/* Not Connected – aus gemeinsamen Communities */}
+      {/* Noch nicht connected – alle Nutzer */}
       {notConnected.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <p style={sectionLabel}>Not Connected ({notConnected.length})</p>
+          <p style={sectionLabel}>Noch nicht connected ({notConnected.length})</p>
           {notConnected.map(u => (
             <div key={u.id} style={personRow}>
               <button onClick={() => navigate(`/user/${u.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
@@ -315,13 +299,19 @@ function FriendsTab() {
                   <p style={usernameText}>@{u.username}</p>
                 </div>
               </button>
-              <button
-                onClick={() => handleSend(u.id)}
-                disabled={sending === u.id}
-                style={connectBtn}
-              >
-                {sending === u.id ? '…' : 'Verbinden'}
-              </button>
+              {getFriendshipStatus(u.id) === 'sent' ? (
+                <span style={pendingBadge}>Anfrage gesendet</span>
+              ) : getFriendshipStatus(u.id) === 'received' ? (
+                <span style={pendingBadge}>Anfrage erhalten</span>
+              ) : (
+                <button
+                  onClick={() => handleSend(u.id)}
+                  disabled={sending === u.id}
+                  style={connectBtn}
+                >
+                  {sending === u.id ? '…' : 'Verbinden'}
+                </button>
+              )}
             </div>
           ))}
         </div>

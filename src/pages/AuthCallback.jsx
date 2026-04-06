@@ -8,30 +8,36 @@ export default function AuthCallback() {
   const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
 
   useEffect(() => {
-    // Supabase v2 automatically picks up the token from the URL hash/query.
-    // We just wait for the session to be established via onAuthStateChange.
+    // Für PKCE-Flow (Supabase v2 Standard) den Code aus der URL explizit gegen
+    // eine Session tauschen, bevor wir auf Auth-Events warten.
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    if (code) {
+      supabase.auth.exchangeCodeForSession(window.location.href).catch(() => {
+        // Fehler ignorieren – onAuthStateChange behandelt das Ergebnis
+      })
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
         setStatus('success')
-        // Give user a moment to see the success message, then go to app
-        setTimeout(() => navigate('/', { replace: true }), 2000)
-      } else if (event === 'USER_UPDATED' && session) {
-        setStatus('success')
-        setTimeout(() => navigate('/', { replace: true }), 2000)
+        // Kurz Erfolgsmeldung zeigen, dann zur Login-Seite –
+        // dort erkennt App.jsx die aktive Session und leitet automatisch weiter.
+        setTimeout(() => navigate('/auth', { replace: true }), 1500)
       }
     })
 
-    // Fallback: if no auth event fires within 4s, redirect to login
+    // Fallback: falls kein Auth-Event innerhalb von 5s eintrifft
     const fallback = setTimeout(() => {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
-          navigate('/', { replace: true })
+          navigate('/auth', { replace: true })
         } else {
           setStatus('error')
           setTimeout(() => navigate('/auth', { replace: true }), 3000)
         }
       })
-    }, 4000)
+    }, 5000)
 
     return () => {
       subscription.unsubscribe()
