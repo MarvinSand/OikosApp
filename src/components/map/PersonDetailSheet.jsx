@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { X, Pencil, Trash2, User, Palette } from 'lucide-react'
-import ColorPicker from '../common/ColorPicker'
+import { X, Pencil, Trash2, Palette } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -10,6 +9,54 @@ import ImpactMapSection from '../person/ImpactMapSection'
 import StoryLineSection from '../person/StoryLineSection'
 
 const RELATIONSHIP_TYPES = ['Freund/in', 'Kollege/in', 'Familie', 'Nachbar/in', 'Bekannte/r', 'Sonstige/r']
+
+const CIRCLE_COLORS = [
+  { label: 'Standard', hex: '#E8E4DC' },
+  { label: 'Grün', hex: '#66BB6A' },
+  { label: 'Rot', hex: '#EF5350' },
+  { label: 'Blau', hex: '#42A5F5' },
+  { label: 'Orange', hex: '#FFA726' },
+  { label: 'Gelb', hex: '#FFEE58' },
+  { label: 'Lila', hex: '#AB47BC' },
+  { label: 'Pink', hex: '#EC407A' },
+]
+
+const NAME_COLORS = [
+  { label: 'Schwarz', hex: '#1A1A1A' },
+  { label: 'Weiß', hex: '#FFFFFF' },
+]
+
+const CONN_COLORS = [
+  { label: 'Standard', hex: '#C8BFB0' },
+  { label: 'Grün', hex: '#66BB6A' },
+  { label: 'Rot', hex: '#EF5350' },
+  { label: 'Blau', hex: '#42A5F5' },
+  { label: 'Orange', hex: '#FFA726' },
+  { label: 'Gelb', hex: '#FFEE58' },
+  { label: 'Lila', hex: '#AB47BC' },
+  { label: 'Pink', hex: '#EC407A' },
+]
+
+function ColorSwatches({ colors, selected, onSelect }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      {colors.map(c => (
+        <button
+          key={c.hex}
+          title={c.label}
+          onClick={() => onSelect(c.hex)}
+          style={{
+            width: 32, height: 32, borderRadius: '50%', backgroundColor: c.hex,
+            border: selected === c.hex ? '3px solid var(--color-text)' : '2px solid rgba(0,0,0,0.12)',
+            cursor: 'pointer', padding: 0, flexShrink: 0,
+            boxShadow: selected === c.hex ? '0 0 0 2px white inset' : 'none',
+            transition: 'transform 0.1s',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
 
 const BADGE_COLORS = {
   'Freund/in':    { bg: '#E8F4E8', color: 'var(--color-warm-1)' },
@@ -78,7 +125,7 @@ function EditPersonForm({ person, onSave, onCancel }) {
 }
 
 // --- Connections Section ---
-function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor }) {
+function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor, onAddConnectedPerson }) {
   const [showAddSearch, setShowAddSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [labelModal, setLabelModal] = useState(null) // { targetId }
@@ -86,6 +133,9 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
   const [colorPickerConnId, setColorPickerConnId] = useState(null)
   const [colorDraft, setColorDraft] = useState('#C8BFB0')
   const [colorSaving, setColorSaving] = useState(false)
+  const [showNewPersonForm, setShowNewPersonForm] = useState(false)
+  const [newPersonName, setNewPersonName] = useState('')
+  const [addingNewPerson, setAddingNewPerson] = useState(false)
 
   const myConnections = connections.filter(
     c => c.source_person_id === person.id || c.target_person_id === person.id
@@ -116,6 +166,19 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
     setLabelInput('')
     setShowAddSearch(false)
     setSearchQuery('')
+  }
+
+  async function handleAddNewPerson() {
+    if (!newPersonName.trim() || addingNewPerson) return
+    setAddingNewPerson(true)
+    try {
+      await onAddConnectedPerson?.(newPersonName.trim(), person.id)
+      setShowNewPersonForm(false)
+      setNewPersonName('')
+    } catch {
+      // ignore
+    }
+    setAddingNewPerson(false)
   }
 
   async function handleCreateWithLabel(label) {
@@ -188,10 +251,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
             {/* Inline color picker */}
             {isPickerOpen && (
               <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 14, marginBottom: 8 }}>
-                <ColorPicker
-                  value={colorDraft}
-                  onChange={hex => setColorDraft(hex)}
-                />
+                <ColorSwatches colors={CONN_COLORS} selected={colorDraft} onSelect={hex => setColorDraft(hex)} />
                 <button
                   onClick={async () => {
                     setColorSaving(true)
@@ -216,14 +276,55 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
         )
       })}
 
-      {/* Add connection button */}
-      {!showAddSearch && (
-        <button
-          onClick={() => setShowAddSearch(true)}
-          style={{ marginTop: 10, padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600 }}
-        >
-          + Verbindung hinzufügen
-        </button>
+      {/* Add buttons */}
+      {!showAddSearch && !showNewPersonForm && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowAddSearch(true)}
+            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600 }}
+          >
+            + Verbindung
+          </button>
+          <button
+            onClick={() => { setShowNewPersonForm(true); setNewPersonName('') }}
+            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-1)', background: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 13, color: 'white', cursor: 'pointer', fontWeight: 600 }}
+          >
+            + Person hinzufügen
+          </button>
+        </div>
+      )}
+
+      {/* New person inline form */}
+      {showNewPersonForm && (
+        <div style={{ marginTop: 10, backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 12 }}>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+            Neue Person wird direkt mit <strong>{person.name}</strong> verbunden.
+          </p>
+          <input
+            type="text"
+            value={newPersonName}
+            onChange={e => setNewPersonName(e.target.value)}
+            placeholder="Name der Person…"
+            autoFocus
+            style={{ ...inp, marginBottom: 10 }}
+            onKeyDown={e => { if (e.key === 'Enter' && newPersonName.trim()) handleAddNewPerson() }}
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => { setShowNewPersonForm(false); setNewPersonName('') }}
+              style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleAddNewPerson}
+              disabled={!newPersonName.trim() || addingNewPerson}
+              style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: newPersonName.trim() && !addingNewPerson ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              {addingNewPerson ? 'Wird hinzugefügt…' : 'Hinzufügen'}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Inline search */}
@@ -531,7 +632,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>Wirklich aufheben?</span>
             <button
-              onClick={() => { onUnlinkAccount?.(person.id); setConfirmUnlink(false); setOverlayEnabled(false); setSelectedMapId(null) }}
+              onClick={() => { onUnlinkAccount?.(person.id); setConfirmUnlink(false); setOverlayEnabled(false); setSelectedMapIds([]) }}
               style={{ padding: '5px 10px', borderRadius: 8, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}
             >
               Ja
@@ -623,6 +724,7 @@ export default function PersonDetailSheet({
   onDeleteConnection,
   onCreateConnection,
   onUpdateConnectionColor,
+  onAddConnectedPerson,
   linkedProfile,
   onLinkAccount,
   onUnlinkAccount,
@@ -739,13 +841,14 @@ export default function PersonDetailSheet({
         {showColorPanel && !editMode && (
           <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 16, padding: 16, marginBottom: 16 }}>
             {/* Kreisfarbe */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 16 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px' }}>
                 Kreisfarbe
               </p>
-              <ColorPicker
-                value={circleColorDraft}
-                onChange={hex => {
+              <ColorSwatches
+                colors={CIRCLE_COLORS}
+                selected={circleColorDraft}
+                onSelect={hex => {
                   setCircleColorDraft(hex)
                   setPerson(p => ({ ...p, circle_color: hex }))
                 }}
@@ -756,11 +859,11 @@ export default function PersonDetailSheet({
               <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px' }}>
                 Namensfarbe
               </p>
-              <ColorPicker
-                value={nameColorDraft}
-                onChange={hex => {
+              <ColorSwatches
+                colors={NAME_COLORS}
+                selected={nameColorDraft}
+                onSelect={hex => {
                   setNameColorDraft(hex)
-                  // Live preview in map
                   setPerson(p => ({ ...p, name_color: hex }))
                 }}
               />
@@ -830,6 +933,7 @@ export default function PersonDetailSheet({
           onDeleteConnection={onDeleteConnection}
           onCreateConnection={onCreateConnection}
           onUpdateConnectionColor={onUpdateConnectionColor}
+          onAddConnectedPerson={onAddConnectedPerson}
         />
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />

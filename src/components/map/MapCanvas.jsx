@@ -1,7 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
 import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import ColorPicker from '../common/ColorPicker'
+
+const CONN_COLORS = [
+  { label: 'Standard', hex: '#C8BFB0' },
+  { label: 'Grün', hex: '#66BB6A' },
+  { label: 'Rot', hex: '#EF5350' },
+  { label: 'Blau', hex: '#42A5F5' },
+  { label: 'Orange', hex: '#FFA726' },
+  { label: 'Gelb', hex: '#FFEE58' },
+  { label: 'Lila', hex: '#AB47BC' },
+  { label: 'Pink', hex: '#EC407A' },
+]
 
 // Debounce helper
 function debounce(fn, delay) {
@@ -23,8 +33,11 @@ export default function MapCanvas({
   onOverlayPersonClick,
   onConnectionColorChange,
   onDeleteConnection,
+  onAddConnectedPerson,
+  onCenterLineColorChange,
   readOnly = false,
   connectionMode = false,
+  hiddenColors,
 }) {
   const navigate = useNavigate()
   const n = people.length
@@ -49,12 +62,20 @@ export default function MapCanvas({
   const [labelInput, setLabelInput] = useState('')
   // "Already connected" remove modal
   const [removeModal, setRemoveModal] = useState(null) // { conn } | null
+  // Add person from connection mode
+  const [addPersonModal, setAddPersonModal] = useState(null) // { connectedToId } | null
+  const [addPersonName, setAddPersonName] = useState('')
+  const [addingPersonBusy, setAddingPersonBusy] = useState(false)
   // Connection color picker: { conn, x, y } | null
   const [connColorPicker, setConnColorPicker] = useState(null)
   // Draft color while picker is open (not yet saved)
   const [connPickerDraft, setConnPickerDraft] = useState('#C8BFB0')
   // Local connection color overrides (confirmed saves)
   const [connColors, setConnColors] = useState({})
+  // Center-line color picker: { personId, x, y } | null
+  const [centerLinePicker, setCenterLinePicker] = useState(null)
+  const [centerLinePickerDraft, setCenterLinePickerDraft] = useState('#C8BFB0')
+  const [centerLineColors, setCenterLineColors] = useState({})
 
   // Zoom + pan
   const [zoom, setZoom] = useState(1)
@@ -69,9 +90,11 @@ export default function MapCanvas({
   useEffect(() => {
     setPositions(prev => {
       const next = { ...prev }
+
+      // First pass: 1st generation people (normal ring positions)
       people.forEach((p, i) => {
+        if (p.is_secondary) return
         if (!(p.id in next)) {
-          // Initialize from DB or compute default ring position
           if (p.pos_x != null && p.pos_y != null) {
             next[p.id] = { x: p.pos_x, y: p.pos_y }
           } else {
@@ -79,13 +102,42 @@ export default function MapCanvas({
           }
         }
       })
+
+      // Second pass: 2nd generation people — place in line behind their parent
+      people.forEach((p) => {
+        if (!p.is_secondary) return
+        if (p.id in next) return
+        // Respect manually dragged position
+        if (p.pos_x != null && p.pos_y != null) {
+          next[p.id] = { x: p.pos_x, y: p.pos_y }
+          return
+        }
+        // Find connected parent — skip if connection not yet loaded (re-runs when connections change)
+        const conn = connections.find(c =>
+          c.source_person_id === p.id || c.target_person_id === p.id
+        )
+        if (!conn) return
+        const parentId = conn.source_person_id === p.id ? conn.target_person_id : conn.source_person_id
+        const parentPos = next[parentId]
+        if (!parentPos) return
+        // Direction vector from center through parent
+        const dx = parentPos.x - cx
+        const dy = parentPos.y - cy
+        const len = Math.sqrt(dx * dx + dy * dy) || 1
+        // Place 110px directly behind the parent (same line as center → parent)
+        next[p.id] = {
+          x: parentPos.x + (dx / len) * 110,
+          y: parentPos.y + (dy / len) * 110,
+        }
+      })
+
       // Remove positions for deleted people
       Object.keys(next).forEach(id => {
         if (!people.find(p => p.id === id)) delete next[id]
       })
       return next
     })
-  }, [people, cx, cy, ringRadius])
+  }, [people, connections, cx, cy, ringRadius])
 
   // Reset selection when connection mode turns off; show banner when it turns on
   const [showActiveBanner, setShowActiveBanner] = useState(false)
@@ -95,6 +147,8 @@ export default function MapCanvas({
       setLabelModal(null)
       setLabelInput('')
       setShowActiveBanner(false)
+      setAddPersonModal(null)
+      setAddPersonName('')
     } else {
       setShowActiveBanner(true)
       const t = setTimeout(() => setShowActiveBanner(false), 2200)
@@ -199,10 +253,10 @@ export default function MapCanvas({
   function clampOrigin(ox, oy, z) {
     const viewW = vbSize / z
     const viewH = vbSize / z
-    const minX = -(vbSize * 0.3)
-    const minY = -(vbSize * 0.3)
-    const maxX = vbSize - viewW + vbSize * 0.3
-    const maxY = vbSize - viewH + vbSize * 0.3
+    const minX = -(vbSize * 3)
+    const minY = -(vbSize * 3)
+    const maxX = vbSize - viewW + vbSize * 3
+    const maxY = vbSize - viewH + vbSize * 3
     return {
       x: Math.max(minX, Math.min(maxX, ox)),
       y: Math.max(minY, Math.min(maxY, oy)),
@@ -212,7 +266,7 @@ export default function MapCanvas({
   function handleWheel(e) {
     e.preventDefault()
     const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
-    const newZoom = Math.min(5, Math.max(0.4, zoom * factor))
+    const newZoom = Math.min(10, Math.max(0.1, zoom * factor))
     const rect = svgRef.current.getBoundingClientRect()
     const viewW = vbSize / zoom
     const viewH = vbSize / zoom
@@ -346,7 +400,7 @@ export default function MapCanvas({
 
       if (pinchRef.current) {
         const { dist: prevDist, zoom: prevZoom, originX, originY } = pinchRef.current
-        const newZoom = Math.min(5, Math.max(0.4, prevZoom * (dist / prevDist)))
+        const newZoom = Math.min(10, Math.max(0.1, prevZoom * (dist / prevDist)))
         const rect = svgRef.current?.getBoundingClientRect()
         if (rect) {
           const prevViewW = vbSize / prevZoom
@@ -443,7 +497,7 @@ export default function MapCanvas({
   }
 
   function changeZoom(factor) {
-    const newZoom = Math.min(5, Math.max(0.4, zoom * factor))
+    const newZoom = Math.min(10, Math.max(0.1, zoom * factor))
     const newViewW = vbSize / newZoom
     const newViewH = vbSize / newZoom
     // Zoom toward center
@@ -513,6 +567,20 @@ export default function MapCanvas({
     setLabelInput('')
   }
 
+  async function handleAddPersonFromMode() {
+    if (!addPersonName.trim() || addingPersonBusy || !addPersonModal) return
+    setAddingPersonBusy(true)
+    try {
+      await onAddConnectedPerson?.(addPersonName.trim(), addPersonModal.connectedToId)
+      setAddPersonModal(null)
+      setAddPersonName('')
+      setFirstSelected(null)
+    } catch {
+      // ignore
+    }
+    setAddingPersonBusy(false)
+  }
+
   return (
     <div
       style={{ position: 'relative', width: '100%', height: '100%', touchAction: 'none' }}
@@ -547,7 +615,7 @@ export default function MapCanvas({
       {connectionMode && (
         <div style={{
           position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 10, pointerEvents: 'none',
+          zIndex: 10,
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
         }}>
           {/* "Aktiv" banner — fades out after 2s */}
@@ -559,6 +627,7 @@ export default function MapCanvas({
             boxShadow: '0 2px 10px rgba(58,46,36,0.20)',
             opacity: showActiveBanner ? 1 : 0,
             transition: 'opacity 0.5s ease',
+            pointerEvents: 'none',
           }}>
             Verbindungsmodus ist Aktiv
           </span>
@@ -568,9 +637,30 @@ export default function MapCanvas({
             fontStyle: 'italic', backgroundColor: 'rgba(255,253,248,0.92)',
             padding: '4px 12px', borderRadius: 12,
             boxShadow: '0 1px 6px rgba(58,46,36,0.10)',
+            pointerEvents: 'none',
           }}>
             {firstSelected ? 'Wähle eine zweite Person' : 'Tippe zwei Personen an um sie zu verbinden'}
           </span>
+          {/* + Person button when a person is selected */}
+          {firstSelected && (
+            <button
+              onMouseDown={e => e.stopPropagation()}
+              onClick={e => {
+                e.stopPropagation()
+                setAddPersonModal({ connectedToId: firstSelected })
+                setAddPersonName('')
+              }}
+              style={{
+                padding: '7px 18px', borderRadius: 10,
+                border: 'none', backgroundColor: 'var(--color-warm-1)',
+                color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                fontWeight: 600, cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(58,46,36,0.22)',
+              }}
+            >
+              + Person
+            </button>
+          )}
         </div>
       )}
 
@@ -599,17 +689,34 @@ export default function MapCanvas({
           strokeWidth={1.2}
         />
 
-        {/* Center-to-person Verbindungslinien */}
+        {/* Center-to-person Verbindungslinien (nur für direkte / 1. Generation) */}
         {people.map((p, i) => {
+          if (p.is_secondary) return null
           const pos = getPos(p, i)
+          const lineColor = centerLineColors[p.id] || p.center_line_color || 'var(--color-warm-3)'
+          const isPickerOpen = centerLinePicker?.personId === p.id
           return (
-            <line
-              key={p.id + '_line'}
-              x1={cx} y1={cy}
-              x2={pos.x} y2={pos.y}
-              stroke="var(--color-warm-3)"
-              strokeWidth={1.5}
-            />
+            <g key={p.id + '_centerline'}>
+              {!readOnly && (
+                <line
+                  x1={cx} y1={cy} x2={pos.x} y2={pos.y}
+                  stroke="transparent" strokeWidth={14}
+                  style={{ cursor: 'pointer' }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    if (isPickerOpen) { setCenterLinePicker(null); return }
+                    setCenterLinePickerDraft(centerLineColors[p.id] || p.center_line_color || '#C8BFB0')
+                    setCenterLinePicker({ personId: p.id, x: e.clientX, y: e.clientY })
+                  }}
+                />
+              )}
+              <line
+                x1={cx} y1={cy} x2={pos.x} y2={pos.y}
+                stroke={lineColor}
+                strokeWidth={isPickerOpen ? 2.5 : 1.5}
+                style={{ pointerEvents: 'none' }}
+              />
+            </g>
           )
         })}
 
@@ -770,6 +877,9 @@ export default function MapCanvas({
 
         {/* Personen */}
         {people.map((p, i) => {
+          const personColor = p.circle_color || '#E8E4DC'
+          if (hiddenColors && hiddenColors.size > 0 && hiddenColors.has(personColor)) return null
+
           const pos = getPos(p, i)
           const isDraggingThis = dragging?.id === p.id && dragging?.moved
           const isFirstSelected = firstSelected === p.id
@@ -936,6 +1046,71 @@ export default function MapCanvas({
         </>
       )}
 
+      {/* Add person from connection mode modal */}
+      {addPersonModal && (
+        <>
+          <div
+            onClick={() => { setAddPersonModal(null); setAddPersonName('') }}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }}
+          />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'var(--color-white)',
+            borderRadius: 16, padding: 24, width: 300, maxWidth: '90vw',
+            zIndex: 70, boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
+          }}>
+            <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
+              Person hinzufügen
+            </h3>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+              Wird verbunden mit: <strong>{resolvePersonName(addPersonModal.connectedToId)}</strong>
+            </p>
+            <input
+              type="text"
+              value={addPersonName}
+              onChange={e => setAddPersonName(e.target.value)}
+              placeholder="Name der Person…"
+              autoFocus
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 10,
+                border: '1.5px solid var(--color-warm-3)',
+                backgroundColor: 'var(--color-white)',
+                fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)',
+                display: 'block', boxSizing: 'border-box', marginBottom: 14,
+              }}
+              onKeyDown={e => { if (e.key === 'Enter' && addPersonName.trim()) handleAddPersonFromMode() }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => { setAddPersonModal(null); setAddPersonName('') }}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 10,
+                  border: '1px solid var(--color-warm-3)', background: 'none',
+                  fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleAddPersonFromMode}
+                disabled={!addPersonName.trim() || addingPersonBusy}
+                style={{
+                  flex: 2, padding: '10px 0', borderRadius: 10,
+                  border: 'none',
+                  backgroundColor: addPersonName.trim() && !addingPersonBusy ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
+                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                {addingPersonBusy ? 'Wird hinzugefügt…' : 'Hinzufügen'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Remove connection modal */}
       {removeModal && (
         <>
@@ -989,11 +1164,11 @@ export default function MapCanvas({
 
       {/* Connection color picker */}
       {connColorPicker && (() => {
-        const pickerW = 268
+        const pickerW = 232
         const vw = window.innerWidth
         const vh = window.innerHeight
         const left = Math.min(connColorPicker.x + 8, vw - pickerW - 12)
-        const top = Math.min(connColorPicker.y + 8, vh - 360)
+        const top = Math.min(connColorPicker.y + 8, vh - 200)
         return (
           <>
             <div
@@ -1020,14 +1195,25 @@ export default function MapCanvas({
                   <X size={15} />
                 </button>
               </div>
-              <ColorPicker
-                value={connPickerDraft}
-                onChange={hex => {
-                  setConnPickerDraft(hex)
-                  // Live preview on line
-                  setConnColors(prev => ({ ...prev, [connColorPicker.conn.id]: hex }))
-                }}
-              />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {CONN_COLORS.map(c => (
+                  <button
+                    key={c.hex}
+                    title={c.label}
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={() => {
+                      setConnPickerDraft(c.hex)
+                      setConnColors(prev => ({ ...prev, [connColorPicker.conn.id]: c.hex }))
+                    }}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', backgroundColor: c.hex,
+                      border: connPickerDraft === c.hex ? '3px solid var(--color-text)' : '2px solid rgba(0,0,0,0.12)',
+                      cursor: 'pointer', padding: 0, flexShrink: 0,
+                      boxShadow: connPickerDraft === c.hex ? '0 0 0 2px white inset' : 'none',
+                    }}
+                  />
+                ))}
+              </div>
               <button
                 onMouseDown={e => e.stopPropagation()}
                 onClick={() => {
@@ -1035,8 +1221,93 @@ export default function MapCanvas({
                   setConnColorPicker(null)
                 }}
                 style={{
-                  marginTop: 14, width: '100%',
+                  width: '100%',
                   padding: '10px 0', borderRadius: 10,
+                  border: 'none', backgroundColor: 'var(--color-warm-1)',
+                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Speichern
+              </button>
+              <button
+                onMouseDown={e => e.stopPropagation()}
+                onClick={() => {
+                  onDeleteConnection?.(connColorPicker.conn.id)
+                  setConnColorPicker(null)
+                }}
+                style={{
+                  marginTop: 8, width: '100%',
+                  padding: '9px 0', borderRadius: 10,
+                  border: '1px solid #E8C0B8', backgroundColor: 'transparent',
+                  color: '#C0392B', fontFamily: 'Lora, serif', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Verbindung entfernen
+              </button>
+            </div>
+          </>
+        )
+      })()}
+
+      {/* Center-line color picker */}
+      {centerLinePicker && (() => {
+        const pickerW = 232
+        const vw = window.innerWidth
+        const vh = window.innerHeight
+        const left = Math.min(centerLinePicker.x + 8, vw - pickerW - 12)
+        const top = Math.min(centerLinePicker.y + 8, vh - 200)
+        return (
+          <>
+            <div onClick={() => setCenterLinePicker(null)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
+            <div
+              onMouseDown={e => e.stopPropagation()}
+              style={{
+                position: 'fixed', left, top: Math.max(8, top),
+                width: pickerW, zIndex: 51,
+                backgroundColor: 'var(--color-white)',
+                borderRadius: 16,
+                boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
+                border: '1px solid var(--color-warm-3)',
+                padding: 16,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
+                  Linienfarbe
+                </span>
+                <button onClick={() => setCenterLinePicker(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', padding: 2, color: 'var(--color-text-muted)' }}>
+                  <X size={15} />
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {CONN_COLORS.map(c => (
+                  <button
+                    key={c.hex}
+                    title={c.label}
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={() => {
+                      setCenterLinePickerDraft(c.hex)
+                      setCenterLineColors(prev => ({ ...prev, [centerLinePicker.personId]: c.hex }))
+                    }}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', backgroundColor: c.hex,
+                      border: centerLinePickerDraft === c.hex ? '3px solid var(--color-text)' : '2px solid rgba(0,0,0,0.12)',
+                      cursor: 'pointer', padding: 0, flexShrink: 0,
+                      boxShadow: centerLinePickerDraft === c.hex ? '0 0 0 2px white inset' : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+              <button
+                onMouseDown={e => e.stopPropagation()}
+                onClick={() => {
+                  onCenterLineColorChange?.(centerLinePicker.personId, centerLinePickerDraft)
+                  setCenterLinePicker(null)
+                }}
+                style={{
+                  width: '100%', padding: '10px 0', borderRadius: 10,
                   border: 'none', backgroundColor: 'var(--color-warm-1)',
                   color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
                   fontWeight: 600, cursor: 'pointer',

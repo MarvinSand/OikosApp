@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
+// LocalStorage helpers for is_secondary persistence (fallback if DB column missing)
+function getSecondaryIds() {
+  try { return new Set(JSON.parse(localStorage.getItem('oikos_secondary_ids') || '[]')) }
+  catch { return new Set() }
+}
+function saveSecondaryId(id, isSecondary) {
+  const ids = getSecondaryIds()
+  if (isSecondary) ids.add(id); else ids.delete(id)
+  localStorage.setItem('oikos_secondary_ids', JSON.stringify([...ids]))
+}
+
 export function useOikosMaps() {
   const { user } = useAuth()
   const [maps, setMaps] = useState([])
@@ -39,7 +50,11 @@ export function useOikosMaps() {
       .select('*')
       .eq('map_id', mapId)
       .order('created_at')
-    const persons = data || []
+    const secondaryIds = getSecondaryIds()
+    const persons = (data || []).map(p => ({
+      ...p,
+      is_secondary: p.is_secondary || secondaryIds.has(p.id),
+    }))
     setPeople(persons)
     await loadOverlayPeopleFor(persons)
   }
@@ -106,15 +121,26 @@ export function useOikosMaps() {
     return data
   }
 
-  async function addPerson(name) {
+  async function addPerson(name, isSecondary = false) {
     const { data, error } = await supabase
       .from('oikos_people')
       .insert({ map_id: activeMapId, user_id: user.id, name, impact_stage: 1 })
       .select()
       .single()
     if (error) throw error
-    setPeople(prev => [...prev, data])
-    return data
+    const personData = { ...data, is_secondary: isSecondary || data.is_secondary || false }
+    setPeople(prev => [...prev, personData])
+    if (isSecondary) {
+      saveSecondaryId(data.id, true)
+      supabase.from('oikos_people').update({ is_secondary: true }).eq('id', data.id).then(() => {})
+    }
+    return personData
+  }
+
+  async function setPersonSecondary(id, isSecondary) {
+    saveSecondaryId(id, isSecondary)
+    setPeople(prev => prev.map(p => p.id === id ? { ...p, is_secondary: isSecondary } : p))
+    supabase.from('oikos_people').update({ is_secondary: isSecondary }).eq('id', id).then(() => {})
   }
 
   async function updatePerson(id, updates) {
@@ -232,6 +258,7 @@ export function useOikosMaps() {
     updateMap,
     deleteMap,
     addPerson,
+    setPersonSecondary,
     updatePerson,
     deletePerson,
     movePersonPosition,

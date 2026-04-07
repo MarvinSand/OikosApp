@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { supabase } from '../lib/supabase'
@@ -10,6 +10,75 @@ import AddPersonModal from '../components/map/AddPersonModal'
 import PersonDetailSheet from '../components/map/PersonDetailSheet'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
+
+// ─── Farb-Filter Panel ───────────────────────────────────────
+const COLOR_FILTER_OPTIONS = [
+  { label: 'Grün', hex: '#66BB6A' },
+  { label: 'Rot', hex: '#EF5350' },
+  { label: 'Blau', hex: '#42A5F5' },
+  { label: 'Orange', hex: '#FFA726' },
+  { label: 'Gelb', hex: '#FFEE58' },
+  { label: 'Lila', hex: '#AB47BC' },
+  { label: 'Pink', hex: '#EC407A' },
+  { label: 'Standard', hex: '#E8E4DC' },
+]
+
+function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
+  const allVisible = hiddenColors.size === 0
+  return (
+    <div style={{
+      position: 'absolute',
+      top: 76, right: 16,
+      width: 200,
+      backgroundColor: 'var(--color-white)',
+      borderRadius: 16,
+      boxShadow: '0 4px 20px rgba(58,46,36,0.15)',
+      border: '1px solid var(--color-warm-3)',
+      zIndex: 30,
+      padding: '12px 14px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+          Nach Farbe filtern
+        </p>
+        <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, color: 'var(--color-text-light)', display: 'flex' }}>
+          <X size={15} />
+        </button>
+      </div>
+
+      {/* Alle einblenden */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-warm-3)', marginBottom: 6, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={allVisible}
+          onChange={onShowAll}
+          style={{ accentColor: 'var(--color-warm-1)', width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }}
+        />
+        <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+          Alle einblenden
+        </span>
+      </label>
+
+      {COLOR_FILTER_OPTIONS.map(c => {
+        const isVisible = !hiddenColors.has(c.hex)
+        return (
+          <label key={c.hex} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={isVisible}
+              onChange={() => onToggle(c.hex)}
+              style={{ accentColor: 'var(--color-warm-1)', width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }}
+            />
+            <div style={{ width: 16, height: 16, borderRadius: '50%', backgroundColor: c.hex, border: '1.5px solid rgba(0,0,0,0.12)', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)' }}>
+              {c.label}
+            </span>
+          </label>
+        )
+      })}
+    </div>
+  )
+}
 
 // ─── Generationen-Ansicht Panel ───────────────────────────────
 function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
@@ -168,7 +237,7 @@ export default function MapView() {
   const {
     maps, setMaps, activeMapId, setActiveMapId, activeMap,
     people, connections, overlayData, loading,
-    createMap, updateMap, deleteMap, addPerson, updatePerson, deletePerson,
+    createMap, updateMap, deleteMap, addPerson, setPersonSecondary, updatePerson, deletePerson,
     movePersonPosition, createConnection, deleteConnection, updateConnectionColor,
     linkAccount, unlinkAccount, updatePersonOverlay, reloadMap,
   } = useOikosMaps()
@@ -178,6 +247,8 @@ export default function MapView() {
   const [showAddPerson, setShowAddPerson] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showGenerationen, setShowGenerationen] = useState(false)
+  const [showColorFilter, setShowColorFilter] = useState(false)
+  const [hiddenColors, setHiddenColors] = useState(new Set())
   const [connectionMode, setConnectionMode] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
@@ -326,6 +397,13 @@ export default function MapView() {
               <Link size={20} />
             </button>
             <button
+              onClick={() => setShowColorFilter(v => !v)}
+              title="Nach Farbe filtern"
+              className={`p-1.5 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+            >
+              <Filter size={20} />
+            </button>
+            <button
               onClick={() => setShowGenerationen(v => !v)}
               title="Generationen-Ansicht"
               className={`p-1.5 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
@@ -429,7 +507,27 @@ export default function MapView() {
               connectionMode={connectionMode}
               onConnectionColorChange={updateConnectionColor}
               onDeleteConnection={deleteConnection}
+              onAddConnectedPerson={async (name, connectedToPersonId) => {
+                const newPerson = await addPerson(name, true)
+                await createConnection(newPerson.id, connectedToPersonId, null)
+                return newPerson
+              }}
+              onCenterLineColorChange={(personId, color) => updatePerson(personId, { center_line_color: color })}
+              hiddenColors={hiddenColors}
             />
+            {showColorFilter && (
+              <ColorFilterPanel
+                hiddenColors={hiddenColors}
+                onToggle={(hex) => setHiddenColors(prev => {
+                  const next = new Set(prev)
+                  if (next.has(hex)) next.delete(hex)
+                  else next.add(hex)
+                  return next
+                })}
+                onShowAll={() => setHiddenColors(new Set())}
+                onClose={() => setShowColorFilter(false)}
+              />
+            )}
             {showGenerationen && (
               <GenerationenPanel
                 persons={people.filter(p => p.linked_user_id)}
@@ -472,6 +570,12 @@ export default function MapView() {
           onDeleteConnection={deleteConnection}
           onCreateConnection={createConnection}
           onUpdateConnectionColor={updateConnectionColor}
+          onAddConnectedPerson={async (name, connectedToPersonId) => {
+            const newPerson = await addPerson(name, true)
+            await createConnection(newPerson.id, connectedToPersonId, null)
+            return newPerson
+          }}
+          onSetSecondary={(id, val) => setPersonSecondary(id, val)}
           linkedProfile={selectedLinkedProfile}
           onLinkAccount={(personId, profileId) => {
             linkAccount(personId, profileId)
