@@ -125,7 +125,7 @@ function EditPersonForm({ person, onSave, onCancel }) {
 }
 
 // --- Connections Section ---
-function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor, onAddConnectedPerson }) {
+function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor, onAddConnectedPerson, mapOwnerName, ownerDisconnected, onOwnerDisconnect, onDeletePerson }) {
   const [showAddSearch, setShowAddSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [labelModal, setLabelModal] = useState(null) // { targetId }
@@ -136,6 +136,10 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
   const [showNewPersonForm, setShowNewPersonForm] = useState(false)
   const [newPersonName, setNewPersonName] = useState('')
   const [addingNewPerson, setAddingNewPerson] = useState(false)
+  const [ownerColor, setOwnerColor] = useState('#C8BFB0')
+  const [ownerPickerOpen, setOwnerPickerOpen] = useState(false)
+  const [ownerColorDraft, setOwnerColorDraft] = useState('#C8BFB0')
+  const [showOwnerDisconnectConfirm, setShowOwnerDisconnectConfirm] = useState(false)
 
   const myConnections = connections.filter(
     c => c.source_person_id === person.id || c.target_person_id === person.id
@@ -198,10 +202,100 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
         Verbindungen
       </h4>
 
-      {myConnections.length === 0 && (
+      {/* Map-Besitzer immer anzeigen */}
+      {mapOwnerName && !ownerDisconnected && (
+        <div style={{ borderBottom: '1px solid var(--color-warm-3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: ownerColor, flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }} />
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)' }}>
+                ↔ {mapOwnerName}
+              </span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                (Map-Besitzer)
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+              <button
+                onClick={() => {
+                  if (ownerPickerOpen) { setOwnerPickerOpen(false) }
+                  else { setOwnerColorDraft(ownerColor); setOwnerPickerOpen(true) }
+                }}
+                style={{ border: 'none', background: ownerPickerOpen ? 'var(--color-warm-4)' : 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: ownerPickerOpen ? 'var(--color-warm-1)' : 'var(--color-text-muted)', flexShrink: 0, display: 'flex' }}
+                title="Verbindungsfarbe ändern"
+              >
+                <Palette size={14} />
+              </button>
+              <button
+                onClick={() => {
+                  if (myConnections.length > 0) {
+                    onOwnerDisconnect?.()
+                  } else {
+                    setShowOwnerDisconnectConfirm(true)
+                  }
+                }}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: '#C0392B', flexShrink: 0, display: 'flex' }}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+          {ownerPickerOpen && (
+            <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 14, marginBottom: 8 }}>
+              <ColorSwatches colors={CONN_COLORS} selected={ownerColorDraft} onSelect={hex => setOwnerColorDraft(hex)} />
+              <button
+                onClick={() => { setOwnerColor(ownerColorDraft); setOwnerPickerOpen(false) }}
+                style={{ marginTop: 12, width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Speichern
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {myConnections.length === 0 && (!mapOwnerName || ownerDisconnected) && (
         <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', marginBottom: 12 }}>
           Keine Verbindungen.
         </p>
+      )}
+
+      {/* Bestätigung: Person von Map entfernen */}
+      {showOwnerDisconnectConfirm && (
+        <>
+          <div
+            onClick={() => setShowOwnerDisconnectConfirm(false)}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }}
+          />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'var(--color-white)',
+            borderRadius: 16, padding: 24, width: 300, maxWidth: '90vw',
+            zIndex: 70, boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
+          }}>
+            <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
+              Einzige Verbindung
+            </h3>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 20, lineHeight: 1.6 }}>
+              Du bist die einzige Verbindung von <strong>{person.name}</strong>. Möchtest du diese Person von der Map entfernen?
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setShowOwnerDisconnectConfirm(false)}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => { setShowOwnerDisconnectConfirm(false); onDeletePerson?.() }}
+                style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Von Map entfernen
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {myConnections.map(conn => {
@@ -721,6 +815,9 @@ export default function PersonDetailSheet({
   connections = [],
   people = [],
   overlayData = [],
+  mapOwnerName,
+  ownerDisconnected = false,
+  onOwnerDisconnect,
   onDeleteConnection,
   onCreateConnection,
   onUpdateConnectionColor,
@@ -930,10 +1027,14 @@ export default function PersonDetailSheet({
           people={people}
           overlayData={overlayData}
           connections={connections}
+          mapOwnerName={mapOwnerName}
+          ownerDisconnected={ownerDisconnected}
+          onOwnerDisconnect={onOwnerDisconnect}
           onDeleteConnection={onDeleteConnection}
           onCreateConnection={onCreateConnection}
           onUpdateConnectionColor={onUpdateConnectionColor}
           onAddConnectedPerson={onAddConnectedPerson}
+          onDeletePerson={onDelete}
         />
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />

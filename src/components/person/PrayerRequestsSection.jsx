@@ -7,6 +7,56 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import Confetti from '../ui/Confetti'
 
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'gerade eben'
+  if (mins < 60) return `vor ${mins} Min.`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `vor ${hours} Std.`
+  if (hours < 48) return 'gestern'
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `vor ${days} Tagen`
+  return new Date(dateStr).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })
+}
+
+function getInitials(name) {
+  return (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function AvatarBubble({ name, size = 40, isChristian }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+    }}>{getInitials(name)}</div>
+  )
+}
+
+function OverlappingPrayerAvatars({ prayersByUser, currentUserId }) {
+  const shown = prayersByUser.slice(0, 3)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      {shown.map((p, i) => {
+        const name = p.userId === currentUserId ? 'Du' : (p.profile?.full_name || p.profile?.username || '?')
+        const isChristian = p.userId === currentUserId ? null : p.profile?.is_christian
+        return (
+          <div key={p.userId} style={{
+            width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+            backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white', fontFamily: 'Lora, serif', fontSize: 8, fontWeight: 700,
+            border: '2px solid white', marginLeft: i > 0 ? -8 : 0,
+            position: 'relative', zIndex: 3 - i,
+          }}>{getInitials(name)}</div>
+        )
+      })}
+    </div>
+  )
+}
+
 function formatLastPrayed(iso) {
   if (!iso) return '🙏 Noch nie gebetet'
   const d = new Date(iso)
@@ -116,15 +166,21 @@ function EditRequestSheet({ req, onSave, onClose }) {
 }
 
 // ─── PrayerRequestCard ────────────────────────────────────────
-function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete, onPrayed, lastPrayed }) {
+function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete, onPrayed, currentUserId }) {
   const { hasPrayedToday, prayersByUser, logPrayer } = usePrayerLogs(req.id)
   const { showToast } = useToast()
   const [showPrayedBy, setShowPrayedBy] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [confetti, setConfetti] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const isAnswered = req.is_answered
+  const author = req.profiles
+  const authorName = author?.full_name || author?.username || 'Unbekannt'
+  const desc = req.description || ''
+  const shortDesc = desc.length > 120 ? desc.slice(0, 120) + '…' : desc
+  const prayCount = prayersByUser.length
 
   async function handlePray() {
     try {
@@ -146,66 +202,55 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
     <>
       <Confetti show={confetti} />
       <div style={{
-        backgroundColor: isAnswered ? 'rgba(76,103,65,0.06)' : 'var(--color-warm-4)',
-        borderRadius: 14, padding: '12px 14px',
-        border: `1.5px solid ${isAnswered ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
-        borderLeft: `4px solid ${isAnswered ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        borderRadius: 16, padding: '16px 18px',
+        border: isAnswered ? '1.5px solid var(--color-warm-1)' : '1px solid rgba(255,255,255,0.6)',
+        boxShadow: '0 2px 12px rgba(58,46,36,0.08)',
+        marginBottom: 2,
       }}>
-        {/* Titel + Menü */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        {/* Header: Avatar + Name + Timestamp + Menu */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+          <AvatarBubble name={isOwner ? 'Du' : authorName} size={42} isChristian={author?.is_christian} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            {isAnswered && (
-              <span style={{ display: 'inline-block', fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-1)', color: 'white', marginBottom: 5 }}>
-                🎉 Erhört
-              </span>
-            )}
-            <p style={{
-              fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, margin: 0,
-              color: isAnswered ? 'var(--color-text-muted)' : 'var(--color-text)',
-              textDecoration: isAnswered ? 'line-through' : 'none',
-            }}>
-              {req.title}
-            </p>
-            {req.description && (
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4, fontStyle: 'italic', lineHeight: 1.4 }}>
-                {req.description}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
+                {isOwner ? 'Du' : authorName}
               </p>
-            )}
+              {author?.gender === 'brother' && !isOwner && (
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 10, padding: '1px 8px', borderRadius: 20, backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 600, border: '1px solid rgba(29,78,216,0.12)' }}>Bruder</span>
+              )}
+              {author?.gender === 'sister' && !isOwner && (
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 10, padding: '1px 8px', borderRadius: 20, backgroundColor: '#FDF2F8', color: '#BE185D', fontWeight: 600, border: '1px solid rgba(190,24,93,0.12)' }}>Schwester</span>
+              )}
+              {isAnswered && (
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 10, padding: '1px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-1)', color: 'white', fontWeight: 700 }}>🎉 Erhört</span>
+              )}
+            </div>
+            <p style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 500, color: 'rgba(58,46,36,0.55)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
+              {!isOwner && author?.username ? `@${author.username} · ` : ''}{timeAgo(req.created_at)}
+            </p>
           </div>
-
           {/* ··· Owner Menu */}
           {isOwner && (
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 3, borderRadius: 6, color: 'var(--color-text-light)' }}>
-                <MoreVertical size={15} />
+              <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: '50%', color: 'var(--color-text-muted)', display: 'flex' }}>
+                <MoreVertical size={18} />
               </button>
               {showMenu && (
                 <>
                   <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.14)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 190 }}>
-                    <button
-                      onClick={() => { setShowMenu(false); setShowEdit(true) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}
-                    >
-                      <Pencil size={13} /> Bearbeiten
+                  <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, backgroundColor: 'rgba(255,255,255,0.97)', borderRadius: 12, boxShadow: '0 4px 20px rgba(58,46,36,0.16)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 190, overflow: 'hidden' }}>
+                    <button onClick={() => { setShowMenu(false); setShowEdit(true) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}>
+                      <Pencil size={14} /> Bearbeiten
                     </button>
-                    <button
-                      onClick={() => { setShowMenu(false); handleToggleAnswered() }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: isAnswered ? 'var(--color-text)' : 'var(--color-warm-1)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)', fontWeight: isAnswered ? 400 : 600 }}
-                    >
-                      <Check size={13} /> {isAnswered ? 'Als offen markieren' : 'Als erhört markieren ✓'}
+                    <button onClick={() => { setShowMenu(false); handleToggleAnswered() }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: isAnswered ? 'var(--color-text)' : 'var(--color-warm-1)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)', fontWeight: isAnswered ? 400 : 600 }}>
+                      <Check size={14} /> {isAnswered ? 'Als offen markieren' : 'Als erhört markieren ✓'}
                     </button>
-                    <button
-                      onClick={() => { setShowMenu(false); onUpdate(req.id, { is_public: !req.is_public }) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}
-                    >
-                      {req.is_public ? <><Lock size={13} /> Privat machen</> : <><Globe size={13} /> Öffentlich machen</>}
+                    <button onClick={() => { setShowMenu(false); onUpdate(req.id, { is_public: !req.is_public }) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}>
+                      {req.is_public ? <><Lock size={14} /> Privat machen</> : <><Globe size={14} /> Öffentlich machen</>}
                     </button>
-                    <button
-                      onClick={() => { setShowMenu(false); onDelete(req.id) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer', textAlign: 'left' }}
-                    >
-                      <Trash2 size={13} /> Löschen
+                    <button onClick={() => { setShowMenu(false); onDelete(req.id) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer', textAlign: 'left' }}>
+                      <Trash2 size={14} /> Löschen
                     </button>
                   </div>
                 </>
@@ -214,54 +259,64 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
           )}
         </div>
 
-        {/* Bottom row: Pray button + avatar bubbles */}
-        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          {!isOwner ? (
-            <button
-              onClick={handlePray}
-              disabled={hasPrayedToday}
-              style={{ padding: '6px 12px', borderRadius: 8, cursor: hasPrayedToday ? 'default' : 'pointer', backgroundColor: hasPrayedToday ? 'transparent' : 'var(--color-warm-1)', color: hasPrayedToday ? 'var(--color-text-muted)' : 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, border: hasPrayedToday ? '1px solid var(--color-warm-3)' : 'none', flexShrink: 0 }}
-            >
-              {hasPrayedToday ? '🙏 Gebetet' : 'Ich habe gebetet'}
-            </button>
-          ) : (
-            <button
-              onClick={handlePray}
-              disabled={hasPrayedToday}
-              style={{ padding: '5px 10px', borderRadius: 8, cursor: hasPrayedToday ? 'default' : 'pointer', backgroundColor: 'transparent', color: hasPrayedToday ? 'var(--color-text-light)' : 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 12, border: '1px solid var(--color-warm-3)', flexShrink: 0, opacity: hasPrayedToday ? 0.6 : 1 }}
-            >
-              🙏 {hasPrayedToday ? 'Gebetet' : 'Beten'}
-            </button>
-          )}
+        {/* Titel */}
+        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: isAnswered ? 'var(--color-text-muted)' : 'var(--color-text)', margin: `0 0 ${desc ? 8 : 0}px`, lineHeight: 1.3, textDecoration: isAnswered ? 'line-through' : 'none' }}>
+          {req.title}
+        </h3>
 
-          {prayersByUser.length > 0 && (
-            <button
-              onClick={() => setShowPrayedBy(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}
-            >
-              <div style={{ display: 'flex' }}>
-                {prayersByUser.slice(0, 3).map((p, i) => {
-                  const name = p.profile?.full_name || p.profile?.username || '?'
-                  const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                  return (
-                    <div key={p.userId} style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: p.profile?.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Lora, serif', fontSize: 8, fontWeight: 700, border: '1.5px solid var(--color-warm-4)', marginLeft: i > 0 ? -7 : 0, position: 'relative', zIndex: 3 - i }}>
-                      {initials}
-                    </div>
-                  )
-                })}
-              </div>
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                {prayersByUser.length}
-              </span>
-            </button>
-          )}
-        </div>
-
-        {!isAnswered && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: '6px 0 0', fontStyle: 'italic' }}>
-            {formatLastPrayed(lastPrayed)}
-          </p>
+        {/* Beschreibung */}
+        {desc && (
+          <div style={{ marginBottom: 4 }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 14.5, color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>
+              {expanded ? desc : shortDesc}
+            </p>
+            {desc.length > 120 && (
+              <button onClick={() => setExpanded(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', fontWeight: 600, padding: '4px 0', marginTop: 2 }}>
+                {expanded ? 'Weniger anzeigen' : 'Mehr anzeigen'}
+              </button>
+            )}
+          </div>
         )}
+
+        {/* Gebets-Zeile */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(58,46,36,0.12)' }}>
+          {/* Linke Seite: Wer hat gebetet */}
+          <button
+            onClick={() => prayCount > 0 && setShowPrayedBy(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', padding: 0, cursor: prayCount > 0 ? 'pointer' : 'default' }}
+          >
+            {prayCount > 0 ? (
+              <>
+                <OverlappingPrayerAvatars prayersByUser={prayersByUser} currentUserId={currentUserId} />
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 500, color: 'var(--color-text-muted)' }}>
+                  {prayCount} {prayCount === 1 ? 'Gebet' : 'Gebete'}
+                </span>
+              </>
+            ) : (
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: 'var(--color-text-light)', fontStyle: 'italic', padding: '3px 10px', borderRadius: 20, backgroundColor: 'rgba(58,46,36,0.04)', border: '1px solid rgba(58,46,36,0.08)' }}>
+                Noch keine Gebete
+              </span>
+            )}
+          </button>
+
+          {/* Rechte Seite: Beten-Button */}
+          <button
+            onClick={handlePray}
+            disabled={hasPrayedToday}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 20,
+              border: hasPrayedToday ? 'none' : '1.5px solid var(--color-warm-1)',
+              backgroundColor: hasPrayedToday ? 'var(--color-gold-light)' : 'transparent',
+              color: hasPrayedToday ? '#8A6020' : 'var(--color-warm-1)',
+              fontFamily: 'Lora, serif', fontSize: 13, fontWeight: hasPrayedToday ? 700 : 500,
+              cursor: hasPrayedToday ? 'default' : 'pointer',
+              transition: 'all 0.2s', flexShrink: 0,
+            }}
+          >
+            🙏 {hasPrayedToday ? 'Gebetet ✓' : 'Beten'}
+          </button>
+        </div>
       </div>
 
       {showPrayedBy && (
@@ -391,7 +446,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
           {active.map(req => (
             <PrayerRequestCard
               key={req.id} req={req} isOwner={isOwner}
-              lastPrayed={lastPrayedMap[req.id]}
+              currentUserId={user?.id}
               onUpdate={updateRequest}
               onToggleAnswered={toggleAnswered}
               onDelete={handleDelete}
@@ -411,7 +466,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
               {answered.map(req => (
                 <PrayerRequestCard
                   key={req.id} req={req} isOwner={isOwner}
-                  lastPrayed={undefined}
+                  currentUserId={user?.id}
                   onUpdate={updateRequest}
                   onToggleAnswered={toggleAnswered}
                   onDelete={handleDelete}

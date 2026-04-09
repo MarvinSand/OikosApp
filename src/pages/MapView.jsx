@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
+import { usePlaces } from '../hooks/usePlaces'
 import { supabase } from '../lib/supabase'
 import { useSearchParams } from 'react-router-dom'
 import MapCanvas from '../components/map/MapCanvas'
@@ -10,6 +11,7 @@ import AddPersonModal from '../components/map/AddPersonModal'
 import PersonDetailSheet from '../components/map/PersonDetailSheet'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
+import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSheet'
 
 // ─── Farb-Filter Panel ───────────────────────────────────────
 const COLOR_FILTER_OPTIONS = [
@@ -242,9 +244,13 @@ export default function MapView() {
     linkAccount, unlinkAccount, updatePersonOverlay, reloadMap,
   } = useOikosMaps()
 
+  const { places, placeConnections, createPlace, updatePlace, deletePlace, connectPerson: connectPlacePerson, disconnectPerson: disconnectPlacePerson, movePlacePosition } = usePlaces(activeMapId)
+
   const [showMapMenu, setShowMapMenu] = useState(false)
   const [showNewMap, setShowNewMap] = useState(false)
   const [showAddPerson, setShowAddPerson] = useState(false)
+  const [showAddMenu, setShowAddMenu] = useState(false)
+  const [showAddPlace, setShowAddPlace] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showGenerationen, setShowGenerationen] = useState(false)
   const [showColorFilter, setShowColorFilter] = useState(false)
@@ -252,6 +258,8 @@ export default function MapView() {
   const [connectionMode, setConnectionMode] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
+  const [selectedPlace, setSelectedPlace] = useState(null)
+  const [ownerDisconnectedIds, setOwnerDisconnectedIds] = useState(new Set())
   // linkedProfile cache: { [userId]: profile }
   const [linkedProfiles, setLinkedProfiles] = useState({})
   const [searchParams, setSearchParams] = useSearchParams()
@@ -416,13 +424,34 @@ export default function MapView() {
             >
               <SlidersHorizontal size={20} />
             </button>
-            <button
-              onClick={() => setShowAddPerson(true)}
-              className="tour-map-add flex items-center gap-1.5 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3.5 py-2 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
-            >
-              <Plus size={16} />
-              Person
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowAddMenu(v => !v)}
+                className="tour-map-add flex items-center gap-1.5 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3.5 py-2 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
+              >
+                <Plus size={16} /> Hinzufügen
+              </button>
+              {showAddMenu && (
+                <>
+                  <div onClick={() => setShowAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                  <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-glass border border-warm-3 overflow-hidden z-20 min-w-[160px]">
+                    <button
+                      onClick={() => { setShowAddMenu(false); setShowAddPerson(true) }}
+                      className="flex items-center gap-2.5 w-full px-4 py-3 border-none bg-transparent hover:bg-warm-4 font-serif text-[13px] text-dark font-medium cursor-pointer text-left transition-colors"
+                    >
+                      <User size={14} className="text-warm-1" /> Person hinzufügen
+                    </button>
+                    <div className="h-px bg-warm-3" />
+                    <button
+                      onClick={() => { setShowAddMenu(false); setShowAddPlace(true) }}
+                      className="flex items-center gap-2.5 w-full px-4 py-3 border-none bg-transparent hover:bg-warm-4 font-serif text-[13px] text-dark font-medium cursor-pointer text-left transition-colors"
+                    >
+                      <MapPin size={14} className="text-warm-1" /> Ort hinzufügen
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -500,6 +529,8 @@ export default function MapView() {
               people={people}
               connections={connections}
               overlayData={overlayData}
+              places={places}
+              placeConnections={placeConnections}
               onPersonClick={setSelectedPerson}
               onPersonMoved={(personId, x, y) => movePersonPosition(personId, x, y)}
               onCreateConnection={(sourceId, targetId, label) => createConnection(sourceId, targetId, label)}
@@ -513,7 +544,10 @@ export default function MapView() {
                 return newPerson
               }}
               onCenterLineColorChange={(personId, color) => updatePerson(personId, { center_line_color: color })}
+              onPlaceClick={setSelectedPlace}
+              onPlaceMoved={movePlacePosition}
               hiddenColors={hiddenColors}
+              ownerDisconnectedIds={ownerDisconnectedIds}
             />
             {showColorFilter && (
               <ColorFilterPanel
@@ -567,6 +601,9 @@ export default function MapView() {
           connections={connections}
           people={people}
           overlayData={overlayData}
+          mapOwnerName={userName}
+          ownerDisconnected={ownerDisconnectedIds.has(selectedPerson.id)}
+          onOwnerDisconnect={() => setOwnerDisconnectedIds(prev => { const n = new Set(prev); n.add(selectedPerson.id); return n })}
           onDeleteConnection={deleteConnection}
           onCreateConnection={createConnection}
           onUpdateConnectionColor={updateConnectionColor}
@@ -590,6 +627,27 @@ export default function MapView() {
           }}
           onUnlinkAccount={unlinkAccount}
           onUpdateOverlay={updatePersonOverlay}
+        />
+      )}
+      {selectedPlace && (
+        <PlaceDetailSheet
+          place={selectedPlace}
+          people={people}
+          placeConnections={placeConnections}
+          onClose={() => setSelectedPlace(null)}
+          onUpdate={updatePlace}
+          onDelete={(id) => { deletePlace(id); setSelectedPlace(null) }}
+          onConnectPerson={connectPlacePerson}
+          onDisconnectPerson={disconnectPlacePerson}
+        />
+      )}
+      {showAddPlace && (
+        <AddPlaceSheet
+          onClose={() => setShowAddPlace(false)}
+          onCreate={async (opts) => {
+            const pl = await createPlace({ ...opts, posX: 0, posY: 0 })
+            if (pl) setSelectedPlace(pl)
+          }}
         />
       )}
     </div>

@@ -14,6 +14,7 @@ export default function Auth() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false)
 
   const { login, register } = useAuth()
   const { showToast } = useToast()
@@ -26,17 +27,37 @@ export default function Auth() {
   async function handleLoginOrRegister(e) {
     e.preventDefault()
     setError('')
+    setEmailNotConfirmed(false)
     setIsLoading(true)
     try {
       if (view === 'login') {
         await login(email, password)
       } else {
-        await register(email, password, fullName, gender)
-        setView('email-sent')
+        const data = await register(email, password, fullName, gender)
+        if (!data?.session) {
+          setView('email-sent')
+        }
+        // Falls Session vorhanden, leitet App.jsx automatisch weiter
         return
       }
     } catch (err) {
-      setError(err.message || 'Ein Fehler ist aufgetreten.')
+      if (err.message?.toLowerCase().includes('email not confirmed')) {
+        setEmailNotConfirmed(true)
+      } else {
+        setError(err.message || 'Ein Fehler ist aufgetreten.')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handleResendConfirmation() {
+    setIsLoading(true)
+    try {
+      await supabase.auth.resend({ type: 'signup', email })
+      showToast('Bestätigungs-E-Mail erneut gesendet ✓')
+    } catch {
+      showToast('Fehler beim Senden', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -235,7 +256,22 @@ export default function Auth() {
                 </div>
               )}
 
-              <button 
+              {emailNotConfirmed && (
+                <div className="bg-amber-50 text-amber-800 text-sm p-3 rounded-xl animate-fade-in border border-amber-200">
+                  <p className="font-medium mb-1">E-Mail noch nicht bestätigt.</p>
+                  <p className="text-xs text-amber-700 mb-2">Bitte bestätige deine E-Mail-Adresse, um dich anzumelden.</p>
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={isLoading}
+                    className="text-xs font-bold text-warm-1 hover:text-warm-2 transition-colors disabled:opacity-50"
+                  >
+                    Bestätigungs-E-Mail erneut senden →
+                  </button>
+                </div>
+              )}
+
+              <button
                 type="submit" 
                 disabled={isLoading || (view === 'register' && !gender)} 
                 className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"

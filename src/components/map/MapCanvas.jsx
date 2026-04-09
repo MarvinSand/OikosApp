@@ -27,6 +27,8 @@ export default function MapCanvas({
   people,
   connections = [],
   overlayData = [],
+  places = [],
+  placeConnections = [],
   onPersonClick,
   onPersonMoved,
   onCreateConnection,
@@ -35,9 +37,12 @@ export default function MapCanvas({
   onDeleteConnection,
   onAddConnectedPerson,
   onCenterLineColorChange,
+  onPlaceClick,
+  onPlaceMoved,
   readOnly = false,
   connectionMode = false,
   hiddenColors,
+  ownerDisconnectedIds = new Set(),
 }) {
   const navigate = useNavigate()
   const n = people.length
@@ -72,10 +77,35 @@ export default function MapCanvas({
   const [connPickerDraft, setConnPickerDraft] = useState('#C8BFB0')
   // Local connection color overrides (confirmed saves)
   const [connColors, setConnColors] = useState({})
-  // Center-line color picker: { personId, x, y } | null
+  // Center-line color picker: { personId?, placeId?, x, y } | null
   const [centerLinePicker, setCenterLinePicker] = useState(null)
   const [centerLinePickerDraft, setCenterLinePickerDraft] = useState('#C8BFB0')
   const [centerLineColors, setCenterLineColors] = useState({})
+  // Separate color overrides for place center lines
+  const [placeCenterLineColors, setPlaceCenterLineColors] = useState({})
+
+  // Place positions (local, synced from props)
+  const [placePositions, setPlacePositions] = useState({})
+  const debouncedPlaceMoveRef = useRef(null)
+
+  useEffect(() => {
+    setPlacePositions(prev => {
+      const next = { ...prev }
+      places.forEach(pl => {
+        if (!(pl.id in next)) {
+          next[pl.id] = { x: pl.pos_x ?? cx, y: pl.pos_y ?? cy }
+        }
+      })
+      Object.keys(next).forEach(id => { if (!places.find(pl => pl.id === id)) delete next[id] })
+      return next
+    })
+  }, [places, cx, cy])
+
+  useEffect(() => {
+    debouncedPlaceMoveRef.current = debounce((placeId, x, y) => {
+      onPlaceMoved?.(placeId, x, y)
+    }, 800)
+  }, [onPlaceMoved])
 
   // Zoom + pan
   const [zoom, setZoom] = useState(1)
@@ -368,7 +398,9 @@ export default function MapCanvas({
       const dist = Math.sqrt(dx * dx + dy * dy)
       setDragging(prev => ({ ...prev, moved: dist > 5 }))
       const newPos = { x: dragging.startPersonX + dx, y: dragging.startPersonY + dy }
-      if (dragging.overlayKey) {
+      if (dragging.isPlace) {
+        setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
+      } else if (dragging.overlayKey) {
         setOverlayPositions(prev => ({ ...prev, [dragging.overlayKey]: newPos }))
       } else {
         setPositions(prev => ({ ...prev, [dragging.id]: newPos }))
@@ -424,7 +456,25 @@ export default function MapCanvas({
       return
     }
 
-    if (!dragging) return
+    if (!dragging) {
+      // Single-finger pan
+      if (panning && e.touches.length === 1) {
+        const touch = e.touches[0]
+        const rect = svgRef.current?.getBoundingClientRect()
+        if (rect) {
+          const viewW = vbSize / zoom
+          const viewH = vbSize / zoom
+          const dxClient = touch.clientX - panning.startClientX
+          const dyClient = touch.clientY - panning.startClientY
+          const raw = {
+            x: panning.startOriginX - dxClient / rect.width * viewW,
+            y: panning.startOriginY - dyClient / rect.height * viewH,
+          }
+          setViewOrigin(clampOrigin(raw.x, raw.y, zoom))
+        }
+      }
+      return
+    }
     const touch = e.touches[0]
     const svgPos = clientToSVG(touch.clientX, touch.clientY)
     const dx = svgPos.x - dragging.startSVGX
@@ -432,7 +482,9 @@ export default function MapCanvas({
     const dist = Math.sqrt(dx * dx + dy * dy)
     setDragging(prev => ({ ...prev, moved: dist > 5 }))
     const newPos = { x: dragging.startPersonX + dx, y: dragging.startPersonY + dy }
-    if (dragging.overlayKey) {
+    if (dragging.isPlace) {
+      setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
+    } else if (dragging.overlayKey) {
       setOverlayPositions(prev => ({ ...prev, [dragging.overlayKey]: newPos }))
     } else {
       setPositions(prev => ({ ...prev, [dragging.id]: newPos }))
@@ -444,7 +496,10 @@ export default function MapCanvas({
       const elapsed = Date.now() - dragging.startTime
       const wasClick = !dragging.moved && elapsed < 200
       if (wasClick) {
-        if (dragging.overlayKey) {
+        if (dragging.isPlace) {
+          const place = places.find(pl => pl.id === dragging.id)
+          if (place) onPlaceClick?.(place)
+        } else if (dragging.overlayKey) {
           const op = dragging.overlayPersonObj || findOverlayPerson(dragging.id)
           if (op) {
             if (connectionMode) handlePersonTap({ id: dragging.id })
@@ -454,6 +509,9 @@ export default function MapCanvas({
           const person = people.find(p => p.id === dragging.id)
           if (person) onPersonClick?.(person)
         }
+      } else if (dragging.isPlace) {
+        const pos = placePositions[dragging.id]
+        if (pos) debouncedPlaceMoveRef.current?.(dragging.id, pos.x, pos.y)
       } else if (!dragging.overlayKey) {
         const pos = positions[dragging.id]
         if (pos) debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
@@ -465,11 +523,15 @@ export default function MapCanvas({
 
   function handleTouchEnd() {
     pinchRef.current = null
+    if (panning) setPanning(null)
     if (!dragging) return
     const elapsed = Date.now() - dragging.startTime
     const wasClick = !dragging.moved && elapsed < 200
     if (wasClick) {
-      if (dragging.overlayKey) {
+      if (dragging.isPlace) {
+        const place = places.find(pl => pl.id === dragging.id)
+        if (place) onPlaceClick?.(place)
+      } else if (dragging.overlayKey) {
         const op = dragging.overlayPersonObj || findOverlayPerson(dragging.id)
         if (op) {
           if (connectionMode) handlePersonTap({ id: dragging.id })
@@ -479,6 +541,9 @@ export default function MapCanvas({
         const person = people.find(p => p.id === dragging.id)
         if (person) handlePersonTap(person)
       }
+    } else if (dragging.isPlace) {
+      const pos = placePositions[dragging.id]
+      if (pos) debouncedPlaceMoveRef.current?.(dragging.id, pos.x, pos.y)
     } else if (!dragging.overlayKey) {
       const pos = positions[dragging.id]
       if (pos) debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
@@ -491,6 +556,22 @@ export default function MapCanvas({
     setPanning({
       startClientX: e.clientX,
       startClientY: e.clientY,
+      startOriginX: viewOrigin.x,
+      startOriginY: viewOrigin.y,
+    })
+  }
+
+  function handleBackgroundTouchStart(e) {
+    if (connectionMode || dragging) return
+    if (e.touches.length !== 1) {
+      // Multi-finger: cancel any active panning (pinch takes over)
+      setPanning(null)
+      return
+    }
+    const touch = e.touches[0]
+    setPanning({
+      startClientX: touch.clientX,
+      startClientY: touch.clientY,
       startOriginX: viewOrigin.x,
       startOriginY: viewOrigin.y,
     })
@@ -587,6 +668,7 @@ export default function MapCanvas({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseDown={handleBackgroundMouseDown}
+      onTouchStart={handleBackgroundTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
@@ -692,6 +774,7 @@ export default function MapCanvas({
         {/* Center-to-person Verbindungslinien (nur für direkte / 1. Generation) */}
         {people.map((p, i) => {
           if (p.is_secondary) return null
+          if (ownerDisconnectedIds.has(p.id)) return null
           const pos = getPos(p, i)
           const lineColor = centerLineColors[p.id] || p.center_line_color || 'var(--color-warm-3)'
           const isPickerOpen = centerLinePicker?.personId === p.id
@@ -874,6 +957,132 @@ export default function MapCanvas({
         >
           {shortName(userName)}
         </text>
+
+        {/* Center-to-place lines (start at edge of center circle, like person lines) */}
+        {places.map(pl => {
+          const pos = placePositions[pl.id]
+          if (!pos) return null
+          const dx = pos.x - cx
+          const dy = pos.y - cy
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          const ux = dx / dist
+          const uy = dy / dist
+          const x1 = cx + ux * userR
+          const y1 = cy + uy * userR
+          const lineColor = placeCenterLineColors[pl.id] || pl.color || 'var(--color-warm-3)'
+          const isPickerOpen = centerLinePicker?.placeId === pl.id
+          return (
+            <g key={`cpl_${pl.id}`}>
+              {!readOnly && (
+                <line
+                  x1={x1} y1={y1} x2={pos.x} y2={pos.y}
+                  stroke="transparent" strokeWidth={14}
+                  style={{ cursor: 'pointer' }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    if (isPickerOpen) { setCenterLinePicker(null); return }
+                    setCenterLinePickerDraft(placeCenterLineColors[pl.id] || pl.color || '#C8BFB0')
+                    setCenterLinePicker({ placeId: pl.id, x: e.clientX, y: e.clientY })
+                  }}
+                />
+              )}
+              <line
+                x1={x1} y1={y1} x2={pos.x} y2={pos.y}
+                stroke={lineColor}
+                strokeWidth={isPickerOpen ? 2.5 : 1.5}
+                style={{ pointerEvents: 'none' }}
+              />
+            </g>
+          )
+        })}
+
+        {/* Place-to-person dashed lines */}
+        {placeConnections.map(conn => {
+          const placePos = placePositions[conn.place_id]
+          const personIdx = people.findIndex(p => p.id === conn.person_id)
+          if (!placePos || personIdx === -1) return null
+          const personPos = getPos(people[personIdx], personIdx)
+          const pl = places.find(p => p.id === conn.place_id)
+          return (
+            <line
+              key={`pc_${conn.id}`}
+              x1={placePos.x} y1={placePos.y}
+              x2={personPos.x} y2={personPos.y}
+              stroke={pl?.color || '#8A7060'}
+              strokeWidth={1}
+              strokeDasharray="5 4"
+              opacity={0.55}
+              style={{ pointerEvents: 'none' }}
+            />
+          )
+        })}
+
+        {/* Place nodes (rounded rectangles) */}
+        {places.map(pl => {
+          const pos = placePositions[pl.id] || { x: cx, y: cy }
+          const isDraggingThis = dragging?.id === pl.id && dragging?.isPlace && dragging?.moved
+          const w = 84, h = 46, rx = 9
+          const connCount = placeConnections.filter(c => c.place_id === pl.id).length
+          const TYPE_EMOJIS = { sport: '🏋️', work: '💼', school: '🏫', church: '⛪', place: '📍', other: '🗺️' }
+          const emoji = TYPE_EMOJIS[pl.type] || '📍'
+          const plName = pl.name.length > 9 ? pl.name.slice(0, 8) + '…' : pl.name
+          return (
+            <g
+              key={pl.id}
+              style={{ cursor: isDraggingThis ? 'grabbing' : 'grab', opacity: 0.9 }}
+              onMouseDown={e => {
+                if (connectionMode) return
+                e.stopPropagation(); e.preventDefault()
+                const svgPos = clientToSVG(e.clientX, e.clientY)
+                setDragging({ id: pl.id, isPlace: true, overlayKey: null, overlayPersonObj: null, startSVGX: svgPos.x, startSVGY: svgPos.y, startPersonX: pos.x, startPersonY: pos.y, startTime: Date.now(), moved: false })
+              }}
+              onTouchStart={e => {
+                if (connectionMode) return
+                e.stopPropagation()
+                const touch = e.touches[0]
+                const svgPos = clientToSVG(touch.clientX, touch.clientY)
+                setDragging({ id: pl.id, isPlace: true, overlayKey: null, overlayPersonObj: null, startSVGX: svgPos.x, startSVGY: svgPos.y, startPersonX: pos.x, startPersonY: pos.y, startTime: Date.now(), moved: false })
+              }}
+              onClick={e => { e.stopPropagation(); if (!dragging?.moved) onPlaceClick?.(pl) }}
+            >
+              {isDraggingThis && (
+                <rect x={pos.x - w / 2 - 4} y={pos.y - h / 2 - 4} width={w + 8} height={h + 8} rx={rx + 4} fill="rgba(58,46,36,0.10)" />
+              )}
+              <rect
+                x={pos.x - w / 2} y={pos.y - h / 2}
+                width={w} height={h} rx={rx}
+                fill={pl.color || '#8A7060'}
+                stroke="rgba(255,255,255,0.35)"
+                strokeWidth={1.5}
+                style={{ filter: isDraggingThis ? 'drop-shadow(0 4px 10px rgba(58,46,36,0.25))' : 'drop-shadow(0 2px 4px rgba(58,46,36,0.15))' }}
+              />
+              {/* Emoji icon left */}
+              <text x={pos.x - w / 2 + 12} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize={13} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                {emoji}
+              </text>
+              {/* Place name */}
+              <text
+                x={pos.x + 4} y={pos.y}
+                textAnchor="middle" dominantBaseline="middle"
+                fill="white" fontSize={9}
+                fontFamily="Lora, Georgia, serif"
+                fontWeight="600"
+                style={{ pointerEvents: 'none' }}
+              >
+                {plName}
+              </text>
+              {/* Person count badge bottom-right */}
+              {connCount > 0 && (
+                <g>
+                  <circle cx={pos.x + w / 2 - 1} cy={pos.y + h / 2 - 1} r={8} fill="white" stroke={pl.color || '#8A7060'} strokeWidth={1.5} />
+                  <text x={pos.x + w / 2 - 1} y={pos.y + h / 2 - 1} textAnchor="middle" dominantBaseline="middle" fill={pl.color || '#8A7060'} fontSize={7} fontFamily="Lora, Georgia, serif" fontWeight="700" style={{ pointerEvents: 'none' }}>
+                    {connCount}
+                  </text>
+                </g>
+              )}
+            </g>
+          )
+        })}
 
         {/* Personen */}
         {people.map((p, i) => {
@@ -1289,7 +1498,11 @@ export default function MapCanvas({
                     onMouseDown={e => e.stopPropagation()}
                     onClick={() => {
                       setCenterLinePickerDraft(c.hex)
-                      setCenterLineColors(prev => ({ ...prev, [centerLinePicker.personId]: c.hex }))
+                      if (centerLinePicker.placeId) {
+                        setPlaceCenterLineColors(prev => ({ ...prev, [centerLinePicker.placeId]: c.hex }))
+                      } else {
+                        setCenterLineColors(prev => ({ ...prev, [centerLinePicker.personId]: c.hex }))
+                      }
                     }}
                     style={{
                       width: 32, height: 32, borderRadius: '50%', backgroundColor: c.hex,
@@ -1303,7 +1516,9 @@ export default function MapCanvas({
               <button
                 onMouseDown={e => e.stopPropagation()}
                 onClick={() => {
-                  onCenterLineColorChange?.(centerLinePicker.personId, centerLinePickerDraft)
+                  if (!centerLinePicker.placeId) {
+                    onCenterLineColorChange?.(centerLinePicker.personId, centerLinePickerDraft)
+                  }
                   setCenterLinePicker(null)
                 }}
                 style={{

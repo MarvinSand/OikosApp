@@ -18,8 +18,14 @@ export default function AuthCallback() {
       })
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
+        // E-Mail als verifiziert markieren
+        await supabase
+          .from('profiles')
+          .update({ email_verified: true })
+          .eq('id', session.user.id)
+
         setStatus('success')
         // Kurz Erfolgsmeldung zeigen, dann zur Login-Seite –
         // dort erkennt App.jsx die aktive Session und leitet automatisch weiter.

@@ -209,7 +209,7 @@ export default function PublicMapView() {
   const { id: userId, mapId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { map, people, ownerName, loading } = usePublicMap(userId, mapId)
+  const { map, people, connections, ownerName, loading } = usePublicMap(userId, mapId)
   const [selectedPerson, setSelectedPerson] = useState(null)
 
   if (loading) {
@@ -257,6 +257,7 @@ export default function PublicMapView() {
         <MapCanvas
           userName={ownerName}
           people={people}
+          connections={connections}
           onPersonClick={setSelectedPerson}
           readOnly
         />

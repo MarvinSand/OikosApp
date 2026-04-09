@@ -16,7 +16,7 @@ export function usePrayerRequests(personId) {
     setLoading(true)
     const { data } = await supabase
       .from('prayer_requests')
-      .select('*')
+      .select('*, profiles!owner_id(id, full_name, username, gender, is_christian)')
       .eq('person_id', personId)
       .or(`owner_id.eq.${user.id},is_public.eq.true`)
       .order('is_answered')

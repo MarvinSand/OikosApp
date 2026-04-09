@@ -1,12 +1,13 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
 import { useNotifications } from '../hooks/useNotifications'
 import { useConversations } from '../hooks/useConversations'
 import { useToast } from '../context/ToastContext'
+import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 
 // ─── Avatar ────────────────────────────────────────────────
@@ -758,10 +759,464 @@ function ChatsTab() {
   )
 }
 
+// ─── Feed helpers ───────────────────────────────────────────
+const TYPE_CONFIG = {
+  text:      { icon: MessageSquare, label: 'Gedanke',    bg: 'var(--color-warm-4)',   border: 'var(--color-warm-3)' },
+  bible:     { icon: BookOpen,      label: 'Bibelstelle', bg: 'rgba(196,151,74,0.08)', border: 'rgba(196,151,74,0.3)' },
+  testimony: { icon: HandHeart,     label: 'Zeugnis',    bg: 'rgba(74,103,65,0.07)',  border: 'rgba(74,103,65,0.25)' },
+  question:  { icon: HelpCircle,    label: 'Frage',      bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.25)' },
+  photo:     { icon: Image,         label: 'Foto',       bg: 'var(--color-warm-4)',   border: 'var(--color-warm-3)' },
+}
+
+const FILTER_OPTIONS = [
+  { key: 'all',       label: '🌐 Alle' },
+  { key: 'bible',     label: '📖 Bibelstellen' },
+  { key: 'testimony', label: '🙌 Zeugnisse' },
+  { key: 'question',  label: '❓ Fragen' },
+]
+
+const REACTION_CONFIG = [
+  { type: 'prayer', emoji: '🙏', label: 'Gebet' },
+  { type: 'heart',  emoji: '❤️', label: 'Herz' },
+  { type: 'amen',   emoji: '🙌', label: 'Amen' },
+]
+
+function timeAgoFeed(iso) {
+  const d = new Date(iso)
+  const now = new Date()
+  const diff = Math.floor((now - d) / 60000)
+  if (diff < 1) return 'Gerade eben'
+  if (diff < 60) return `vor ${diff} Min.`
+  const h = Math.floor(diff / 60)
+  if (h < 24) return `vor ${h} Std.`
+  const days = Math.floor(h / 24)
+  if (days === 1) return 'gestern'
+  if (days < 7) return `vor ${days} Tagen`
+  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+}
+
+function FeedAvatar({ profile, size = 36 }) {
+  const name = profile?.full_name || profile?.username || '?'
+  const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      backgroundColor: profile?.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      overflow: 'hidden',
+    }}>
+      {profile?.avatar_url
+        ? <img src={profile.avatar_url} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : initials}
+    </div>
+  )
+}
+
+// ─── Post Card ───────────────────────────────────────────────
+function PostCard({ post, currentUserId, onReact, onDelete, onClick }) {
+  const navigate = useNavigate()
+  const [showMenu, setShowMenu] = useState(false)
+  const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
+  const TypeIcon = cfg.icon
+  const isOwn = post.author_id === currentUserId
+  const author = post.profiles
+
+  const reactionCounts = REACTION_CONFIG.map(r => ({
+    ...r,
+    count: (post.reactions || []).filter(x => x.type === r.type).length,
+    mine:  (post.reactions || []).some(x => x.type === r.type && x.user_id === currentUserId),
+  }))
+
+  const [expanded, setExpanded] = useState(false)
+  const bodyLong = post.body && post.body.length > 240
+  const displayBody = bodyLong && !expanded ? post.body.slice(0, 240) + '…' : post.body
+
+  return (
+    <div
+      style={{
+        backgroundColor: 'var(--color-white)',
+        borderRadius: 16,
+        border: `1.5px solid ${cfg.border}`,
+        marginBottom: 12,
+        overflow: 'hidden',
+        background: cfg.bg,
+      }}
+    >
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px 8px' }}>
+        <button onClick={() => navigate(`/user/${post.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
+          <FeedAvatar profile={author} />
+        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
+              {author?.full_name || author?.username || 'Geschwister'}
+            </span>
+            {author?.is_christian && (
+              <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20, backgroundColor: 'rgba(196,151,74,0.15)', color: 'var(--color-accent)', fontFamily: 'Lora, serif', letterSpacing: 0.3 }}>
+                Geschwister
+              </span>
+            )}
+          </div>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)' }}>
+            {timeAgoFeed(post.created_at)}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'Lora, serif', color: 'var(--color-text-muted)', padding: '2px 7px', borderRadius: 20, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
+            <TypeIcon size={10} /> {cfg.label}
+          </span>
+          {isOwn && (
+            <div style={{ position: 'relative' }}>
+              <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+                <MoreHorizontal size={16} />
+              </button>
+              {showMenu && (
+                <>
+                  <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                  <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
+                    <button
+                      onClick={() => { setShowMenu(false); onDelete(post.id) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={14} /> Löschen
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div onClick={() => onClick(post)} style={{ padding: '0 14px 10px', cursor: 'pointer' }}>
+        {post.title && (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{post.title}</p>
+        )}
+
+        {post.type === 'bible' && (
+          <div style={{ borderLeft: '3px solid var(--color-accent)', paddingLeft: 10, marginBottom: 8 }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, color: 'var(--color-accent)', margin: '0 0 4px' }}>📖 {post.bible_reference}</p>
+            {post.bible_verse && (
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontStyle: 'italic', color: 'var(--color-text)', margin: '0 0 6px', lineHeight: 1.5 }}>„{post.bible_verse}"</p>
+            )}
+          </div>
+        )}
+
+        {post.type === 'photo' && post.photo_url && (
+          <img src={post.photo_url} alt="" style={{ width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 10, marginBottom: 8, display: 'block' }} />
+        )}
+
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: post.type === 'question' ? 15 : 14 }}>
+          {displayBody}
+        </p>
+        {bodyLong && (
+          <button
+            onClick={e => { e.stopPropagation(); setExpanded(v => !v) }}
+            style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', padding: '4px 0 0', fontWeight: 600 }}
+          >
+            {expanded ? 'Weniger lesen' : 'Mehr lesen'}
+          </button>
+        )}
+      </div>
+
+      {/* Reactions + comments */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px 12px', borderTop: '1px solid var(--color-warm-3)', flexWrap: 'wrap' }}>
+        {reactionCounts.map(r => (
+          <button
+            key={r.type}
+            onClick={() => onReact(post.id, r.type)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '4px 10px', borderRadius: 20,
+              border: r.mine ? '1.5px solid var(--color-warm-1)' : '1.5px solid var(--color-warm-3)',
+              backgroundColor: r.mine ? 'rgba(74,103,65,0.1)' : 'transparent',
+              fontFamily: 'Lora, serif', fontSize: 12,
+              color: r.mine ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
+              cursor: 'pointer', fontWeight: r.mine ? 700 : 400,
+              transition: 'all 0.15s',
+            }}
+          >
+            <span style={{ fontSize: 14 }}>{r.emoji}</span>
+            {r.count > 0 && <span>{r.count}</span>}
+          </button>
+        ))}
+        <button
+          onClick={() => onClick(post)}
+          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: 4 }}
+        >
+          <MessageSquare size={13} />
+          {post.commentCount > 0 ? `${post.commentCount} Antworten` : 'Antworten'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Create Post Sheet ───────────────────────────────────────
+function CreatePostSheet({ onClose, onSubmit }) {
+  const { myCommunities } = useCommunities()
+  const [step, setStep] = useState(1) // 1=type, 2=content, 3=visibility
+  const [type, setType] = useState(null)
+  const [form, setForm] = useState({ title: '', body: '', bibleReference: '', bibleVerse: '', photoUrl: '' })
+  const [isPublic, setIsPublic] = useState(true)
+  const [selectedCommunities, setSelectedCommunities] = useState([])
+  const [saving, setSaving] = useState(false)
+
+  const TYPE_TILES = [
+    { type: 'text',      emoji: '💬', label: 'Gedanke' },
+    { type: 'bible',     emoji: '📖', label: 'Bibelstelle' },
+    { type: 'testimony', emoji: '🙌', label: 'Zeugnis' },
+    { type: 'question',  emoji: '❓', label: 'Frage' },
+  ]
+
+  function valid() {
+    if (!form.body.trim()) return false
+    if (type === 'bible' && !form.bibleReference.trim()) return false
+    return true
+  }
+
+  async function handleSubmit() {
+    if (!valid()) return
+    setSaving(true)
+    await onSubmit({
+      type,
+      body: form.body.trim(),
+      title: form.title.trim() || null,
+      bibleReference: form.bibleReference.trim() || null,
+      bibleVerse: form.bibleVerse.trim() || null,
+      photoUrl: form.photoUrl.trim() || null,
+      isPublic,
+      communityIds: selectedCommunities,
+    })
+    setSaving(false)
+    onClose()
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.4)', zIndex: 40 }} />
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '24px 24px 0 0', zIndex: 50, padding: '16px 20px', paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={sheetHandle} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+            {step === 1 ? 'Was möchtest du teilen?' : step === 2 ? 'Inhalt' : 'Sichtbarkeit'}
+          </h3>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={16} color="var(--color-text-muted)" />
+          </button>
+        </div>
+
+        {/* Step 1: type */}
+        {step === 1 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {TYPE_TILES.map(t => (
+              <button
+                key={t.type}
+                onClick={() => { setType(t.type); setStep(2) }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 12px', borderRadius: 16, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-warm-4)', cursor: 'pointer', fontFamily: 'Lora, serif' }}
+              >
+                <span style={{ fontSize: 28 }}>{t.emoji}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Step 2: content */}
+        {step === 2 && type && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {(type === 'testimony' || type === 'question') && (
+              <input
+                autoFocus
+                type="text"
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder={type === 'testimony' ? 'Titel: Womit hat Gott dich überrascht?' : 'Deine Frage an die Gemeinschaft *'}
+                style={inp}
+              />
+            )}
+            {type === 'bible' && (
+              <>
+                <input autoFocus type="text" value={form.bibleReference} onChange={e => setForm(f => ({ ...f, bibleReference: e.target.value }))} placeholder="Bibelstelle *  z.B. Johannes 3,16" style={inp} />
+                <textarea value={form.bibleVerse} onChange={e => setForm(f => ({ ...f, bibleVerse: e.target.value }))} placeholder="Vers-Text" rows={3} style={{ ...inp, resize: 'none' }} />
+              </>
+            )}
+            <textarea
+              value={form.body}
+              onChange={e => setForm(f => ({ ...f, body: e.target.value.slice(0, 500) }))}
+              placeholder={type === 'bible' ? 'Deine Reflexion dazu…' : type === 'testimony' ? 'Was hat Gott in dir und durch dich gewirkt? *' : type === 'question' ? 'Kontext (optional)' : 'Dein Gedanke… *'}
+              rows={5}
+              style={{ ...inp, resize: 'none' }}
+              autoFocus={type === 'text' || type === 'bible'}
+            />
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', textAlign: 'right', margin: 0 }}>{form.body.length}/500</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setStep(1)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Zurück</button>
+              <button onClick={() => setStep(3)} disabled={!valid()} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: valid() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: valid() ? 'pointer' : 'not-allowed' }}>Weiter</button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: visibility */}
+        {step === 3 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[{ v: true, label: '🌐 Für alle Geschwister', sub: 'Alle eingeloggten Nutzer können es sehen' }, { v: false, label: '🏘 Nur für bestimmte Communities', sub: 'Wähle die Communities unten aus' }].map(o => (
+              <button
+                key={String(o.v)}
+                onClick={() => setIsPublic(o.v)}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 14, border: `2px solid ${isPublic === o.v ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, backgroundColor: isPublic === o.v ? 'rgba(74,103,65,0.06)' : 'var(--color-warm-4)', cursor: 'pointer', textAlign: 'left' }}
+              >
+                <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${isPublic === o.v ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, flexShrink: 0, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {isPublic === o.v && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)' }} />}
+                </div>
+                <div>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>{o.label}</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{o.sub}</p>
+                </div>
+              </button>
+            ))}
+            {!isPublic && myCommunities.length > 0 && (
+              <div style={{ marginTop: 4 }}>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>Communities auswählen:</p>
+                {myCommunities.map(c => (
+                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedCommunities.includes(c.id)}
+                      onChange={() => setSelectedCommunities(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                      style={{ accentColor: 'var(--color-warm-1)', width: 16, height: 16 }}
+                    />
+                    <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)' }}>{c.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <button onClick={() => setStep(2)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Zurück</button>
+              <button onClick={handleSubmit} disabled={saving || (!isPublic && selectedCommunities.length === 0)} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+                {saving ? 'Teile…' : 'Teilen 🙌'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ─── FeedTab ─────────────────────────────────────────────────
+function FeedTab() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const { showToast } = useToast()
+  const [activeFilter, setActiveFilter] = useState('all')
+  const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost } = useFeed(activeFilter)
+  const [showCreate, setShowCreate] = useState(false)
+  const loaderRef = useRef(null)
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    if (!loaderRef.current) return
+    const obs = new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMore() }, { threshold: 0.1 })
+    obs.observe(loaderRef.current)
+    return () => obs.disconnect()
+  }, [loadMore])
+
+  async function handleCreate(data) {
+    await createPost(data)
+    showToast('Post geteilt 🙌')
+  }
+
+  async function handleDelete(postId) {
+    if (!window.confirm('Post wirklich löschen?')) return
+    await deletePost(postId)
+    showToast('Post gelöscht', 'info')
+  }
+
+  return (
+    <div>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Feed</h3>
+        <button
+          onClick={() => setShowCreate(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+        >
+          <Plus size={14} /> Post erstellen
+        </button>
+      </div>
+
+      {/* Filter chips */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }} className="hide-scrollbar">
+        {FILTER_OPTIONS.map(f => (
+          <button
+            key={f.key}
+            onClick={() => setActiveFilter(f.key)}
+            style={{
+              flexShrink: 0, padding: '6px 14px', borderRadius: 20,
+              border: `1.5px solid ${activeFilter === f.key ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
+              backgroundColor: activeFilter === f.key ? 'rgba(74,103,65,0.1)' : 'transparent',
+              color: activeFilter === f.key ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
+              fontFamily: 'Lora, serif', fontSize: 12, fontWeight: activeFilter === f.key ? 700 : 400, cursor: 'pointer',
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Loading skeleton */}
+      {loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ height: 140, borderRadius: 16, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+          ))}
+        </div>
+      )}
+
+      {/* Posts */}
+      {!loading && posts.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <p style={{ fontSize: 32, margin: '0 0 10px' }}>🌱</p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
+            Noch keine Posts. Sei die Erste, die etwas teilt!
+          </p>
+        </div>
+      )}
+
+      {!loading && posts.map(post => (
+        <PostCard
+          key={post.id}
+          post={post}
+          currentUserId={user?.id}
+          onReact={reactToPost}
+          onDelete={handleDelete}
+          onClick={p => navigate(`/feed/post/${p.id}`)}
+        />
+      ))}
+
+      {/* Infinite scroll sentinel */}
+      {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}
+      {!loading && !hasMore && posts.length > 0 && (
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
+          Keine weiteren Posts.
+        </p>
+      )}
+
+      {showCreate && (
+        <CreatePostSheet onClose={() => setShowCreate(false)} onSubmit={handleCreate} />
+      )}
+    </div>
+  )
+}
+
 // ─── FriendsView (Main) ──────────────────────────────────────
 export default function FriendsView() {
   const [searchParams] = useSearchParams()
-  const initialTab = searchParams.get('tab') === 'chats' ? 'chats' : 'friends'
+  const initialTab = searchParams.get('tab') === 'chats' ? 'chats' : searchParams.get('tab') === 'friends' ? 'friends' : 'feed'
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
@@ -778,7 +1233,7 @@ export default function FriendsView() {
           </h2>
         </div>
         <div className="flex gap-2">
-          {[{ key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }, { key: 'chats', label: 'Chats' }].map(t => (
+          {[{ key: 'feed', label: 'Feed' }, { key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }, { key: 'chats', label: 'Chats' }].map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
@@ -797,6 +1252,7 @@ export default function FriendsView() {
       </div>
 
       <div style={{ padding: '20px 16px' }}>
+        {activeTab === 'feed' && <FeedTab />}
         {activeTab === 'friends' && <FriendsTab />}
         {activeTab === 'communities' && <CommunitiesTab onCreateOpen={() => setShowCreate(true)} onJoinOpen={() => setShowJoin(true)} />}
         {activeTab === 'chats' && <ChatsTab />}

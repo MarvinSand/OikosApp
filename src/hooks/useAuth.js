@@ -51,5 +51,13 @@ export function useAuth() {
     if (error) throw error
   }
 
-  return { user, session, loading, login, register, logout }
+  async function resendVerificationEmail() {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: user?.email,
+    })
+    if (error) throw error
+  }
+
+  return { user, session, loading, login, register, logout, resendVerificationEmail }
 }

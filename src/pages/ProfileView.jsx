@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Camera, Play } from 'lucide-react'
+import { Camera, Play, MailWarning } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../hooks/useProfile'
+import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../context/ToastContext'
 
 function getInitials(name) {
@@ -41,7 +42,23 @@ function DeleteConfirmModal({ onConfirm, onCancel, loading }) {
 
 export default function ProfileView() {
   const { profile, stats, loading, updateProfile, deleteAccount } = useProfile()
+  const { user, resendVerificationEmail } = useAuth()
   const { showToast } = useToast()
+  const [resendingVerification, setResendingVerification] = useState(false)
+
+  const emailNotVerified = profile && !profile.email_verified
+
+  async function handleResendVerification() {
+    setResendingVerification(true)
+    try {
+      await resendVerificationEmail()
+      showToast('Bestätigungs-E-Mail gesendet ✓')
+    } catch {
+      showToast('Fehler beim Senden', 'error')
+    } finally {
+      setResendingVerification(false)
+    }
+  }
 
   const [form, setForm] = useState({ full_name: '', username: '', bio: '', is_christian: true, gender: null })
   const [usernameError, setUsernameError] = useState('')
@@ -168,6 +185,43 @@ export default function ProfileView() {
       </div>
 
       <div style={{ padding: '16px 16px 0' }}>
+
+        {/* E-Mail Verifikations-Banner */}
+        {emailNotVerified && (
+          <div style={{
+            backgroundColor: '#fffbeb',
+            border: '1.5px solid #f59e0b',
+            borderRadius: 14,
+            padding: '14px 16px',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+          }}>
+            <MailWarning size={20} color="#b45309" style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: '#92400e', margin: 0, marginBottom: 4 }}>
+                E-Mail noch nicht verifiziert
+              </p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#b45309', margin: 0, marginBottom: 8, lineHeight: 1.5 }}>
+                Bitte bestätige deine E-Mail-Adresse <strong>{user?.email}</strong>, um alle Funktionen zu nutzen.
+              </p>
+              <button
+                onClick={handleResendVerification}
+                disabled={resendingVerification}
+                style={{
+                  border: 'none', background: 'none', padding: 0,
+                  fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700,
+                  color: 'var(--color-warm-1)', cursor: resendingVerification ? 'not-allowed' : 'pointer',
+                  opacity: resendingVerification ? 0.6 : 1,
+                  textDecoration: 'underline',
+                }}
+              >
+                {resendingVerification ? 'Sende…' : 'Jetzt verifizieren →'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Statistiken */}
         <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 16, display: 'flex', marginBottom: 16, boxShadow: '0 2px 8px rgba(58,46,36,0.06)' }}>
