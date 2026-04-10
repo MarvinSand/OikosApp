@@ -260,6 +260,7 @@ export default function PublicMapView() {
           connections={connections}
           onPersonClick={setSelectedPerson}
           readOnly
+          ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
         />
       </div>
 

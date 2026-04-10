@@ -545,6 +545,8 @@ export default function MapView() {
               onCenterLineColorChange={(personId, color) => updatePerson(personId, { center_line_color: color })}
               onPlaceClick={setSelectedPlace}
               onPlaceMoved={movePlacePosition}
+              onConnectPlacePerson={connectPlacePerson}
+              onDisconnectPlacePerson={disconnectPlacePerson}
               hiddenColors={hiddenColors}
               ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
             />
@@ -626,6 +628,9 @@ export default function MapView() {
           }}
           onUnlinkAccount={unlinkAccount}
           onUpdateOverlay={updatePersonOverlay}
+          placeConnections={placeConnections}
+          places={places}
+          onDisconnectFromPlace={disconnectPlacePerson}
         />
       )}
       {selectedPlace && (

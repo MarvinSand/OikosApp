@@ -39,6 +39,8 @@ export default function MapCanvas({
   onCenterLineColorChange,
   onPlaceClick,
   onPlaceMoved,
+  onConnectPlacePerson,
+  onDisconnectPlacePerson,
   readOnly = false,
   connectionMode = false,
   hiddenColors,
@@ -61,7 +63,8 @@ export default function MapCanvas({
   // Dragging state
   const [dragging, setDragging] = useState(null)
   // Connection mode selection state
-  const [firstSelected, setFirstSelected] = useState(null)
+  const [firstSelected, setFirstSelected] = useState(null) // stores an ID
+  const [firstSelectedType, setFirstSelectedType] = useState(null) // 'person' | 'place'
   // Label modal for new connection
   const [labelModal, setLabelModal] = useState(null) // { sourceId, targetId } or null
   const [labelInput, setLabelInput] = useState('')
@@ -83,6 +86,10 @@ export default function MapCanvas({
   const [centerLineColors, setCenterLineColors] = useState({})
   // Separate color overrides for place center lines
   const [placeCenterLineColors, setPlaceCenterLineColors] = useState({})
+  // Place-connection (person↔place) color picker
+  const [placeConnColorPicker, setPlaceConnColorPicker] = useState(null) // { conn, x, y } | null
+  const [placeConnPickerDraft, setPlaceConnPickerDraft] = useState('#8A7060')
+  const [placeConnColors, setPlaceConnColors] = useState({})
 
   // Place positions (local, synced from props)
   const [placePositions, setPlacePositions] = useState({})
@@ -612,10 +619,22 @@ export default function MapCanvas({
     }
     if (firstSelected === null) {
       setFirstSelected(person.id)
-    } else if (firstSelected === person.id) {
+      setFirstSelectedType('person')
+    } else if (firstSelected === person.id && firstSelectedType === 'person') {
       setFirstSelected(null)
+      setFirstSelectedType(null)
+    } else if (firstSelectedType === 'place') {
+      // Connect this person to the selected place
+      const alreadyConnected = placeConnections.find(c =>
+        c.place_id === firstSelected && c.person_id === person.id
+      )
+      if (!alreadyConnected) {
+        onConnectPlacePerson?.(firstSelected, person.id)
+      }
+      setFirstSelected(null)
+      setFirstSelectedType(null)
     } else {
-      // Check if already connected
+      // person → person connection
       const existing = connections.find(c =>
         (c.source_person_id === firstSelected && c.target_person_id === person.id) ||
         (c.source_person_id === person.id && c.target_person_id === firstSelected)
@@ -623,12 +642,42 @@ export default function MapCanvas({
       if (existing) {
         setRemoveModal({ conn: existing, nameA: resolvePersonName(firstSelected), nameB: resolvePersonName(person.id) })
         setFirstSelected(null)
+        setFirstSelectedType(null)
       } else {
         // Open label modal
         setLabelModal({ sourceId: firstSelected, targetId: person.id })
         setLabelInput('')
         setFirstSelected(null)
+        setFirstSelectedType(null)
       }
+    }
+  }
+
+  function handlePlaceTap(place) {
+    if (!connectionMode) {
+      onPlaceClick?.(place)
+      return
+    }
+    if (firstSelected === null) {
+      setFirstSelected(place.id)
+      setFirstSelectedType('place')
+    } else if (firstSelected === place.id && firstSelectedType === 'place') {
+      setFirstSelected(null)
+      setFirstSelectedType(null)
+    } else if (firstSelectedType === 'person') {
+      // Connect this place to the selected person
+      const alreadyConnected = placeConnections.find(c =>
+        c.place_id === place.id && c.person_id === firstSelected
+      )
+      if (!alreadyConnected) {
+        onConnectPlacePerson?.(place.id, firstSelected)
+      }
+      setFirstSelected(null)
+      setFirstSelectedType(null)
+    } else {
+      // place → place: switch selection to new place
+      setFirstSelected(place.id)
+      setFirstSelectedType('place')
     }
   }
 
@@ -721,10 +770,10 @@ export default function MapCanvas({
             boxShadow: '0 1px 6px rgba(58,46,36,0.10)',
             pointerEvents: 'none',
           }}>
-            {firstSelected ? 'Wähle eine zweite Person' : 'Tippe zwei Personen an um sie zu verbinden'}
+            {firstSelectedType === 'place' ? 'Wähle eine Person zum verbinden' : firstSelected ? 'Wähle eine zweite Person oder einen Ort' : 'Tippe Personen oder Orte an um sie zu verbinden'}
           </span>
           {/* + Person button when a person is selected */}
-          {firstSelected && (
+          {firstSelected && firstSelectedType === 'person' && (
             <button
               onMouseDown={e => e.stopPropagation()}
               onClick={e => {
@@ -996,24 +1045,39 @@ export default function MapCanvas({
           )
         })}
 
-        {/* Place-to-person dashed lines */}
+        {/* Place-to-person lines */}
         {placeConnections.map(conn => {
           const placePos = placePositions[conn.place_id]
           const personIdx = people.findIndex(p => p.id === conn.person_id)
           if (!placePos || personIdx === -1) return null
           const personPos = getPos(people[personIdx], personIdx)
           const pl = places.find(p => p.id === conn.place_id)
+          const lineColor = placeConnColors[conn.id] || pl?.color || '#8A7060'
+          const isPickerOpen = placeConnColorPicker?.conn?.id === conn.id
           return (
-            <line
-              key={`pc_${conn.id}`}
-              x1={placePos.x} y1={placePos.y}
-              x2={personPos.x} y2={personPos.y}
-              stroke={pl?.color || '#8A7060'}
-              strokeWidth={1}
-              strokeDasharray="5 4"
-              opacity={0.55}
-              style={{ pointerEvents: 'none' }}
-            />
+            <g key={`pc_${conn.id}`}>
+              {/* Wide invisible hit area */}
+              <line
+                x1={placePos.x} y1={placePos.y}
+                x2={personPos.x} y2={personPos.y}
+                stroke="transparent" strokeWidth={14}
+                style={{ cursor: 'pointer' }}
+                onClick={e => {
+                  e.stopPropagation()
+                  if (isPickerOpen) { setPlaceConnColorPicker(null); return }
+                  setPlaceConnPickerDraft(placeConnColors[conn.id] || pl?.color || '#8A7060')
+                  setPlaceConnColorPicker({ conn, x: e.clientX, y: e.clientY })
+                }}
+              />
+              <line
+                x1={placePos.x} y1={placePos.y}
+                x2={personPos.x} y2={personPos.y}
+                stroke={lineColor}
+                strokeWidth={isPickerOpen ? 2.5 : 1.5}
+                opacity={0.75}
+                style={{ pointerEvents: 'none' }}
+              />
+            </g>
           )
         })}
 
@@ -1021,6 +1085,7 @@ export default function MapCanvas({
         {places.map(pl => {
           const pos = placePositions[pl.id] || { x: cx, y: cy }
           const isDraggingThis = dragging?.id === pl.id && dragging?.isPlace && dragging?.moved
+          const isPlaceSelected = firstSelected === pl.id && firstSelectedType === 'place'
           const w = 84, h = 46, rx = 9
           const connCount = placeConnections.filter(c => c.place_id === pl.id).length
           const TYPE_EMOJIS = { sport: '🏋️', work: '💼', school: '🏫', church: '⛪', place: '📍', other: '🗺️' }
@@ -1029,7 +1094,7 @@ export default function MapCanvas({
           return (
             <g
               key={pl.id}
-              style={{ cursor: isDraggingThis ? 'grabbing' : 'grab', opacity: 0.9 }}
+              style={{ cursor: isDraggingThis ? 'grabbing' : (connectionMode ? 'pointer' : 'grab'), opacity: 0.9 }}
               onMouseDown={e => {
                 if (connectionMode) return
                 e.stopPropagation(); e.preventDefault()
@@ -1043,10 +1108,13 @@ export default function MapCanvas({
                 const svgPos = clientToSVG(touch.clientX, touch.clientY)
                 setDragging({ id: pl.id, isPlace: true, overlayKey: null, overlayPersonObj: null, startSVGX: svgPos.x, startSVGY: svgPos.y, startPersonX: pos.x, startPersonY: pos.y, startTime: Date.now(), moved: false })
               }}
-              onClick={e => { e.stopPropagation(); if (!dragging?.moved) onPlaceClick?.(pl) }}
+              onClick={e => { e.stopPropagation(); if (!dragging?.moved) handlePlaceTap(pl) }}
             >
               {isDraggingThis && (
                 <rect x={pos.x - w / 2 - 4} y={pos.y - h / 2 - 4} width={w + 8} height={h + 8} rx={rx + 4} fill="rgba(58,46,36,0.10)" />
+              )}
+              {isPlaceSelected && (
+                <rect x={pos.x - w / 2 - 5} y={pos.y - h / 2 - 5} width={w + 10} height={h + 10} rx={rx + 5} fill="none" stroke="var(--color-gold)" strokeWidth={3} />
               )}
               <rect
                 x={pos.x - w / 2} y={pos.y - h / 2}
@@ -1444,6 +1512,90 @@ export default function MapCanvas({
                 onClick={() => {
                   onDeleteConnection?.(connColorPicker.conn.id)
                   setConnColorPicker(null)
+                }}
+                style={{
+                  marginTop: 8, width: '100%',
+                  padding: '9px 0', borderRadius: 10,
+                  border: '1px solid #E8C0B8', backgroundColor: 'transparent',
+                  color: '#C0392B', fontFamily: 'Lora, serif', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Verbindung entfernen
+              </button>
+            </div>
+          </>
+        )
+      })()}
+
+      {/* Place-connection color picker */}
+      {placeConnColorPicker && (() => {
+        const pickerW = 232
+        const vw = window.innerWidth
+        const vh = window.innerHeight
+        const left = Math.min(placeConnColorPicker.x + 8, vw - pickerW - 12)
+        const top = Math.min(placeConnColorPicker.y + 8, vh - 200)
+        return (
+          <>
+            <div onClick={() => setPlaceConnColorPicker(null)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
+            <div
+              onMouseDown={e => e.stopPropagation()}
+              style={{
+                position: 'fixed', left, top: Math.max(8, top),
+                width: pickerW, zIndex: 51,
+                backgroundColor: 'var(--color-white)',
+                borderRadius: 16,
+                boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
+                border: '1px solid var(--color-warm-3)',
+                padding: 16,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
+                  Verbindungsfarbe
+                </span>
+                <button onClick={() => setPlaceConnColorPicker(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', padding: 2, color: 'var(--color-text-muted)' }}>
+                  <X size={15} />
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {CONN_COLORS.map(c => (
+                  <button
+                    key={c.hex}
+                    title={c.label}
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={() => {
+                      setPlaceConnPickerDraft(c.hex)
+                      setPlaceConnColors(prev => ({ ...prev, [placeConnColorPicker.conn.id]: c.hex }))
+                    }}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', backgroundColor: c.hex,
+                      border: placeConnPickerDraft === c.hex ? '3px solid var(--color-text)' : '2px solid rgba(0,0,0,0.12)',
+                      cursor: 'pointer', padding: 0, flexShrink: 0,
+                      boxShadow: placeConnPickerDraft === c.hex ? '0 0 0 2px white inset' : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+              <button
+                onMouseDown={e => e.stopPropagation()}
+                onClick={() => setPlaceConnColorPicker(null)}
+                style={{
+                  width: '100%',
+                  padding: '10px 0', borderRadius: 10,
+                  border: 'none', backgroundColor: 'var(--color-warm-1)',
+                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Speichern
+              </button>
+              <button
+                onMouseDown={e => e.stopPropagation()}
+                onClick={() => {
+                  const c = placeConnColorPicker.conn
+                  onDisconnectPlacePerson?.(c.place_id, c.person_id)
+                  setPlaceConnColorPicker(null)
                 }}
                 style={{
                   marginTop: 8, width: '100%',

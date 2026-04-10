@@ -125,7 +125,7 @@ function EditPersonForm({ person, onSave, onCancel }) {
 }
 
 // --- Connections Section ---
-function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor, onAddConnectedPerson, mapOwnerName, ownerDisconnected, onOwnerDisconnect, onDeletePerson }) {
+function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor, onAddConnectedPerson, mapOwnerName, ownerDisconnected, onOwnerDisconnect, onDeletePerson, placeConnections = [], places = [], onDisconnectFromPlace }) {
   const [showAddSearch, setShowAddSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [labelModal, setLabelModal] = useState(null) // { targetId }
@@ -144,6 +144,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
   const myConnections = connections.filter(
     c => c.source_person_id === person.id || c.target_person_id === person.id
   )
+  const myPlaceConnections = placeConnections.filter(c => c.person_id === person.id)
 
   const connectedIds = new Set(myConnections.map(c =>
     c.source_person_id === person.id ? c.target_person_id : c.source_person_id
@@ -228,7 +229,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
               </button>
               <button
                 onClick={() => {
-                  if (myConnections.length > 0) {
+                  if (myConnections.length > 0 || myPlaceConnections.length > 0) {
                     onOwnerDisconnect?.()
                   } else {
                     setShowOwnerDisconnectConfirm(true)
@@ -369,6 +370,44 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
           </div>
         )
       })}
+
+      {/* Connected places */}
+      {myPlaceConnections.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <h5 style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, marginTop: 4 }}>
+            Orte
+          </h5>
+          {myPlaceConnections.map(c => {
+            const pl = places.find(p => p.id === c.place_id)
+            if (!pl) return null
+            const TYPE_EMOJIS = { sport: '🏋️', work: '💼', school: '🏫', church: '⛪', place: '📍', other: '🗺️' }
+            return (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: pl.color || '#8A7060', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>
+                    {TYPE_EMOJIS[pl.type] || '📍'}
+                  </div>
+                  <span style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)' }}>
+                    {pl.name}
+                  </span>
+                  {c.context && (
+                    <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                      {c.context}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => onDisconnectFromPlace?.(pl.id, person.id)}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: '#C0392B', flexShrink: 0, display: 'flex' }}
+                  title="Verbindung zum Ort entfernen"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Add buttons */}
       {!showAddSearch && !showNewPersonForm && (
@@ -826,6 +865,9 @@ export default function PersonDetailSheet({
   onLinkAccount,
   onUnlinkAccount,
   onUpdateOverlay,
+  placeConnections = [],
+  places = [],
+  onDisconnectFromPlace,
 }) {
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -1035,6 +1077,9 @@ export default function PersonDetailSheet({
           onUpdateConnectionColor={onUpdateConnectionColor}
           onAddConnectedPerson={onAddConnectedPerson}
           onDeletePerson={onDelete}
+          placeConnections={placeConnections}
+          places={places}
+          onDisconnectFromPlace={onDisconnectFromPlace}
         />
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />

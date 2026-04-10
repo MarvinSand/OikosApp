@@ -46,7 +46,7 @@ export default function AddPersonModal({ onClose, onAdd }) {
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAdd(false)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd(true)}
           placeholder="z.B. Anna Müller"
           style={input}
         />
@@ -55,18 +55,18 @@ export default function AddPersonModal({ onClose, onAdd }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
           <button
-            onClick={() => handleAdd(false)}
+            onClick={() => handleAdd(true)}
             disabled={!name.trim() || loading}
             style={primaryBtn(!name.trim() || loading)}
           >
-            Fertig
+            + Weitere Person hinzufügen
           </button>
           <button
-            onClick={() => handleAdd(true)}
+            onClick={() => handleAdd(false)}
             disabled={!name.trim() || loading}
             style={secondaryBtn(!name.trim() || loading)}
           >
-            + Weitere Person hinzufügen
+            Fertig
           </button>
         </div>
       </div>

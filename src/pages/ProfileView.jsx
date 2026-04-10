@@ -204,7 +204,7 @@ export default function ProfileView() {
                 E-Mail noch nicht verifiziert
               </p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#b45309', margin: 0, marginBottom: 8, lineHeight: 1.5 }}>
-                Bitte bestätige deine E-Mail-Adresse <strong>{user?.email}</strong>, um alle Funktionen zu nutzen.
+                Bitte bestätige deine E-Mail-Adresse <strong>{user?.email}</strong> für mehr Sicherheit.
               </p>
               <button
                 onClick={handleResendVerification}
