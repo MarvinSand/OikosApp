@@ -259,7 +259,6 @@ export default function MapView() {
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
   const [selectedPlace, setSelectedPlace] = useState(null)
-  const [ownerDisconnectedIds, setOwnerDisconnectedIds] = useState(new Set())
   // linkedProfile cache: { [userId]: profile }
   const [linkedProfiles, setLinkedProfiles] = useState({})
   const [searchParams, setSearchParams] = useSearchParams()
@@ -547,7 +546,7 @@ export default function MapView() {
               onPlaceClick={setSelectedPlace}
               onPlaceMoved={movePlacePosition}
               hiddenColors={hiddenColors}
-              ownerDisconnectedIds={ownerDisconnectedIds}
+              ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
             />
             {showColorFilter && (
               <ColorFilterPanel
@@ -602,8 +601,8 @@ export default function MapView() {
           people={people}
           overlayData={overlayData}
           mapOwnerName={userName}
-          ownerDisconnected={ownerDisconnectedIds.has(selectedPerson.id)}
-          onOwnerDisconnect={() => setOwnerDisconnectedIds(prev => { const n = new Set(prev); n.add(selectedPerson.id); return n })}
+          ownerDisconnected={selectedPerson.owner_disconnected ?? false}
+          onOwnerDisconnect={() => updatePerson(selectedPerson.id, { owner_disconnected: true })}
           onDeleteConnection={deleteConnection}
           onCreateConnection={createConnection}
           onUpdateConnectionColor={updateConnectionColor}
