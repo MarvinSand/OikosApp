@@ -10,9 +10,6 @@ import FriendsView from './pages/FriendsView'
 import CommunityDetail from './pages/CommunityDetail'
 import UserProfile from './pages/UserProfile'
 import PrayerView from './pages/PrayerView'
-import DiscipleshipView from './pages/DiscipleshipView'
-import DiscipleshipStageView from './pages/DiscipleshipStageView'
-import DiscipleshipLessonView from './pages/DiscipleshipLessonView'
 import FeedPostView from './pages/FeedPostView'
 import PublicMapView from './pages/PublicMapView'
 import ConversationView from './pages/ConversationView'
@@ -31,13 +28,6 @@ function LoadingSpinner() {
   )
 }
 
-function PlaceholderPage({ title }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-bg text-dark-muted italic pb-20">
-      {title}
-    </div>
-  )
-}
 
 function AppShellInner() {
   const location = useLocation()
@@ -57,9 +47,6 @@ function AppShellInner() {
         <Routes>
           <Route path="/" element={<MapView />} />
           <Route path="/prayer" element={<PrayerView />} />
-          <Route path="/discipleship" element={<DiscipleshipView />} />
-          <Route path="/discipleship/stage/:stage" element={<DiscipleshipStageView />} />
-          <Route path="/discipleship/lesson/:lessonId" element={<DiscipleshipLessonView />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/chat" element={<Navigate to="/friends?tab=chats" replace />} />
           <Route path="/chat/:conversationId" element={<ConversationView />} />
