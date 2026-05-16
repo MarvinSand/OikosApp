@@ -7,18 +7,18 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Initiale Session laden
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      if (session?.user) updateLastActive(session.user.id)
     })
 
-    // Auf Auth-Änderungen lauschen
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      if (session?.user) updateLastActive(session.user.id)
     })
 
     return () => subscription.unsubscribe()
@@ -60,4 +60,17 @@ export function useAuth() {
   }
 
   return { user, session, loading, login, register, logout, resendVerificationEmail }
+}
+
+let _lastActiveTime = 0
+async function updateLastActive(userId) {
+  const now = Date.now()
+  if (now - _lastActiveTime < 5 * 60 * 1000) return
+  _lastActiveTime = now
+  try {
+    await supabase
+      .from('profiles')
+      .update({ last_active_at: new Date().toISOString() })
+      .eq('id', userId)
+  } catch { /* non-critical */ }
 }

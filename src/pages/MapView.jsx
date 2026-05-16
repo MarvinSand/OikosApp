@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePlaces } from '../hooks/usePlaces'
 import { supabase } from '../lib/supabase'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import MapCanvas from '../components/map/MapCanvas'
 import NewMapModal from '../components/map/NewMapModal'
 import AddPersonModal from '../components/map/AddPersonModal'
@@ -12,6 +12,7 @@ import PersonDetailSheet from '../components/map/PersonDetailSheet'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
 import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSheet'
+import WorldMapView from '../components/worldmap/WorldMapView'
 
 // ─── Farb-Filter Panel ───────────────────────────────────────
 const COLOR_FILTER_OPTIONS = [
@@ -30,7 +31,7 @@ function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
   return (
     <div style={{
       position: 'absolute',
-      top: 76, right: 16,
+      top: 112, right: 16,
       width: 200,
       backgroundColor: 'var(--color-white)',
       borderRadius: 16,
@@ -155,7 +156,7 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
   return (
     <div style={{
       position: 'absolute',
-      top: 76, right: 16,
+      top: 112, right: 16,
       width: 264,
       backgroundColor: 'var(--color-white)',
       borderRadius: 16,
@@ -235,6 +236,8 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
 }
 
 export default function MapView() {
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('oikos')
   const { user } = useAuth()
   const {
     maps, setMaps, activeMapId, setActiveMapId, activeMap,
@@ -382,8 +385,31 @@ export default function MapView() {
   return (
     <div className="h-full flex flex-col bg-bg relative">
 
-      {/* Header Island */}
-      <div className="tour-map-header absolute top-4 sm:top-5 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl">
+      {/* Tab Toggle */}
+      <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 50, display: 'flex', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', borderRadius: 20, padding: 3, boxShadow: '0 2px 12px rgba(58,46,36,0.12)', border: '1px solid rgba(216,210,197,0.8)' }}>
+        <button
+          onClick={() => setActiveTab('oikos')}
+          style={{ padding: '7px 14px', borderRadius: 17, border: 'none', background: activeTab === 'oikos' ? '#4A6741' : 'transparent', color: activeTab === 'oikos' ? '#fff' : '#706351', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: activeTab === 'oikos' ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+        >
+          🗺 Mein OIKOS
+        </button>
+        <button
+          onClick={() => setActiveTab('world')}
+          style={{ padding: '7px 14px', borderRadius: 17, border: 'none', background: activeTab === 'world' ? '#4A6741' : 'transparent', color: activeTab === 'world' ? '#fff' : '#706351', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: activeTab === 'world' ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+        >
+          🌍 Weltkarte
+        </button>
+      </div>
+
+      {/* Weltkarte View */}
+      {activeTab === 'world' && (
+        <div style={{ position: 'absolute', inset: 0, paddingTop: 0, zIndex: 10 }}>
+          <WorldMapView onNavigateToProfile={() => navigate('/profile')} />
+        </div>
+      )}
+
+      {/* Header Island (OIKOS mode only) */}
+      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
           className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[65%] hover:opacity-80 transition-opacity"
@@ -456,10 +482,10 @@ export default function MapView() {
       </div>
 
       {/* Dropdown-Menü für Map-Auswahl */}
-      {showMapMenu && (
+      {showMapMenu && activeTab === 'oikos' && (
         <>
           <div onClick={() => setShowMapMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-          <div className="absolute top-[72px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white rounded-2xl z-30 shadow-glass border border-warm-3 overflow-hidden">
+          <div className="absolute top-[110px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white rounded-2xl z-30 shadow-glass border border-warm-3 overflow-hidden">
             {maps.map((m) => (
               <button
                 key={m.id}
@@ -501,8 +527,8 @@ export default function MapView() {
         </>
       )}
 
-      {/* Canvas */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8, overflow: 'hidden', position: 'relative' }}>
+      {/* Canvas (OIKOS mode only) */}
+      <div style={{ flex: 1, minHeight: 0, display: activeTab === 'oikos' ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', padding: 8, overflow: 'hidden', position: 'relative' }}>
         {!activeMap ? (
           <div style={{ textAlign: 'center', padding: 32 }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 17, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 24, lineHeight: 1.6 }}>

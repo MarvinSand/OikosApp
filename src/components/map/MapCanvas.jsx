@@ -218,21 +218,24 @@ export default function MapCanvas({
     return `${parentId}__${personId}`
   }
 
-  function getDefaultOverlayPos(parentPos, idx, total) {
-    // Ensure nodes don't overlap: minimum circumference = total * (2*overlayR + 8)
-    const overlayR = 20
-    const minR = (total * (overlayR * 2 + 8)) / (2 * Math.PI)
-    const r = Math.max(80, minR)
-    const angle = (idx / Math.max(total, 1)) * 2 * Math.PI - Math.PI / 2
-    return {
-      x: parentPos.x + r * Math.cos(angle),
-      y: parentPos.y + r * Math.sin(angle),
+  function getOverlayPos(parentId, person, parentPos, brotherCx, brotherCy, bRingRadius, allOverlayPersons) {
+    const key = overlayKey(parentId, person.id)
+    if (overlayPositions[key]) return overlayPositions[key]
+    // Use saved position from brother's map, translated so brother's center → parentPos
+    if (person.pos_x != null && person.pos_y != null) {
+      return {
+        x: parentPos.x + (person.pos_x - brotherCx),
+        y: parentPos.y + (person.pos_y - brotherCy),
+      }
     }
-  }
-
-  function getOverlayPos(parentId, personId, parentPos, idx, total) {
-    const key = overlayKey(parentId, personId)
-    return overlayPositions[key] || getDefaultOverlayPos(parentPos, idx, total)
+    // Replicate brother's default layout using his ring radius and ordering
+    const brotherIdx = allOverlayPersons.findIndex(op => op.id === person.id)
+    const brotherTotal = allOverlayPersons.length
+    const angle = (brotherIdx * 2 * Math.PI / Math.max(brotherTotal, 1)) - Math.PI / 2
+    return {
+      x: parentPos.x + bRingRadius * Math.cos(angle),
+      y: parentPos.y + bRingRadius * Math.sin(angle),
+    }
   }
 
   // Resolves any person ID to { person, pos } — works for both main and overlay persons
@@ -251,9 +254,14 @@ export default function MapCanvas({
       )
       const opIdx = visible.findIndex(op => op.id === personId)
       if (opIdx !== -1) {
+        const bCount = od.personCount ?? od.persons.length
+        const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+        const bVbSize = bRingRadius * 2 + 140
+        const brotherCx = bVbSize / 2
+        const brotherCy = bVbSize / 2
         return {
           person: visible[opIdx],
-          pos: getOverlayPos(od.parentPersonId, personId, parentPos, opIdx, visible.length),
+          pos: getOverlayPos(od.parentPersonId, visible[opIdx], parentPos, brotherCx, brotherCy, bRingRadius, od.persons),
         }
       }
     }
@@ -598,7 +606,7 @@ export default function MapCanvas({
   }
 
   function resolvePersonRadius(personId) {
-    return people.find(p => p.id === personId) ? personR : 20 // overlayR = 20
+    return personR
   }
 
   function resolvePersonName(personId) {
@@ -859,19 +867,53 @@ export default function MapCanvas({
           const parentIdx = people.indexOf(parentPerson)
           const parentPos = getPos(parentPerson, parentIdx)
 
-          const visible = od.persons.filter(op =>
-            (op.is_christian && od.showChristian) ||
-            (!op.is_christian && od.showNonChristian)
-          )
+          // Compute brother's map center so we can translate his saved positions
+          const bCount = od.personCount ?? od.persons.length
+          const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+          const bVbSize = bRingRadius * 2 + 140
+          const brotherCx = bVbSize / 2
+          const brotherCy = bVbSize / 2
 
-          return visible.map((op, idx) => {
-            const pos = getOverlayPos(od.parentPersonId, op.id, parentPos, idx, visible.length)
+          const visibleSet = new Set(
+            od.persons
+              .filter(op => (op.is_christian && od.showChristian) || (!op.is_christian && od.showNonChristian))
+              .map(op => op.id)
+          )
+          const visible = od.persons.filter(op => visibleSet.has(op.id))
+
+          const connLines = (od.connections || [])
+            .filter(c => visibleSet.has(c.source_person_id) && visibleSet.has(c.target_person_id))
+            .map(c => {
+              const src = od.persons.find(p => p.id === c.source_person_id)
+              const tgt = od.persons.find(p => p.id === c.target_person_id)
+              if (!src || !tgt) return null
+              const srcPos = getOverlayPos(od.parentPersonId, src, parentPos, brotherCx, brotherCy, bRingRadius, od.persons)
+              const tgtPos = getOverlayPos(od.parentPersonId, tgt, parentPos, brotherCx, brotherCy, bRingRadius, od.persons)
+              return (
+                <line
+                  key={`overlay_conn_${od.parentPersonId}_${c.id}`}
+                  x1={srcPos.x} y1={srcPos.y}
+                  x2={tgtPos.x} y2={tgtPos.y}
+                  stroke={c.color || '#C8BFB0'}
+                  strokeWidth={1.5}
+                  opacity={0.7}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )
+            }).filter(Boolean)
+
+          const personNodes = visible.map((op) => {
+            const pos = getOverlayPos(od.parentPersonId, op, parentPos, brotherCx, brotherCy, bRingRadius, od.persons)
             const ox = pos.x
             const oy = pos.y
-            const overlayR = 20
-            const strokeColor = op.is_christian ? 'var(--color-warm-1)' : 'var(--color-accent)'
+            const personColor = op.circle_color || '#E8E4DC'
             const isDraggingThis = dragging?.overlayKey === overlayKey(od.parentPersonId, op.id) && dragging?.moved
             const isSelected = firstSelected === op.id
+            const stageColor = (op.impact_stage ?? 0) >= 5
+              ? 'var(--color-accent)'
+              : (op.impact_stage ?? 0) >= 3
+                ? 'var(--color-gold)'
+                : 'var(--color-warm-1)'
 
             return (
               <g
@@ -885,36 +927,55 @@ export default function MapCanvas({
                   else onOverlayPersonClick?.(op)
                 }}
               >
-                {/* Line from parent to overlay person */}
-                <line
-                  x1={parentPos.x} y1={parentPos.y}
-                  x2={ox} y2={oy}
-                  stroke="var(--color-accent)"
-                  strokeWidth={1}
-                  opacity={0.6}
-                  style={{ pointerEvents: 'none' }}
-                />
+                {/* Line from parent to overlay person — only for first-generation (non-secondary) persons */}
+                {!op.is_secondary && (
+                  <line
+                    x1={parentPos.x} y1={parentPos.y}
+                    x2={ox} y2={oy}
+                    stroke={op.center_line_color || 'var(--color-warm-3)'}
+                    strokeWidth={1.5}
+                    opacity={0.7}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                )}
                 {/* Drop shadow when dragging */}
                 {isDraggingThis && (
-                  <circle cx={ox} cy={oy} r={overlayR * 1.4} fill="rgba(58,46,36,0.10)" />
+                  <circle cx={ox} cy={oy} r={personR * 1.15} fill="rgba(58,46,36,0.10)" />
                 )}
-                {/* Overlay person circle */}
+                {/* Person circle — same styling as own-map people */}
                 <circle
-                  cx={ox} cy={oy} r={isDraggingThis ? overlayR * 1.1 : overlayR}
-                  fill="var(--color-warm-4)"
-                  stroke={isSelected ? 'var(--color-gold)' : strokeColor}
-                  strokeWidth={isSelected ? 3 : 1.5}
+                  cx={ox} cy={oy} r={isDraggingThis ? personR * 1.1 : personR}
+                  fill={personColor}
+                  stroke={isSelected ? 'var(--color-gold)' : (op.circle_color ? op.circle_color : 'var(--color-warm-3)')}
+                  strokeWidth={isSelected ? 4 : 1.5}
                   opacity={0.9}
-                  style={{ filter: isDraggingThis ? 'drop-shadow(0 4px 8px rgba(58,46,36,0.20))' : 'none' }}
+                  style={{
+                    transition: 'r 0.15s ease',
+                    filter: isDraggingThis ? 'drop-shadow(0 4px 8px rgba(58,46,36,0.20))' : 'none',
+                  }}
                 />
+                {/* Impact stage arc */}
+                {(op.impact_stage ?? 0) > 0 && (
+                  <circle
+                    cx={ox} cy={oy}
+                    r={isDraggingThis ? personR * 1.1 : personR}
+                    fill="none"
+                    stroke={stageColor}
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeDasharray={`${((op.impact_stage ?? 0) / 6) * 2 * Math.PI * (isDraggingThis ? personR * 1.1 : personR)} 1000`}
+                    transform={`rotate(-90 ${ox} ${oy})`}
+                    opacity={0.8}
+                  />
+                )}
                 {/* Name */}
                 <text
                   x={ox} y={oy}
-                  textAnchor="middle" dy="0.35em"
-                  fill="var(--color-text-muted)"
-                  fontSize={8}
+                  textAnchor="middle"
+                  dy="0.35em"
+                  fill={op.name_color || '#3A2E24'}
+                  fontSize={10}
                   fontFamily="Lora, Georgia, serif"
-                  fontStyle="italic"
                   style={{ pointerEvents: 'none' }}
                 >
                   {shortName(op.name)}
@@ -922,6 +983,8 @@ export default function MapCanvas({
               </g>
             )
           })
+
+          return [...connLines, ...personNodes]
         })}
 
         {/* Inter-person connections */}

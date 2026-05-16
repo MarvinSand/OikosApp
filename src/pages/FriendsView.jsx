@@ -11,8 +11,18 @@ import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 
 // ─── Avatar ────────────────────────────────────────────────
-function Avatar({ name, size = 40, isChristian }) {
+function Avatar({ name, size = 40, isChristian, avatarUrl }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--color-warm-3)' }}
+        onError={e => { e.target.style.display = 'none' }}
+      />
+    )
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
@@ -49,6 +59,7 @@ function NotificationsSheet({ onClose }) {
     community_invite: '👥',
     community_event: '📅',
     prayer_shared: '🙏',
+    birthday: '🎂',
   }
 
   return (
@@ -96,6 +107,19 @@ function NotificationsSheet({ onClose }) {
   )
 }
 
+// ─── helpers ────────────────────────────────────────────────
+function birthdayDaysUntil(birthdayStr) {
+  if (!birthdayStr) return null
+  const today = new Date()
+  const [, m, d] = birthdayStr.split('-')
+  let next = new Date(today.getFullYear(), parseInt(m) - 1, parseInt(d))
+  if (next < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+    next = new Date(today.getFullYear() + 1, parseInt(m) - 1, parseInt(d))
+  }
+  const diff = Math.round((next - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000)
+  return diff
+}
+
 // ─── FriendsTab ─────────────────────────────────────────────
 function FriendsTab() {
   const { user } = useAuth()
@@ -109,6 +133,70 @@ function FriendsTab() {
   const [sending, setSending] = useState(null)
   const [openMenu, setOpenMenu] = useState(null)
   const timerRef = useRef(null)
+
+  // Filter state
+  const [cityFilter, setCityFilter] = useState('')
+  const [countryFilter, setCountryFilter] = useState('')
+  const [churchFilter, setChurchFilter] = useState('')
+  const [activeFilter, setActiveFilter] = useState(null) // 'city'|'country'|'church'|null
+  const [myCity, setMyCity] = useState('')
+
+  // Discover data
+  const [nearbyUsers, setNearbyUsers] = useState([])
+  const [upcomingBirthdays, setUpcomingBirthdays] = useState([])
+  const [notConnected, setNotConnected] = useState([])
+
+  useEffect(() => {
+    if (!user || loading) return
+    loadMyCity()
+    loadNotConnected()
+  }, [user?.id, loading, friends.length])
+
+  async function loadMyCity() {
+    const { data } = await supabase.from('profiles').select('city').eq('id', user.id).single()
+    if (data?.city) {
+      setMyCity(data.city)
+      loadNearby(data.city)
+    }
+    loadBirthdays()
+  }
+
+  async function loadNearby(city) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, is_christian, avatar_url, city')
+      .neq('id', user.id)
+      .ilike('city', city)
+      .limit(10)
+    setNearbyUsers(data || [])
+  }
+
+  async function loadBirthdays() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, is_christian, avatar_url, birthday')
+      .neq('id', user.id)
+      .eq('show_birthday', true)
+      .not('birthday', 'is', null)
+    if (!data) return
+    const upcoming = data
+      .map(p => ({ ...p, daysUntil: birthdayDaysUntil(p.birthday) }))
+      .filter(p => p.daysUntil !== null && p.daysUntil <= 7)
+      .sort((a, b) => a.daysUntil - b.daysUntil)
+    setUpcomingBirthdays(upcoming)
+  }
+
+  async function loadNotConnected() {
+    const { data: allProfiles } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, is_christian, avatar_url, city, country, church_name')
+      .neq('id', user.id)
+    if (!allProfiles) return
+    const connectedIds = new Set(friends.map(f =>
+      f.requester_id === user.id ? f.addressee_id : f.requester_id
+    ))
+    setNotConnected(allProfiles.filter(p => !connectedIds.has(p.id)))
+  }
 
   function handleQuery(val) {
     setQuery(val)
@@ -152,38 +240,94 @@ function FriendsTab() {
 
   const showSearch = query.trim().length >= 2
 
-  // Load all users who are not yet connected
-  const [notConnected, setNotConnected] = useState([])
-  useEffect(() => {
-    if (!user || loading) return
-    loadNotConnected()
-  }, [user?.id, loading, friends.length, pendingSent.length])
+  // Filter notConnected by active filter
+  const filteredNotConnected = notConnected.filter(u => {
+    if (cityFilter) return u.city?.toLowerCase().includes(cityFilter.toLowerCase())
+    if (countryFilter) return u.country === countryFilter
+    if (churchFilter) return u.church_name?.toLowerCase().includes(churchFilter.toLowerCase())
+    return true
+  })
 
-  async function loadNotConnected() {
-    const { data: allProfiles } = await supabase
-      .from('profiles')
-      .select('id, username, full_name, is_christian')
-      .neq('id', user.id)
-    if (!allProfiles) return
-    const connectedIds = new Set(friends.map(f =>
-      f.requester_id === user.id ? f.addressee_id : f.requester_id
-    ))
-    setNotConnected(allProfiles.filter(p => !connectedIds.has(p.id)))
-  }
+  const hasAnyFilter = cityFilter || countryFilter || churchFilter
 
   return (
     <div>
       {/* Suchfeld */}
-      <div style={{ position: 'relative', marginBottom: 20 }}>
+      <div style={{ position: 'relative', marginBottom: 12 }}>
         <Search size={15} color="var(--color-text-light)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
         <input
           type="text"
           value={query}
           onChange={e => handleQuery(e.target.value)}
-          placeholder="Username suchen…"
+          placeholder="Name oder Username suchen…"
           style={{ width: '100%', padding: '11px 12px 11px 36px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
         />
       </div>
+
+      {/* Filter Chips */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
+        {[
+          { key: null, label: '🌍 Alle' },
+          { key: 'city', label: cityFilter ? `📍 ${cityFilter}` : '📍 Stadt' },
+          { key: 'country', label: countryFilter ? `🏳 Land` : '🏳 Land' },
+          { key: 'church', label: churchFilter ? `⛪ ${churchFilter}` : '⛪ Gemeinde' },
+        ].map(f => (
+          <button
+            key={String(f.key)}
+            onClick={() => {
+              if (f.key === null) {
+                setCityFilter(''); setCountryFilter(''); setChurchFilter(''); setActiveFilter(null)
+              } else {
+                setActiveFilter(activeFilter === f.key ? null : f.key)
+              }
+            }}
+            style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${(f.key === null && !hasAnyFilter) || activeFilter === f.key || (f.key === 'city' && cityFilter) || (f.key === 'country' && countryFilter) || (f.key === 'church' && churchFilter) ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, backgroundColor: (f.key === null && !hasAnyFilter) || (f.key === 'city' && cityFilter) || (f.key === 'country' && countryFilter) || (f.key === 'church' && churchFilter) ? 'rgba(74,103,65,0.1)' : 'transparent', color: (f.key === null && !hasAnyFilter) || activeFilter === f.key || (f.key === 'city' && cityFilter) || (f.key === 'country' && countryFilter) || (f.key === 'church' && churchFilter) ? 'var(--color-warm-1)' : 'var(--color-text-muted)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filter Inputs */}
+      {activeFilter === 'city' && (
+        <div style={{ marginBottom: 16 }}>
+          <input
+            autoFocus
+            type="text"
+            value={cityFilter}
+            onChange={e => setCityFilter(e.target.value)}
+            placeholder="Stadt eingeben…"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--color-warm-1)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
+          />
+        </div>
+      )}
+      {activeFilter === 'country' && (
+        <div style={{ marginBottom: 16 }}>
+          <select
+            autoFocus
+            value={countryFilter}
+            onChange={e => { setCountryFilter(e.target.value); setActiveFilter(null) }}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--color-warm-1)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
+          >
+            <option value="">— Land wählen —</option>
+            <option value="DE">🇩🇪 Deutschland</option>
+            <option value="AT">🇦🇹 Österreich</option>
+            <option value="CH">🇨🇭 Schweiz</option>
+          </select>
+        </div>
+      )}
+      {activeFilter === 'church' && (
+        <div style={{ marginBottom: 16 }}>
+          <input
+            autoFocus
+            type="text"
+            value={churchFilter}
+            onChange={e => setChurchFilter(e.target.value)}
+            placeholder="Gemeinde suchen…"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--color-warm-1)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
+          />
+        </div>
+      )}
 
       {/* Suchergebnisse */}
       {showSearch && (
@@ -195,7 +339,7 @@ function FriendsTab() {
             const status = getFriendshipStatus(u.id)
             return (
               <div key={u.id} style={personRow}>
-                <Avatar name={u.full_name || u.username} isChristian={u.is_christian} />
+                <Avatar name={u.full_name || u.username} isChristian={u.is_christian} avatarUrl={u.avatar_url} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={nameText}>{u.full_name || u.username}</p>
                   <p style={usernameText}>@{u.username}</p>
@@ -214,13 +358,58 @@ function FriendsTab() {
         </div>
       )}
 
+      {/* Geburtstage in den nächsten 7 Tagen */}
+      {!showSearch && upcomingBirthdays.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <p style={sectionLabel}>🎂 Bald Geburtstag</p>
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
+            {upcomingBirthdays.map(p => (
+              <button
+                key={p.id}
+                onClick={() => navigate(`/user/${p.id}`)}
+                style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 10px', borderRadius: 14, backgroundColor: p.daysUntil === 0 ? '#FFF8E1' : 'var(--color-white)', border: `1.5px solid ${p.daysUntil === 0 ? '#F9A825' : 'var(--color-warm-3)'}`, cursor: 'pointer', minWidth: 80, textAlign: 'center' }}
+              >
+                <Avatar name={p.full_name || p.username} isChristian={p.is_christian} avatarUrl={p.avatar_url} size={44} />
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-text)', margin: 0, maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {(p.full_name || p.username || '').split(' ')[0]}
+                </p>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: p.daysUntil === 0 ? '#F9A825' : 'var(--color-text-muted)', margin: 0, fontWeight: p.daysUntil === 0 ? 700 : 400 }}>
+                  {p.daysUntil === 0 ? 'Heute! 🎂' : `in ${p.daysUntil} Tag${p.daysUntil === 1 ? '' : 'en'}`}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Geschwister in deiner Nähe */}
+      {!showSearch && myCity && nearbyUsers.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <p style={sectionLabel}>📍 Geschwister in {myCity}</p>
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
+            {nearbyUsers.slice(0, 5).map(u => (
+              <button
+                key={u.id}
+                onClick={() => navigate(`/user/${u.id}`)}
+                style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 10px', borderRadius: 14, backgroundColor: 'var(--color-white)', border: '1.5px solid var(--color-warm-3)', cursor: 'pointer', minWidth: 80, textAlign: 'center' }}
+              >
+                <Avatar name={u.full_name || u.username} isChristian={u.is_christian} avatarUrl={u.avatar_url} size={44} />
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-text)', margin: 0, maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {(u.full_name || u.username || '').split(' ')[0]}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Offene Anfragen */}
       {pendingReceived.length > 0 && (
         <div style={{ marginBottom: 24 }}>
           <p style={sectionLabel}>Anfragen erhalten ({pendingReceived.length})</p>
           {pendingReceived.map(f => (
             <div key={f.id} style={personRow}>
-              <Avatar name={f.otherUser?.full_name || f.otherUser?.username} isChristian={f.otherUser?.is_christian} />
+              <Avatar name={f.otherUser?.full_name || f.otherUser?.username} isChristian={f.otherUser?.is_christian} avatarUrl={f.otherUser?.avatar_url} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={nameText}>{f.otherUser?.full_name || f.otherUser?.username || '…'}</p>
                 <p style={usernameText}>@{f.otherUser?.username}</p>
@@ -240,7 +429,7 @@ function FriendsTab() {
 
       {/* Freundesliste */}
       <div>
-        <p style={sectionLabel}>Connected ({friends.length})</p>
+        <p style={sectionLabel}>Verbunden ({friends.length})</p>
         {loading && <div style={skeleton} />}
         {!loading && friends.length === 0 && (
           <p style={{ ...mutedText, textAlign: 'center', padding: '16px 0' }}>
@@ -253,7 +442,7 @@ function FriendsTab() {
           return (
             <div key={f.id} style={{ ...personRow, position: 'relative' }}>
               <button onClick={() => navigate(`/user/${otherId}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
-                <Avatar name={other?.full_name || other?.username} isChristian={other?.is_christian} />
+                <Avatar name={other?.full_name || other?.username} isChristian={other?.is_christian} avatarUrl={other?.avatar_url} />
                 <div style={{ minWidth: 0 }}>
                   <p style={nameText}>{other?.full_name || other?.username || '…'}</p>
                   <p style={usernameText}>@{other?.username}</p>
@@ -287,17 +476,19 @@ function FriendsTab() {
         })}
       </div>
 
-      {/* Noch nicht connected – alle Nutzer */}
-      {notConnected.length > 0 && (
+      {/* Noch nicht connected */}
+      {filteredNotConnected.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <p style={sectionLabel}>Noch nicht connected ({notConnected.length})</p>
-          {notConnected.map(u => (
+          <p style={sectionLabel}>
+            {hasAnyFilter ? `Gefilterte Ergebnisse (${filteredNotConnected.length})` : `Noch nicht connected (${filteredNotConnected.length})`}
+          </p>
+          {filteredNotConnected.map(u => (
             <div key={u.id} style={personRow}>
               <button onClick={() => navigate(`/user/${u.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
-                <Avatar name={u.full_name || u.username} isChristian={u.is_christian} />
+                <Avatar name={u.full_name || u.username} isChristian={u.is_christian} avatarUrl={u.avatar_url} />
                 <div style={{ minWidth: 0 }}>
                   <p style={nameText}>{u.full_name || u.username}</p>
-                  <p style={usernameText}>@{u.username}</p>
+                  <p style={usernameText}>@{u.username}{u.city ? ` · ${u.city}` : ''}</p>
                 </div>
               </button>
               {getFriendshipStatus(u.id) === 'sent' ? (
@@ -305,11 +496,7 @@ function FriendsTab() {
               ) : getFriendshipStatus(u.id) === 'received' ? (
                 <span style={pendingBadge}>Anfrage erhalten</span>
               ) : (
-                <button
-                  onClick={() => handleSend(u.id)}
-                  disabled={sending === u.id}
-                  style={connectBtn}
-                >
+                <button onClick={() => handleSend(u.id)} disabled={sending === u.id} style={connectBtn}>
                   {sending === u.id ? '…' : 'Verbinden'}
                 </button>
               )}
@@ -543,8 +730,13 @@ function JoinCommunityModal({ onClose }) {
 }
 
 // ─── ChatsTab ────────────────────────────────────────────────
-function ChatsAvatar({ name, size = 40, isChristian }) {
+function ChatsAvatar({ name, size = 40, isChristian, avatarUrl }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  if (avatarUrl) {
+    return (
+      <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--color-warm-3)' }} onError={e => { e.target.style.display = 'none' }} />
+    )
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
@@ -668,7 +860,7 @@ function ChatsTab() {
             return (
               <button key={conv.id} onClick={() => navigate(`/chat/${conv.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left', position: 'relative' }}>
                 {conv.unread && <div style={{ position: 'absolute', left: -4, top: '50%', transform: 'translateY(-50%)', width: 10, height: 10, borderRadius: '50%', backgroundColor: '#2563EB' }} />}
-                <ChatsAvatar name={name} size={40} isChristian={isDirect ? conv.otherUser?.is_christian : false} />
+                <ChatsAvatar name={name} size={40} isChristian={isDirect ? conv.otherUser?.is_christian : false} avatarUrl={isDirect ? conv.otherUser?.avatar_url : null} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                     <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: conv.unread ? 700 : 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{name}</p>
@@ -694,7 +886,7 @@ function ChatsTab() {
             return (
               <button key={conv.id} onClick={() => navigate(`/chat/${conv.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left', position: 'relative' }}>
                 {conv.unread && <div style={{ position: 'absolute', left: -4, top: '50%', transform: 'translateY(-50%)', width: 10, height: 10, borderRadius: '50%', backgroundColor: '#2563EB' }} />}
-                <ChatsAvatar name={name} size={40} isChristian={false} />
+                <ChatsAvatar name={name} size={40} isChristian={false} avatarUrl={null} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                     <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: conv.unread ? 700 : 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{name}</p>
@@ -739,7 +931,7 @@ function ChatsTab() {
                 const other = f.otherUser
                 return (
                   <button key={f.id} onClick={() => handleSelectFriend(other?.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left' }}>
-                    <ChatsAvatar name={other?.full_name || other?.username} size={38} isChristian={other?.is_christian} />
+                    <ChatsAvatar name={other?.full_name || other?.username} size={38} isChristian={other?.is_christian} avatarUrl={other?.avatar_url} />
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {other?.full_name || other?.username || '…'}

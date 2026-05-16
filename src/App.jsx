@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { ToastProvider } from './context/ToastContext'
+import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
 import ResetPassword from './pages/ResetPassword'
 import AuthCallback from './pages/AuthCallback'
@@ -47,6 +49,7 @@ function AppShellInner() {
         <Routes>
           <Route path="/" element={<MapView />} />
           <Route path="/prayer" element={<PrayerView />} />
+          <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/chat" element={<Navigate to="/friends?tab=chats" replace />} />
           <Route path="/chat/:conversationId" element={<ConversationView />} />
@@ -68,7 +71,83 @@ function AppShellInner() {
 }
 
 function AppShell() {
+  const { user } = useAuth()
+  useEffect(() => {
+    if (!user) return
+    checkBirthdays(user.id)
+  }, [user?.id])
   return <AppShellInner />
+}
+
+function DiscipleshipComingSoon() {
+  return (
+    <div className="min-h-[70vh] flex flex-col items-center justify-center px-6 text-center">
+      <div className="w-20 h-20 rounded-full bg-warm-2/30 flex items-center justify-center mb-6 shadow-glass-sm">
+        <span className="text-4xl">📖</span>
+      </div>
+      <h1 className="text-2xl font-semibold text-dark mb-2">Jüngerschaft</h1>
+      <p className="text-dark/70 max-w-sm">Coming soon – dieser Bereich ist gerade in Arbeit. Bald kannst du hier deinen Weg im Glauben begleiten lassen.</p>
+    </div>
+  )
+}
+
+async function checkBirthdays(userId) {
+  const today = new Date()
+  const month = today.getMonth() + 1
+  const day = today.getDate()
+  const todayKey = `birthday_check_${today.toDateString()}`
+  if (localStorage.getItem(todayKey)) return
+  localStorage.setItem(todayKey, '1')
+
+  try {
+    // Get all friends
+    const { data: friendships } = await supabase
+      .from('friendships')
+      .select('requester_id, addressee_id')
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+      .eq('status', 'accepted')
+    if (!friendships?.length) return
+
+    const friendIds = friendships.map(f => f.requester_id === userId ? f.addressee_id : f.requester_id)
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, username')
+      .in('id', friendIds)
+      .eq('show_birthday', true)
+      .not('birthday', 'is', null)
+    if (!profiles?.length) return
+
+    // Filter to today's birthdays (extract month/day from birthday string YYYY-MM-DD)
+    const todayBirthdays = profiles.filter(p => {
+      const [, m, d] = (p.birthday || '').split('-')
+      return parseInt(m) === month && parseInt(d) === day
+    })
+
+    for (const p of todayBirthdays) {
+      const name = p.full_name || p.username || 'Jemand'
+      // Insert notification if not already created today
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('type', 'birthday')
+        .gte('created_at', new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString())
+        .eq('related_url', `/user/${p.id}`)
+        .maybeSingle()
+      if (!existing) {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          type: 'birthday',
+          title: `🎂 ${name} hat heute Geburtstag!`,
+          body: 'Schreib ihm/ihr eine Nachricht',
+          related_url: `/user/${p.id}`,
+        })
+      }
+    }
+  } catch {
+    // Silent fail – birthday check is non-critical
+  }
 }
 
 export default function App() {

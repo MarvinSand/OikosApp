@@ -49,8 +49,11 @@ function Avatar({ name, size = 40, isChristian }) {
 // ─── ChatRow ─────────────────────────────────────────────────
 function ChatRow({ conv, onClick }) {
   const isDirect = conv.type === 'direct'
+  const isActivity = conv.type === 'activity'
   const name = isDirect
     ? (conv.otherUser?.full_name || conv.otherUser?.username || 'Unbekannt')
+    : isActivity
+    ? (conv.activity?.title || 'Aktivität')
     : (conv.community?.name || 'Community')
   const preview = lastMessagePreview(conv.lastMessage)
   const time = timeAgo(conv.lastMessage?.created_at)
@@ -87,11 +90,22 @@ function ChatRow({ conv, onClick }) {
         }} />
       )}
 
-      <Avatar
-        name={name}
-        size={40}
-        isChristian={isDirect ? conv.otherUser?.is_christian : false}
-      />
+      {isActivity ? (
+        <div style={{
+          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+          background: '#4A6741',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 20,
+        }}>
+          {conv.activity?.activity_emoji || '📍'}
+        </div>
+      ) : (
+        <Avatar
+          name={name}
+          size={40}
+          isChristian={isDirect ? conv.otherUser?.is_christian : false}
+        />
+      )}
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
@@ -259,7 +273,7 @@ function NewDirectChatSheet({ onClose, onSelect }) {
 // ─── ChatView (Main) ─────────────────────────────────────────
 export default function ChatView() {
   const navigate = useNavigate()
-  const { directChats, communityChats, loading, startDirectChat } = useConversations()
+  const { directChats, communityChats, activityChats, loading, startDirectChat } = useConversations()
   const [query, setQuery] = useState('')
   const [showNewChat, setShowNewChat] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -274,7 +288,11 @@ export default function ChatView() {
 
   const filteredDirect = filterConvs(directChats)
   const filteredCommunity = filterConvs(communityChats)
-  const hasAny = directChats.length > 0 || communityChats.length > 0
+  const filteredActivity = (activityChats || []).filter(conv => {
+    const name = conv.activity?.title || ''
+    return name.toLowerCase().includes(query.toLowerCase())
+  })
+  const hasAny = directChats.length > 0 || communityChats.length > 0 || (activityChats || []).length > 0
 
   async function handleSelectFriend(friendId) {
     setShowNewChat(false)
@@ -401,6 +419,31 @@ export default function ChatView() {
               Community Chats
             </p>
             {filteredCommunity.map(conv => (
+              <ChatRow
+                key={conv.id}
+                conv={conv}
+                onClick={() => navigate(`/chat/${conv.id}`)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Activity chats section */}
+        {!loading && filteredActivity.length > 0 && (
+          <div style={{ marginTop: (filteredDirect.length > 0 || filteredCommunity.length > 0) ? 24 : 16 }}>
+            <p style={{
+              fontFamily: 'Lora, serif',
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--color-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: 4,
+              marginTop: 4,
+            }}>
+              Aktivitäts-Chats
+            </p>
+            {filteredActivity.map(conv => (
               <ChatRow
                 key={conv.id}
                 conv={conv}

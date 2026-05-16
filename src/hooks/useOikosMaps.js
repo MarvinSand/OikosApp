@@ -63,20 +63,36 @@ export function useOikosMaps() {
     const withOverlay = persons.filter(p => p.overlay_map_ids?.length > 0)
     if (withOverlay.length === 0) { setOverlayData([]); return }
 
-    const results = await Promise.all(
-      withOverlay.map(p =>
-        supabase
-          .from('oikos_people')
-          .select('id, name, is_christian')
-          .in('map_id', p.overlay_map_ids)
-      )
-    )
-    setOverlayData(withOverlay.map((p, i) => ({
-      parentPersonId: p.id,
-      persons: results[i].data || [],
-      showChristian: p.overlay_show_christian !== false,
-      showNonChristian: p.overlay_show_non_christian !== false,
-    })))
+    const [results, connResults] = await Promise.all([
+      Promise.all(
+        withOverlay.map(p =>
+          supabase
+            .from('oikos_people')
+            .select('*')
+            .in('map_id', p.overlay_map_ids)
+            .order('created_at')
+        )
+      ),
+      Promise.all(
+        withOverlay.map(p =>
+          supabase
+            .from('oikos_connections')
+            .select('*')
+            .in('map_id', p.overlay_map_ids)
+        )
+      ),
+    ])
+    setOverlayData(withOverlay.map((p, i) => {
+      const persons = results[i].data || []
+      return {
+        parentPersonId: p.id,
+        persons,
+        personCount: persons.length,
+        connections: connResults[i].data || [],
+        showChristian: p.overlay_show_christian !== false,
+        showNonChristian: p.overlay_show_non_christian !== false,
+      }
+    }))
   }
 
   async function loadConnections(mapId) {
@@ -226,15 +242,25 @@ export function useOikosMaps() {
     setPeople(prev => prev.map(p => p.id === personId ? { ...p, ...updates } : p))
 
     if (ids.length > 0) {
-      const { data } = await supabase
-        .from('oikos_people')
-        .select('id, name, is_christian')
-        .in('map_id', ids)
+      const [{ data }, { data: connData }] = await Promise.all([
+        supabase
+          .from('oikos_people')
+          .select('*')
+          .in('map_id', ids)
+          .order('created_at'),
+        supabase
+          .from('oikos_connections')
+          .select('*')
+          .in('map_id', ids),
+      ])
       setOverlayData(prev => {
         const rest = prev.filter(od => od.parentPersonId !== personId)
+        const persons = data || []
         return [...rest, {
           parentPersonId: personId,
-          persons: data || [],
+          persons,
+          personCount: persons.length,
+          connections: connData || [],
           showChristian: overlay_show_christian !== false,
           showNonChristian: overlay_show_non_christian !== false,
         }]

@@ -2,3 +2,7 @@ node_modules
 dist
 .env.local
 .env
+
+# Build/debug artifacts
+build_error*.log
+tmp_query.js

@@ -53,10 +53,54 @@ export function useProfile() {
     return data
   }
 
+  async function uploadAvatar(file) {
+    // Compress to max 800x800 / 500KB via Canvas
+    const compressed = await compressImage(file, 800, 0.8)
+    const path = `${user.id}/avatar.jpg`
+
+    // Delete old file first (ignore errors)
+    await supabase.storage.from('avatars').remove([path])
+
+    const { error: upErr } = await supabase.storage
+      .from('avatars')
+      .upload(path, compressed, { contentType: 'image/jpeg', upsert: true })
+    if (upErr) throw upErr
+
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+    // Cache-bust so the browser reloads the new image
+    const publicUrl = urlData.publicUrl + '?t=' + Date.now()
+
+    await updateProfile({ avatar_url: publicUrl })
+    return publicUrl
+  }
+
   async function deleteAccount() {
     await supabase.rpc('delete_user')
     await supabase.auth.signOut()
   }
 
-  return { profile, stats, loading, updateProfile, deleteAccount }
+  return { profile, stats, loading, updateProfile, uploadAvatar, deleteAccount }
+}
+
+// Compress image file to maxDim × maxDim, quality 0–1
+function compressImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim }
+        else { width = Math.round(width * maxDim / height); height = maxDim }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')), 'image/jpeg', quality)
+    }
+    img.onerror = reject
+    img.src = url
+  })
 }

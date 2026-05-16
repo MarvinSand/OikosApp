@@ -6,6 +6,7 @@ export function useConversations() {
   const { user } = useAuth()
   const [directChats, setDirectChats] = useState([])
   const [communityChats, setCommunityChats] = useState([])
+  const [activityChats, setActivityChats] = useState([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -54,10 +55,24 @@ export function useConversations() {
         communityConvs = commData || []
       }
 
+      // 4b. Fetch activity conversations (user is member)
+      let activityConvs = []
+      if (convIds.length > 0) {
+        try {
+          const { data: actData, error: actErr } = await supabase
+            .from('conversations')
+            .select('id, type, activity_id, activity:world_map_activities!activity_id(id, title, activity_emoji, activity_type)')
+            .in('id', convIds)
+            .eq('type', 'activity')
+          if (!actErr) activityConvs = actData || []
+        } catch { /* activity_id column may not exist yet */ }
+      }
+
       // 5. Fetch last messages for all conversations
       const allConvIds = [
         ...directConvs.map(c => c.id),
         ...communityConvs.map(c => c.id),
+        ...activityConvs.map(c => c.id),
       ]
 
       let lastMessageMap = {}
@@ -160,8 +175,31 @@ export function useConversations() {
           return tb.localeCompare(ta)
         })
 
+      // Build activity chats list
+      const builtActivityChats = activityConvs
+        .map(conv => {
+          const lastMessage = lastMessageMap[conv.id] || null
+          const lastReadAt = lastReadMap[conv.id] || '1970-01-01'
+          const unread = lastMessage
+            ? lastMessage.sender_id !== user.id && lastMessage.created_at > lastReadAt
+            : false
+          return {
+            id: conv.id,
+            type: 'activity',
+            activity: conv.activity || { id: conv.activity_id, title: 'Aktivität', activity_emoji: '📍', activity_type: '' },
+            lastMessage,
+            unread,
+          }
+        })
+        .sort((a, b) => {
+          const ta = a.lastMessage?.created_at || '1970-01-01'
+          const tb = b.lastMessage?.created_at || '1970-01-01'
+          return tb.localeCompare(ta)
+        })
+
       setDirectChats(builtDirectChats)
       setCommunityChats(builtCommunityChats)
+      setActivityChats(builtActivityChats)
     } finally {
       setLoading(false)
     }
@@ -197,11 +235,14 @@ export function useConversations() {
   }
 
   const hasUnread =
-    directChats.some(c => c.unread) || communityChats.some(c => c.unread)
+    directChats.some(c => c.unread) ||
+    communityChats.some(c => c.unread) ||
+    activityChats.some(c => c.unread)
 
   return {
     directChats,
     communityChats,
+    activityChats,
     hasUnread,
     loading,
     startDirectChat,

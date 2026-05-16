@@ -1,29 +1,26 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Map, BookOpen, Users, Bell, User } from 'lucide-react'
+import { Map, BookOpen, BookMarked, Users, User } from 'lucide-react'
 import { useConversations } from '../../hooks/useConversations'
-import { useNotifications } from '../../hooks/useNotifications'
 
 const tabs = [
-  { path: '/',               icon: Map,      label: 'Map'         },
-  { path: '/prayer',         icon: BookOpen, label: 'Beten'       },
-  { path: '/friends',        icon: Users,    label: 'Geschwister' },
-  { path: '/notifications',  icon: Bell,     label: 'Aktivität'   },
-  { path: '/profile',        icon: User,     label: 'Profil'      },
+  { path: '/',               icon: Map,        label: 'Map'          },
+  { path: '/prayer',         icon: BookOpen,   label: 'Beten'        },
+  { path: '/discipleship',   icon: BookMarked, label: 'Jüngerschaft' },
+  { path: '/friends',        icon: Users,      label: 'Geschwister'  },
+  { path: '/profile',        icon: User,       label: 'Profil'       },
 ]
 
 export default function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
   const { hasUnread } = useConversations()
-  const { unreadCount } = useNotifications()
 
   return (
     <nav className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md glass-panel rounded-t-3xl rounded-b-none flex justify-around items-center px-3 pt-3.5 z-40 shadow-2xl border-white/60 bg-white/85" style={{ paddingBottom: 'calc(14px + env(safe-area-inset-bottom, 0px))' }}>
       {tabs.map(({ path, icon: Icon, label }) => {
         const isActive = location.pathname === path || location.pathname.startsWith(path + '/')
         const isGeschwisterTab = path === '/friends'
-        const isBellTab = path === '/notifications'
-        
+
         return (
           <button
             key={path}
@@ -33,22 +30,15 @@ export default function BottomNav() {
             }`}
           >
             <div className="relative">
-              <Icon 
-                size={22} 
-                strokeWidth={isActive ? 2.5 : 2} 
+              <Icon
+                size={22}
+                strokeWidth={isActive ? 2.5 : 2}
                 className={`transition-transform duration-200 ${isActive ? '-translate-y-1' : ''}`}
               />
-              
+
               {/* Unread dot indicator for messages */}
               {isGeschwisterTab && hasUnread && (
                 <div className="absolute -top-1 -right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white ring-2 ring-white/50" />
-              )}
-              
-              {/* Badge indicator for notifications */}
-              {isBellTab && unreadCount > 0 && (
-                <div className="absolute -top-2 -right-2.5 min-w-[18px] h-[18px] rounded-full bg-red-600 border-2 border-white flex items-center justify-center text-[9px] font-bold text-white px-1 shadow-sm">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </div>
               )}
             </div>
             

@@ -1,14 +1,14 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Map, BookOpen, Users, Bell, User } from 'lucide-react'
+import { Map, BookOpen, BookMarked, Users, User } from 'lucide-react'
 import { useConversations } from '../../hooks/useConversations'
 import { useNotifications } from '../../hooks/useNotifications'
 
 const tabs = [
-  { path: '/',              icon: Map,      label: 'Map'         },
-  { path: '/prayer',        icon: BookOpen, label: 'Beten'       },
-  { path: '/friends',       icon: Users,    label: 'Geschwister' },
-  { path: '/notifications', icon: Bell,     label: 'Aktivität'   },
-  { path: '/profile',       icon: User,     label: 'Profil'      },
+  { path: '/',               icon: Map,        label: 'Map'          },
+  { path: '/prayer',         icon: BookOpen,   label: 'Beten'        },
+  { path: '/discipleship',   icon: BookMarked, label: 'Jüngerschaft' },
+  { path: '/friends',        icon: Users,      label: 'Geschwister'  },
+  { path: '/profile',        icon: User,       label: 'Profil'       },
 ]
 
 export default function SideNav() {
