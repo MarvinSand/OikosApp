@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, Map, Globe2 } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePlaces } from '../hooks/usePlaces'
@@ -386,18 +386,18 @@ export default function MapView() {
     <div className="h-full flex flex-col bg-bg relative">
 
       {/* Tab Toggle */}
-      <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 50, display: 'flex', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', borderRadius: 20, padding: 3, boxShadow: '0 2px 12px rgba(58,46,36,0.12)', border: '1px solid rgba(216,210,197,0.8)' }}>
+      <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-50 flex bg-white/85 backdrop-blur-md border border-warm-3/60 rounded-full p-1 shadow-glass">
         <button
           onClick={() => setActiveTab('oikos')}
-          style={{ padding: '7px 14px', borderRadius: 17, border: 'none', background: activeTab === 'oikos' ? '#4A6741' : 'transparent', color: activeTab === 'oikos' ? '#fff' : '#706351', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: activeTab === 'oikos' ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border-none font-serif text-[13px] whitespace-nowrap cursor-pointer transition-all ${activeTab === 'oikos' ? 'bg-warm-1 text-white font-semibold shadow-sm' : 'bg-transparent text-dark-muted font-normal hover:bg-warm-4/60'}`}
         >
-          🗺 Mein OIKOS
+          <Map size={14} /> Mein OIKOS
         </button>
         <button
           onClick={() => setActiveTab('world')}
-          style={{ padding: '7px 14px', borderRadius: 17, border: 'none', background: activeTab === 'world' ? '#4A6741' : 'transparent', color: activeTab === 'world' ? '#fff' : '#706351', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: activeTab === 'world' ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border-none font-serif text-[13px] whitespace-nowrap cursor-pointer transition-all ${activeTab === 'world' ? 'bg-warm-1 text-white font-semibold shadow-sm' : 'bg-transparent text-dark-muted font-normal hover:bg-warm-4/60'}`}
         >
-          🌍 Weltkarte
+          <Globe2 size={14} /> Weltkarte
         </button>
       </div>
 
@@ -409,52 +409,55 @@ export default function MapView() {
       )}
 
       {/* Header Island (OIKOS mode only) */}
-      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
+      <div className="tour-map-header absolute top-[58px] sm:top-[58px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white/85 backdrop-blur-md border border-warm-3/60 px-3 py-2 flex items-center justify-between gap-2 z-20 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
-          className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[65%] hover:opacity-80 transition-opacity"
+          className="flex items-center gap-1.5 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[55%] sm:max-w-[60%] px-2 py-1 -mx-1 hover:bg-warm-4/50 transition-colors"
         >
           <span className="overflow-hidden text-ellipsis whitespace-nowrap">
             {activeMap?.name || 'Meine Oikos Map'}
           </span>
-          <ChevronDown size={18} className="text-dark-muted shrink-0" />
+          <ChevronDown size={16} className="text-dark-muted/70 shrink-0" />
         </button>
 
         {activeMap && (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-0.5 items-center">
             <button
               onClick={() => setConnectionMode(v => !v)}
               title="Verbindungsmodus"
-              className={`p-1.5 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`w-9 h-9 rounded-full transition-all flex items-center justify-center ${connectionMode ? 'text-warm-1 bg-warm-1/15 ring-1 ring-warm-1/20' : 'text-dark-muted hover:bg-warm-4/60'}`}
             >
-              <Link size={20} />
+              <Link size={18} />
             </button>
             <button
               onClick={() => setShowColorFilter(v => !v)}
               title="Nach Farbe filtern"
-              className={`p-1.5 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`w-9 h-9 rounded-full transition-all flex items-center justify-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/15 ring-1 ring-warm-1/20' : 'text-dark-muted hover:bg-warm-4/60'}`}
             >
-              <Filter size={20} />
+              <Filter size={18} />
             </button>
             <button
               onClick={() => setShowGenerationen(v => !v)}
               title="Generationen-Ansicht"
-              className={`p-1.5 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`w-9 h-9 rounded-full transition-all flex items-center justify-center ${showGenerationen ? 'text-warm-1 bg-warm-1/15 ring-1 ring-warm-1/20' : 'text-dark-muted hover:bg-warm-4/60'}`}
             >
-              <Layers size={20} />
+              <Layers size={18} />
             </button>
             <button
               onClick={() => setShowSettings(true)}
-              className="p-1.5 text-dark-muted hover:bg-black/5 rounded-full transition-colors flex items-center"
+              title="Einstellungen"
+              className="w-9 h-9 text-dark-muted hover:bg-warm-4/60 rounded-full transition-all flex items-center justify-center"
             >
-              <SlidersHorizontal size={20} />
+              <SlidersHorizontal size={18} />
             </button>
+            <div className="w-px h-6 bg-warm-3 mx-1.5" aria-hidden="true" />
             <div className="relative">
               <button
                 onClick={() => setShowAddMenu(v => !v)}
-                className="tour-map-add flex items-center gap-1.5 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3.5 py-2 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
+                title="Hinzufügen"
+                className="tour-map-add flex items-center gap-1.5 bg-warm-1 hover:bg-warm-2 text-white border-none rounded-full sm:rounded-xl w-9 h-9 sm:w-auto sm:h-auto sm:px-3.5 sm:py-2 justify-center font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
               >
-                <Plus size={16} /> Hinzufügen
+                <Plus size={16} /> <span className="hidden sm:inline">Hinzufügen</span>
               </button>
               {showAddMenu && (
                 <>
