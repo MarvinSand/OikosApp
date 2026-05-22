@@ -443,12 +443,6 @@ export default function MapView() {
             >
               <Layers size={18} />
             </button>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="p-1 text-dark-muted hover:bg-black/5 rounded-full transition-colors flex items-center"
-            >
-              <SlidersHorizontal size={18} />
-            </button>
             <div className="relative">
               <button
                 onClick={() => setShowAddMenu(v => !v)}
@@ -511,9 +505,9 @@ export default function MapView() {
               <div className="border border-warm-3 border-t-0 bg-warm-5 flex">
                 <button
                   onClick={() => { setShowMapMenu(false); setShowSettings(true) }}
-                  className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors"
+                  className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors flex items-center justify-center gap-1.5"
                 >
-                  Map verwalten
+                  <SlidersHorizontal size={13} /> Einstellungen
                 </button>
                 <div className="w-[1px] bg-warm-3" />
                 <button
