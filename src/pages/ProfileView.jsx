@@ -432,35 +432,6 @@ export default function ProfileView() {
             </div>
           )}
 
-          {(form.address_full || form.city) && (
-            <div style={{ marginTop: 10 }}>
-              <label style={lbl}>Wie genau soll dein Standort angezeigt werden?</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[
-                  { val: 'city', icon: '🌆', label: 'Nur Stadt' },
-                  { val: 'district', icon: '🏘', label: 'Stadtteil' },
-                  { val: 'exact', icon: '🏠', label: 'Exakt' },
-                ].map(opt => (
-                  <button
-                    key={opt.val}
-                    type="button"
-                    onClick={() => setField('location_precision', opt.val)}
-                    style={{
-                      flex: 1, padding: '10px 6px', borderRadius: 12, cursor: 'pointer',
-                      border: `1.5px solid ${form.location_precision === opt.val ? '#4A6741' : 'var(--color-warm-3)'}`,
-                      background: form.location_precision === opt.val ? '#EBE5D9' : 'var(--color-bg)',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <div style={{ fontSize: 20, marginBottom: 4 }}>{opt.icon}</div>
-                    <p style={{ ...serif, fontSize: 11, fontWeight: form.location_precision === opt.val ? 600 : 400, color: form.location_precision === opt.val ? '#4A6741' : 'var(--color-text-muted)', margin: 0 }}>
-                      {opt.label}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '18px 0' }} />
 
@@ -522,21 +493,39 @@ export default function ProfileView() {
           <div style={toggleRow}>
             <div>
               <span style={lbl}>Auf der Weltkarte sichtbar sein</span>
-              <p style={{ ...serif, fontSize: 11, color: 'var(--color-text-light)', marginTop: 2 }}>
-                {form.show_on_world_map
-                  ? 'Andere OIKOS-Nutzer sehen deinen ungefähren Standort auf der Weltkarte.'
-                  : 'Dein Standort wird nicht auf der Weltkarte angezeigt.'}
-              </p>
             </div>
             <button onClick={() => setField('show_on_world_map', !form.show_on_world_map)} style={toggleTrack(form.show_on_world_map, 'warm')}>
               <div style={toggleThumb(form.show_on_world_map)} />
             </button>
           </div>
-          {form.show_on_world_map && (
-            <p style={{ ...serif, fontSize: 11, color: 'var(--color-text-light)', marginTop: 8, fontStyle: 'italic' }}>
-              Dein Standort wird auf ca. Stadt-Ebene angezeigt – keine genaue Adresse. Koordinaten werden automatisch aus deiner Stadt gesetzt.
-            </p>
-          )}
+
+          <div style={{ marginTop: 14 }}>
+            <label style={lbl}>Wie genau soll dein Standort auf der Weltkarte angezeigt werden?</label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              {[
+                { val: 'city', icon: '🌆', label: 'Nur Stadt' },
+                { val: 'district', icon: '🏘', label: 'Stadtteil' },
+                { val: 'exact', icon: '🏠', label: 'Exakt' },
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => setField('location_precision', opt.val)}
+                  style={{
+                    flex: 1, padding: '10px 6px', borderRadius: 12, cursor: 'pointer',
+                    border: `1.5px solid ${form.location_precision === opt.val ? '#4A6741' : 'var(--color-warm-3)'}`,
+                    background: form.location_precision === opt.val ? '#EBE5D9' : 'var(--color-bg)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontSize: 20, marginBottom: 4 }}>{opt.icon}</div>
+                  <p style={{ ...serif, fontSize: 11, fontWeight: form.location_precision === opt.val ? 600 : 400, color: form.location_precision === opt.val ? '#4A6741' : 'var(--color-text-muted)', margin: 0 }}>
+                    {opt.label}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <button
             onClick={handleSave}
