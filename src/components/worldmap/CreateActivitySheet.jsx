@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Navigation, MapPin } from 'lucide-react'
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
-import L from 'leaflet'
+import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { useToast } from '../../context/ToastContext'
+import {
+  GOOGLE_MAPS_LOADER_OPTIONS,
+  DEFAULT_MAP_ID,
+  reverseGeocode,
+} from '../../lib/googleMaps'
 import AddressAutocomplete from '../common/AddressAutocomplete'
+import AdvancedMarker from './AdvancedMarker'
 
 const EMOJIS = ['📍', '📖', '🙏', '📢', '🏠', '⛪', '🎵', '🏃', '☕', '🌍', '✝️']
 const TYPE_CHIPS = ['Bibelstudie', 'Evangelisation', 'Gebetstreffen', 'Hauskreis', 'Gottesdienst', 'Sport', 'Sonstiges']
@@ -17,47 +22,20 @@ const inp = {
   display: 'block', boxSizing: 'border-box',
 }
 
-async function reverseGeocode(lat, lng) {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-      { headers: { 'User-Agent': 'OIKOS-App/1.0', 'Accept-Language': 'de' } }
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    const addr = data.address || {}
-    const road = [addr.road, addr.house_number].filter(Boolean).join(' ')
-    const city = addr.city || addr.town || addr.village || addr.county || ''
-    return [road || city, road && city ? city : ''].filter(Boolean).join(', ')
-      || data.display_name.split(',').slice(0, 2).join(', ').trim()
-  } catch {
-    return null
-  }
-}
-
-const mapPin = L.divIcon({
-  className: '',
-  html: '<div style="width:22px;height:22px;border-radius:50%;background:#4A6741;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.25);"></div>',
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-})
-
-function MapClickHandler({ onPick }) {
-  useMapEvents({ click: e => onPick(e.latlng.lat, e.latlng.lng) })
-  return null
-}
-
-function MapCenterSync({ lat, lng }) {
-  const map = useMap()
-  useEffect(() => {
-    map.invalidateSize()
-    if (lat && lng) map.flyTo([lat, lng], map.getZoom(), { animate: true, duration: 0.5 })
-  }, [lat, lng, map])
-  return null
+function MapPickerPinContent() {
+  return (
+    <div style={{
+      width: 22, height: 22, borderRadius: '50%', background: '#4A6741',
+      border: '3px solid #fff', boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+      transform: 'translate(-50%, -50%)',
+    }} />
+  )
 }
 
 export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   const { showToast } = useToast()
+  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
+
   const [form, setForm] = useState({
     emoji: '📍',
     title: '',
@@ -75,20 +53,28 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   const [locating, setLocating] = useState(false)
   const [reverseLoading, setReverseLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [miniMap, setMiniMap] = useState(null)
 
   const defaultCenter = myProfile?.latitude
-    ? [myProfile.latitude, myProfile.longitude]
-    : [48.137, 11.576]
+    ? { lat: myProfile.latitude, lng: myProfile.longitude }
+    : { lat: 48.137, lng: 11.576 }
 
   function set(key, value) {
     setForm(f => ({ ...f, [key]: value }))
   }
 
   function applyLocation(lat, lng, label) {
-    set('latitude', lat)
-    set('longitude', lng)
+    setForm(f => ({ ...f, latitude: lat, longitude: lng }))
     if (label) setLocationLabel(label)
   }
+
+  // When location changes (from autocomplete, GPS, or click), pan the mini-map there
+  useEffect(() => {
+    if (miniMap && form.latitude != null && form.longitude != null) {
+      miniMap.panTo({ lat: form.latitude, lng: form.longitude })
+      if (miniMap.getZoom() < 14) miniMap.setZoom(15)
+    }
+  }, [miniMap, form.latitude, form.longitude])
 
   function handleGetGPS() {
     if (!navigator.geolocation) { showToast('Geolocation nicht unterstützt', 'error'); return }
@@ -96,8 +82,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     navigator.geolocation.getCurrentPosition(
       async pos => {
         const { latitude, longitude } = pos.coords
-        set('latitude', latitude)
-        set('longitude', longitude)
+        applyLocation(latitude, longitude)
         setLocating(false)
         setReverseLoading(true)
         const label = await reverseGeocode(latitude, longitude)
@@ -113,9 +98,10 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     )
   }
 
-  async function handleMapClick(lat, lng) {
-    set('latitude', lat)
-    set('longitude', lng)
+  async function handleMapClick(e) {
+    const lat = e.latLng.lat()
+    const lng = e.latLng.lng()
+    applyLocation(lat, lng)
     setReverseLoading(true)
     const label = await reverseGeocode(lat, lng)
     setReverseLoading(false)
@@ -241,19 +227,15 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
           style={{ ...inp, resize: 'vertical' }}
         />
 
-        {/* Location — three tabs */}
+        {/* Location — two tabs (GPS / Karte+Adresse) */}
         <label style={{ ...lbl, marginTop: 14 }}>Standort der Aktivität *</label>
 
-        {/* Tab switcher */}
         <div style={{ display: 'flex', gap: 4, padding: 4, background: '#EBE5D9', borderRadius: 12, marginBottom: 12 }}>
           <button style={tabStyle(locTab === 'gps')} onClick={() => setLocTab('gps')}>
             📡 GPS
           </button>
-          <button style={tabStyle(locTab === 'address')} onClick={() => setLocTab('address')}>
-            🔍 Adresse
-          </button>
           <button style={tabStyle(locTab === 'map')} onClick={() => setLocTab('map')}>
-            🗺 Karte
+            🗺 Karte + Adresse
           </button>
         </div>
 
@@ -280,9 +262,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
             {!form.latitude && myProfile?.latitude && (
               <button
                 onClick={() => {
-                  set('latitude', myProfile.latitude)
-                  set('longitude', myProfile.longitude)
-                  setLocationLabel(myProfile.city || '')
+                  applyLocation(myProfile.latitude, myProfile.longitude, myProfile.city || '')
                 }}
                 style={{
                   marginTop: 8, padding: '8px 12px', borderRadius: 10,
@@ -297,37 +277,49 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
           </div>
         )}
 
-        {/* Address tab */}
-        {locTab === 'address' && (
-          <AddressAutocomplete
-            value={form.latitude ? { shortName: locationLabel, lat: form.latitude, lng: form.longitude } : null}
-            onChange={(loc) => {
-              applyLocation(loc.lat, loc.lng, loc.shortName)
-            }}
-            placeholder="Adresse oder Ort suchen…"
-          />
-        )}
-
-        {/* Map tab */}
+        {/* Karte + Adresse tab (merged) */}
         {locTab === 'map' && (
           <div>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#A1927F', margin: '0 0 8px' }}>
-              Tippe auf die Karte, um den Aktivitätsort zu setzen.
+            <AddressAutocomplete
+              value={form.latitude ? { shortName: locationLabel, lat: form.latitude, lng: form.longitude } : null}
+              onChange={(loc) => {
+                applyLocation(loc.lat, loc.lng, loc.shortName)
+              }}
+              placeholder="Adresse oder Ort suchen…"
+            />
+
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#A1927F', margin: '10px 0 6px' }}>
+              … oder tippe direkt auf die Karte, um den Ort zu setzen.
             </p>
+
             <div style={{ height: 220, borderRadius: 12, overflow: 'hidden', border: '1px solid #D8D2C5' }}>
-              <MapContainer
-                center={form.latitude ? [form.latitude, form.longitude] : defaultCenter}
-                zoom={13}
-                style={{ width: '100%', height: '100%' }}
-                zoomControl={true}
-                scrollWheelZoom={false}
-                attributionControl={false}
-              >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                {form.latitude && <Marker position={[form.latitude, form.longitude]} icon={mapPin} />}
-                <MapClickHandler onPick={handleMapClick} />
-                <MapCenterSync lat={form.latitude} lng={form.longitude} />
-              </MapContainer>
+              {isLoaded ? (
+                <GoogleMap
+                  mapContainerStyle={{ width: '100%', height: '100%' }}
+                  center={form.latitude ? { lat: form.latitude, lng: form.longitude } : defaultCenter}
+                  zoom={form.latitude ? 15 : 13}
+                  onLoad={setMiniMap}
+                  onUnmount={() => setMiniMap(null)}
+                  onClick={handleMapClick}
+                  options={{
+                    mapId: DEFAULT_MAP_ID,
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                    gestureHandling: 'cooperative',
+                    clickableIcons: false,
+                  }}
+                >
+                  {form.latitude != null && form.longitude != null && (
+                    <AdvancedMarker map={miniMap} position={{ lat: form.latitude, lng: form.longitude }}>
+                      <MapPickerPinContent />
+                    </AdvancedMarker>
+                  )}
+                </GoogleMap>
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F3EC' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid #D8D2C5', borderTopColor: '#4A6741', animation: 'spin 0.7s linear infinite' }} />
+                </div>
+              )}
             </div>
             {reverseLoading && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#A1927F', margin: '6px 0 0' }}>

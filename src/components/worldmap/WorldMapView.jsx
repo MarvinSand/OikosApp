@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
-import MarkerClusterGroup from 'react-leaflet-cluster'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
+import { MarkerClusterer } from '@googlemaps/markerclusterer'
 import { Plus, Navigation, ZoomIn, ZoomOut } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorldMap } from '../../hooks/useWorldMap'
 import { useToast } from '../../context/ToastContext'
+import { GOOGLE_MAPS_LOADER_OPTIONS, DEFAULT_MAP_ID } from '../../lib/googleMaps'
+import AdvancedMarker from './AdvancedMarker'
 import UserPinSheet from './UserPinSheet'
 import ActivitySheet from './ActivitySheet'
 import CreateActivitySheet from './CreateActivitySheet'
@@ -17,53 +17,57 @@ function getInitials(name) {
   return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
-// ─── Custom Marker Icons ─────────────────────────────────
-function createUserIcon(avatarUrl, initials, isOwn, isChristian) {
+// ─── Pin DOM builders (vanilla, used both inside <AdvancedMarker> children and for clusterer markers) ──
+function buildUserPinElement(user, { isOwn = false } = {}) {
   const size = isOwn ? 50 : 36
-  const borderColor = isOwn ? '#C4974A' : (isChristian !== false ? '#4A6741' : '#E8865A')
-  const bg = avatarUrl ? 'transparent' : borderColor
+  const isChristian = user.is_christian !== false
+  const borderColor = isOwn ? '#C4974A' : (isChristian ? '#4A6741' : '#E8865A')
+  const bg = user.avatar_url ? 'transparent' : borderColor
+  const initials = getInitials(user.full_name)
 
-  const imgOrInitials = avatarUrl
-    ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" />`
-    : `<span style="font-family:Lora,serif;font-size:${Math.floor(size / 3)}px;font-weight:600;color:#fff;user-select:none;">${initials}</span>`
+  const wrap = document.createElement('div')
+  wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translate(-50%,-50%);`
 
-  const pulseRing = isOwn
-    ? `<div style="position:absolute;inset:-5px;border-radius:50%;border:2px solid rgba(196,151,74,0.6);animation:oikosPinPulse 2s ease-in-out infinite;pointer-events:none;"></div>`
-    : ''
+  const circle = document.createElement('div')
+  circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${bg};border:${isOwn ? 3 : 2}px solid ${borderColor};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.2);cursor:pointer;`
 
-  return L.divIcon({
-    className: '',
-    html: `
-      <div style="position:relative;width:${size}px;height:${size}px;">
-        <div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};border:${isOwn ? 3 : 2}px solid ${borderColor};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.2);cursor:pointer;">
-          ${imgOrInitials}
-        </div>
-        ${pulseRing}
-      </div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -(size / 2 + 4)],
-  })
+  if (user.avatar_url) {
+    const img = document.createElement('img')
+    img.src = user.avatar_url
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;'
+    img.referrerPolicy = 'no-referrer'
+    circle.appendChild(img)
+  } else {
+    const span = document.createElement('span')
+    span.style.cssText = `font-family:Lora,serif;font-size:${Math.floor(size / 3)}px;font-weight:600;color:#fff;user-select:none;`
+    span.textContent = initials
+    circle.appendChild(span)
+  }
+  wrap.appendChild(circle)
+
+  if (isOwn) {
+    const pulse = document.createElement('div')
+    pulse.style.cssText = 'position:absolute;inset:-5px;border-radius:50%;border:2px solid rgba(196,151,74,0.6);animation:oikosPinPulse 2s ease-in-out infinite;pointer-events:none;'
+    wrap.appendChild(pulse)
+  }
+  return wrap
 }
 
-function createActivityIcon(emoji) {
-  return L.divIcon({
-    className: '',
-    html: `<div style="width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid #C4974A;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.18);font-size:20px;cursor:pointer;">${emoji || '📍'}</div>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
-    popupAnchor: [0, -26],
-  })
+function buildActivityPinElement(emoji) {
+  const wrap = document.createElement('div')
+  wrap.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid #C4974A;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.18);font-size:20px;cursor:pointer;transform:translate(-50%,-50%);'
+  wrap.textContent = emoji || '📍'
+  return wrap
 }
 
-function createClusterIcon(cluster) {
-  const count = cluster.getChildCount()
-  return L.divIcon({
-    className: '',
-    html: `<div style="width:44px;height:44px;border-radius:50%;background:#4A6741;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);"><span style="font-family:Lora,serif;font-size:14px;font-weight:700;color:#fff;">${count}</span></div>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
-  })
+function buildClusterElement(count) {
+  const wrap = document.createElement('div')
+  wrap.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#4A6741;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);transform:translate(-50%,-50%);'
+  const span = document.createElement('span')
+  span.style.cssText = 'font-family:Lora,serif;font-size:14px;font-weight:700;color:#fff;'
+  span.textContent = String(count)
+  wrap.appendChild(span)
+  return wrap
 }
 
 // ─── Filter Bar ──────────────────────────────────────────
@@ -181,6 +185,61 @@ function PrivacyBanner({ onClose }) {
   )
 }
 
+// ─── User-pin clusterer effect (imperative because clusterer manages marker.map) ──
+function useUserClusterer({ map, users, onUserClick, enabled }) {
+  const clustererRef = useRef(null)
+  const markersRef = useRef([])
+
+  useEffect(() => {
+    if (!map || !enabled || !window.google?.maps?.marker?.AdvancedMarkerElement) {
+      // Tear down any existing clusterer
+      if (clustererRef.current) {
+        clustererRef.current.clearMarkers()
+        clustererRef.current = null
+      }
+      markersRef.current.forEach(m => { m.map = null })
+      markersRef.current = []
+      return
+    }
+
+    // Build markers
+    const newMarkers = users.map(u => {
+      const content = buildUserPinElement(u, { isOwn: false })
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        position: { lat: u.latitude, lng: u.longitude },
+        content,
+        gmpClickable: true,
+      })
+      marker.addListener('gmp-click', () => onUserClick(u))
+      return marker
+    })
+    markersRef.current = newMarkers
+
+    // Build clusterer with custom renderer
+    const clusterer = new MarkerClusterer({
+      map,
+      markers: newMarkers,
+      renderer: {
+        render: ({ count, position }) => {
+          return new window.google.maps.marker.AdvancedMarkerElement({
+            position,
+            content: buildClusterElement(count),
+            zIndex: 100 + count,
+          })
+        },
+      },
+    })
+    clustererRef.current = clusterer
+
+    return () => {
+      clusterer.clearMarkers()
+      newMarkers.forEach(m => { m.map = null })
+      clustererRef.current = null
+      markersRef.current = []
+    }
+  }, [map, users, enabled, onUserClick])
+}
+
 // ─── Main Component ───────────────────────────────────────
 export default function WorldMapView({ onNavigateToProfile }) {
   const { user } = useAuth()
@@ -190,7 +249,9 @@ export default function WorldMapView({ onNavigateToProfile }) {
     loading, createActivity, joinActivity, joinActivityChat, leaveActivity, deleteActivity,
   } = useWorldMap()
 
-  const mapRef = useRef(null)
+  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
+
+  const [map, setMap] = useState(null)
   const [filter, setFilter] = useState('all')
   const [selectedUser, setSelectedUser] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
@@ -207,16 +268,27 @@ export default function WorldMapView({ onNavigateToProfile }) {
   }
 
   const showUsers = filter === 'all'
-  const filteredActivities = (() => {
+  const filteredActivities = useMemo(() => {
     if (filter === 'all') return activities
     if (filter === 'own') return activities.filter(a => a.author_id === user?.id)
     return activities.filter(a => a.activity_type?.toLowerCase().includes(filter.toLowerCase()))
-  })()
+  }, [activities, filter, user?.id])
 
-  const defaultCenter = myProfile?.latitude ? [myProfile.latitude, myProfile.longitude] : [51.1657, 10.4515]
+  const defaultCenter = myProfile?.latitude
+    ? { lat: myProfile.latitude, lng: myProfile.longitude }
+    : { lat: 51.1657, lng: 10.4515 }
   const defaultZoom = myProfile?.latitude ? 10 : 6
 
-  if (loading) {
+  // Cluster other users (memoize handler so the effect doesn't re-run unnecessarily)
+  const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
+  useUserClusterer({
+    map,
+    users: showUsers ? visibleUsers : [],
+    onUserClick: handleUserClick,
+    enabled: showUsers && isLoaded,
+  })
+
+  if (loading || !isLoaded) {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F3EC' }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #D8D2C5', borderTopColor: '#4A6741', animation: 'spin 0.8s linear infinite' }} />
@@ -229,60 +301,44 @@ export default function WorldMapView({ onNavigateToProfile }) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#F7F3EC', overflow: 'hidden' }}>
       {/* Map area */}
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <MapContainer
-          ref={mapRef}
+        <GoogleMap
+          mapContainerStyle={{ width: '100%', height: '100%' }}
           center={defaultCenter}
           zoom={defaultZoom}
-          style={{ width: '100%', height: '100%' }}
-          zoomControl={false}
-          attributionControl={false}
+          onLoad={setMap}
+          onUnmount={() => setMap(null)}
+          options={{
+            mapId: DEFAULT_MAP_ID,
+            disableDefaultUI: true,
+            gestureHandling: 'greedy',
+            clickableIcons: false,
+            keyboardShortcuts: false,
+          }}
         >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="© OpenStreetMap"
-          />
-
-          {/* Own pin */}
+          {/* Own pin (never clustered, always on top) */}
           {myProfile?.latitude && (
-            <Marker
-              position={[myProfile.latitude, myProfile.longitude]}
-              icon={createUserIcon(myProfile.avatar_url, getInitials(myProfile.full_name), true, true)}
-              zIndexOffset={1000}
+            <AdvancedMarker
+              map={map}
+              position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
+              zIndex={9999}
             >
-              <Popup>
-                <span style={{ fontFamily: 'Lora, serif', fontSize: 13 }}>Das bist du 📍</span>
-              </Popup>
-            </Marker>
+              <OwnPinContent user={myProfile} />
+            </AdvancedMarker>
           )}
 
-          {/* Other user pins */}
-          {showUsers && visibleUsers.length > 0 && (
-            <MarkerClusterGroup
-              iconCreateFunction={createClusterIcon}
-              chunkedLoading
-              maxClusterRadius={50}
-            >
-              {visibleUsers.map(u => (
-                <Marker
-                  key={u.id}
-                  position={[u.latitude, u.longitude]}
-                  icon={createUserIcon(u.avatar_url, getInitials(u.full_name), false, u.is_christian)}
-                  eventHandlers={{ click: () => setSelectedUser(u) }}
-                />
-              ))}
-            </MarkerClusterGroup>
-          )}
-
-          {/* Activity pins */}
+          {/* Activity pins (not clustered) */}
           {filteredActivities.map(a => (
-            <Marker
+            <AdvancedMarker
               key={a.id}
-              position={[a.latitude, a.longitude]}
-              icon={createActivityIcon(a.activity_emoji)}
-              eventHandlers={{ click: () => setSelectedActivity(a) }}
-            />
+              map={map}
+              position={{ lat: a.latitude, lng: a.longitude }}
+              onClick={() => setSelectedActivity(a)}
+            >
+              <ActivityPinContent emoji={a.activity_emoji} />
+            </AdvancedMarker>
           ))}
-        </MapContainer>
+          {/* Other user pins are managed imperatively by useUserClusterer */}
+        </GoogleMap>
 
         {/* Filter bar overlay */}
         <FilterBar filter={filter} onFilter={setFilter} />
@@ -291,15 +347,19 @@ export default function WorldMapView({ onNavigateToProfile }) {
         <div style={{ position: 'absolute', bottom: 160, right: 12, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 500 }}>
           {myProfile?.latitude && (
             <button
-              onClick={() => mapRef.current?.flyTo([myProfile.latitude, myProfile.longitude], 12, { duration: 1 })}
+              onClick={() => {
+                if (!map) return
+                map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
+                map.setZoom(12)
+              }}
               style={mapBtnStyle}
               title="Zu meinem Standort"
             >
               <Navigation size={17} />
             </button>
           )}
-          <button onClick={() => mapRef.current?.zoomIn()} style={mapBtnStyle} title="Vergrößern"><ZoomIn size={17} /></button>
-          <button onClick={() => mapRef.current?.zoomOut()} style={mapBtnStyle} title="Verkleinern"><ZoomOut size={17} /></button>
+          <button onClick={() => map && map.setZoom(map.getZoom() + 1)} style={mapBtnStyle} title="Vergrößern"><ZoomIn size={17} /></button>
+          <button onClick={() => map && map.setZoom(map.getZoom() - 1)} style={mapBtnStyle} title="Verkleinern"><ZoomOut size={17} /></button>
         </div>
 
         {/* No location hint */}
@@ -371,9 +431,13 @@ export default function WorldMapView({ onNavigateToProfile }) {
           myProfile={myProfile}
           onClose={() => setShowCreateSheet(false)}
           onSubmit={async (data) => {
-            const { error } = await createActivity(data)
+            const { error, chatError } = await createActivity(data)
             if (!error) {
-              showToast('Aktivität gepostet 📍')
+              if (chatError) {
+                showToast('Aktivität gepostet, Chat konnte nicht angelegt werden', 'error')
+              } else {
+                showToast('Aktivität gepostet 📍')
+              }
               setShowCreateSheet(false)
             } else {
               showToast('Fehler beim Erstellen', 'error')
@@ -381,6 +445,49 @@ export default function WorldMapView({ onNavigateToProfile }) {
           }}
         />
       )}
+    </div>
+  )
+}
+
+// ─── Pin Content Components (React-rendered into AdvancedMarker.children) ──
+function OwnPinContent({ user }) {
+  const size = 50
+  const borderColor = '#C4974A'
+  const bg = user?.avatar_url ? 'transparent' : borderColor
+  return (
+    <div style={{ position: 'relative', width: size, height: size, transform: 'translate(-50%, -50%)' }}>
+      <div style={{
+        width: size, height: size, borderRadius: '50%', background: bg,
+        border: `3px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', cursor: 'pointer',
+      }}>
+        {user?.avatar_url ? (
+          <img src={user.avatar_url} referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+        ) : (
+          <span style={{ fontFamily: 'Lora, serif', fontSize: Math.floor(size / 3), fontWeight: 600, color: '#fff', userSelect: 'none' }}>
+            {getInitials(user?.full_name)}
+          </span>
+        )}
+      </div>
+      <div style={{
+        position: 'absolute', inset: -5, borderRadius: '50%',
+        border: '2px solid rgba(196,151,74,0.6)',
+        animation: 'oikosPinPulse 2s ease-in-out infinite',
+        pointerEvents: 'none',
+      }} />
+    </div>
+  )
+}
+
+function ActivityPinContent({ emoji }) {
+  return (
+    <div style={{
+      width: 44, height: 44, borderRadius: '50%', background: '#fff',
+      border: '2px solid #C4974A', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.18)', fontSize: 20, cursor: 'pointer',
+      transform: 'translate(-50%, -50%)',
+    }}>
+      {emoji || '📍'}
     </div>
   )
 }

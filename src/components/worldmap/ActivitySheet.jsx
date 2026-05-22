@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X, Calendar, MapPin, Users, Trash2, MessageCircle, ChevronRight } from 'lucide-react'
+import { useToast } from '../../context/ToastContext'
 
 function formatDate(dateStr) {
   if (!dateStr) return null
@@ -83,6 +84,7 @@ function ParticipantsListSheet({ participants, onClose }) {
 
 export default function ActivitySheet({ activity, currentUserId, onClose, onJoin, onJoinChat, onLeave, onDelete }) {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [joining, setJoining] = useState(false)
   const [chatLoading, setChatLoading] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
@@ -108,20 +110,29 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
 
   async function handleOpenChat() {
     setChatLoading(true)
-    const existingId = convId || activity.conversation_id
-    if (existingId) {
-      onClose()
-      navigate(`/chat/${existingId}`)
-    } else {
+    try {
+      const existingId = convId || activity.conversation_id
+      if (existingId) {
+        onClose()
+        navigate(`/chat/${existingId}`)
+        return
+      }
       const result = await onJoinChat(activity.id)
-      setChatLoading(false)
+      if (result?.error) {
+        console.error('joinActivityChat error:', result.error)
+        showToast('Chat konnte nicht geöffnet werden', 'error')
+        return
+      }
       if (result?.convId) {
         setConvId(result.convId)
         onClose()
         navigate(`/chat/${result.convId}`)
+      } else {
+        showToast('Chat konnte nicht erstellt werden', 'error')
       }
+    } finally {
+      setChatLoading(false)
     }
-    setChatLoading(false)
   }
 
   function handleDelete() {
@@ -249,7 +260,7 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
             }}
           >
             <MessageCircle size={16} />
-            {chatLoading ? 'Öffne Chat…' : 'Chat beitreten'}
+            {chatLoading ? 'Öffne Chat…' : 'Chat öffnen'}
           </button>
 
           {/* Join / Leave — only for non-owners */}

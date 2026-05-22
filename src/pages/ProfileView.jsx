@@ -409,6 +409,7 @@ export default function ProfileView() {
                 setEditingAddress(false)
               }}
               placeholder="Adresse oder Stadt eingeben…"
+              showMapPreview
             />
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', marginBottom: 8 }}>

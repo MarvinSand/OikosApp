@@ -749,7 +749,7 @@ function ChatsAvatar({ name, size = 40, isChristian, avatarUrl }) {
 
 function ChatsTab() {
   const navigate = useNavigate()
-  const { directChats, communityChats, loading, startDirectChat } = useConversations()
+  const { directChats, communityChats, activityChats, loading, startDirectChat } = useConversations()
   const { friends } = useFriendships()
   const [query, setQuery] = useState('')
   const [showNewChat, setShowNewChat] = useState(false)
@@ -785,13 +785,16 @@ function ChatsTab() {
     list.filter(conv => {
       const name = conv.type === 'direct'
         ? (conv.otherUser?.full_name || conv.otherUser?.username || '')
-        : (conv.community?.name || '')
+        : conv.type === 'community'
+          ? (conv.community?.name || '')
+          : (conv.activity?.title || '')
       return name.toLowerCase().includes(query.toLowerCase())
     })
 
   const filteredDirect = filterConvs(directChats)
   const filteredCommunity = filterConvs(communityChats)
-  const hasAny = directChats.length > 0 || communityChats.length > 0
+  const filteredActivity = filterConvs(activityChats)
+  const hasAny = directChats.length > 0 || communityChats.length > 0 || activityChats.length > 0
 
   async function handleSelectFriend(friendId) {
     setShowNewChat(false)
@@ -894,6 +897,36 @@ function ChatsTab() {
                   </div>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: conv.unread ? 'var(--color-text-muted)' : 'var(--color-text-light)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: conv.unread ? 500 : 400 }}>
                     {preview || 'Noch keine Nachrichten'}
+                  </p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {!loading && filteredActivity.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <p style={sectionLabel}>Aktivitäten</p>
+          {filteredActivity.map(conv => {
+            const name = conv.activity?.title || 'Aktivität'
+            const emoji = conv.activity?.activity_emoji || '📍'
+            const subLabel = conv.activity?.activity_type || ''
+            const preview = lastMessagePreview(conv.lastMessage)
+            const time = timeAgo(conv.lastMessage?.created_at)
+            return (
+              <button key={conv.id} onClick={() => navigate(`/chat/${conv.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left', position: 'relative' }}>
+                {conv.unread && <div style={{ position: 'absolute', left: -4, top: '50%', transform: 'translateY(-50%)', width: 10, height: 10, borderRadius: '50%', backgroundColor: '#2563EB' }} />}
+                <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+                  {emoji}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: conv.unread ? 700 : 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{name}</p>
+                    <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', flexShrink: 0 }}>{time}</span>
+                  </div>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: conv.unread ? 'var(--color-text-muted)' : 'var(--color-text-light)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: conv.unread ? 500 : 400 }}>
+                    {preview || (subLabel ? `Aktivität · ${subLabel}` : 'Noch keine Nachrichten')}
                   </p>
                 </div>
               </button>

@@ -722,7 +722,7 @@ export default function ConversationView() {
       // Fetch conversation type
       const { data: conv } = await supabase
         .from('conversations')
-        .select('id, type, community_id')
+        .select('id, type, community_id, activity_id, activity:world_map_activities!activity_id(id, title, activity_emoji, activity_type)')
         .eq('id', conversationId)
         .maybeSingle()
 
@@ -736,6 +736,14 @@ export default function ConversationView() {
           .eq('id', conv.community_id)
           .maybeSingle()
         setConvInfo({ type: 'community', name: community?.name || 'Community', communityId: conv.community_id })
+      } else if (conv.type === 'activity') {
+        setConvInfo({
+          type: 'activity',
+          name: conv.activity?.title || 'Aktivität',
+          activityEmoji: conv.activity?.activity_emoji || '📍',
+          activityId: conv.activity_id,
+          activityType: conv.activity?.activity_type || '',
+        })
       } else {
         // Get other user
         const { data: members } = await supabase
@@ -853,7 +861,7 @@ export default function ConversationView() {
               <div className="w-24 h-4 rounded bg-warm-3/50 animate-pulse" />
             </div>
           ) : (
-            <div 
+            <div
               className="flex items-center gap-3 flex-1 cursor-pointer transition-opacity hover:opacity-80 p-1 -ml-1 pr-4 rounded-xl"
               onClick={() => {
                 if (convInfo?.type === 'direct' && convInfo?.otherUserId) {
@@ -863,17 +871,27 @@ export default function ConversationView() {
                 }
               }}
             >
-              <Avatar 
-                name={convInfo?.name} 
-                size={40} 
-                isChristian={convInfo?.type === 'direct' ? convInfo?.otherUser?.is_christian : false} 
-              />
+              {convInfo?.type === 'activity' ? (
+                <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+                  {convInfo?.activityEmoji || '📍'}
+                </div>
+              ) : (
+                <Avatar
+                  name={convInfo?.name}
+                  size={40}
+                  isChristian={convInfo?.type === 'direct' ? convInfo?.otherUser?.is_christian : false}
+                />
+              )}
               <div className="min-w-0">
                 <h2 className="font-serif text-[17px] font-bold text-dark m-0 leading-tight truncate">
                   {convInfo?.name}
                 </h2>
                 <p className="font-serif text-[12px] text-dark-muted m-0 mt-0.5 opacity-90 truncate">
-                  {convInfo?.type === 'community' ? 'Community Chat' : 'Direktnachricht'}
+                  {convInfo?.type === 'community'
+                    ? 'Community Chat'
+                    : convInfo?.type === 'activity'
+                      ? `Aktivitäts-Chat${convInfo?.activityType ? ' · ' + convInfo.activityType : ''}`
+                      : 'Direktnachricht'}
                 </p>
               </div>
             </div>

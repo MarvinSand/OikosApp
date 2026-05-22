@@ -25,6 +25,13 @@ do $$ begin
   end if;
 end $$;
 
+-- ── 1b. conversations.type CHECK um 'activity' erweitern ──────
+alter table public.conversations
+  drop constraint if exists conversations_type_check;
+alter table public.conversations
+  add constraint conversations_type_check
+  check (type in ('direct', 'community', 'discipleship', 'activity'));
+
 -- ── 2. Aktivitäts-Chat: conversations.activity_id ─────────────
 alter table public.conversations
   add column if not exists activity_id uuid references public.world_map_activities(id) on delete cascade;

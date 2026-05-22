@@ -1,97 +1,95 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
-import L from 'leaflet'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { Search } from 'lucide-react'
-
-const NOM_HEADERS = { 'User-Agent': 'OIKOS-App/1.0', 'Accept-Language': 'de' }
-
-async function nominatimSearch(query) {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`,
-      { headers: NOM_HEADERS }
-    )
-    if (!res.ok) return []
-    const items = await res.json()
-    return items.map(item => {
-      const addr = item.address || {}
-      const road = [addr.road, addr.house_number].filter(Boolean).join(' ')
-      const city = addr.city || addr.town || addr.village || addr.county || ''
-      const state = addr.state || ''
-      const shortName = [road || city, road && city ? city : state].filter(Boolean).join(', ')
-        || item.display_name.split(',').slice(0, 2).join(',').trim()
-      return {
-        lat: parseFloat(item.lat),
-        lng: parseFloat(item.lon),
-        address: item.display_name,
-        shortName,
-        subLine: [state, addr.country].filter(Boolean).join(', '),
-        city,
-        country: addr.country || '',
-        countryCode: (addr.country_code || '').toUpperCase(),
-        district: addr.suburb || addr.neighbourhood || addr.quarter || '',
-        street: road,
-        postcode: addr.postcode || '',
-      }
-    })
-  } catch {
-    return []
-  }
-}
+import {
+  GOOGLE_MAPS_LOADER_OPTIONS,
+  DEFAULT_MAP_ID,
+  fetchPlaceDetails,
+} from '../../lib/googleMaps'
+import AdvancedMarker from '../worldmap/AdvancedMarker'
 
 function debounce(fn, ms) {
   let t
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms) }
 }
 
-// ─── Map Preview (static, non-interactive) ───────────────
-const previewPin = L.divIcon({
-  className: '',
-  html: '<div style="width:22px;height:22px;border-radius:50%;background:#4A6741;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.25);"></div>',
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-})
-
-function MapInvalidator() {
-  const map = useMap()
-  useEffect(() => {
-    const t = setTimeout(() => map.invalidateSize(), 80)
-    return () => clearTimeout(t)
-  }, [map])
-  return null
+// ─── Suggestion fetching ─────────────────────────────────────────────
+//
+// Uses AutocompleteService (legacy but still supported & widely available).
+// Returns the same shape consumers already expect.
+async function fetchSuggestions(query, sessionToken) {
+  if (!window.google?.maps?.places?.AutocompleteService) return []
+  const service = new window.google.maps.places.AutocompleteService()
+  return new Promise((resolve) => {
+    service.getPlacePredictions(
+      {
+        input: query,
+        sessionToken,
+        language: 'de',
+      },
+      (predictions, status) => {
+        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !predictions) {
+          resolve([])
+          return
+        }
+        resolve(
+          predictions.map((p) => ({
+            placeId: p.place_id,
+            shortName: p.structured_formatting?.main_text || p.description,
+            subLine: p.structured_formatting?.secondary_text || '',
+            description: p.description,
+          }))
+        )
+      }
+    )
+  })
 }
 
+// ─── Map preview (Google Maps, non-interactive) ──────────────────────
 function MapPreview({ lat, lng }) {
+  const [map, setMap] = useState(null)
+  const position = useMemo(() => ({ lat, lng }), [lat, lng])
+
+  useEffect(() => {
+    if (map) map.panTo(position)
+  }, [map, position])
+
   return (
     <div style={{ height: 180, borderRadius: 12, overflow: 'hidden', marginTop: 10, border: '1px solid #D8D2C5' }}>
-      <MapContainer
-        key={`${lat.toFixed(5)},${lng.toFixed(5)}`}
-        center={[lat, lng]}
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        center={position}
         zoom={15}
-        style={{ width: '100%', height: '100%' }}
-        zoomControl={false}
-        scrollWheelZoom={false}
-        dragging={false}
-        doubleClickZoom={false}
-        touchZoom={false}
-        keyboard={false}
-        attributionControl={false}
+        onLoad={setMap}
+        options={{
+          mapId: DEFAULT_MAP_ID,
+          disableDefaultUI: true,
+          gestureHandling: 'none',
+          keyboardShortcuts: false,
+          clickableIcons: false,
+        }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Marker position={[lat, lng]} icon={previewPin} />
-        <MapInvalidator />
-      </MapContainer>
+        <AdvancedMarker map={map} position={position}>
+          <div style={{
+            width: 22, height: 22, borderRadius: '50%', background: '#4A6741',
+            border: '3px solid #fff', boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+            transform: 'translate(-50%, -50%)',
+          }} />
+        </AdvancedMarker>
+      </GoogleMap>
     </div>
   )
 }
 
-// ─── Main Component ───────────────────────────────────────
+// ─── Main Component ──────────────────────────────────────────────────
 export default function AddressAutocomplete({
   value,
   onChange,
   placeholder = 'Adresse eingeben…',
   showMapPreview = false,
 }) {
+  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
+
   const [inputVal, setInputVal] = useState(value?.shortName || value?.address || '')
   const [suggestions, setSuggestions] = useState([])
   const [loadingSearch, setLoadingSearch] = useState(false)
@@ -101,22 +99,44 @@ export default function AddressAutocomplete({
   const [selectedLoc, setSelectedLoc] = useState(value?.lat ? value : null)
   const [slowWarning, setSlowWarning] = useState(false)
   const [dropdownStyle, setDropdownStyle] = useState(null)
+  const [resolving, setResolving] = useState(false)
 
   const inputRef = useRef(null)
   const slowRef = useRef(null)
+  const sessionTokenRef = useRef(null)
+
+  // Create/refresh a session token whenever Maps becomes ready (one token per search session).
+  const newSessionToken = useCallback(() => {
+    if (window.google?.maps?.places?.AutocompleteSessionToken) {
+      sessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isLoaded) newSessionToken()
+  }, [isLoaded, newSessionToken])
+
+  // Keep input value in sync if the parent updates `value` externally
+  useEffect(() => {
+    if (value?.shortName && value.shortName !== inputVal && value.lat !== selectedLoc?.lat) {
+      setInputVal(value.shortName)
+      setSelectedLoc(value)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value?.lat, value?.lng])
 
   const doSearch = useMemo(
     () => debounce(async (q) => {
       clearTimeout(slowRef.current)
       slowRef.current = setTimeout(() => setSlowWarning(true), 3000)
-      const results = await nominatimSearch(q)
+      const results = await fetchSuggestions(q, sessionTokenRef.current)
       clearTimeout(slowRef.current)
       setSlowWarning(false)
       setSuggestions(results)
       setHasSearched(true)
       setLoadingSearch(false)
       if (results.length > 0) setOpen(true)
-    }, 500),
+    }, 400),
     []
   )
 
@@ -131,6 +151,7 @@ export default function AddressAutocomplete({
     setInputVal(v)
     setActiveIdx(-1)
     calcDropdownStyle()
+    if (!isLoaded) return
     if (v.length >= 3) {
       setLoadingSearch(true)
       setHasSearched(false)
@@ -151,6 +172,25 @@ export default function AddressAutocomplete({
     setTimeout(() => { setOpen(false); setActiveIdx(-1) }, 200)
   }
 
+  async function select(s) {
+    setInputVal(s.shortName)
+    setSuggestions([])
+    setOpen(false)
+    setResolving(true)
+    const details = await fetchPlaceDetails(s.placeId)
+    setResolving(false)
+    // Refresh session token: a place selection ends the autocomplete session
+    newSessionToken()
+    if (!details) return
+    const merged = {
+      ...details,
+      shortName: s.shortName || details.shortName,
+      subLine: s.subLine || details.subLine,
+    }
+    setSelectedLoc(merged)
+    onChange(merged)
+  }
+
   function handleKeyDown(e) {
     if (!open) return
     if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, suggestions.length - 1)) }
@@ -159,15 +199,8 @@ export default function AddressAutocomplete({
     if (e.key === 'Escape') setOpen(false)
   }
 
-  function select(s) {
-    setInputVal(s.shortName)
-    setSelectedLoc(s)
-    setSuggestions([])
-    setOpen(false)
-    onChange(s)
-  }
-
   const showNoResults = open && hasSearched && !loadingSearch && suggestions.length === 0
+  const showSpinner = loadingSearch || resolving
 
   return (
     <div style={{ position: 'relative' }}>
@@ -182,16 +215,18 @@ export default function AddressAutocomplete({
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          placeholder={placeholder}
+          placeholder={isLoaded ? placeholder : 'Karte wird geladen…'}
           autoComplete="off"
+          disabled={!isLoaded}
           style={{
             width: '100%', padding: '11px 36px 11px 34px',
             borderRadius: 12, border: '1.5px solid #D8D2C5',
             backgroundColor: '#F7F3EC', fontFamily: 'Lora, serif',
             fontSize: 14, color: '#2C2416', boxSizing: 'border-box',
+            opacity: isLoaded ? 1 : 0.7,
           }}
         />
-        {loadingSearch && (
+        {showSpinner && (
           <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, borderRadius: '50%', border: '2px solid #D8D2C5', borderTopColor: '#4A6741', animation: 'spin 0.7s linear infinite' }} />
         )}
       </div>
@@ -203,7 +238,7 @@ export default function AddressAutocomplete({
       )}
 
       {/* Dropdown – position:fixed to escape overflow:hidden/auto containers */}
-      {(open && suggestions.length > 0 || showNoResults) && dropdownStyle && (
+      {((open && suggestions.length > 0) || showNoResults) && dropdownStyle && (
         <div style={{
           position: 'fixed',
           top: dropdownStyle.top, left: dropdownStyle.left, width: dropdownStyle.width,
@@ -214,7 +249,7 @@ export default function AddressAutocomplete({
         }}>
           {suggestions.length > 0 ? suggestions.map((s, i) => (
             <button
-              key={i}
+              key={s.placeId}
               onMouseDown={() => select(s)}
               style={{
                 width: '100%', padding: '10px 14px', border: 'none',
@@ -245,7 +280,7 @@ export default function AddressAutocomplete({
       )}
 
       {/* Map preview (only after selection) */}
-      {showMapPreview && selectedLoc?.lat && (
+      {showMapPreview && isLoaded && selectedLoc?.lat && (
         <MapPreview lat={selectedLoc.lat} lng={selectedLoc.lng} />
       )}
 

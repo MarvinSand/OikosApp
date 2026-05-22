@@ -102,10 +102,11 @@ export function useWorldMap() {
       .single()
     if (!error && act) {
       // Automatically create the activity chat and add creator as member
-      const { data: convId } = await supabase.rpc('create_activity_chat', { p_activity_id: act.id })
+      const { data: convId, error: chatError } = await supabase.rpc('create_activity_chat', { p_activity_id: act.id })
+      if (chatError) console.error('create_activity_chat failed:', chatError)
       const actWithConv = { ...act, conversation_id: convId || null }
       setActivities(prev => [actWithConv, ...prev])
-      return { act: actWithConv, error }
+      return { act: actWithConv, error, chatError }
     }
     return { act, error }
   }
