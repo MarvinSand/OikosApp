@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
-import { Plus, Navigation, ZoomIn, ZoomOut } from 'lucide-react'
+import { Plus, Navigation, ZoomIn, ZoomOut, X, ChevronRight } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorldMap } from '../../hooks/useWorldMap'
 import { useToast } from '../../context/ToastContext'
@@ -17,7 +18,15 @@ function getInitials(name) {
   return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
-// ─── Pin DOM builders (vanilla, used both inside <AdvancedMarker> children and for clusterer markers) ──
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// ─── Pin DOM builders ────────────────────────────────────
 function buildUserPinElement(user, { isOwn = false } = {}) {
   const size = isOwn ? 50 : 36
   const isChristian = user.is_christian !== false
@@ -70,9 +79,19 @@ function buildClusterElement(count) {
   return wrap
 }
 
+function buildActivityClusterElement(count) {
+  const wrap = document.createElement('div')
+  wrap.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#C4974A;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);transform:translate(-50%,-50%);cursor:pointer;'
+  const span = document.createElement('span')
+  span.style.cssText = 'font-family:Lora,serif;font-size:14px;font-weight:700;color:#fff;'
+  span.textContent = String(count)
+  wrap.appendChild(span)
+  return wrap
+}
+
 // ─── Filter Bar ──────────────────────────────────────────
 const FILTERS = [
-  { key: 'all', label: '👥 Alle' },
+  { key: 'all', label: '📋 Alle' },
   { key: 'Gebetstreffen', label: '🙏 Gebete' },
   { key: 'Bibelstudie', label: '📖 Bibelstudie' },
   { key: 'Evangelisation', label: '📢 Evangelisation' },
@@ -107,6 +126,106 @@ function FilterBar({ filter, onFilter }) {
         </button>
       ))}
     </div>
+  )
+}
+
+// ─── Activity List Sheet ──────────────────────────────────
+function ActivityListSheet({ activities, onClose, onSelectActivity }) {
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(44,36,22,0.4)' }} />
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        background: '#FBF8F3', borderRadius: '20px 20px 0 0',
+        maxHeight: '75%', display: 'flex', flexDirection: 'column',
+        animation: 'worldSheetUp 0.25s ease-out',
+        boxShadow: '0 -4px 24px rgba(58,46,36,0.15)',
+      }}>
+        {/* Drag handle */}
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D8D2C5', margin: '14px auto 0', flexShrink: 0 }} />
+
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 20px 10px', flexShrink: 0, borderBottom: '1px solid #EBE5D9',
+        }}>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: '#2C2416', margin: 0 }}>
+            Aktivitäten ({activities.length})
+          </p>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#A1927F', padding: 4, display: 'flex' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Scrollable list */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '8px 14px', paddingBottom: 'max(16px, calc(80px + env(safe-area-inset-bottom, 0px)))' }}>
+          {activities.length === 0 && (
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: '#A1927F', textAlign: 'center', padding: '32px 0', fontStyle: 'italic', margin: 0 }}>
+              Keine Aktivitäten gefunden
+            </p>
+          )}
+          {activities.map(a => {
+            const participantCount = a.participants?.length ?? 0
+            const dateStr = a.starts_at
+              ? new Date(a.starts_at).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+              : null
+            return (
+              <button
+                key={a.id}
+                onClick={() => { onClose(); onSelectActivity(a) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  width: '100%', padding: '11px 10px',
+                  background: '#fff', border: '1px solid #EBE5D9',
+                  borderRadius: 14, marginBottom: 8, cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                  background: '#FBF8F3', border: '2px solid #C4974A',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20,
+                }}>
+                  {a.activity_emoji || '📍'}
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: '#2C2416', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {a.title}
+                    </p>
+                    <span style={{
+                      padding: '2px 7px', borderRadius: 10, flexShrink: 0,
+                      background: '#EBF2EA', color: '#4A6741',
+                      fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600,
+                    }}>
+                      {a.activity_type}
+                    </span>
+                  </div>
+                  {dateStr && (
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#706351', margin: '0 0 2px' }}>
+                      📅 {dateStr}
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {a.location_name && (
+                      <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#A1927F', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        📍 {a.location_name}
+                      </p>
+                    )}
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#A1927F', margin: 0, flexShrink: 0 }}>
+                      👥 {participantCount}{a.max_participants ? `/${a.max_participants}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={16} color="#A1927F" style={{ flexShrink: 0 }} />
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>,
+    document.body
   )
 }
 
@@ -185,14 +304,13 @@ function PrivacyBanner({ onClose }) {
   )
 }
 
-// ─── User-pin clusterer effect (imperative because clusterer manages marker.map) ──
+// ─── User-pin clusterer ───────────────────────────────────
 function useUserClusterer({ map, users, onUserClick, enabled }) {
   const clustererRef = useRef(null)
   const markersRef = useRef([])
 
   useEffect(() => {
     if (!map || !enabled || !window.google?.maps?.marker?.AdvancedMarkerElement) {
-      // Tear down any existing clusterer
       if (clustererRef.current) {
         clustererRef.current.clearMarkers()
         clustererRef.current = null
@@ -202,7 +320,6 @@ function useUserClusterer({ map, users, onUserClick, enabled }) {
       return
     }
 
-    // Build markers
     const newMarkers = users.map(u => {
       const content = buildUserPinElement(u, { isOwn: false })
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
@@ -215,7 +332,6 @@ function useUserClusterer({ map, users, onUserClick, enabled }) {
     })
     markersRef.current = newMarkers
 
-    // Build clusterer with custom renderer
     const clusterer = new MarkerClusterer({
       map,
       markers: newMarkers,
@@ -240,6 +356,58 @@ function useUserClusterer({ map, users, onUserClick, enabled }) {
   }, [map, users, enabled, onUserClick])
 }
 
+// ─── Activity-pin clusterer ───────────────────────────────
+function useActivityClusterer({ map, activities, onActivityClick, enabled }) {
+  const clustererRef = useRef(null)
+  const markersRef = useRef([])
+
+  useEffect(() => {
+    if (!map || !enabled || !window.google?.maps?.marker?.AdvancedMarkerElement) {
+      if (clustererRef.current) {
+        clustererRef.current.clearMarkers()
+        clustererRef.current = null
+      }
+      markersRef.current.forEach(m => { m.map = null })
+      markersRef.current = []
+      return
+    }
+
+    const newMarkers = activities.map(a => {
+      const content = buildActivityPinElement(a.activity_emoji)
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        position: { lat: a.latitude, lng: a.longitude },
+        content,
+        gmpClickable: true,
+      })
+      marker.addListener('gmp-click', () => onActivityClick(a))
+      return marker
+    })
+    markersRef.current = newMarkers
+
+    const clusterer = new MarkerClusterer({
+      map,
+      markers: newMarkers,
+      renderer: {
+        render: ({ count, position }) => {
+          return new window.google.maps.marker.AdvancedMarkerElement({
+            position,
+            content: buildActivityClusterElement(count),
+            zIndex: 50 + count,
+          })
+        },
+      },
+    })
+    clustererRef.current = clusterer
+
+    return () => {
+      clusterer.clearMarkers()
+      newMarkers.forEach(m => { m.map = null })
+      clustererRef.current = null
+      markersRef.current = []
+    }
+  }, [map, activities, enabled, onActivityClick])
+}
+
 // ─── Main Component ───────────────────────────────────────
 export default function WorldMapView({ onNavigateToProfile }) {
   const { user } = useAuth()
@@ -257,6 +425,9 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const [selectedActivity, setSelectedActivity] = useState(null)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
+  const [showActivityList, setShowActivityList] = useState(false)
+  const [showGeschwister, setShowGeschwister] = useState(false)
+  const [geschwisterRadius, setGeschwisterRadius] = useState(50)
 
   useEffect(() => {
     if (!localStorage.getItem(PRIVACY_KEY)) setShowPrivacyBanner(true)
@@ -267,25 +438,41 @@ export default function WorldMapView({ onNavigateToProfile }) {
     setShowPrivacyBanner(false)
   }
 
-  const showUsers = filter === 'all'
   const filteredActivities = useMemo(() => {
     if (filter === 'all') return activities
     if (filter === 'own') return activities.filter(a => a.author_id === user?.id)
     return activities.filter(a => a.activity_type?.toLowerCase().includes(filter.toLowerCase()))
   }, [activities, filter, user?.id])
 
+  const usersForMap = useMemo(() => {
+    if (!showGeschwister) return []
+    if (!myProfile?.latitude || !myProfile?.longitude) return visibleUsers
+    if (geschwisterRadius >= 300) return visibleUsers
+    return visibleUsers.filter(u =>
+      haversine(myProfile.latitude, myProfile.longitude, u.latitude, u.longitude) <= geschwisterRadius
+    )
+  }, [showGeschwister, visibleUsers, myProfile?.latitude, myProfile?.longitude, geschwisterRadius])
+
   const defaultCenter = myProfile?.latitude
     ? { lat: myProfile.latitude, lng: myProfile.longitude }
     : { lat: 51.1657, lng: 10.4515 }
   const defaultZoom = myProfile?.latitude ? 10 : 6
 
-  // Cluster other users (memoize handler so the effect doesn't re-run unnecessarily)
   const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
+  const handleActivityClick = useMemo(() => (a) => setSelectedActivity(a), [])
+
   useUserClusterer({
     map,
-    users: showUsers ? visibleUsers : [],
+    users: usersForMap,
     onUserClick: handleUserClick,
-    enabled: showUsers && isLoaded,
+    enabled: showGeschwister && isLoaded,
+  })
+
+  useActivityClusterer({
+    map,
+    activities: filteredActivities,
+    onActivityClick: handleActivityClick,
+    enabled: isLoaded,
   })
 
   if (loading || !isLoaded) {
@@ -299,6 +486,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#F7F3EC', overflow: 'hidden' }}>
+      <style>{`@keyframes geschwisterPanelDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
       {/* Map area */}
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <GoogleMap
@@ -325,23 +514,75 @@ export default function WorldMapView({ onNavigateToProfile }) {
               <OwnPinContent user={myProfile} />
             </AdvancedMarker>
           )}
-
-          {/* Activity pins (not clustered) */}
-          {filteredActivities.map(a => (
-            <AdvancedMarker
-              key={a.id}
-              map={map}
-              position={{ lat: a.latitude, lng: a.longitude }}
-              onClick={() => setSelectedActivity(a)}
-            >
-              <ActivityPinContent emoji={a.activity_emoji} />
-            </AdvancedMarker>
-          ))}
-          {/* Other user pins are managed imperatively by useUserClusterer */}
+          {/* Activity pins and user pins are managed imperatively by clusterers */}
         </GoogleMap>
 
         {/* Filter bar overlay */}
         <FilterBar filter={filter} onFilter={setFilter} />
+
+        {/* Geschwister Toggle Button */}
+        <button
+          onClick={() => setShowGeschwister(v => !v)}
+          style={{
+            position: 'absolute', top: 90, right: 10, zIndex: 501,
+            padding: '6px 14px', borderRadius: 20, border: 'none',
+            background: showGeschwister ? '#4A6741' : 'rgba(255,255,255,0.92)',
+            color: showGeschwister ? '#fff' : '#2C2416',
+            fontFamily: 'Lora, serif', fontSize: 12,
+            fontWeight: showGeschwister ? 600 : 400,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+            boxShadow: '0 2px 6px rgba(58,46,36,0.12)',
+            backdropFilter: 'blur(4px)',
+            transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}
+        >
+          👥 Geschwister {showGeschwister && usersForMap.length > 0 ? `(${usersForMap.length})` : ''}
+        </button>
+
+        {/* Radius Slider Panel */}
+        {showGeschwister && (
+          <div style={{
+            position: 'absolute', top: 128, left: 10, right: 10, zIndex: 500,
+            background: 'rgba(255,255,255,0.97)', borderRadius: 16,
+            padding: '12px 16px',
+            boxShadow: '0 4px 16px rgba(58,46,36,0.14)',
+            backdropFilter: 'blur(6px)',
+            border: '1px solid #D8D2C5',
+            animation: 'geschwisterPanelDown 0.2s ease-out',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: '#2C2416' }}>
+                Umkreis
+              </span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: '#4A6741' }}>
+                {geschwisterRadius >= 300 ? 'Unbegrenzt' : `${geschwisterRadius} km`}
+                {' '}
+                <span style={{ fontWeight: 400, color: '#A1927F', fontSize: 11 }}>
+                  · {usersForMap.length} {usersForMap.length === 1 ? 'Geschwister' : 'Geschwister'}
+                </span>
+              </span>
+            </div>
+            <input
+              type="range"
+              min={5}
+              max={300}
+              step={5}
+              value={geschwisterRadius}
+              onChange={e => setGeschwisterRadius(Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#4A6741', cursor: 'pointer', display: 'block' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 10, color: '#A1927F' }}>5 km</span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 10, color: '#A1927F' }}>Unbegrenzt</span>
+            </div>
+            {!myProfile?.latitude && (
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#E8865A', margin: '8px 0 0', textAlign: 'center' }}>
+                Kein Standort gesetzt – alle Geschwister werden angezeigt
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Custom map controls */}
         <div style={{ position: 'absolute', bottom: 160, right: 12, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 500 }}>
@@ -387,7 +628,28 @@ export default function WorldMapView({ onNavigateToProfile }) {
           </div>
         )}
 
-        {/* Create Activity FAB – bottom offset accounts for mobile BottomNav (~70px) */}
+        {/* Liste Button – bottom center */}
+        <button
+          onClick={() => setShowActivityList(true)}
+          style={{
+            position: 'absolute', bottom: 155, left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 500, padding: '9px 20px',
+            borderRadius: 24, border: 'none',
+            background: 'rgba(255,255,255,0.95)',
+            color: '#2C2416',
+            fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+            boxShadow: '0 3px 12px rgba(58,46,36,0.16)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <span style={{ fontSize: 14 }}>☰</span>
+          Liste ({filteredActivities.length})
+        </button>
+
+        {/* Create Activity FAB */}
         <button
           onClick={() => setShowCreateSheet(true)}
           style={{
@@ -406,8 +668,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
         {showPrivacyBanner && <PrivacyBanner onClose={closePrivacyBanner} />}
       </div>
 
-      {/* Nearby section */}
-      {nearbyUsers.length > 0 && filter === 'all' && (
+      {/* Nearby section – only shown when Geschwister mode is active */}
+      {showGeschwister && nearbyUsers.length > 0 && (
         <NearbySection users={nearbyUsers} onUserClick={setSelectedUser} />
       )}
 
@@ -445,11 +707,18 @@ export default function WorldMapView({ onNavigateToProfile }) {
           }}
         />
       )}
+      {showActivityList && (
+        <ActivityListSheet
+          activities={filteredActivities}
+          onClose={() => setShowActivityList(false)}
+          onSelectActivity={setSelectedActivity}
+        />
+      )}
     </div>
   )
 }
 
-// ─── Pin Content Components (React-rendered into AdvancedMarker.children) ──
+// ─── Own Pin Content (React-rendered into AdvancedMarker) ─
 function OwnPinContent({ user }) {
   const size = 50
   const borderColor = '#C4974A'
@@ -475,19 +744,6 @@ function OwnPinContent({ user }) {
         animation: 'oikosPinPulse 2s ease-in-out infinite',
         pointerEvents: 'none',
       }} />
-    </div>
-  )
-}
-
-function ActivityPinContent({ emoji }) {
-  return (
-    <div style={{
-      width: 44, height: 44, borderRadius: '50%', background: '#fff',
-      border: '2px solid #C4974A', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.18)', fontSize: 20, cursor: 'pointer',
-      transform: 'translate(-50%, -50%)',
-    }}>
-      {emoji || '📍'}
     </div>
   )
 }
