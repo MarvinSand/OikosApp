@@ -86,6 +86,34 @@ function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
 // ─── Generationen-Ansicht Panel ───────────────────────────────
 function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
   const [busyIds, setBusyIds] = useState(new Set())
+  // { [personId]: { maps: [{id, name}], loading: bool } }
+  const [personMaps, setPersonMaps] = useState({})
+
+  // Pre-load maps for persons that are already enabled when panel opens
+  useEffect(() => {
+    persons.forEach(async (p) => {
+      if (!p.overlay_map_ids?.length || !p.linked_user_id) return
+      setPersonMaps(prev => ({ ...prev, [p.id]: { maps: [], loading: true } }))
+      const { data } = await supabase
+        .from('oikos_maps')
+        .select('id, name')
+        .eq('user_id', p.linked_user_id)
+        .neq('visibility', 'private')
+      setPersonMaps(prev => ({ ...prev, [p.id]: { maps: data || [], loading: false } }))
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadMapsForPerson(person) {
+    setPersonMaps(prev => ({ ...prev, [person.id]: { maps: prev[person.id]?.maps || [], loading: true } }))
+    const { data } = await supabase
+      .from('oikos_maps')
+      .select('id, name')
+      .eq('user_id', person.linked_user_id)
+      .neq('visibility', 'private')
+    const maps = data || []
+    setPersonMaps(prev => ({ ...prev, [person.id]: { maps, loading: false } }))
+    return maps
+  }
 
   async function toggleOverlay(person) {
     const isOn = person.overlay_map_ids?.length > 0
@@ -93,47 +121,38 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
     if (isOn) {
       await onUpdateOverlay(person.id, {
         overlay_map_ids: [],
-        overlay_show_christian: person.overlay_show_christian !== false,
-        overlay_show_non_christian: person.overlay_show_non_christian !== false,
+        overlay_show_christian: true,
+        overlay_show_non_christian: true,
       })
     } else {
-      const { data: maps } = await supabase
-        .from('oikos_maps')
-        .select('id')
-        .eq('user_id', person.linked_user_id)
-        .neq('visibility', 'private')
+      const maps = personMaps[person.id]?.maps ?? await loadMapsForPerson(person)
       await onUpdateOverlay(person.id, {
-        overlay_map_ids: (maps || []).map(m => m.id),
-        overlay_show_christian: person.overlay_show_christian !== false,
-        overlay_show_non_christian: person.overlay_show_non_christian !== false,
+        overlay_map_ids: maps.map(m => m.id),
+        overlay_show_christian: true,
+        overlay_show_non_christian: true,
       })
     }
     setBusyIds(prev => { const s = new Set(prev); s.delete(person.id); return s })
   }
 
-  async function toggleChristian(person) {
+  async function toggleMap(person, mapId) {
+    const currentIds = person.overlay_map_ids || []
+    const nextIds = currentIds.includes(mapId)
+      ? currentIds.filter(id => id !== mapId)
+      : [...currentIds, mapId]
     await onUpdateOverlay(person.id, {
-      overlay_map_ids: person.overlay_map_ids || [],
-      overlay_show_christian: !(person.overlay_show_christian !== false),
-      overlay_show_non_christian: person.overlay_show_non_christian !== false,
-    })
-  }
-
-  async function toggleNonChristian(person) {
-    await onUpdateOverlay(person.id, {
-      overlay_map_ids: person.overlay_map_ids || [],
-      overlay_show_christian: person.overlay_show_christian !== false,
-      overlay_show_non_christian: !(person.overlay_show_non_christian !== false),
+      overlay_map_ids: nextIds,
+      overlay_show_christian: true,
+      overlay_show_non_christian: true,
     })
   }
 
   async function allOn() {
     for (const p of persons) {
       if (!p.overlay_map_ids?.length) {
-        const { data: maps } = await supabase
-          .from('oikos_maps').select('id').eq('user_id', p.linked_user_id).neq('visibility', 'private')
+        const maps = personMaps[p.id]?.maps ?? await loadMapsForPerson(p)
         await onUpdateOverlay(p.id, {
-          overlay_map_ids: (maps || []).map(m => m.id),
+          overlay_map_ids: maps.map(m => m.id),
           overlay_show_christian: true,
           overlay_show_non_christian: true,
         })
@@ -146,8 +165,8 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
       if (p.overlay_map_ids?.length) {
         await onUpdateOverlay(p.id, {
           overlay_map_ids: [],
-          overlay_show_christian: p.overlay_show_christian !== false,
-          overlay_show_non_christian: p.overlay_show_non_christian !== false,
+          overlay_show_christian: true,
+          overlay_show_non_christian: true,
         })
       }
     }
@@ -193,40 +212,43 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
 
       {persons.map(person => {
         const isOn = person.overlay_map_ids?.length > 0
-        const showChristian = person.overlay_show_christian !== false
-        const showNonChristian = person.overlay_show_non_christian !== false
+        const maps = personMaps[person.id]?.maps || []
+        const loadingMaps = personMaps[person.id]?.loading
         return (
-          <div key={person.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
-            <input
-              type="checkbox"
-              checked={isOn}
-              onChange={() => !busyIds.has(person.id) && toggleOverlay(person)}
-              style={{ accentColor: 'var(--color-warm-1)', width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }}
-            />
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {person.name}
-            </span>
+          <div key={person.id} style={{ borderBottom: '1px solid var(--color-warm-3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0' }}>
+              <input
+                type="checkbox"
+                checked={isOn}
+                onChange={() => !busyIds.has(person.id) && toggleOverlay(person)}
+                style={{ accentColor: 'var(--color-warm-1)', width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }}
+              />
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {person.name}
+              </span>
+            </div>
             {isOn && (
-              <>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={showChristian}
-                    onChange={() => toggleChristian(person)}
-                    style={{ accentColor: 'var(--color-accent)', width: 13, height: 13, cursor: 'pointer' }}
-                  />
-                  <span style={{ fontFamily: 'Lora, serif', fontSize: 10, color: 'var(--color-text-muted)' }}>Chr.</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={showNonChristian}
-                    onChange={() => toggleNonChristian(person)}
-                    style={{ accentColor: 'var(--color-warm-1)', width: 13, height: 13, cursor: 'pointer' }}
-                  />
-                  <span style={{ fontFamily: 'Lora, serif', fontSize: 10, color: 'var(--color-text-muted)' }}>And.</span>
-                </label>
-              </>
+              <div style={{ paddingLeft: 23, paddingBottom: 6 }}>
+                {loadingMaps ? (
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0' }}>…</p>
+                ) : maps.length === 0 ? (
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '2px 0' }}>Keine Maps verfügbar</p>
+                ) : (
+                  maps.map(map => (
+                    <label key={map.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={person.overlay_map_ids?.includes(map.id) ?? false}
+                        onChange={() => toggleMap(person, map.id)}
+                        style={{ accentColor: 'var(--color-warm-1)', width: 13, height: 13, cursor: 'pointer', flexShrink: 0 }}
+                      />
+                      <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {map.name}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
             )}
           </div>
         )
