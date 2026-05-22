@@ -153,7 +153,6 @@ export default function ProfileView() {
         country: form.country || null,
         city: form.city.trim() || null,
         address_full: form.address_full || null,
-        address_street: form.address_street || null,
         address_district: form.address_district || null,
         location_precision: form.location_precision,
         latitude: form.latitude || null,
