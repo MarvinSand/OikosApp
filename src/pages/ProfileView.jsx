@@ -153,6 +153,7 @@ export default function ProfileView() {
         country: form.country || null,
         city: form.city.trim() || null,
         address_full: form.address_full || null,
+        address_street: form.address_street || null,
         address_district: form.address_district || null,
         location_precision: form.location_precision,
         latitude: form.latitude || null,
@@ -165,11 +166,10 @@ export default function ProfileView() {
       })
       showToast('Profil gespeichert ✓')
     } catch (err) {
-      console.error('Profile save error:', err)
       if (err.code === '23505') {
         setUsernameError('Dieser Username ist bereits vergeben')
       } else {
-        showToast(`Fehler: ${err.message || err.code || JSON.stringify(err)}`, 'error')
+        showToast('Fehler beim Speichern', 'error')
       }
     } finally {
       setSaving(false)
