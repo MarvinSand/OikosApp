@@ -166,7 +166,7 @@ const PRIVACY_KEY = 'oikos_worldmap_privacy_seen'
 function PrivacyBanner({ onClose }) {
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 600, background: 'rgba(44,36,22,0.5)', display: 'flex', alignItems: 'flex-end' }}>
-      <div style={{ width: '100%', background: '#FBF8F3', borderRadius: '20px 20px 0 0', padding: '28px 20px 40px', boxShadow: '0 -4px 24px rgba(58,46,36,0.15)' }}>
+      <div style={{ width: '100%', background: '#FBF8F3', borderRadius: '20px 20px 0 0', paddingTop: 28, paddingLeft: 20, paddingRight: 20, paddingBottom: 'max(28px, calc(84px + env(safe-area-inset-bottom, 0px)))', boxShadow: '0 -4px 24px rgba(58,46,36,0.15)' }}>
         <div style={{ fontSize: 42, textAlign: 'center', marginBottom: 12 }}>🌍</div>
         <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: '#2C2416', textAlign: 'center', marginBottom: 8 }}>
           Willkommen auf der Weltkarte

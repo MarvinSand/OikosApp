@@ -421,40 +421,34 @@ export default function MapView() {
         </button>
 
         {activeMap && (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-1 items-center">
             <button
               onClick={() => setConnectionMode(v => !v)}
               title="Verbindungsmodus"
-              className={`p-1.5 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
             >
-              <Link size={20} />
+              <Link size={18} />
             </button>
             <button
               onClick={() => setShowColorFilter(v => !v)}
               title="Nach Farbe filtern"
-              className={`p-1.5 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
             >
-              <Filter size={20} />
+              <Filter size={18} />
             </button>
             <button
               onClick={() => setShowGenerationen(v => !v)}
               title="Generationen-Ansicht"
-              className={`p-1.5 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
             >
-              <Layers size={20} />
-            </button>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="p-1.5 text-dark-muted hover:bg-black/5 rounded-full transition-colors flex items-center"
-            >
-              <SlidersHorizontal size={20} />
+              <Layers size={18} />
             </button>
             <div className="relative">
               <button
                 onClick={() => setShowAddMenu(v => !v)}
-                className="tour-map-add flex items-center gap-1.5 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3.5 py-2 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
+                className="tour-map-add flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
               >
-                <Plus size={16} /> Hinzufügen
+                <Plus size={15} /> Hinzufügen
               </button>
               {showAddMenu && (
                 <>
@@ -511,9 +505,9 @@ export default function MapView() {
               <div className="border border-warm-3 border-t-0 bg-warm-5 flex">
                 <button
                   onClick={() => { setShowMapMenu(false); setShowSettings(true) }}
-                  className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors"
+                  className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors flex items-center justify-center gap-1.5"
                 >
-                  Map verwalten
+                  <SlidersHorizontal size={13} /> Einstellungen
                 </button>
                 <div className="w-[1px] bg-warm-3" />
                 <button
