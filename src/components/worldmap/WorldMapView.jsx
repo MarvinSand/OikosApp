@@ -515,7 +515,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
           }}
         >
           {/* Own pin (never clustered, always on top) */}
-          {myProfile?.latitude && (
+          {myProfile?.latitude && showGeschwister && showSiblingsOnMap && (
             <AdvancedMarker
               map={map}
               position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
