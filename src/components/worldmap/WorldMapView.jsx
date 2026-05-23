@@ -428,6 +428,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const [showActivityList, setShowActivityList] = useState(false)
   const [showGeschwister, setShowGeschwister] = useState(false)
   const [geschwisterRadius, setGeschwisterRadius] = useState(50)
+  const [showSiblingsOnMap, setShowSiblingsOnMap] = useState(true)
 
   useEffect(() => {
     if (!localStorage.getItem(PRIVACY_KEY)) setShowPrivacyBanner(true)
@@ -444,14 +445,23 @@ export default function WorldMapView({ onNavigateToProfile }) {
     return activities.filter(a => a.activity_type?.toLowerCase().includes(filter.toLowerCase()))
   }, [activities, filter, user?.id])
 
+  const filteredUsersCount = useMemo(() => {
+    if (!showGeschwister) return 0
+    if (!myProfile?.latitude || !myProfile?.longitude) return visibleUsers.length
+    if (geschwisterRadius >= 300) return visibleUsers.length
+    return visibleUsers.filter(u =>
+      haversine(myProfile.latitude, myProfile.longitude, u.latitude, u.longitude) <= geschwisterRadius
+    ).length
+  }, [showGeschwister, visibleUsers, myProfile?.latitude, myProfile?.longitude, geschwisterRadius])
+
   const usersForMap = useMemo(() => {
-    if (!showGeschwister) return []
+    if (!showGeschwister || !showSiblingsOnMap) return []
     if (!myProfile?.latitude || !myProfile?.longitude) return visibleUsers
     if (geschwisterRadius >= 300) return visibleUsers
     return visibleUsers.filter(u =>
       haversine(myProfile.latitude, myProfile.longitude, u.latitude, u.longitude) <= geschwisterRadius
     )
-  }, [showGeschwister, visibleUsers, myProfile?.latitude, myProfile?.longitude, geschwisterRadius])
+  }, [showGeschwister, showSiblingsOnMap, visibleUsers, myProfile?.latitude, myProfile?.longitude, geschwisterRadius])
 
   const defaultCenter = myProfile?.latitude
     ? { lat: myProfile.latitude, lng: myProfile.longitude }
@@ -465,7 +475,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
     map,
     users: usersForMap,
     onUserClick: handleUserClick,
-    enabled: showGeschwister && isLoaded,
+    enabled: showGeschwister && showSiblingsOnMap && isLoaded,
   })
 
   useActivityClusterer({
@@ -537,7 +547,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
             display: 'flex', alignItems: 'center', gap: 5,
           }}
         >
-          👥 Geschwister {showGeschwister && usersForMap.length > 0 ? `(${usersForMap.length})` : ''}
+          👥 Geschwister {showGeschwister && filteredUsersCount > 0 ? `(${filteredUsersCount})` : ''}
         </button>
 
         {/* Radius Slider Panel */}
@@ -559,7 +569,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
                 {geschwisterRadius >= 300 ? 'Unbegrenzt' : `${geschwisterRadius} km`}
                 {' '}
                 <span style={{ fontWeight: 400, color: '#A1927F', fontSize: 11 }}>
-                  · {usersForMap.length} {usersForMap.length === 1 ? 'Geschwister' : 'Geschwister'}
+                  · {filteredUsersCount} Geschwister
                 </span>
               </span>
             </div>
@@ -581,6 +591,27 @@ export default function WorldMapView({ onNavigateToProfile }) {
                 Kein Standort gesetzt – alle Geschwister werden angezeigt
               </p>
             )}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 8, borderTop: '1px solid #E8E0D5' }}>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#2C2416' }}>
+                Auf Karte anzeigen
+              </span>
+              <button
+                onClick={() => setShowSiblingsOnMap(v => !v)}
+                style={{
+                  width: 40, height: 22, borderRadius: 11, border: 'none',
+                  background: showSiblingsOnMap ? '#4A6741' : '#D8D2C5',
+                  cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
+                  flexShrink: 0,
+                }}
+                aria-label={showSiblingsOnMap ? 'Geschwister ausblenden' : 'Geschwister anzeigen'}
+              >
+                <div style={{
+                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                  position: 'absolute', top: 3, left: showSiblingsOnMap ? 21 : 3,
+                  transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </button>
+            </div>
           </div>
         )}
 
