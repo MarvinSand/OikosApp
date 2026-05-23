@@ -166,11 +166,10 @@ export default function ProfileView() {
       })
       showToast('Profil gespeichert ✓')
     } catch (err) {
-      console.error('Profile save error:', err)
       if (err.code === '23505') {
         setUsernameError('Dieser Username ist bereits vergeben')
       } else {
-        showToast(`Fehler: ${err.message || err.code || JSON.stringify(err)}`, 'error')
+        showToast('Fehler beim Speichern', 'error')
       }
     } finally {
       setSaving(false)
