@@ -420,6 +420,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
 
   const [map, setMap] = useState(null)
+  const minZoomRef = useRef(2)
   const [filter, setFilter] = useState('all')
   const [selectedUser, setSelectedUser] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
@@ -468,6 +469,22 @@ export default function WorldMapView({ onNavigateToProfile }) {
     : { lat: 51.1657, lng: 10.4515 }
   const defaultZoom = myProfile?.latitude ? 10 : 6
 
+  function handleMapLoad(mapInstance) {
+    setMap(mapInstance)
+    // Calculate min zoom so map tiles always fill the container without gray borders
+    const container = mapInstance.getDiv()
+    const w = container.offsetWidth || window.innerWidth
+    const h = container.offsetHeight || window.innerHeight
+    // World is 256*2^z pixels wide at zoom z; ensure both dimensions are covered
+    const minZ = Math.max(
+      Math.ceil(Math.log2(w / 256)),
+      Math.ceil(Math.log2(h / 256)),
+      2
+    )
+    minZoomRef.current = minZ
+    mapInstance.setOptions({ minZoom: minZ })
+  }
+
   const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
   const handleActivityClick = useMemo(() => (a) => setSelectedActivity(a), [])
 
@@ -504,7 +521,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
           mapContainerStyle={{ width: '100%', height: '100%' }}
           center={defaultCenter}
           zoom={defaultZoom}
-          onLoad={setMap}
+          onLoad={handleMapLoad}
           onUnmount={() => setMap(null)}
           options={{
             mapId: DEFAULT_MAP_ID,
@@ -512,6 +529,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
             gestureHandling: 'greedy',
             clickableIcons: false,
             keyboardShortcuts: false,
+            minZoom: 2,
           }}
         >
           {/* Own pin (never clustered, always on top) */}
@@ -631,7 +649,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
             </button>
           )}
           <button onClick={() => map && map.setZoom(map.getZoom() + 1)} style={mapBtnStyle} title="Vergrößern"><ZoomIn size={17} /></button>
-          <button onClick={() => map && map.setZoom(map.getZoom() - 1)} style={mapBtnStyle} title="Verkleinern"><ZoomOut size={17} /></button>
+          <button onClick={() => map && map.setZoom(Math.max(map.getZoom() - 1, minZoomRef.current))} style={mapBtnStyle} title="Verkleinern"><ZoomOut size={17} /></button>
         </div>
 
         {/* No location hint */}
