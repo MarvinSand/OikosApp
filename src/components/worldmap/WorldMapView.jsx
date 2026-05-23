@@ -530,6 +530,10 @@ export default function WorldMapView({ onNavigateToProfile }) {
             clickableIcons: false,
             keyboardShortcuts: false,
             minZoom: 2,
+            restriction: {
+              latLngBounds: { north: 85.051, south: -85.051, west: -180, east: 180 },
+              strictBounds: true,
+            },
           }}
         >
           {/* Own pin (never clustered, always on top) */}
