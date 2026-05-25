@@ -35,7 +35,7 @@ function buildUserPinElement(user, { isOwn = false } = {}) {
   const initials = getInitials(user.full_name)
 
   const wrap = document.createElement('div')
-  wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translate(-50%,-50%);`
+  wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translateY(50%);`
 
   const circle = document.createElement('div')
   circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${bg};border:${isOwn ? 3 : 2}px solid ${borderColor};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.2);cursor:pointer;`
@@ -64,14 +64,14 @@ function buildUserPinElement(user, { isOwn = false } = {}) {
 
 function buildActivityPinElement(emoji) {
   const wrap = document.createElement('div')
-  wrap.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid #C4974A;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.18);font-size:20px;cursor:pointer;transform:translate(-50%,-50%);'
+  wrap.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid #C4974A;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.18);font-size:20px;cursor:pointer;transform:translateY(50%);'
   wrap.textContent = emoji || '📍'
   return wrap
 }
 
 function buildClusterElement(count) {
   const wrap = document.createElement('div')
-  wrap.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#4A6741;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);transform:translate(-50%,-50%);'
+  wrap.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#4A6741;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);transform:translateY(50%);'
   const span = document.createElement('span')
   span.style.cssText = 'font-family:Lora,serif;font-size:14px;font-weight:700;color:#fff;'
   span.textContent = String(count)
@@ -81,7 +81,7 @@ function buildClusterElement(count) {
 
 function buildActivityClusterElement(count) {
   const wrap = document.createElement('div')
-  wrap.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#C4974A;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);transform:translate(-50%,-50%);cursor:pointer;'
+  wrap.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#C4974A;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);transform:translateY(50%);cursor:pointer;'
   const span = document.createElement('span')
   span.style.cssText = 'font-family:Lora,serif;font-size:14px;font-weight:700;color:#fff;'
   span.textContent = String(count)
@@ -777,7 +777,7 @@ function OwnPinContent({ user }) {
   const borderColor = '#C4974A'
   const bg = user?.avatar_url ? 'transparent' : borderColor
   return (
-    <div style={{ position: 'relative', width: size, height: size, transform: 'translate(-50%, -50%)' }}>
+    <div style={{ position: 'relative', width: size, height: size, transform: 'translateY(50%)' }}>
       <div style={{
         width: size, height: size, borderRadius: '50%', background: bg,
         border: `3px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
