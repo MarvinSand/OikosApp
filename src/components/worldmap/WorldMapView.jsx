@@ -357,7 +357,7 @@ function useUserClusterer({ map, users, onUserClick, enabled }) {
 }
 
 // ─── Activity-pin clusterer ───────────────────────────────
-function useActivityClusterer({ map, activities, onActivityClick, enabled }) {
+function useActivityClusterer({ map, activities, onActivityClick, onClusterClick, enabled }) {
   const clustererRef = useRef(null)
   const markersRef = useRef([])
 
@@ -379,6 +379,7 @@ function useActivityClusterer({ map, activities, onActivityClick, enabled }) {
         content,
         gmpClickable: true,
       })
+      marker._oikosActivity = a
       marker.addListener('gmp-click', () => onActivityClick(a))
       return marker
     })
@@ -393,8 +394,15 @@ function useActivityClusterer({ map, activities, onActivityClick, enabled }) {
             position,
             content: buildActivityClusterElement(count),
             zIndex: 50 + count,
+            gmpClickable: true,
           })
         },
+      },
+      onClusterClick: (_event, cluster) => {
+        const clusterActivities = (cluster.markers ?? [])
+          .map(m => m._oikosActivity)
+          .filter(Boolean)
+        onClusterClick(clusterActivities)
       },
     })
     clustererRef.current = clusterer
@@ -405,7 +413,7 @@ function useActivityClusterer({ map, activities, onActivityClick, enabled }) {
       clustererRef.current = null
       markersRef.current = []
     }
-  }, [map, activities, enabled, onActivityClick])
+  }, [map, activities, enabled, onActivityClick, onClusterClick])
 }
 
 // ─── Main Component ───────────────────────────────────────
@@ -427,6 +435,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
   const [showActivityList, setShowActivityList] = useState(false)
+  const [clusterActivities, setClusterActivities] = useState(null)
   const [showGeschwister, setShowGeschwister] = useState(false)
   const [geschwisterRadius, setGeschwisterRadius] = useState(50)
   const [showSiblingsOnMap, setShowSiblingsOnMap] = useState(true)
@@ -487,6 +496,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
 
   const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
   const handleActivityClick = useMemo(() => (a) => setSelectedActivity(a), [])
+  const handleClusterClick = useMemo(() => (acts) => setClusterActivities(acts), [])
 
   useUserClusterer({
     map,
@@ -499,6 +509,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
     map,
     activities: filteredActivities,
     onActivityClick: handleActivityClick,
+    onClusterClick: handleClusterClick,
     enabled: isLoaded,
   })
 
@@ -765,6 +776,13 @@ export default function WorldMapView({ onNavigateToProfile }) {
           activities={filteredActivities}
           onClose={() => setShowActivityList(false)}
           onSelectActivity={setSelectedActivity}
+        />
+      )}
+      {clusterActivities && (
+        <ActivityListSheet
+          activities={clusterActivities}
+          onClose={() => setClusterActivities(null)}
+          onSelectActivity={(a) => { setClusterActivities(null); setSelectedActivity(a) }}
         />
       )}
     </div>
