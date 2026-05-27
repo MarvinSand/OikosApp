@@ -4,6 +4,44 @@ import { useAuth } from './useAuth'
 
 const PAGE_SIZE = 20
 
+function getPreviousDay(dateStr) {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().split('T')[0]
+}
+
+async function updatePrayerStats(supabaseClient, userId) {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const { data: stats } = await supabaseClient
+      .from('user_prayer_stats')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    const lastDate = stats?.last_prayer_date
+    const isToday = lastDate === today
+    const isConsecutive = lastDate === getPreviousDay(today)
+
+    if (!isToday) {
+      await supabaseClient.from('user_prayer_stats').upsert({
+        user_id: userId,
+        last_prayer_date: today,
+        current_streak: isConsecutive ? (stats?.current_streak || 0) + 1 : 1,
+        longest_streak: Math.max(stats?.longest_streak || 0, isConsecutive ? (stats?.current_streak || 0) + 1 : 1),
+        total_prayers: (stats?.total_prayers || 0) + 1,
+        updated_at: new Date().toISOString(),
+      })
+    } else {
+      await supabaseClient.from('user_prayer_stats')
+        .update({ total_prayers: (stats?.total_prayers || 0) + 1, updated_at: new Date().toISOString() })
+        .eq('user_id', userId)
+    }
+  } catch {
+    // Stats sind nicht-kritisch
+  }
+}
+
 export function usePrayerFeed(tab) {
   const { user } = useAuth()
   const [requests, setRequests] = useState([])
@@ -250,7 +288,6 @@ export function usePrayerFeed(tab) {
   async function logPrayer(requestId) {
     const item = requests.find(r => r.id === requestId)
     if (item?._sourceType === 'community_message') {
-      // localStorage-based tracking (no backend table for chat message prayers)
       try {
         const map = JSON.parse(localStorage.getItem('comm_prayed') || '{}')
         map[requestId] = true
@@ -258,6 +295,7 @@ export function usePrayerFeed(tab) {
       } catch {}
       const fakeLog = { id: 'local_' + Date.now(), request_id: requestId, user_id: user.id, created_at: new Date().toISOString(), profiles: null }
       setLogsMap(prev => ({ ...prev, [requestId]: [fakeLog, ...(prev[requestId] || [])] }))
+      updatePrayerStats(supabase, user.id)
       return
     }
     const isOikos = item?._sourceType === 'sibling_oikos'
@@ -268,6 +306,8 @@ export function usePrayerFeed(tab) {
       : await supabase.from('personal_prayer_logs').insert({ request_id: requestId, user_id: user.id })
     if (error) {
       setLogsMap(prev => ({ ...prev, [requestId]: (prev[requestId] || []).filter(l => l.id !== opt.id) }))
+    } else {
+      updatePrayerStats(supabase, user.id)
     }
   }
 

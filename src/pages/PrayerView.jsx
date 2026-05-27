@@ -9,6 +9,7 @@ import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import Confetti from '../components/ui/Confetti'
+import PrayerListsSection from '../components/prayer/PrayerListsSection'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -1472,6 +1473,9 @@ export default function PrayerView() {
           </p>
         )}
       </div>
+
+      {/* Gebetslisten */}
+      <PrayerListsSection />
 
       {/* Eigene Anliegen */}
       <MyPrayerSection myRequests={myRequests} markAnswered={markAnswered} updateRequest={updateRequest} deleteRequest={deleteRequest} onNew={() => setShowPost(true)} />
