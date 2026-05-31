@@ -13,6 +13,7 @@ import CommunityDetail from './pages/CommunityDetail'
 import UserProfile from './pages/UserProfile'
 import PrayerView from './pages/PrayerView'
 import PrayerListDetailView from './pages/PrayerListDetailView'
+import AnsweredPrayersView from './pages/AnsweredPrayersView'
 import FeedPostView from './pages/FeedPostView'
 import PublicMapView from './pages/PublicMapView'
 import ConversationView from './pages/ConversationView'
@@ -51,6 +52,7 @@ function AppShellInner() {
           <Route path="/" element={<MapView />} />
           <Route path="/prayer" element={<PrayerView />} />
           <Route path="/prayer/list/:listId" element={<PrayerListDetailView />} />
+          <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/chat" element={<Navigate to="/friends?tab=chats" replace />} />

@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X } from 'lucide-react'
 import { usePrayerLists } from '../../hooks/usePrayerLists'
 import { useToast } from '../../context/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { supabase } from '../../lib/supabase'
 
 const LIST_COLORS = ['#7A9E7E', '#D4A853', '#C0392B', '#2980B9', '#8E44AD', '#2C3E50', '#E0E0E0', '#E67E22']
 const LIST_EMOJIS = ['🙏', '👨‍👩‍👧', '🌍', '🏥', '💼', '🛡️', '💔', '➕', '🌅', '⭐', '🕊️', '🔥', '💡', '🌿', '🎯', '❤️', '🌸', '📖', '🌟', '🤲']
@@ -164,8 +166,20 @@ function ListSkeleton() {
 // ─── PrayerListsSection ───────────────────────────────────────
 export default function PrayerListsSection() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { lists, loading, createList } = usePrayerLists()
   const [showCreate, setShowCreate] = useState(false)
+  const [answeredCount, setAnsweredCount] = useState(0)
+
+  useEffect(() => {
+    if (!user) return
+    Promise.all([
+      supabase.from('personal_prayer_requests').select('*', { count: 'exact', head: true }).eq('owner_id', user.id).eq('is_answered', true),
+      supabase.from('prayer_requests').select('*', { count: 'exact', head: true }).eq('owner_id', user.id).eq('is_answered', true),
+    ]).then(([{ count: c1 }, { count: c2 }]) => {
+      setAnsweredCount((c1 || 0) + (c2 || 0))
+    })
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{ margin: '12px 0 0', borderBottom: '1px solid var(--color-warm-3)' }}>
@@ -211,6 +225,35 @@ export default function PrayerListsSection() {
           />
         ))}
       </div>
+
+      {/* Erhörte Gebete Link */}
+      {answeredCount > 0 && (
+        <div style={{ padding: '0 16px 14px' }}>
+          <button
+            onClick={() => navigate('/prayer/answered')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: '100%', padding: '11px 14px', borderRadius: 12,
+              backgroundColor: '#DFF5E8', border: '1px solid #B2E0C4',
+              cursor: 'pointer', transition: 'opacity 0.15s',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>🎉</span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: '#1E8449' }}>
+                Erhörte Gebete
+              </span>
+            </div>
+            <span style={{
+              fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700,
+              backgroundColor: '#27AE60', color: 'white',
+              borderRadius: 20, padding: '2px 8px',
+            }}>
+              {answeredCount} ✓
+            </span>
+          </button>
+        </div>
+      )}
 
       {showCreate && (
         <CreateListSheet
