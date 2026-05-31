@@ -14,6 +14,7 @@ import UserProfile from './pages/UserProfile'
 import PrayerView from './pages/PrayerView'
 import PrayerListDetailView from './pages/PrayerListDetailView'
 import AnsweredPrayersView from './pages/AnsweredPrayersView'
+import PrayerStatsView from './pages/PrayerStatsView'
 import FeedPostView from './pages/FeedPostView'
 import PublicMapView from './pages/PublicMapView'
 import ConversationView from './pages/ConversationView'
@@ -53,6 +54,7 @@ function AppShellInner() {
           <Route path="/prayer" element={<PrayerView />} />
           <Route path="/prayer/list/:listId" element={<PrayerListDetailView />} />
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
+          <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/chat" element={<Navigate to="/friends?tab=chats" replace />} />
@@ -80,6 +82,13 @@ function AppShell() {
     if (!user) return
     checkBirthdays(user.id)
   }, [user?.id])
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    }
+  }, [])
+
   return <AppShellInner />
 }
 

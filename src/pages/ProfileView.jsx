@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { Camera, Play, MailWarning, Loader2 } from 'lucide-react'
+import { Camera, Play, MailWarning, Loader2, Plus, X, Bell, BellOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../context/ToastContext'
 import { COUNTRIES, countryToFlag } from '../lib/countries'
 import AddressAutocomplete from '../components/common/AddressAutocomplete'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 function getInitials(name) {
   if (!name) return '?'
@@ -51,6 +52,19 @@ export default function ProfileView() {
   const { user, resendVerificationEmail } = useAuth()
   const { showToast } = useToast()
   const fileInputRef = useRef(null)
+  const {
+    isSupported: pushSupported,
+    isSubscribed: pushSubscribed,
+    preferences: pushPrefs,
+    reminderTimes,
+    subscribe: pushSubscribe,
+    unsubscribe: pushUnsubscribe,
+    updatePreferences: updatePushPrefs,
+    updateReminderTimes,
+  } = usePushNotifications()
+  const [pushLoading, setPushLoading] = useState(false)
+  const [newTimeInput, setNewTimeInput] = useState('')
+  const [showAddTime, setShowAddTime] = useState(false)
 
   const [resendingVerification, setResendingVerification] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -544,6 +558,142 @@ export default function ProfileView() {
             style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 20, cursor: isDirty && !saving ? 'pointer' : 'not-allowed', backgroundColor: isDirty ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-white)', ...serif, fontSize: 15, fontWeight: 600, transition: 'background-color 0.2s' }}
           >
             {saving ? 'Wird gespeichert…' : 'Änderungen speichern'}
+          </button>
+        </div>
+
+        {/* Benachrichtigungen */}
+        <div style={{ ...card, marginTop: 0 }}>
+          <h3 style={sectionTitle}>🔔 Gebets-Erinnerungen</h3>
+
+          {!pushSupported ? (
+            <p style={{ ...serif, fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 8 }}>
+              Öffne die App täglich zur gewählten Zeit um gebetet zu werden erinnert.
+            </p>
+          ) : (
+            <>
+              {/* Push Toggle */}
+              <div style={{ ...toggleRow, marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--color-warm-3)' }}>
+                <div>
+                  <span style={{ ...serif, fontSize: 14, fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {pushSubscribed ? <Bell size={15} /> : <BellOff size={15} />}
+                    Push-Benachrichtigungen
+                  </span>
+                  <p style={{ ...serif, fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {pushSubscribed ? 'Aktiv – du erhältst Gebets-Erinnerungen' : 'Deaktiviert'}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    setPushLoading(true)
+                    if (pushSubscribed) { await pushUnsubscribe(); showToast('Benachrichtigungen deaktiviert') }
+                    else { const ok = await pushSubscribe(); if (ok) showToast('Benachrichtigungen aktiviert ✓'); else showToast('Erlaubnis verweigert', 'error') }
+                    setPushLoading(false)
+                  }}
+                  disabled={pushLoading}
+                  style={toggleTrack(pushSubscribed, 'warm')}
+                >
+                  <div style={toggleThumb(pushSubscribed)} />
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Reminder Times */}
+          <p style={{ ...serif, fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+            Bevorzugte Gebetszeiten
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+            {reminderTimes.map(t => (
+              <div key={t} style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                backgroundColor: 'var(--color-warm-4)', borderRadius: 20,
+                padding: '5px 12px', border: '1px solid var(--color-warm-3)',
+              }}>
+                <span style={{ ...serif, fontSize: 13, color: 'var(--color-text)', fontWeight: 500 }}>{t} Uhr</span>
+                <button
+                  onClick={() => updateReminderTimes(reminderTimes.filter(x => x !== t))}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 0, display: 'flex', alignItems: 'center' }}
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+            {reminderTimes.length < 3 && !showAddTime && (
+              <button
+                onClick={() => setShowAddTime(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, backgroundColor: 'transparent', border: '1.5px dashed var(--color-warm-3)', borderRadius: 20, padding: '5px 12px', cursor: 'pointer', ...serif, fontSize: 12, color: 'var(--color-warm-1)' }}
+              >
+                <Plus size={13} /> Zeit hinzufügen
+              </button>
+            )}
+          </div>
+          {showAddTime && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
+              <input
+                type="time"
+                value={newTimeInput}
+                onChange={e => setNewTimeInput(e.target.value)}
+                autoFocus
+                style={{ ...inp, flex: 1, padding: '9px 13px' }}
+              />
+              <button
+                onClick={() => {
+                  if (newTimeInput && !reminderTimes.includes(newTimeInput)) {
+                    updateReminderTimes([...reminderTimes, newTimeInput].sort())
+                  }
+                  setNewTimeInput('')
+                  setShowAddTime(false)
+                }}
+                style={{ padding: '9px 16px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', ...serif, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+              >
+                OK
+              </button>
+              <button
+                onClick={() => { setNewTimeInput(''); setShowAddTime(false) }}
+                style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', ...serif, fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Notification Type Toggles */}
+          <p style={{ ...serif, fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, marginTop: 4 }}>
+            Erinnerungen aktivieren für:
+          </p>
+          {[
+            { key: 'long_not_prayed', label: 'Lang nicht gebetet', hint: 'Du hast X seit 9 Tagen nicht ins Gebet genommen' },
+            { key: 'birthday', label: 'Geburtstage', hint: 'Name hat heute Geburtstag' },
+            { key: 'streak_reminder', label: 'Streak-Erinnerung', hint: 'Dein Streak wartet noch – noch kurz beten?' },
+            { key: 'answered_anniversary', label: 'Erhörungs-Jahrestage', hint: 'Vor einem Jahr hat Gott dein Gebet erhört' },
+            { key: 'daily_morning', label: 'Tägliche Morgen-Andacht', hint: 'Guten Morgen! Deine Gebetsliste wartet.' },
+          ].map(({ key, label, hint }) => (
+            <div key={key} style={{ marginBottom: 12 }}>
+              <div style={toggleRow}>
+                <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+                  <span style={{ ...serif, fontSize: 13, fontWeight: 500, color: 'var(--color-text)' }}>{label}</span>
+                  <p style={{ ...serif, fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                    „{hint}"
+                  </p>
+                </div>
+                <button
+                  onClick={() => updatePushPrefs({ [key]: !pushPrefs[key] })}
+                  style={toggleTrack(!!pushPrefs[key], 'warm')}
+                >
+                  <div style={toggleThumb(!!pushPrefs[key])} />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button
+            onClick={async () => {
+              await updatePushPrefs({ long_not_prayed: false, birthday: false, answered_anniversary: false, streak_reminder: false, daily_morning: false })
+              showToast('Alle Benachrichtigungen deaktiviert')
+            }}
+            style={{ width: '100%', padding: '11px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', ...serif, fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer', marginTop: 4 }}
+          >
+            Alle Benachrichtigungen aus
           </button>
         </div>
 

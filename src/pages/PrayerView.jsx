@@ -10,6 +10,8 @@ import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import Confetti from '../components/ui/Confetti'
 import PrayerListsSection from '../components/prayer/PrayerListsSection'
+import StreakBanner from '../components/prayer/StreakBanner'
+import { usePrayerStats } from '../hooks/usePrayerStats'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -1379,6 +1381,7 @@ const TABS = [
 export default function PrayerView() {
   const { user } = useAuth()
   const { showToast } = useToast()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('siblings')
   const [showPost, setShowPost] = useState(false)
   const [previewProfile, setPreviewProfile] = useState(null)
@@ -1387,6 +1390,7 @@ export default function PrayerView() {
 
   const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote } = usePrayerFeed(activeTab)
   const { myRequests, createRequest, markAnswered, updateRequest, deleteRequest } = usePersonalPrayer()
+  const { stats, streakStatus, useFreezeDay } = usePrayerStats()
 
   const filteredRequests = applyFilter(requests, filter)
   const filterActive = !isDefaultFilter(filter)
@@ -1473,6 +1477,14 @@ export default function PrayerView() {
           </p>
         )}
       </div>
+
+      {/* Streak Banner */}
+      <StreakBanner
+        stats={stats}
+        streakStatus={streakStatus}
+        onFreezeDay={useFreezeDay}
+        onStatsClick={() => navigate('/prayer/stats')}
+      />
 
       {/* Gebetslisten */}
       <PrayerListsSection />
