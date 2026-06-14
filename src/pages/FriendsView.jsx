@@ -9,6 +9,7 @@ import { useConversations } from '../hooks/useConversations'
 import { useToast } from '../context/ToastContext'
 import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
+import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 
 // ─── Avatar ────────────────────────────────────────────────
 function Avatar({ name, size = 40, isChristian, avatarUrl }) {
@@ -1451,7 +1452,8 @@ export default function FriendsView() {
 
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
-      <div className="bg-white/80 backdrop-blur-md border-b border-warm-3 pt-4 px-4 sticky top-0 z-10 shadow-sm">
+      {activeTab === 'feed' && <PrayerFeedSwitcher active="feed" />}
+      <div className="bg-bg border-b border-warm-3 pt-4 px-4 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-serif text-[22px] font-bold text-dark m-0">
             Geschwister

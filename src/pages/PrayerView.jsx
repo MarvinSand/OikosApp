@@ -10,6 +10,7 @@ import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import Confetti from '../components/ui/Confetti'
 import PrayerListsSection from '../components/prayer/PrayerListsSection'
+import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -1412,10 +1413,11 @@ export default function PrayerView() {
 
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
+      <PrayerFeedSwitcher active="prayer" />
       {/* Header */}
-      <div className="bg-white/90 backdrop-blur-md border-b border-warm-3 pt-3.5 px-4 sticky top-0 z-10 shadow-sm">
+      <div className="bg-bg border-b border-warm-3 pt-3.5 px-4 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-serif text-[22px] font-bold text-dark m-0">Gebete</h2>
+          <h2 className="text-[22px] font-bold text-dark m-0">Gebete</h2>
           <button
             onClick={() => setShowPost(true)}
             className="flex items-center gap-1.5 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3.5 py-2 font-serif text-[13px] font-semibold cursor-pointer shadow-sm transition-all active:scale-95"

@@ -6,8 +6,11 @@ import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
 import ResetPassword from './pages/ResetPassword'
 import AuthCallback from './pages/AuthCallback'
-import MapView from './pages/MapView'
+import Home from './pages/Home'
+import WorldMap from './pages/WorldMap'
 import ProfileView from './pages/ProfileView'
+import SettingsView from './pages/SettingsView'
+import ConnectionsView from './pages/ConnectionsView'
 import FriendsView from './pages/FriendsView'
 import CommunityDetail from './pages/CommunityDetail'
 import UserProfile from './pages/UserProfile'
@@ -25,31 +28,38 @@ import OnboardingTutorial from './components/tutorial/OnboardingTutorial'
 
 function LoadingSpinner() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg relative">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-20 w-32 h-32 bg-warm-2 rounded-full blur-3xl" />
-      <div className="w-12 h-12 rounded-full border-[3px] border-warm-3 border-t-warm-1 animate-spin z-10 shadow-glass-sm" />
+    <div className="min-h-screen flex items-center justify-center bg-bg">
+      <div
+        className="w-10 h-10 rounded-full animate-spin"
+        style={{
+          border: '3px solid var(--color-border)',
+          borderTopColor: 'var(--color-accent)',
+        }}
+      />
     </div>
   )
 }
 
-
 function AppShellInner() {
   const location = useLocation()
-  const isMapRoute = location.pathname === '/'
+  // Routes where the inner container should not be vertically scrollable
+  // (full-bleed map views)
+  const isFullScreenRoute =
+    location.pathname === '/' ||
+    location.pathname === '/worldmap'
 
   return (
     <div className="h-[100dvh] flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
-      {/* Sidebar – nur auf Desktop sichtbar */}
       <SideNav />
 
-      {/* Hauptbereich */}
       <div
         className={`flex-1 min-h-0 min-w-0 hide-scrollbar ${
-          isMapRoute ? 'overflow-hidden' : 'overflow-y-auto mobile-nav-padding'
+          isFullScreenRoute ? 'overflow-hidden' : 'overflow-y-auto mobile-nav-padding'
         }`}
       >
         <Routes>
-          <Route path="/" element={<MapView />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/worldmap" element={<WorldMap />} />
           <Route path="/prayer" element={<PrayerView />} />
           <Route path="/prayer/list/:listId" element={<PrayerListDetailView />} />
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
@@ -62,12 +72,14 @@ function AppShellInner() {
           <Route path="/community/:id" element={<CommunityDetail />} />
           <Route path="/user/:id" element={<UserProfile />} />
           <Route path="/user/:id/map/:mapId" element={<PublicMapView />} />
+          <Route path="/user/:id/connections" element={<ConnectionsView />} />
           <Route path="/profile" element={<ProfileView />} />
+          <Route path="/profile/connections" element={<ConnectionsView />} />
+          <Route path="/settings" element={<SettingsView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
 
-      {/* Bottom-Nav – nur auf Mobilgeräten */}
       <BottomNav />
       <OnboardingTutorial />
     </div>
@@ -86,11 +98,18 @@ function AppShell() {
 function DiscipleshipComingSoon() {
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center px-6 text-center">
-      <div className="w-20 h-20 rounded-full bg-warm-2/30 flex items-center justify-center mb-6 shadow-glass-sm">
+      <div
+        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
+        style={{ backgroundColor: 'var(--color-bg-secondary)' }}
+      >
         <span className="text-4xl">📖</span>
       </div>
-      <h1 className="text-2xl font-semibold text-dark mb-2">Jüngerschaft</h1>
-      <p className="text-dark/70 max-w-sm">Coming soon – dieser Bereich ist gerade in Arbeit. Bald kannst du hier deinen Weg im Glauben begleiten lassen.</p>
+      <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
+        Jüngerschaft
+      </h1>
+      <p style={{ color: 'var(--color-text-secondary)', maxWidth: 360 }}>
+        Coming soon – dieser Bereich ist gerade in Arbeit. Bald kannst du hier deinen Weg im Glauben begleiten lassen.
+      </p>
     </div>
   )
 }
@@ -104,7 +123,6 @@ async function checkBirthdays(userId) {
   localStorage.setItem(todayKey, '1')
 
   try {
-    // Get all friends
     const { data: friendships } = await supabase
       .from('friendships')
       .select('requester_id, addressee_id')
@@ -122,7 +140,6 @@ async function checkBirthdays(userId) {
       .not('birthday', 'is', null)
     if (!profiles?.length) return
 
-    // Filter to today's birthdays (extract month/day from birthday string YYYY-MM-DD)
     const todayBirthdays = profiles.filter(p => {
       const [, m, d] = (p.birthday || '').split('-')
       return parseInt(m) === month && parseInt(d) === day
@@ -130,7 +147,6 @@ async function checkBirthdays(userId) {
 
     for (const p of todayBirthdays) {
       const name = p.full_name || p.username || 'Jemand'
-      // Insert notification if not already created today
       const { data: existing } = await supabase
         .from('notifications')
         .select('id')
@@ -150,7 +166,7 @@ async function checkBirthdays(userId) {
       }
     }
   } catch {
-    // Silent fail – birthday check is non-critical
+    /* silent fail */
   }
 }
 
@@ -162,9 +178,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <div className="min-h-screen bg-bg w-full flex justify-center md:block selection:bg-warm-1/20 selection:text-dark">
-          {/* Auf Mobile: zentrierte max-w-md Karte; auf Desktop: volle Breite */}
-          <div className="w-full max-w-md md:max-w-none h-[100dvh] relative md:shadow-none shadow-glass overflow-hidden bg-bg">
+        <div className="min-h-screen bg-bg w-full flex justify-center md:block">
+          <div className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg">
             <BrowserRouter>
               <Routes>
                 <Route

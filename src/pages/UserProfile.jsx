@@ -670,6 +670,15 @@ export default function UserProfile() {
         </div>
       )}
 
+      {/* Connections link */}
+      <button
+        onClick={() => navigate(`/user/${targetId}/connections`)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 'calc(100% - 32px)', margin: '0 16px 16px', padding: '14px 16px', borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer' }}
+      >
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>Geschwister</span>
+        <ChevronRight size={16} style={{ color: 'var(--color-text-secondary)' }} />
+      </button>
+
       {/* Gebetsanliegen */}
       <PrayerSection targetId={targetId} currentUserId={user?.id} />
 
