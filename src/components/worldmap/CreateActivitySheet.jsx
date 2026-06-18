@@ -1,14 +1,10 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Navigation, MapPin } from 'lucide-react'
-import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
+import { GoogleMap } from '@react-google-maps/api'
 import { useToast } from '../../context/ToastContext'
 import { useCommunities } from '../../hooks/useCommunities'
-import {
-  GOOGLE_MAPS_LOADER_OPTIONS,
-  DEFAULT_MAP_ID,
-  reverseGeocode,
-} from '../../lib/googleMaps'
+import { DEFAULT_MAP_ID, reverseGeocode } from '../../lib/googleMaps'
 import AddressAutocomplete from '../common/AddressAutocomplete'
 import AdvancedMarker from './AdvancedMarker'
 
@@ -59,8 +55,9 @@ function MapPickerPinContent() {
 
 export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   const { showToast } = useToast()
-  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
   const { myCommunities } = useCommunities()
+  // Google Maps is already loaded by WorldMapView – just check window.google
+  const isLoaded = typeof window !== 'undefined' && !!window.google?.maps
 
   const [form, setForm] = useState({
     visibility: 'public',
