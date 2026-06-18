@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Navigation, MapPin } from 'lucide-react'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { useToast } from '../../context/ToastContext'
+import { useCommunities } from '../../hooks/useCommunities'
 import {
   GOOGLE_MAPS_LOADER_OPTIONS,
   DEFAULT_MAP_ID,
@@ -11,22 +12,46 @@ import {
 import AddressAutocomplete from '../common/AddressAutocomplete'
 import AdvancedMarker from './AdvancedMarker'
 
-const EMOJIS = ['📍', '📖', '🙏', '📢', '🏠', '⛪', '🎵', '🏃', '☕', '🌍', '✝️']
-const TYPE_CHIPS = ['Bibelstudie', 'Evangelisation', 'Gebetstreffen', 'Hauskreis', 'Gottesdienst', 'Sport', 'Sonstiges']
+// ─── Farbpalette: Schwarz/Weiß mit babyblauen Akzenten ───
+const INK = '#1A1A1A'
+const INK_MUTED = '#6B7280'
+const LINE = '#E5E7EB'
+const WHITE = '#FFFFFF'
+const SOFT = '#F7F7F8'
+const ACCENT = '#7FBEE8'
+const ACCENT_DARK = '#3E92CC'
+const ACCENT_SOFT = '#EAF4FB'
 
-const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: '#706351', marginBottom: 6 }
+// Event-Arten mit festen Symbolen (Sonstiges = eigenes Emoji)
+const EVENT_TYPES = [
+  { key: 'Evangelisieren', emoji: '📢' },
+  { key: 'Bibel lesen', emoji: '📖' },
+  { key: 'Lobpreis', emoji: '🎵' },
+  { key: 'Gemeinschaft', emoji: '🤝' },
+  { key: 'Sonstiges', emoji: null },
+]
+
+const CUSTOM_EMOJI_SUGGESTIONS = ['📍', '⛪', '☕', '🍽️', '🏃', '🎸', '🙏', '✝️', '🌍', '🎉', '💬', '🔥']
+
+const VISIBILITY_OPTIONS = [
+  { val: 'public', label: 'Öffentlich', desc: 'Für alle OIKOS-Nutzer sichtbar', icon: '🌐' },
+  { val: 'friends', label: 'Meine Geschwister', desc: 'Nur deine bestätigten Geschwister', icon: '👥' },
+  { val: 'community', label: 'Gemeinde', desc: 'Nur Mitglieder einer Gemeinde', icon: '⛪' },
+]
+
+const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: INK_MUTED, marginBottom: 8 }
 const inp = {
   width: '100%', padding: '11px 13px', borderRadius: 12,
-  border: '1.5px solid #D8D2C5', backgroundColor: '#F7F3EC',
-  fontFamily: 'Lora, serif', fontSize: 14, color: '#2C2416',
+  border: `1.5px solid ${LINE}`, backgroundColor: SOFT,
+  fontFamily: 'Lora, serif', fontSize: 14, color: INK,
   display: 'block', boxSizing: 'border-box',
 }
 
 function MapPickerPinContent() {
   return (
     <div style={{
-      width: 22, height: 22, borderRadius: '50%', background: '#4A6741',
-      border: '3px solid #fff', boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+      width: 22, height: 22, borderRadius: '50%', background: ACCENT_DARK,
+      border: `3px solid ${WHITE}`, boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
       transform: 'translate(-50%, -50%)',
     }} />
   )
@@ -35,18 +60,19 @@ function MapPickerPinContent() {
 export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   const { showToast } = useToast()
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
+  const { myCommunities } = useCommunities()
 
   const [form, setForm] = useState({
-    emoji: '📍',
-    title: '',
-    activity_type: '',
+    visibility: 'public',
+    community_id: '',
+    type: '',
+    customEmoji: '',
     description: '',
     location_name: '',
     latitude: null,
     longitude: null,
     starts_at: '',
-    max_participants: '',
-    is_public: true,
+    ends_at: '',
   })
   const [locTab, setLocTab] = useState('gps')
   const [locationLabel, setLocationLabel] = useState('')
@@ -68,7 +94,6 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     if (label) setLocationLabel(label)
   }
 
-  // When location changes (from autocomplete, GPS, or click), pan the mini-map there
   useEffect(() => {
     if (miniMap && form.latitude != null && form.longitude != null) {
       miniMap.panTo({ lat: form.latitude, lng: form.longitude })
@@ -108,138 +133,229 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     if (label) setLocationLabel(label)
   }
 
+  const selectedType = EVENT_TYPES.find(t => t.key === form.type)
+  const isCustom = form.type === 'Sonstiges'
+  const resolvedEmoji = isCustom ? (form.customEmoji || '📍') : (selectedType?.emoji || '📍')
+
   async function handleSubmit() {
-    if (!form.title.trim()) { showToast('Bitte Titel eingeben', 'error'); return }
-    if (!form.activity_type.trim()) { showToast('Bitte Aktivitäts-Art wählen', 'error'); return }
+    if (!form.type) { showToast('Bitte Event-Art wählen', 'error'); return }
+    if (isCustom && !form.customEmoji) { showToast('Bitte ein Emoji für Sonstiges wählen', 'error'); return }
+    if (form.visibility === 'community' && !form.community_id) { showToast('Bitte Gemeinde wählen', 'error'); return }
+    if (!form.starts_at) { showToast('Bitte Startzeit angeben', 'error'); return }
+    if (form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)) {
+      showToast('Endzeit muss nach der Startzeit liegen', 'error'); return
+    }
     if (!form.latitude || !form.longitude) { showToast('Bitte Standort setzen', 'error'); return }
     setSubmitting(true)
     await onSubmit({
-      title: form.title.trim(),
-      activity_type: form.activity_type.trim(),
-      activity_emoji: form.emoji,
+      title: form.type,
+      activity_type: form.type,
+      activity_emoji: resolvedEmoji,
       description: form.description.trim() || null,
       location_name: (form.location_name.trim() || locationLabel || null),
       latitude: form.latitude,
       longitude: form.longitude,
-      starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null,
-      max_participants: form.max_participants ? parseInt(form.max_participants) : null,
-      is_public: form.is_public,
+      starts_at: new Date(form.starts_at).toISOString(),
+      ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
+      visibility: form.visibility,
+      community_id: form.community_id || null,
     })
     setSubmitting(false)
   }
 
-  const canSubmit = form.title.trim() && form.activity_type.trim() && form.latitude && !submitting
+  const canSubmit =
+    form.type &&
+    (!isCustom || form.customEmoji) &&
+    (form.visibility !== 'community' || form.community_id) &&
+    form.starts_at &&
+    form.latitude &&
+    !submitting
 
   const tabStyle = (active) => ({
     flex: 1, padding: '8px 4px', border: 'none', borderRadius: 10, cursor: 'pointer',
     fontFamily: 'Lora, serif', fontSize: 12, fontWeight: active ? 600 : 400,
-    background: active ? '#4A6741' : 'transparent',
-    color: active ? '#fff' : '#706351',
+    background: active ? ACCENT_DARK : 'transparent',
+    color: active ? WHITE : INK_MUTED,
     transition: 'all 0.15s',
   })
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(44,36,22,0.4)' }} />
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} />
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: '#FBF8F3',
+        background: WHITE,
         borderRadius: '20px 20px 0 0',
         padding: '20px 20px 72px',
         maxHeight: '92%',
         overflowY: 'auto',
         animation: 'worldSheetUp 0.25s ease-out',
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D8D2C5', margin: '0 auto 16px' }} />
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: LINE, margin: '0 auto 16px' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: '#2C2416', margin: 0 }}>
-            Aktivität erstellen
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: INK, margin: 0 }}>
+            Event hosten
           </h3>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#A1927F', padding: 4, display: 'flex' }}>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: INK_MUTED, padding: 4, display: 'flex' }}>
             <X size={20} />
           </button>
         </div>
 
-        {/* Emoji */}
-        <label style={lbl}>Emoji</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
-          {EMOJIS.map(e => (
-            <button
-              key={e}
-              onClick={() => set('emoji', e)}
-              style={{
-                width: 42, height: 42, borderRadius: 10, fontSize: 20, cursor: 'pointer',
-                border: `2px solid ${form.emoji === e ? '#4A6741' : '#D8D2C5'}`,
-                background: form.emoji === e ? '#EBE5D9' : '#fff',
-              }}
-            >
-              {e}
-            </button>
-          ))}
+        {/* 1. Sichtbarkeit – zuerst */}
+        <label style={lbl}>Wer darf das Event sehen?</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: form.visibility === 'community' ? 10 : 18 }}>
+          {VISIBILITY_OPTIONS.map(opt => {
+            const active = form.visibility === opt.val
+            return (
+              <button
+                key={opt.val}
+                onClick={() => set('visibility', opt.val)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                  padding: '11px 13px', borderRadius: 12, cursor: 'pointer',
+                  border: `1.5px solid ${active ? ACCENT_DARK : LINE}`,
+                  background: active ? ACCENT_SOFT : WHITE,
+                }}
+              >
+                <span style={{ fontSize: 20, flexShrink: 0 }}>{opt.icon}</span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: INK }}>{opt.label}</span>
+                  <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 11, color: INK_MUTED, marginTop: 1 }}>{opt.desc}</span>
+                </span>
+                <span style={{
+                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                  border: `2px solid ${active ? ACCENT_DARK : LINE}`,
+                  background: active ? ACCENT_DARK : WHITE,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {active && <span style={{ width: 7, height: 7, borderRadius: '50%', background: WHITE }} />}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
-        {/* Title */}
-        <label style={lbl}>Titel *</label>
-        <input
-          type="text"
-          value={form.title}
-          onChange={e => set('title', e.target.value)}
-          placeholder="Was machst du?"
-          style={inp}
-        />
+        {/* Gemeinde-Auswahl */}
+        {form.visibility === 'community' && (
+          <div style={{ marginBottom: 18 }}>
+            {myCommunities && myCommunities.length > 0 ? (
+              <select
+                value={form.community_id}
+                onChange={e => set('community_id', e.target.value)}
+                style={{ ...inp, appearance: 'auto' }}
+              >
+                <option value="">Gemeinde wählen…</option>
+                {myCommunities.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            ) : (
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#C0392B', margin: 0 }}>
+                Du bist noch in keiner Gemeinde. Tritt erst einer Gemeinde bei.
+              </p>
+            )}
+          </div>
+        )}
 
-        {/* Activity type */}
-        <label style={{ ...lbl, marginTop: 14 }}>Aktivitäts-Art *</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-          {TYPE_CHIPS.map(t => (
-            <button
-              key={t}
-              onClick={() => set('activity_type', t)}
-              style={{
-                padding: '5px 12px', borderRadius: 16, cursor: 'pointer',
-                border: `1.5px solid ${form.activity_type === t ? '#4A6741' : '#D8D2C5'}`,
-                background: form.activity_type === t ? '#EBE5D9' : '#fff',
-                fontFamily: 'Lora, serif', fontSize: 12,
-                color: form.activity_type === t ? '#4A6741' : '#706351',
-                fontWeight: form.activity_type === t ? 600 : 400,
-              }}
-            >
-              {t}
-            </button>
-          ))}
+        {/* 2. Event-Art mit festen Symbolen */}
+        <label style={lbl}>Was für ein Event?</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: isCustom ? 10 : 18 }}>
+          {EVENT_TYPES.map(t => {
+            const active = form.type === t.key
+            return (
+              <button
+                key={t.key}
+                onClick={() => set('type', t.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '9px 14px', borderRadius: 14, cursor: 'pointer',
+                  border: `1.5px solid ${active ? ACCENT_DARK : LINE}`,
+                  background: active ? ACCENT_SOFT : WHITE,
+                  fontFamily: 'Lora, serif', fontSize: 13,
+                  color: active ? ACCENT_DARK : INK,
+                  fontWeight: active ? 600 : 500,
+                }}
+              >
+                <span style={{ fontSize: 17 }}>{t.emoji || '✨'}</span>
+                {t.key}
+              </button>
+            )
+          })}
         </div>
-        <input
-          type="text"
-          value={form.activity_type}
-          onChange={e => set('activity_type', e.target.value)}
-          placeholder="Oder selbst eingeben…"
-          style={inp}
-        />
 
-        {/* Description */}
-        <label style={{ ...lbl, marginTop: 14 }}>Beschreibung (optional)</label>
+        {/* Eigenes Emoji für Sonstiges */}
+        {isCustom && (
+          <div style={{ marginBottom: 18 }}>
+            <label style={lbl}>Eigenes Symbol wählen</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {CUSTOM_EMOJI_SUGGESTIONS.map(e => (
+                <button
+                  key={e}
+                  onClick={() => set('customEmoji', e)}
+                  style={{
+                    width: 42, height: 42, borderRadius: 10, fontSize: 20, cursor: 'pointer',
+                    border: `2px solid ${form.customEmoji === e ? ACCENT_DARK : LINE}`,
+                    background: form.customEmoji === e ? ACCENT_SOFT : WHITE,
+                  }}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              value={form.customEmoji}
+              onChange={e => set('customEmoji', [...e.target.value].slice(-1).join(''))}
+              placeholder="…oder eigenes Emoji eingeben"
+              style={inp}
+            />
+          </div>
+        )}
+
+        {/* 3. Freitext-Infos */}
+        <label style={lbl}>Infos (optional)</label>
         <textarea
           value={form.description}
           onChange={e => set('description', e.target.value)}
-          placeholder="Worum geht es?"
+          placeholder="Worum geht es? Was sollen die Teilnehmer wissen?"
           rows={3}
-          style={{ ...inp, resize: 'vertical' }}
+          style={{ ...inp, resize: 'vertical', marginBottom: 18 }}
         />
 
-        {/* Location — two tabs (GPS / Karte+Adresse) */}
-        <label style={{ ...lbl, marginTop: 14 }}>Standort der Aktivität *</label>
-
-        <div style={{ display: 'flex', gap: 4, padding: 4, background: '#EBE5D9', borderRadius: 12, marginBottom: 12 }}>
-          <button style={tabStyle(locTab === 'gps')} onClick={() => setLocTab('gps')}>
-            📡 GPS
-          </button>
-          <button style={tabStyle(locTab === 'map')} onClick={() => setLocTab('map')}>
-            🗺 Karte + Adresse
-          </button>
+        {/* 4. Zeit von – bis */}
+        <label style={lbl}>Wann? (von – bis)</label>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: INK_MUTED, display: 'block', marginBottom: 4 }}>Von *</span>
+            <input
+              type="datetime-local"
+              value={form.starts_at}
+              onChange={e => set('starts_at', e.target.value)}
+              style={inp}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: INK_MUTED, display: 'block', marginBottom: 4 }}>Bis</span>
+            <input
+              type="datetime-local"
+              value={form.ends_at}
+              min={form.starts_at || undefined}
+              onChange={e => set('ends_at', e.target.value)}
+              style={inp}
+            />
+          </div>
         </div>
 
-        {/* GPS tab */}
+        {/* 5. Standort */}
+        <label style={lbl}>Standort *</label>
+        <div style={{ display: 'flex', gap: 4, padding: 4, background: SOFT, borderRadius: 12, marginBottom: 12, border: `1px solid ${LINE}` }}>
+          <button style={tabStyle(locTab === 'gps')} onClick={() => setLocTab('gps')}>📡 Mein Standort</button>
+          <button style={tabStyle(locTab === 'address')} onClick={() => setLocTab('address')}>🔍 Adresse</button>
+          <button style={tabStyle(locTab === 'map')} onClick={() => setLocTab('map')}>🗺 Karte</button>
+        </div>
+
+        {/* GPS */}
         {locTab === 'gps' && (
           <div>
             <button
@@ -248,26 +364,24 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '11px 16px', borderRadius: 12, width: '100%',
-                border: `1.5px solid ${form.latitude ? '#4A6741' : '#D8D2C5'}`,
-                background: form.latitude ? '#EBE5D9' : '#fff',
+                border: `1.5px solid ${form.latitude ? ACCENT_DARK : LINE}`,
+                background: form.latitude ? ACCENT_SOFT : WHITE,
                 fontFamily: 'Lora, serif', fontSize: 14,
-                color: form.latitude ? '#4A6741' : '#706351',
+                color: form.latitude ? ACCENT_DARK : INK,
                 cursor: 'pointer', opacity: locating ? 0.7 : 1,
                 justifyContent: 'center',
               }}
             >
               <Navigation size={16} />
-              {locating ? 'Ermittle Standort…' : form.latitude ? 'GPS-Standort gesetzt ✓' : 'Aktuellen Standort ermitteln'}
+              {locating ? 'Ermittle Standort…' : form.latitude ? 'Mein aktueller Standort ✓' : 'Mein aktueller Standort'}
             </button>
-            {!form.latitude && myProfile?.latitude && (
+            {myProfile?.latitude && (
               <button
-                onClick={() => {
-                  applyLocation(myProfile.latitude, myProfile.longitude, myProfile.city || '')
-                }}
+                onClick={() => applyLocation(myProfile.latitude, myProfile.longitude, myProfile.city || '')}
                 style={{
                   marginTop: 8, padding: '8px 12px', borderRadius: 10,
-                  border: '1.5px solid #D8D2C5', background: '#fff',
-                  fontFamily: 'Lora, serif', fontSize: 12, color: '#706351',
+                  border: `1.5px solid ${LINE}`, background: WHITE,
+                  fontFamily: 'Lora, serif', fontSize: 12, color: INK_MUTED,
                   cursor: 'pointer', width: '100%',
                 }}
               >
@@ -277,22 +391,22 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
           </div>
         )}
 
-        {/* Karte + Adresse tab (merged) */}
+        {/* Adresse */}
+        {locTab === 'address' && (
+          <AddressAutocomplete
+            value={form.latitude ? { shortName: locationLabel, lat: form.latitude, lng: form.longitude } : null}
+            onChange={(loc) => applyLocation(loc.lat, loc.lng, loc.shortName)}
+            placeholder="Adresse oder Ort suchen…"
+          />
+        )}
+
+        {/* Karte */}
         {locTab === 'map' && (
           <div>
-            <AddressAutocomplete
-              value={form.latitude ? { shortName: locationLabel, lat: form.latitude, lng: form.longitude } : null}
-              onChange={(loc) => {
-                applyLocation(loc.lat, loc.lng, loc.shortName)
-              }}
-              placeholder="Adresse oder Ort suchen…"
-            />
-
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#A1927F', margin: '10px 0 6px' }}>
-              … oder tippe direkt auf die Karte, um den Ort zu setzen.
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: INK_MUTED, margin: '0 0 6px' }}>
+              Tippe auf die Karte, um den Ort zu setzen.
             </p>
-
-            <div style={{ height: 220, borderRadius: 12, overflow: 'hidden', border: '1px solid #D8D2C5' }}>
+            <div style={{ height: 220, borderRadius: 12, overflow: 'hidden', border: `1px solid ${LINE}` }}>
               {isLoaded ? (
                 <GoogleMap
                   mapContainerStyle={{ width: '100%', height: '100%' }}
@@ -316,98 +430,53 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                   )}
                 </GoogleMap>
               ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F3EC' }}>
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid #D8D2C5', borderTopColor: '#4A6741', animation: 'spin 0.7s linear infinite' }} />
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: SOFT }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${LINE}`, borderTopColor: ACCENT_DARK, animation: 'spin 0.7s linear infinite' }} />
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Standort-Status */}
+        {form.latitude && (
+          <div style={{ marginTop: 10 }}>
+            {locationLabel && !reverseLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <MapPin size={13} color={ACCENT_DARK} />
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: ACCENT_DARK, margin: 0, fontWeight: 600 }}>
+                  {locationLabel}
+                </p>
+              </div>
+            )}
             {reverseLoading && (
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#A1927F', margin: '6px 0 0' }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: INK_MUTED, margin: 0 }}>
                 Adresse wird ermittelt…
               </p>
             )}
           </div>
         )}
-
-        {/* Location status + name override */}
-        {form.latitude && (
-          <div style={{ marginTop: 10 }}>
-            {locationLabel && !reverseLoading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <MapPin size={13} color="#4A6741" />
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#4A6741', margin: 0, fontWeight: 600 }}>
-                  {locationLabel}
-                </p>
-              </div>
-            )}
-            <label style={lbl}>Ortsname für andere (optional)</label>
-            <input
-              type="text"
-              value={form.location_name}
-              onChange={e => set('location_name', e.target.value)}
-              placeholder={locationLabel || 'z.B. Café Einstein, München'}
-              style={inp}
-            />
-          </div>
-        )}
-
         {!form.latitude && (
           <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#C0392B', marginTop: 8 }}>
             Bitte Standort setzen
           </p>
         )}
 
-        {/* Start time */}
-        <label style={{ ...lbl, marginTop: 14 }}>Wann? (optional)</label>
-        <input
-          type="datetime-local"
-          value={form.starts_at}
-          onChange={e => set('starts_at', e.target.value)}
-          style={inp}
-        />
-
-        {/* Max participants */}
-        <label style={{ ...lbl, marginTop: 14 }}>Max. Teilnehmer (optional)</label>
-        <input
-          type="number"
-          value={form.max_participants}
-          onChange={e => set('max_participants', e.target.value)}
-          placeholder="z.B. 10"
-          min="1"
-          style={inp}
-        />
-
-        {/* Visibility */}
-        <div style={{ marginTop: 16 }}>
-          <label style={lbl}>Sichtbarkeit</label>
-          {[
-            { val: true, label: '🌐 Alle OIKOS-Nutzer' },
-            { val: false, label: '👥 Nur meine Geschwister' },
-          ].map(opt => (
-            <label key={String(opt.val)} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, cursor: 'pointer' }}>
-              <input
-                type="radio"
-                checked={form.is_public === opt.val}
-                onChange={() => set('is_public', opt.val)}
-                style={{ accentColor: '#4A6741', width: 16, height: 16 }}
-              />
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: '#2C2416' }}>{opt.label}</span>
-            </label>
-          ))}
-        </div>
-
+        {/* Submit */}
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
           style={{
-            width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
-            background: canSubmit ? '#4A6741' : '#D8D2C5',
-            color: '#fff', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600,
+            width: '100%', padding: '15px 0', borderRadius: 14, border: 'none',
+            background: canSubmit ? ACCENT_DARK : LINE,
+            color: canSubmit ? WHITE : INK_MUTED, fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700,
             cursor: canSubmit ? 'pointer' : 'not-allowed',
-            marginTop: 20, opacity: submitting ? 0.7 : 1, transition: 'all 0.15s',
+            marginTop: 22, opacity: submitting ? 0.7 : 1, transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {submitting ? 'Wird gepostet…' : 'Aktivität posten 📍'}
+          <span style={{ fontSize: 17 }}>{resolvedEmoji}</span>
+          {submitting ? 'Wird gehostet…' : 'Event hosten'}
         </button>
       </div>
     </div>,

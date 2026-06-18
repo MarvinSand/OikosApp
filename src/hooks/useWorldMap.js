@@ -17,6 +17,7 @@ function haversine(lat1, lon1, lat2, lon2) {
 export function useWorldMap() {
   const { user } = useAuth()
   const [visibleUsers, setVisibleUsers] = useState([])
+  const [friendIds, setFriendIds] = useState(() => new Set())
   const [activities, setActivities] = useState([])
   const [myProfile, setMyProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -32,6 +33,17 @@ export function useWorldMap() {
         .single()
       setMyProfile(profile)
 
+      // Bestätigte Freundschaften (Geschwister) laden
+      const { data: friendships } = await supabase
+        .from('friendships')
+        .select('requester_id, addressee_id')
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .eq('status', 'accepted')
+      const fIds = new Set(
+        (friendships || []).map(f => (f.requester_id === user.id ? f.addressee_id : f.requester_id))
+      )
+      setFriendIds(fIds)
+
       const { data: users } = await supabase
         .from('profiles')
         .select('id, full_name, username, avatar_url, latitude, longitude, is_christian, city, country, church_name')
@@ -42,6 +54,7 @@ export function useWorldMap() {
       setVisibleUsers(users || [])
 
       const now = new Date().toISOString()
+      // Sichtbarkeit (public/friends/community) wird durch RLS gefiltert
       const { data: acts } = await supabase
         .from('world_map_activities')
         .select(`
@@ -49,7 +62,6 @@ export function useWorldMap() {
           author:profiles!author_id(id, full_name, username, avatar_url),
           participants:activity_participants(user_id, joined_at, profile:profiles!user_id(id, full_name, username, avatar_url, is_christian))
         `)
-        .eq('is_public', true)
         .or(`expires_at.is.null,expires_at.gt.${now}`)
         .order('created_at', { ascending: false })
         .limit(500)
@@ -63,8 +75,11 @@ export function useWorldMap() {
     loadData()
   }, [loadData])
 
+  // Geschwister = bestätigte Freunde, die auf der Karte sichtbar sind
+  const friendUsers = visibleUsers.filter(u => friendIds.has(u.id))
+
   const nearbyUsers = myProfile?.latitude && myProfile?.longitude
-    ? visibleUsers
+    ? friendUsers
         .map(u => ({
           ...u,
           distance: haversine(myProfile.latitude, myProfile.longitude, u.latitude, u.longitude),
@@ -74,9 +89,13 @@ export function useWorldMap() {
     : []
 
   async function createActivity(data) {
-    const expiresAt = data.starts_at
-      ? new Date(new Date(data.starts_at).getTime() + 3 * 60 * 60 * 1000).toISOString()
-      : null
+    // Event verschwindet, wenn es vorbei ist: ends_at, sonst starts_at + 3h
+    const expiresAt = data.ends_at
+      ? data.ends_at
+      : data.starts_at
+        ? new Date(new Date(data.starts_at).getTime() + 3 * 60 * 60 * 1000).toISOString()
+        : null
+    const visibility = data.visibility || 'public'
     const { data: act, error } = await supabase
       .from('world_map_activities')
       .insert({
@@ -91,7 +110,9 @@ export function useWorldMap() {
         starts_at: data.starts_at || null,
         ends_at: data.ends_at || null,
         max_participants: data.max_participants || null,
-        is_public: data.is_public !== false,
+        visibility,
+        community_id: visibility === 'community' ? (data.community_id || null) : null,
+        is_public: visibility === 'public',
         expires_at: data.expires_at || expiresAt,
       })
       .select(`
@@ -178,6 +199,8 @@ export function useWorldMap() {
 
   return {
     visibleUsers,
+    friendUsers,
+    friendIds,
     activities,
     nearbyUsers,
     myProfile,

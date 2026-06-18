@@ -407,26 +407,31 @@ export default function MapView() {
   return (
     <div className="h-full flex flex-col bg-bg relative">
 
-      {/* Tab Toggle */}
-      <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 50, display: 'flex', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', borderRadius: 20, padding: 3, boxShadow: '0 2px 12px rgba(58,46,36,0.12)', border: '1px solid rgba(216,210,197,0.8)' }}>
-        <button
-          onClick={() => setActiveTab('oikos')}
-          style={{ padding: '7px 14px', borderRadius: 17, border: 'none', background: activeTab === 'oikos' ? '#4A6741' : 'transparent', color: activeTab === 'oikos' ? '#fff' : '#706351', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: activeTab === 'oikos' ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
-        >
-          🗺 Mein OIKOS
-        </button>
-        <button
-          onClick={() => setActiveTab('world')}
-          style={{ padding: '7px 14px', borderRadius: 17, border: 'none', background: activeTab === 'world' ? '#4A6741' : 'transparent', color: activeTab === 'world' ? '#fff' : '#706351', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: activeTab === 'world' ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
-        >
-          🌍 Weltkarte
-        </button>
-      </div>
+      {/* Tab Toggle – nur im OIKOS-Modus (Einstieg in die Weltkarte) */}
+      {activeTab === 'oikos' && (
+        <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 50, display: 'flex', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', borderRadius: 20, padding: 3, boxShadow: '0 2px 12px rgba(58,46,36,0.12)', border: '1px solid rgba(216,210,197,0.8)' }}>
+          <button
+            onClick={() => setActiveTab('oikos')}
+            style={{ padding: '7px 14px', borderRadius: 17, border: 'none', background: '#4A6741', color: '#fff', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+          >
+            🗺 Mein OIKOS
+          </button>
+          <button
+            onClick={() => setActiveTab('world')}
+            style={{ padding: '7px 14px', borderRadius: 17, border: 'none', background: 'transparent', color: '#706351', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+          >
+            🌍 Weltkarte
+          </button>
+        </div>
+      )}
 
       {/* Weltkarte View */}
       {activeTab === 'world' && (
         <div style={{ position: 'absolute', inset: 0, paddingTop: 0, zIndex: 10 }}>
-          <WorldMapView onNavigateToProfile={() => navigate('/profile')} />
+          <WorldMapView
+            onNavigateToProfile={() => navigate('/profile')}
+            onBackToOikos={() => setActiveTab('oikos')}
+          />
         </div>
       )}
 
