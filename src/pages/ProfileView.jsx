@@ -3,11 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import {
   Settings, Camera, MapPin, Church, Map as MapIcon, Newspaper, HandHeart,
   Lock, Globe, Users as UsersIcon, Home as HomeIcon, Loader2,
+  Maximize2, X,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { useProfileTabs } from '../hooks/useProfileTabs'
+import { useOikosMaps } from '../hooks/useOikosMaps'
+import { usePublicMap } from '../hooks/usePublicMap'
 import { useToast } from '../context/ToastContext'
+import { PostCard } from './FriendsView'
+import MapCanvas from '../components/map/MapCanvas'
+import MapSettingsSheet from '../components/map/MapSettingsSheet'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function getInitials(name) {
@@ -67,82 +73,188 @@ function VisibilityIcon({ visibility }) {
   return null
 }
 
-function POST_TYPE_EMOJI(type) {
-  return {
-    bible: '📖',
-    testimony: '🙌',
-    question: '❓',
-    photo: '📷',
-    text: '💬',
-  }[type] || '💬'
+const VISIBILITY_LABEL = {
+  private: 'Privat',
+  all_siblings: 'Geschwister',
+  specific_include: 'Geschwister',
+  specific_exclude: 'Geschwister',
+  community: 'Community',
 }
 
-// ─── Sub-components ───────────────────────────────────────────
-function MapsGrid({ maps, ownerId }) {
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  const isOwn = ownerId === user?.id
+// ─── Inline map preview ───────────────────────────────────────
+function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
+  const { people, connections, ownerName, loading } = usePublicMap(ownerId, mapId)
 
-  if (maps.length === 0) {
-    return (
-      <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
-        {isOwn ? 'Noch keine Maps erstellt' : 'Keine Maps verfügbar'}
-      </p>
-    )
-  }
   return (
-    <div className="grid grid-cols-2 gap-3 px-3 py-3">
-      {maps.map(m => (
-        <button
-          key={m.id}
-          onClick={() => navigate(isOwn ? '/' : `/user/${ownerId}/map/${m.id}`)}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            gap: 6,
-            padding: '14px 12px',
-            borderRadius: 12,
-            border: '1px solid var(--color-border)',
-            backgroundColor: 'var(--color-bg)',
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          <span style={{ fontSize: 22 }}>🗺</span>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-            {m.name}
-          </p>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
-            {m.personCount || 0} {m.personCount === 1 ? 'Person' : 'Personen'}
-          </p>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              fontSize: 11,
-              color: 'var(--color-text-tertiary)',
-            }}
-          >
-            <VisibilityIcon visibility={m.visibility} />
-            {{
-              private: 'Privat',
-              all_siblings: 'Geschwister',
-              specific_include: 'Geschwister',
-              specific_exclude: 'Geschwister',
-              community: 'Community',
-            }[m.visibility] || 'Privat'}
-          </span>
-        </button>
-      ))}
+    <div
+      style={{
+        position: 'relative',
+        height: 320,
+        margin: '12px',
+        borderRadius: 12,
+        border: '1px solid var(--color-border)',
+        overflow: 'hidden',
+        backgroundColor: 'var(--color-bg-secondary)',
+      }}
+    >
+      {loading ? (
+        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Loader2 size={22} style={{ color: 'var(--color-text-tertiary)', animation: 'spin 1s linear infinite' }} />
+        </div>
+      ) : (
+        <MapCanvas
+          userName={ownerName}
+          people={people}
+          connections={connections}
+          readOnly
+          ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
+        />
+      )}
+
+      {/* Close button (top-right) */}
+      <button
+        onClick={onClose}
+        aria-label="Schließen"
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          backgroundColor: 'var(--color-bg)',
+          border: '1px solid var(--color-border)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--color-text)',
+        }}
+      >
+        <X size={16} />
+      </button>
+
+      {/* Fullscreen button (bottom-right) */}
+      <button
+        onClick={onFullscreen}
+        aria-label="Vollbild"
+        style={{
+          position: 'absolute',
+          bottom: 8,
+          right: 8,
+          width: 36,
+          height: 36,
+          borderRadius: 8,
+          backgroundColor: 'var(--color-bg)',
+          border: '1px solid var(--color-border)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--color-accent)',
+        }}
+      >
+        <Maximize2 size={18} />
+      </button>
     </div>
   )
 }
 
-function PostsGrid({ posts, isOwn }) {
+// ─── Maps tab ─────────────────────────────────────────────────
+function MapsTab({ maps, ownerId, selectedMapId, onSelect, onSettings }) {
   const navigate = useNavigate()
 
+  return (
+    <div className="py-3">
+      {selectedMapId && (
+        <InlineMapPreview
+          ownerId={ownerId}
+          mapId={selectedMapId}
+          onClose={() => onSelect(null)}
+          onFullscreen={() => navigate(`/user/${ownerId}/map/${selectedMapId}`)}
+        />
+      )}
+
+      {maps.length === 0 ? (
+        <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
+          Noch keine Maps erstellt
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 px-3">
+          {maps.map(m => {
+            const isSelected = m.id === selectedMapId
+            return (
+              <div
+                key={m.id}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: 12,
+                  border: `1px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                  backgroundColor: 'var(--color-bg)',
+                  overflow: 'hidden',
+                }}
+              >
+                <button
+                  onClick={() => onSelect(isSelected ? null : m.id)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 6,
+                    padding: '14px 12px 10px',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: 22 }}>🗺</span>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                    {m.name}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                    {m.personCount || 0} {m.personCount === 1 ? 'Person' : 'Personen'}
+                  </p>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                    <VisibilityIcon visibility={m.visibility} />
+                    {VISIBILITY_LABEL[m.visibility] || 'Privat'}
+                  </span>
+                </button>
+
+                {/* Settings icon at the bottom */}
+                <button
+                  onClick={() => onSettings(m)}
+                  aria-label="Map-Einstellungen"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '8px 0',
+                    borderTop: '1px solid var(--color-border)',
+                    background: 'none',
+                    border: 'none',
+                    borderTopWidth: 1,
+                    borderTopStyle: 'solid',
+                    borderTopColor: 'var(--color-border)',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  <Settings size={16} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Posts tab ────────────────────────────────────────────────
+function PostsTab({ posts, currentUserId, onReact, onDelete }) {
+  const navigate = useNavigate()
   if (posts.length === 0) {
     return (
       <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
@@ -151,53 +263,23 @@ function PostsGrid({ posts, isOwn }) {
     )
   }
   return (
-    <div className="grid grid-cols-2 gap-2 px-3 py-3">
+    <div className="px-3 py-3">
       {posts.map(p => (
-        <button
+        <PostCard
           key={p.id}
-          onClick={() => navigate(`/feed/post/${p.id}`)}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            padding: '10px 10px',
-            border: '1px solid var(--color-border)',
-            borderRadius: 10,
-            background: 'var(--color-bg)',
-            cursor: 'pointer',
-            textAlign: 'left',
-            minHeight: 88,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 16 }}>{POST_TYPE_EMOJI(p.type)}</span>
-            {!p.is_public && isOwn && (
-              <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>Nur Community</span>
-            )}
-          </div>
-          {p.photo_url && (
-            <img src={p.photo_url} alt="" style={{ width: '100%', height: 70, objectFit: 'cover', borderRadius: 6 }} />
-          )}
-          <p
-            style={{
-              fontSize: 12,
-              color: 'var(--color-text)',
-              margin: 0,
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
-            {p.title || p.body || p.bible_reference || '…'}
-          </p>
-        </button>
+          post={p}
+          currentUserId={currentUserId}
+          onReact={onReact}
+          onDelete={onDelete}
+          onClick={post => navigate(`/feed/post/${post.id}`)}
+        />
       ))}
     </div>
   )
 }
 
-function PrayerList({ prayers }) {
+// ─── Prayers tab ──────────────────────────────────────────────
+function PrayersTab({ prayers }) {
   if (prayers.length === 0) {
     return (
       <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
@@ -208,32 +290,22 @@ function PrayerList({ prayers }) {
   const active = prayers.filter(p => !p.is_answered)
   const answered = prayers.filter(p => p.is_answered)
   return (
-    <div className="flex flex-col gap-2 px-3 py-3">
+    <div className="flex flex-col gap-3 px-3 py-3">
       {active.map(p => (
         <div
           key={p.id}
           style={{
-            padding: '12px 14px',
+            padding: '14px 16px',
             border: '1px solid var(--color-border)',
-            borderRadius: 10,
+            borderRadius: 12,
             backgroundColor: 'var(--color-bg)',
           }}
         >
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }}>
             {p.category ? `${p.category} ` : ''}{p.title}
           </p>
           {p.description && (
-            <p
-              style={{
-                margin: '4px 0 0',
-                fontSize: 12,
-                color: 'var(--color-text-secondary)',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}
-            >
+            <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
               {p.description}
             </p>
           )}
@@ -243,16 +315,15 @@ function PrayerList({ prayers }) {
         <div
           key={p.id}
           style={{
-            padding: '12px 14px',
+            padding: '14px 16px',
             border: '1px solid var(--color-border)',
-            borderRadius: 10,
+            borderRadius: 12,
             backgroundColor: 'var(--color-bg)',
-            opacity: 0.7,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)', textDecoration: 'line-through' }}>
-              {p.title}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text-secondary)', textDecoration: 'line-through' }}>
+              {p.category ? `${p.category} ` : ''}{p.title}
             </p>
             <span
               style={{
@@ -263,11 +334,17 @@ function PrayerList({ prayers }) {
                 backgroundColor: 'var(--color-gold-light)',
                 color: '#7C5A00',
                 flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}
             >
               ✓ Erhört
             </span>
           </div>
+          {p.description && (
+            <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-tertiary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+              {p.description}
+            </p>
+          )}
         </div>
       ))}
     </div>
@@ -279,11 +356,17 @@ export default function ProfileView() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { profile, loading: profileLoading, uploadAvatar } = useProfile()
-  const { maps, posts, prayerRequests, connectionsCount, loading: tabsLoading } = useProfileTabs(user?.id)
+  const {
+    maps, posts, prayerRequests, connectionsCount, publicCommunities,
+    loading: tabsLoading, reload, reactToPost, deletePost,
+  } = useProfileTabs(user?.id)
+  const { updateMap, deleteMap } = useOikosMaps()
   const { showToast } = useToast()
   const fileInputRef = useRef(null)
   const [activeTab, setActiveTab] = useState('maps')
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [selectedMapId, setSelectedMapId] = useState(null)
+  const [settingsMap, setSettingsMap] = useState(null)
 
   async function handleAvatarChange(e) {
     const file = e.target.files?.[0]
@@ -298,6 +381,12 @@ export default function ProfileView() {
       setAvatarUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  async function handleDeletePost(postId) {
+    if (!window.confirm('Post wirklich löschen?')) return
+    await deletePost(postId)
+    showToast('Post gelöscht', 'info')
   }
 
   if (profileLoading) {
@@ -388,24 +477,44 @@ export default function ProfileView() {
             />
           </div>
 
-          {/* Connections column */}
-          <button
-            onClick={() => navigate('/profile/connections')}
-            className="flex flex-col items-center justify-center"
-            style={{
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              padding: '8px 12px',
-            }}
-          >
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>
-              {connectionsCount}
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-              Geschwister
-            </span>
-          </button>
+          {/* Connections + communities */}
+          <div className="flex-1 flex items-start gap-4">
+            <button
+              onClick={() => navigate('/friends?tab=friends')}
+              className="flex flex-col items-center justify-center"
+              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '8px 4px' }}
+            >
+              <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>
+                {connectionsCount}
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                Geschwister
+              </span>
+            </button>
+
+            {publicCommunities.length > 0 && (
+              <div style={{ flex: 1, paddingTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {publicCommunities.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => navigate(`/community/${c.id}`)}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: '4px 10px',
+                      borderRadius: 20,
+                      border: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-accent-light)',
+                      color: 'var(--color-accent-dark)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🏘 {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Name */}
@@ -463,8 +572,10 @@ export default function ProfileView() {
 
       {/* Category tabs */}
       <div
-        className="flex"
+        className="flex sticky z-10"
         style={{
+          top: 52,
+          backgroundColor: 'var(--color-bg)',
           borderTop: '1px solid var(--color-border)',
           borderBottom: '1px solid var(--color-border)',
         }}
@@ -509,10 +620,34 @@ export default function ProfileView() {
         </p>
       ) : (
         <>
-          {activeTab === 'maps' && <MapsGrid maps={maps} ownerId={user?.id} />}
-          {activeTab === 'posts' && <PostsGrid posts={posts} isOwn />}
-          {activeTab === 'prayers' && <PrayerList prayers={prayerRequests} />}
+          {activeTab === 'maps' && (
+            <MapsTab
+              maps={maps}
+              ownerId={user?.id}
+              selectedMapId={selectedMapId}
+              onSelect={setSelectedMapId}
+              onSettings={setSettingsMap}
+            />
+          )}
+          {activeTab === 'posts' && (
+            <PostsTab
+              posts={posts}
+              currentUserId={user?.id}
+              onReact={reactToPost}
+              onDelete={handleDeletePost}
+            />
+          )}
+          {activeTab === 'prayers' && <PrayersTab prayers={prayerRequests} />}
         </>
+      )}
+
+      {settingsMap && (
+        <MapSettingsSheet
+          map={settingsMap}
+          updateMap={updateMap}
+          deleteMap={async (id) => { await deleteMap(id); setSelectedMapId(null); reload() }}
+          onClose={() => { setSettingsMap(null); reload() }}
+        />
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

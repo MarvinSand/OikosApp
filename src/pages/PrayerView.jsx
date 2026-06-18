@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase'
 import Confetti from '../components/ui/Confetti'
 import PrayerListsSection from '../components/prayer/PrayerListsSection'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
+import ComposerBox from '../components/layout/ComposerBox'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -1372,15 +1373,15 @@ function isDefaultFilter(f) {
 
 // ─── PrayerView (Main) ────────────────────────────────────────
 const TABS = [
+  { key: 'all',         label: 'Alle' },
   { key: 'siblings',    label: 'Geschwister' },
   { key: 'communities', label: 'Communities' },
-  { key: 'all',         label: 'Alle' },
 ]
 
 export default function PrayerView() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const [activeTab, setActiveTab] = useState('siblings')
+  const [activeTab, setActiveTab] = useState('all')
   const [showPost, setShowPost] = useState(false)
   const [previewProfile, setPreviewProfile] = useState(null)
   const [showFilter, setShowFilter] = useState(false)
@@ -1414,18 +1415,12 @@ export default function PrayerView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       <PrayerFeedSwitcher active="prayer" />
-      {/* Header */}
-      <div className="bg-bg border-b border-warm-3 pt-3.5 px-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[22px] font-bold text-dark m-0">Gebete</h2>
-          <button
-            onClick={() => setShowPost(true)}
-            className="flex items-center gap-1.5 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3.5 py-2 font-serif text-[13px] font-semibold cursor-pointer shadow-sm transition-all active:scale-95"
-          >
-            <Plus size={16} /> Anliegen
-          </button>
-        </div>
 
+      {/* Twitter-style composer */}
+      <ComposerBox placeholder="Teile ein Gebetsanliegen…" onClick={() => setShowPost(true)} />
+
+      {/* Header */}
+      <div className="bg-bg border-b border-warm-3 pt-3 px-4 sticky top-0 z-10">
         {/* Tab-Leiste + Filter */}
         <div className="flex items-center gap-2">
           <div className="flex gap-2 flex-1">

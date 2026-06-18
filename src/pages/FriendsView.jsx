@@ -10,6 +10,7 @@ import { useToast } from '../context/ToastContext'
 import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
+import ComposerBox from '../components/layout/ComposerBox'
 
 // ─── Avatar ────────────────────────────────────────────────
 function Avatar({ name, size = 40, isChristian, avatarUrl }) {
@@ -1040,7 +1041,7 @@ function FeedAvatar({ profile, size = 36 }) {
 }
 
 // ─── Post Card ───────────────────────────────────────────────
-function PostCard({ post, currentUserId, onReact, onDelete, onClick }) {
+export function PostCard({ post, currentUserId, onReact, onDelete, onClick }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
@@ -1135,7 +1136,7 @@ function PostCard({ post, currentUserId, onReact, onDelete, onClick }) {
           <img src={post.photo_url} alt="" style={{ width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 10, marginBottom: 8, display: 'block' }} />
         )}
 
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: post.type === 'question' ? 15 : 14 }}>
+        <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: post.type === 'question' ? 15 : 14 }}>
           {displayBody}
         </p>
         {bodyLong && (
@@ -1182,7 +1183,7 @@ function PostCard({ post, currentUserId, onReact, onDelete, onClick }) {
 }
 
 // ─── Create Post Sheet ───────────────────────────────────────
-function CreatePostSheet({ onClose, onSubmit }) {
+export function CreatePostSheet({ onClose, onSubmit }) {
   const { myCommunities } = useCommunities()
   const [step, setStep] = useState(1) // 1=type, 2=content, 3=visibility
   const [type, setType] = useState(null)
@@ -1338,8 +1339,7 @@ function FeedTab() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const [activeFilter, setActiveFilter] = useState('all')
-  const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost } = useFeed(activeFilter)
+  const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost } = useFeed('all')
   const [showCreate, setShowCreate] = useState(false)
   const loaderRef = useRef(null)
 
@@ -1364,34 +1364,9 @@ function FeedTab() {
 
   return (
     <div>
-      {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Feed</h3>
-        <button
-          onClick={() => setShowCreate(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-        >
-          <Plus size={14} /> Post erstellen
-        </button>
-      </div>
-
-      {/* Filter chips */}
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }} className="hide-scrollbar">
-        {FILTER_OPTIONS.map(f => (
-          <button
-            key={f.key}
-            onClick={() => setActiveFilter(f.key)}
-            style={{
-              flexShrink: 0, padding: '6px 14px', borderRadius: 20,
-              border: `1.5px solid ${activeFilter === f.key ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
-              backgroundColor: activeFilter === f.key ? 'rgba(74,103,65,0.1)' : 'transparent',
-              color: activeFilter === f.key ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
-              fontFamily: 'Lora, serif', fontSize: 12, fontWeight: activeFilter === f.key ? 700 : 400, cursor: 'pointer',
-            }}
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* Twitter-style composer */}
+      <div style={{ marginBottom: 14 }}>
+        <ComposerBox placeholder="Was möchtest du teilen?" onClick={() => setShowCreate(true)} />
       </div>
 
       {/* Loading skeleton */}
@@ -1453,12 +1428,14 @@ export default function FriendsView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {activeTab === 'feed' && <PrayerFeedSwitcher active="feed" />}
-      <div className="bg-bg border-b border-warm-3 pt-4 px-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-serif text-[22px] font-bold text-dark m-0">
-            Geschwister
-          </h2>
-        </div>
+      <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10" style={{ paddingTop: activeTab === 'feed' ? 8 : 16 }}>
+        {activeTab !== 'feed' && (
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[22px] font-bold text-dark m-0">
+              Geschwister
+            </h2>
+          </div>
+        )}
         <div className="flex gap-2">
           {[{ key: 'feed', label: 'Feed' }, { key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }, { key: 'chats', label: 'Chats' }].map(t => (
             <button

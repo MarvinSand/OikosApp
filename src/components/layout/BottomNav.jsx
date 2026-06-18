@@ -3,7 +3,7 @@ import { Home, BookOpen, Globe, BookMarked, User } from 'lucide-react'
 
 const tabs = [
   { path: '/',             icon: Home,       label: 'Home'         },
-  { path: '/prayer',       icon: BookOpen,   label: 'Gebet'        },
+  { path: '/prayer',       icon: BookOpen,   label: 'For You'      },
   { path: '/worldmap',     icon: Globe,      label: 'Weltkarte',   featured: true },
   { path: '/discipleship', icon: BookMarked, label: 'Jüngerschaft' },
   { path: '/profile',      icon: User,       label: 'Profil'       },
