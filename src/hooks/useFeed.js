@@ -101,6 +101,7 @@ export function useFeed(filter = 'all') {
    */
   async function createPost({
     body,
+    title = null,
     category,
     visibilityMode = 'public',
     communityIds = [],
@@ -134,6 +135,7 @@ export function useFeed(filter = 'all') {
       author_id: user.id,
       type: photo_url ? 'photo' : legacyType,
       category,
+      title: title || null,
       body,
       photo_url,
       bible_reference: bibleReference,

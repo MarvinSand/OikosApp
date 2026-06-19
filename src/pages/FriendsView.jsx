@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2 } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
@@ -10,7 +10,6 @@ import { useToast } from '../context/ToastContext'
 import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
-import InlineComposer from '../components/feed/InlineComposer'
 
 // ─── Avatar ────────────────────────────────────────────────
 function Avatar({ name, size = 40, isChristian, avatarUrl }) {
@@ -1334,6 +1333,311 @@ export function CreatePostSheet({ onClose, onSubmit }) {
   )
 }
 
+// ─── FeedPostSheet ───────────────────────────────────────────
+
+const FEED_CATEGORIES = [
+  { key: 'bibelstelle', label: 'Bibelstelle', emoji: '📖' },
+  { key: 'zeugnis',     label: 'Zeugnis',     emoji: '🙌' },
+  { key: 'frage',       label: 'Frage',       emoji: '❓' },
+  { key: 'meilenstein', label: 'Meilenstein', emoji: '🏔' },
+  { key: 'ermutigung',  label: 'Ermutigung',  emoji: '💛' },
+  { key: 'sonstiges',   label: 'Sonstiges',   emoji: '💬' },
+]
+
+const FEED_VISIBILITY = [
+  { key: 'public',           label: 'Öffentlich',              icon: Globe,      sub: null },
+  { key: 'communities',      label: 'Community',               icon: Users,      sub: 'community' },
+  { key: 'siblings',         label: 'Meine Geschwister',       icon: UserCheck,  sub: null },
+  { key: 'specific_include', label: 'Ausgewählte Geschwister', icon: Users,      sub: 'siblings' },
+]
+
+function SiblingPickerFeed({ selected, onChange }) {
+  const { user } = useAuth()
+  const [query, setQuery] = useState('')
+  const [siblings, setSiblings] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+    ;(async () => {
+      const { data: friendships } = await supabase
+        .from('friendships')
+        .select('requester_id, addressee_id')
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .eq('status', 'accepted')
+      const ids = (friendships || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
+      if (ids.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles').select('id, username, full_name, avatar_url').in('id', ids).order('full_name')
+        setSiblings(profiles || [])
+      }
+      setLoading(false)
+    })()
+  }, [user?.id])
+
+  const filtered = siblings.filter(s =>
+    (s.full_name || s.username || '').toLowerCase().includes(query.toLowerCase())
+  )
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 10, marginBottom: 10, backgroundColor: 'var(--color-bg)' }}>
+        <Search size={14} color="var(--color-text-tertiary)" />
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Geschwister suchen…"
+          style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, backgroundColor: 'transparent', color: 'var(--color-text)' }} />
+      </div>
+      {loading && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '12px 0' }}>Lade…</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+        {filtered.map(s => {
+          const checked = selected.includes(s.id)
+          const name = s.full_name || s.username || '?'
+          const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+          return (
+            <button key={s.id} onClick={() => onChange(checked ? selected.filter(id => id !== s.id) : [...selected, s.id])}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, textAlign: 'left', border: `1.5px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)10' : 'var(--color-bg)', cursor: 'pointer' }}
+            >
+              {s.avatar_url
+                ? <img src={s.avatar_url} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                : <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, backgroundColor: 'var(--color-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)' }}>{initials}</div>
+              }
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{name}</span>
+              <div style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: `2px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {checked && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
+              </div>
+            </button>
+          )
+        })}
+        {!loading && filtered.length === 0 && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '12px 0' }}>Keine gefunden</p>}
+      </div>
+    </div>
+  )
+}
+
+function FeedPostSheet({ onClose, onSubmit }) {
+  const { myCommunities } = useCommunities()
+  // steps: 1=visibility, 2=sub-select (community/siblings), 3=category, 4=content
+  const [step, setStep] = useState(1)
+  const [visibility, setVisibility] = useState(null)
+  const [communityIds, setCommunityIds] = useState([])
+  const [visibilityUserIds, setVisibilityUserIds] = useState([])
+  const [category, setCategory] = useState(null)
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [photoFile, setPhotoFile] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const fileRef = useRef(null)
+  const textareaRef = useRef(null)
+
+  useEffect(() => {
+    if (!photoFile) { setPhotoPreview(null); return }
+    const url = URL.createObjectURL(photoFile)
+    setPhotoPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [photoFile])
+
+  useEffect(() => {
+    if (!textareaRef.current) return
+    textareaRef.current.style.height = 'auto'
+    textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
+  }, [body])
+
+  const hasSubStep = visibility === 'communities' || visibility === 'specific_include'
+  const totalSteps = hasSubStep ? 4 : 3
+  const stepBar = step === 1 ? 1 : hasSubStep ? step : step - 1
+
+  function selectVisibility(key) {
+    setVisibility(key)
+    const opt = FEED_VISIBILITY.find(o => o.key === key)
+    setStep(opt?.sub ? 2 : 3)
+  }
+
+  async function handleSubmit() {
+    if (!body.trim() || !category || submitting) return
+    setSubmitting(true)
+    try {
+      await onSubmit({
+        title: title.trim() || null,
+        body: body.trim(),
+        category,
+        visibilityMode: visibility || 'public',
+        communityIds,
+        visibilityUserIds,
+        excludedUserIds: [],
+        photoFile,
+      })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const canPost = body.trim().length > 0 && !!category && !submitting &&
+    (visibility !== 'communities' || communityIds.length > 0) &&
+    (visibility !== 'specific_include' || visibilityUserIds.length > 0)
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: '100%', maxWidth: 448, margin: '0 auto', backgroundColor: 'var(--color-bg)', borderRadius: '20px 20px 0 0', maxHeight: '92dvh', overflowY: 'auto' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px' }}>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-text)' }}>Neuer Beitrag</p>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Fortschrittsbalken */}
+        <div style={{ display: 'flex', gap: 4, padding: '0 16px 16px' }}>
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: stepBar > i ? 'var(--color-accent)' : 'var(--color-border)' }} />
+          ))}
+        </div>
+
+        {/* Schritt 1: Sichtbarkeit */}
+        {step === 1 && (
+          <div style={{ padding: '0 16px 24px' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Wer soll den Beitrag sehen?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {FEED_VISIBILITY.map(o => {
+                const Icon = o.icon
+                return (
+                  <button key={o.key} onClick={() => selectVisibility(o.key)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${visibility === o.key ? 'var(--color-accent)' : 'var(--color-border)'}`, background: visibility === o.key ? 'var(--color-accent)10' : 'var(--color-bg)', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <Icon size={18} color={visibility === o.key ? 'var(--color-accent)' : 'var(--color-text-secondary)'} />
+                    <span style={{ fontSize: 14, fontWeight: 600, color: visibility === o.key ? 'var(--color-accent)' : 'var(--color-text)' }}>{o.label}</span>
+                    {o.sub && <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--color-text-tertiary)' }}>›</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Schritt 2a: Community auswählen */}
+        {step === 2 && visibility === 'communities' && (
+          <div style={{ padding: '0 16px 24px' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Welche Community?</p>
+            {myCommunities.length === 0
+              ? <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '24px 0' }}>Du bist noch in keiner Community.</p>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {myCommunities.map(c => {
+                    const checked = communityIds.includes(c.id)
+                    return (
+                      <button key={c.id} onClick={() => setCommunityIds(checked ? communityIds.filter(x => x !== c.id) : [...communityIds, c.id])}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)10' : 'var(--color-bg)', cursor: 'pointer', textAlign: 'left' }}
+                      >
+                        <span style={{ fontSize: 22 }}>{c.icon || '🏠'}</span>
+                        <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{c.name}</span>
+                        <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {checked && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+            }
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button onClick={() => { setStep(1); setCommunityIds([]) }} style={{ fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Zurück</button>
+              <button onClick={() => setStep(3)} disabled={communityIds.length === 0}
+                style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: communityIds.length > 0 ? 'var(--color-accent)' : 'var(--color-border)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: communityIds.length > 0 ? 'pointer' : 'default' }}>
+                Weiter ({communityIds.length} ausgewählt)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Schritt 2b: Geschwister auswählen */}
+        {step === 2 && visibility === 'specific_include' && (
+          <div style={{ padding: '0 16px 24px' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Welche Geschwister?</p>
+            <SiblingPickerFeed selected={visibilityUserIds} onChange={setVisibilityUserIds} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+              <button onClick={() => { setStep(1); setVisibilityUserIds([]) }} style={{ fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Zurück</button>
+              <button onClick={() => setStep(3)} disabled={visibilityUserIds.length === 0}
+                style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: visibilityUserIds.length > 0 ? 'var(--color-accent)' : 'var(--color-border)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: visibilityUserIds.length > 0 ? 'pointer' : 'default' }}>
+                Weiter ({visibilityUserIds.length} ausgewählt)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Schritt 3: Kategorie */}
+        {step === 3 && (
+          <div style={{ padding: '0 16px 24px' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Worum geht es?</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {FEED_CATEGORIES.map(c => (
+                <button key={c.key} onClick={() => { setCategory(c.key); setStep(4) }}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '16px 12px', borderRadius: 14, border: `1.5px solid ${category === c.key ? 'var(--color-accent)' : 'var(--color-border)'}`, background: category === c.key ? 'var(--color-accent)10' : 'var(--color-bg)', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: 24 }}>{c.emoji}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: category === c.key ? 'var(--color-accent)' : 'var(--color-text)' }}>{c.label}</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setStep(hasSubStep ? 2 : 1)} style={{ marginTop: 16, fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Zurück</button>
+          </div>
+        )}
+
+        {/* Schritt 4: Inhalt */}
+        {step === 4 && (
+          <div style={{ padding: '0 16px 24px' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Dein Beitrag</p>
+
+            {/* Überschrift */}
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)}
+              placeholder="Überschrift (optional)"
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, fontWeight: 600, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
+            />
+
+            {/* Freitext */}
+            <textarea ref={textareaRef} value={body} onChange={e => setBody(e.target.value.slice(0, 1000))}
+              placeholder="Was möchtest du teilen?"
+              rows={4}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', lineHeight: 1.5, resize: 'none', boxSizing: 'border-box' }}
+            />
+            <p style={{ margin: '4px 0 10px', fontSize: 11, color: body.length > 900 ? 'var(--color-error)' : 'var(--color-text-tertiary)', textAlign: 'right' }}>{body.length}/1000</p>
+
+            {/* Bild-Vorschau */}
+            {photoPreview && (
+              <div style={{ position: 'relative', marginBottom: 10 }}>
+                <img src={photoPreview} alt="" style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 12, display: 'block' }} />
+                <button onClick={() => setPhotoFile(null)} style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            {/* Bild/Video hochladen */}
+            <button onClick={() => fileRef.current?.click()}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginBottom: 14, width: '100%' }}
+            >
+              <Image size={16} color="var(--color-text-secondary)" />
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                {photoFile ? photoFile.name : 'Bild oder Video hinzufügen'}
+              </span>
+            </button>
+            <input ref={fileRef} type="file" accept="image/*,video/*" onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = '' }} style={{ display: 'none' }} />
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setStep(3)} style={{ fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Zurück</button>
+              <button onClick={handleSubmit} disabled={!canPost}
+                style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: canPost ? 'var(--color-accent)' : 'var(--color-border)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: canPost ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              >
+                {submitting && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
+                {submitting ? 'Wird geteilt…' : 'Beitrag teilen'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── FeedTab ─────────────────────────────────────────────────
 function FeedTab() {
   const { user } = useAuth()
@@ -1432,53 +1736,14 @@ function FeedTab() {
         +
       </button>
 
-      {/* Composer bottom sheet */}
       {showComposer && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 50,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            display: 'flex', alignItems: 'flex-end',
+        <FeedPostSheet
+          onClose={() => setShowComposer(false)}
+          onSubmit={async (data) => {
+            setShowComposer(false)
+            await handleCreate(data)
           }}
-          onClick={e => { if (e.target === e.currentTarget) setShowComposer(false) }}
-        >
-          <div style={{
-            width: '100%',
-            maxWidth: 448,
-            margin: '0 auto',
-            backgroundColor: 'var(--color-bg)',
-            borderRadius: '20px 20px 0 0',
-            maxHeight: '90dvh',
-            overflowY: 'auto',
-          }}>
-            {/* Sheet header */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 16px 0',
-            }}>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>
-                Neuer Beitrag
-              </p>
-              <button
-                onClick={() => setShowComposer(false)}
-                style={{
-                  width: 30, height: 30, borderRadius: '50%',
-                  border: 'none', background: 'var(--color-bg-secondary)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'var(--color-text-secondary)', fontSize: 18,
-                }}
-              >
-                ×
-              </button>
-            </div>
-            <InlineComposer
-              onSubmit={async (data) => {
-                setShowComposer(false)
-                await handleCreate(data)
-              }}
-            />
-          </div>
-        </div>
+        />
       )}
     </div>
   )
