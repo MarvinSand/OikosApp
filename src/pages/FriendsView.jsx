@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2 } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
@@ -1646,6 +1646,9 @@ function FeedTab() {
   const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost } = useFeed('all')
   const loaderRef = useRef(null)
   const [showComposer, setShowComposer] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [activeCategories, setActiveCategories] = useState([])
 
   // Infinite scroll via IntersectionObserver
   useEffect(() => {
@@ -1667,8 +1670,136 @@ function FeedTab() {
     showToast('Post gelöscht', 'info')
   }
 
+  function toggleCategory(key) {
+    setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])
+  }
+
+  const q = searchQuery.trim().toLowerCase()
+  const filteredPosts = posts.filter(p => {
+    if (activeCategories.length > 0 && !activeCategories.includes(p.category)) return false
+    if (!q) return true
+    const haystack = [
+      p.title || '',
+      p.body || '',
+      p.bible_reference || '',
+      p.bible_verse || '',
+      p.profiles?.full_name || '',
+      p.profiles?.username || '',
+    ].join(' ').toLowerCase()
+    return haystack.includes(q)
+  })
+
+  const hasActiveFilter = activeCategories.length > 0 || q.length > 0
+
   return (
     <div style={{ position: 'relative' }}>
+      {/* Search + filter */}
+      <div style={{
+        backgroundColor: 'var(--color-bg)',
+        padding: '12px 16px 8px',
+        borderBottom: '1px solid var(--color-border)',
+      }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={15} color="var(--color-text-tertiary)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Post suchen…"
+              style={{
+                width: '100%', padding: '9px 36px 9px 34px', borderRadius: 12,
+                border: '1.5px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)',
+                fontSize: 14, color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+            {q && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  width: 22, height: 22, borderRadius: '50%', border: 'none',
+                  background: 'var(--color-border)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <X size={12} color="var(--color-text-secondary)" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            aria-label="Filter"
+            style={{
+              position: 'relative',
+              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              border: `1.5px solid ${showFilters || activeCategories.length ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              backgroundColor: showFilters || activeCategories.length ? 'rgba(74,103,65,0.1)' : 'var(--color-bg-secondary)',
+              color: showFilters || activeCategories.length ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <SlidersHorizontal size={17} />
+            {activeCategories.length > 0 && (
+              <span style={{
+                position: 'absolute', top: -4, right: -4,
+                minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
+                backgroundColor: 'var(--color-accent)', color: '#fff',
+                fontSize: 10, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1.5px solid var(--color-bg)',
+              }}>
+                {activeCategories.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {showFilters && (
+          <div style={{ paddingTop: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>
+              Kategorien
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {FEED_CATEGORIES.map(c => {
+                const active = activeCategories.includes(c.key)
+                return (
+                  <button
+                    key={c.key}
+                    onClick={() => toggleCategory(c.key)}
+                    style={{
+                      padding: '6px 11px', borderRadius: 999,
+                      border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                      backgroundColor: active ? 'rgba(74,103,65,0.12)' : 'var(--color-bg-secondary)',
+                      color: active ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                    }}
+                  >
+                    <span>{c.emoji}</span>
+                    <span>{c.label}</span>
+                  </button>
+                )
+              })}
+              {activeCategories.length > 0 && (
+                <button
+                  onClick={() => setActiveCategories([])}
+                  style={{
+                    padding: '6px 11px', borderRadius: 999,
+                    border: '1.5px solid var(--color-border)',
+                    backgroundColor: 'transparent', color: 'var(--color-text-muted)',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Zurücksetzen
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div style={{ padding: '14px 16px 0' }}>
       {/* Loading skeleton */}
       {loading && (
@@ -1680,7 +1811,7 @@ function FeedTab() {
       )}
 
       {/* Posts */}
-      {!loading && posts.length === 0 && (
+      {!loading && filteredPosts.length === 0 && posts.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
           <p style={{ fontSize: 32, margin: '0 0 10px' }}>🌱</p>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
@@ -1689,7 +1820,16 @@ function FeedTab() {
         </div>
       )}
 
-      {!loading && posts.map(post => (
+      {!loading && filteredPosts.length === 0 && posts.length > 0 && hasActiveFilter && (
+        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <p style={{ fontSize: 28, margin: '0 0 10px' }}>🔍</p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
+            Keine Posts gefunden. Versuche andere Filter.
+          </p>
+        </div>
+      )}
+
+      {!loading && filteredPosts.map(post => (
         <PostCard
           key={post.id}
           post={post}
