@@ -1341,6 +1341,7 @@ function FeedTab() {
   const { showToast } = useToast()
   const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost } = useFeed('all')
   const loaderRef = useRef(null)
+  const [showComposer, setShowComposer] = useState(false)
 
   // Infinite scroll via IntersectionObserver
   useEffect(() => {
@@ -1363,10 +1364,7 @@ function FeedTab() {
   }
 
   return (
-    <div>
-      {/* Twitter-style inline composer */}
-      <InlineComposer onSubmit={handleCreate} />
-
+    <div style={{ position: 'relative' }}>
       <div style={{ padding: '14px 16px 0' }}>
       {/* Loading skeleton */}
       {loading && (
@@ -1406,6 +1404,82 @@ function FeedTab() {
         </p>
       )}
       </div>
+
+      {/* FAB – neuen Beitrag erstellen */}
+      <button
+        onClick={() => setShowComposer(true)}
+        aria-label="Neuen Beitrag erstellen"
+        style={{
+          position: 'fixed',
+          bottom: 80,
+          right: 20,
+          width: 52,
+          height: 52,
+          borderRadius: '50%',
+          backgroundColor: 'var(--color-accent)',
+          color: '#fff',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 26,
+          lineHeight: 1,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+          zIndex: 40,
+        }}
+      >
+        +
+      </button>
+
+      {/* Composer bottom sheet */}
+      {showComposer && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'flex-end',
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setShowComposer(false) }}
+        >
+          <div style={{
+            width: '100%',
+            maxWidth: 448,
+            margin: '0 auto',
+            backgroundColor: 'var(--color-bg)',
+            borderRadius: '20px 20px 0 0',
+            maxHeight: '90dvh',
+            overflowY: 'auto',
+          }}>
+            {/* Sheet header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 16px 0',
+            }}>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>
+                Neuer Beitrag
+              </p>
+              <button
+                onClick={() => setShowComposer(false)}
+                style={{
+                  width: 30, height: 30, borderRadius: '50%',
+                  border: 'none', background: 'var(--color-bg-secondary)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--color-text-secondary)', fontSize: 18,
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <InlineComposer
+              onSubmit={async (data) => {
+                setShowComposer(false)
+                await handleCreate(data)
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
