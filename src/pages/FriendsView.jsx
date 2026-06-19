@@ -1506,7 +1506,7 @@ export default function FriendsView() {
             </h2>
           </div>
           <div className="flex gap-2">
-            {[{ key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }, { key: 'chats', label: 'Chats' }].map(t => (
+            {[{ key: 'chats', label: 'Chats' }, { key: 'communities', label: 'Communities' }, { key: 'friends', label: 'Geschwister' }].map(t => (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
