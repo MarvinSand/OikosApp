@@ -15,9 +15,16 @@ import AddressAutocomplete from '../common/AddressAutocomplete'
 import AdvancedMarker from './AdvancedMarker'
 
 const C = {
-  accent: '#5AC8FA', accentDark: '#0A84FF', accentLight: '#E5F6FE',
-  text: '#000000', textSec: '#6E6E73', textTer: '#AEAEB2',
-  border: '#E5E5EA', bg: '#FFFFFF', bgSec: '#F5F5F7', error: '#FF3B30',
+  accent: 'var(--color-accent)',
+  accentDark: 'var(--color-accent-dark)',
+  accentLight: 'var(--color-accent-light)',
+  text: 'var(--color-text)',
+  textSec: 'var(--color-text-secondary)',
+  textTer: 'var(--color-text-tertiary)',
+  border: 'var(--color-border)',
+  bg: 'var(--color-bg)',
+  bgSec: 'var(--color-bg-secondary)',
+  error: 'var(--color-error)',
 }
 
 // Feste Event-Arten mit zugeordnetem Symbol – erscheinen so auf der Karte
