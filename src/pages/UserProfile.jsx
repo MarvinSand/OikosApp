@@ -58,7 +58,7 @@ function Avatar({ profile, size = 64 }) {
         ? 'linear-gradient(135deg, var(--color-accent), #2ECC71)'
         : 'linear-gradient(135deg, var(--color-warm-1), var(--color-gold))',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.3, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.3, fontWeight: 700,
       boxShadow: '0 4px 14px rgba(58,46,36,0.18)',
     }}>{initials}</div>
   )
@@ -82,7 +82,7 @@ function SmallAvatar({ profile, size = 28 }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: profile?.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
       border: '1.5px solid white', marginLeft: -8,
     }}>{initials}</div>
   )
@@ -259,7 +259,7 @@ function PrayerSection({ targetId, currentUserId }) {
                 <button
                   onClick={() => handlePray(req)}
                   disabled={prayed}
-                  style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', cursor: prayed ? 'default' : 'pointer', backgroundColor: prayed ? 'var(--color-warm-4)' : 'var(--color-warm-1)', color: prayed ? 'var(--color-text-muted)' : 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 500 }}
+                  style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', cursor: prayed ? 'default' : 'pointer', backgroundColor: prayed ? 'var(--color-warm-4)' : 'var(--color-warm-1)', color: prayed ? 'var(--color-text-muted)' : 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 500 }}
                 >
                   {prayed ? '🙏 Gebetet ✓' : '🙏 Ich habe gebetet'}
                 </button>
@@ -503,7 +503,7 @@ export default function UserProfile() {
       </button>
     )
     return (
-      <button onClick={handleFriendAction} disabled={actionLoading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+      <button onClick={handleFriendAction} disabled={actionLoading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
         <UserPlus size={15} /> {actionLoading ? '…' : 'Anfragen'}
       </button>
     )
@@ -546,7 +546,7 @@ export default function UserProfile() {
                 </button>
               </div>
             ))}
-            <button onClick={() => setShowNotifPrefs(false)} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 20, backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setShowNotifPrefs(false)} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 20, backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
               Fertig
             </button>
           </div>

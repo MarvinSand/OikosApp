@@ -16,7 +16,7 @@ function StepIndicator({ stageStatuses, currentStage }) {
               width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               backgroundColor: status === 'done' ? 'var(--color-gold)' : isCurrent ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
-              color: status === 'done' || isCurrent ? 'white' : 'var(--color-text-muted)',
+              color: status === 'done' || isCurrent ? 'var(--color-bg)' : 'var(--color-text-muted)',
               fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700,
               animation: isCurrent ? 'stagePulse 2s ease-in-out infinite' : 'none',
               transition: 'all 0.3s',
@@ -171,7 +171,7 @@ function CompletedStageRow({ stage, entry, isOwner, onSaveNote }) {
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                 <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}>Abbrechen</button>
-                <button onClick={handleSaveNote} disabled={saving} style={{ flex: 2, padding: '8px 0', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}>Speichern</button>
+                <button onClick={handleSaveNote} disabled={saving} style={{ flex: 2, padding: '8px 0', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}>Speichern</button>
               </div>
             </>
           ) : (

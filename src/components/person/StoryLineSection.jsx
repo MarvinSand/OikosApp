@@ -73,7 +73,7 @@ function EntryForm({ initial, onSave, onCancel }) {
           <button
             onClick={handleSave}
             disabled={!text.trim() || saving}
-            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}
+            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}
           >
             {saving ? '…' : 'Speichern'}
           </button>

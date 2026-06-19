@@ -39,7 +39,7 @@ function Avatar({ name, size = 40, isChristian }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
     }}>
       {initials}
     </div>
@@ -473,7 +473,7 @@ export default function ChatView() {
           justifyContent: 'center',
           boxShadow: '0 4px 16px rgba(58,46,36,0.25)',
           zIndex: 10,
-          color: 'white',
+          color: 'var(--color-bg)',
         }}
       >
         <Plus size={24} />

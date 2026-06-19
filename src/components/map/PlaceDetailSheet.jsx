@@ -160,7 +160,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
 
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
-                <button onClick={handleSaveEdit} style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Speichern</button>
+                <button onClick={handleSaveEdit} style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Speichern</button>
               </div>
             </div>
           )}
@@ -171,7 +171,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
               <p style={sectionLabel}>👥 Personen hier ({connectedPeople.length})</p>
               <button
                 onClick={() => setShowConnectPanel(v => !v)}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
               >
                 <Plus size={12} /> Person verbinden
               </button>
@@ -185,7 +185,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
                   return (
                     <div key={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                       <div style={{ position: 'relative' }}>
-                        <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700 }}>
                           {initials}
                         </div>
                         <button
@@ -226,7 +226,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
                     />
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => { setConnectTarget(null); setPersonSearch('') }} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
-                      <button onClick={handleConnect} style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Verbinden</button>
+                      <button onClick={handleConnect} style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Verbinden</button>
                     </div>
                   </>
                 ) : (
@@ -238,7 +238,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
                     )}
                     {filteredPeople.map(p => (
                       <button key={p.id} onClick={() => setConnectTarget(p)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left' }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                           {(p.name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
                         <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)' }}>{p.name}</span>
@@ -372,7 +372,7 @@ export function AddPlaceSheet({ onClose, onCreate }) {
         <button
           onClick={handleCreate}
           disabled={!name.trim() || saving}
-          style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed' }}
+          style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed' }}
         >
           {saving ? 'Erstelle…' : 'Ort erstellen'}
         </button>

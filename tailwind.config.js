@@ -39,12 +39,19 @@ export default {
         error: '#FF3B30',
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Helvetica Neue', 'sans-serif'],
-        serif: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Helvetica Neue', 'sans-serif'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Helvetica Neue', 'sans-serif'],
+        serif: ['Lora', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
       },
       boxShadow: {
         'glass': '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
         'glass-sm': '0 1px 1px 0 rgba(0, 0, 0, 0.03)',
+        // Premium elevation scale (theme-aware via CSS variables)
+        'e-xs': 'var(--shadow-xs)',
+        'e-sm': 'var(--shadow-sm)',
+        'e-md': 'var(--shadow-md)',
+        'e-lg': 'var(--shadow-lg)',
+        'accent': 'var(--shadow-accent)',
+        'bubble': 'var(--shadow-bubble)',
       },
       borderRadius: {
         'xl': '12px',

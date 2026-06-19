@@ -198,7 +198,7 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
             width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 8,
             cursor: (!name.trim() || saving || !isDirty) ? 'not-allowed' : 'pointer',
             backgroundColor: isDirty && name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
-            color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600,
+            color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600,
           }}
         >
           {saving ? 'Speichere…' : 'Speichern'}

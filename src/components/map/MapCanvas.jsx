@@ -792,7 +792,7 @@ export default function MapCanvas({
               style={{
                 padding: '7px 18px', borderRadius: 10,
                 border: 'none', backgroundColor: 'var(--color-warm-1)',
-                color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13,
                 fontWeight: 600, cursor: 'pointer',
                 boxShadow: '0 2px 10px rgba(58,46,36,0.22)',
               }}
@@ -1375,7 +1375,7 @@ export default function MapCanvas({
                 style={{
                   flex: 2, padding: '10px 0', borderRadius: 10,
                   border: 'none', backgroundColor: 'var(--color-warm-1)',
-                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13,
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
@@ -1440,7 +1440,7 @@ export default function MapCanvas({
                   flex: 2, padding: '10px 0', borderRadius: 10,
                   border: 'none',
                   backgroundColor: addPersonName.trim() && !addingPersonBusy ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
-                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13,
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
@@ -1564,7 +1564,7 @@ export default function MapCanvas({
                   width: '100%',
                   padding: '10px 0', borderRadius: 10,
                   border: 'none', backgroundColor: 'var(--color-warm-1)',
-                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13,
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
@@ -1647,7 +1647,7 @@ export default function MapCanvas({
                   width: '100%',
                   padding: '10px 0', borderRadius: 10,
                   border: 'none', backgroundColor: 'var(--color-warm-1)',
-                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13,
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
@@ -1739,7 +1739,7 @@ export default function MapCanvas({
                 style={{
                   width: '100%', padding: '10px 0', borderRadius: 10,
                   border: 'none', backgroundColor: 'var(--color-warm-1)',
-                  color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                  color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13,
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
