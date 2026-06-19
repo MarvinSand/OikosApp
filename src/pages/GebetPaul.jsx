@@ -440,16 +440,9 @@ function CreatePrayerSheet({ onClose, onCreate }) {
                     }}
                   >
                     <Icon size={18} color={visibility === o.key ? 'var(--color-accent)' : 'var(--color-text-secondary)'} />
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: visibility === o.key ? 'var(--color-accent)' : 'var(--color-text)' }}>
-                        {o.label}
-                      </p>
-                      {(o.key === 'community' || o.key === 'specific') && (
-                        <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                          {o.key === 'community' ? 'Community auswählen' : 'Geschwister auswählen'}
-                        </p>
-                      )}
-                    </div>
+                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: visibility === o.key ? 'var(--color-accent)' : 'var(--color-text)' }}>
+                      {o.label}
+                    </span>
                     {(o.key === 'community' || o.key === 'specific') && (
                       <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>›</span>
                     )}
