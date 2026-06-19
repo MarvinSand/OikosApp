@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 const POST_SELECT = `
-  id, author_id, type, title, body, photo_url,
-  bible_reference, bible_verse, is_public, created_at,
+  id, author_id, type, category, title, body, photo_url,
+  bible_reference, bible_verse, is_public, visibility_mode,
+  visibility_user_ids, excluded_user_ids, created_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 

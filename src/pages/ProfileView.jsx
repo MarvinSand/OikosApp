@@ -10,10 +10,12 @@ import { useProfile } from '../hooks/useProfile'
 import { useProfileTabs } from '../hooks/useProfileTabs'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePublicMap } from '../hooks/usePublicMap'
+import { useFriendships } from '../hooks/useFriendships'
 import { useToast } from '../context/ToastContext'
 import { PostCard } from './FriendsView'
 import MapCanvas from '../components/map/MapCanvas'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
+import ProfileListOverlay from '../components/feed/ProfileListOverlay'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function getInitials(name) {
@@ -361,12 +363,14 @@ export default function ProfileView() {
     loading: tabsLoading, reload, reactToPost, deletePost,
   } = useProfileTabs(user?.id)
   const { updateMap, deleteMap } = useOikosMaps()
+  const { friends } = useFriendships()
   const { showToast } = useToast()
   const fileInputRef = useRef(null)
   const [activeTab, setActiveTab] = useState('maps')
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [selectedMapId, setSelectedMapId] = useState(null)
   const [settingsMap, setSettingsMap] = useState(null)
+  const [overlay, setOverlay] = useState(null) // 'siblings' | 'communities' | null
 
   async function handleAvatarChange(e) {
     const file = e.target.files?.[0]
@@ -405,7 +409,10 @@ export default function ProfileView() {
   const displayName = profile?.full_name || profile?.username || '—'
 
   return (
-    <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
+    <div
+      className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full"
+      style={{ position: 'relative' }}
+    >
       {/* Header bar */}
       <header
         className="flex items-center justify-between px-4"
@@ -477,10 +484,10 @@ export default function ProfileView() {
             />
           </div>
 
-          {/* Connections + communities */}
-          <div className="flex-1 flex items-start gap-4">
+          {/* Counts (siblings + communities) */}
+          <div className="flex-1 flex items-start gap-6">
             <button
-              onClick={() => navigate('/friends?tab=friends')}
+              onClick={() => setOverlay('siblings')}
               className="flex flex-col items-center justify-center"
               style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '8px 4px' }}
             >
@@ -492,28 +499,18 @@ export default function ProfileView() {
               </span>
             </button>
 
-            {publicCommunities.length > 0 && (
-              <div style={{ flex: 1, paddingTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {publicCommunities.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => navigate(`/community/${c.id}`)}
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      padding: '4px 10px',
-                      borderRadius: 20,
-                      border: '1px solid var(--color-border)',
-                      backgroundColor: 'var(--color-accent-light)',
-                      color: 'var(--color-accent-dark)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    🏘 {c.name}
-                  </button>
-                ))}
-              </div>
-            )}
+            <button
+              onClick={() => setOverlay('communities')}
+              className="flex flex-col items-center justify-center"
+              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '8px 4px' }}
+            >
+              <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>
+                {publicCommunities.length}
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                Communities
+              </span>
+            </button>
           </div>
         </div>
 
@@ -647,6 +644,44 @@ export default function ProfileView() {
           updateMap={updateMap}
           deleteMap={async (id) => { await deleteMap(id); setSelectedMapId(null); reload() }}
           onClose={() => { setSettingsMap(null); reload() }}
+        />
+      )}
+
+      {overlay === 'siblings' && (
+        <ProfileListOverlay
+          title={`Geschwister (${friends.length})`}
+          items={friends
+            .map(f => ({
+              id: f.otherUser?.id,
+              title: f.otherUser?.full_name || f.otherUser?.username || '—',
+              subtitle: f.otherUser?.username ? `@${f.otherUser.username}` : null,
+              avatarUrl: f.otherUser?.avatar_url,
+            }))
+            .filter(it => it.id)
+            .sort((a, b) => a.title.localeCompare(b.title, 'de'))}
+          emptyText="Noch keine Geschwister verbunden"
+          onClose={() => setOverlay(null)}
+          onSelect={(it) => {
+            setOverlay(null)
+            navigate(`/user/${it.id}`)
+          }}
+        />
+      )}
+
+      {overlay === 'communities' && (
+        <ProfileListOverlay
+          title={`Communities (${publicCommunities.length})`}
+          items={publicCommunities.map(c => ({
+            id: c.id,
+            title: c.name,
+            subtitle: 'Öffentliche Community',
+          }))}
+          emptyText="In keiner öffentlichen Community"
+          onClose={() => setOverlay(null)}
+          onSelect={(it) => {
+            setOverlay(null)
+            navigate(`/community/${it.id}`)
+          }}
         />
       )}
 

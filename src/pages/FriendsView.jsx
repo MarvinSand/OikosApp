@@ -10,7 +10,7 @@ import { useToast } from '../context/ToastContext'
 import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
-import ComposerBox from '../components/layout/ComposerBox'
+import InlineComposer from '../components/feed/InlineComposer'
 
 // ─── Avatar ────────────────────────────────────────────────
 function Avatar({ name, size = 40, isChristian, avatarUrl }) {
@@ -1340,7 +1340,6 @@ function FeedTab() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost } = useFeed('all')
-  const [showCreate, setShowCreate] = useState(false)
   const loaderRef = useRef(null)
 
   // Infinite scroll via IntersectionObserver
@@ -1352,8 +1351,9 @@ function FeedTab() {
   }, [loadMore])
 
   async function handleCreate(data) {
-    await createPost(data)
-    showToast('Post geteilt 🙌')
+    const res = await createPost(data)
+    if (res) showToast('Post geteilt 🙌')
+    else showToast('Fehler beim Posten', 'error')
   }
 
   async function handleDelete(postId) {
@@ -1364,11 +1364,10 @@ function FeedTab() {
 
   return (
     <div>
-      {/* Twitter-style composer */}
-      <div style={{ marginBottom: 14 }}>
-        <ComposerBox placeholder="Was möchtest du teilen?" onClick={() => setShowCreate(true)} />
-      </div>
+      {/* Twitter-style inline composer */}
+      <InlineComposer onSubmit={handleCreate} />
 
+      <div style={{ padding: '14px 16px 0' }}>
       {/* Loading skeleton */}
       {loading && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1402,14 +1401,11 @@ function FeedTab() {
       {/* Infinite scroll sentinel */}
       {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}
       {!loading && !hasMore && posts.length > 0 && (
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
+        <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', textAlign: 'center', padding: '12px 0' }}>
           Keine weiteren Posts.
         </p>
       )}
-
-      {showCreate && (
-        <CreatePostSheet onClose={() => setShowCreate(false)} onSubmit={handleCreate} />
-      )}
+      </div>
     </div>
   )
 }
@@ -1428,34 +1424,37 @@ export default function FriendsView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {activeTab === 'feed' && <PrayerFeedSwitcher active="feed" />}
-      <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10" style={{ paddingTop: activeTab === 'feed' ? 8 : 16 }}>
-        {activeTab !== 'feed' && (
+      {activeTab !== 'feed' && (
+        <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10" style={{ paddingTop: 16 }}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[22px] font-bold text-dark m-0">
               Geschwister
             </h2>
           </div>
-        )}
-        <div className="flex gap-2">
-          {[{ key: 'feed', label: 'Feed' }, { key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }, { key: 'chats', label: 'Chats' }].map(t => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`flex-1 pb-2.5 border-b-2 transition-all duration-200 font-serif text-[14.5px] relative
-                ${activeTab === t.key 
-                  ? 'border-warm-1 text-warm-1 font-bold' 
-                  : 'border-transparent text-dark-muted hover:text-dark font-medium'}`}
-            >
-              {t.label}
-              {t.key === 'chats' && hasUnread && (
-                <div className="absolute top-1 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
-              )}
-            </button>
-          ))}
+          <div className="flex gap-2">
+            {[{ key: 'friends', label: 'Geschwister' }, { key: 'communities', label: 'Communities' }, { key: 'chats', label: 'Chats' }].map(t => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex-1 pb-2.5 border-b-2 transition-all duration-200 text-[14.5px] relative
+                  ${activeTab === t.key
+                    ? 'font-bold'
+                    : 'border-transparent text-dark-muted hover:text-dark font-medium'}`}
+                style={activeTab === t.key
+                  ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }
+                  : undefined}
+              >
+                {t.label}
+                {t.key === 'chats' && hasUnread && (
+                  <div className="absolute top-1 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div style={{ padding: '20px 16px' }}>
+      <div style={activeTab === 'feed' ? { padding: 0 } : { padding: '20px 16px' }}>
         {activeTab === 'feed' && <FeedTab />}
         {activeTab === 'friends' && <FriendsTab />}
         {activeTab === 'communities' && <CommunitiesTab onCreateOpen={() => setShowCreate(true)} onJoinOpen={() => setShowJoin(true)} />}

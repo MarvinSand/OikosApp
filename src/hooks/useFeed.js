@@ -5,8 +5,9 @@ import { useAuth } from './useAuth'
 const PAGE_SIZE = 20
 
 const POST_SELECT = `
-  id, author_id, type, title, body, photo_url,
-  bible_reference, bible_verse, is_public, created_at, updated_at,
+  id, author_id, type, category, title, body, photo_url,
+  bible_reference, bible_verse, is_public, visibility_mode,
+  visibility_user_ids, excluded_user_ids, created_at, updated_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 
@@ -24,11 +25,11 @@ export function useFeed(filter = 'all') {
       .order('created_at', { ascending: false })
       .range(from, from + PAGE_SIZE - 1)
 
-    if (filter === 'bible')     q = q.eq('type', 'bible')
-    else if (filter === 'testimony') q = q.eq('type', 'testimony')
-    else if (filter === 'question')  q = q.eq('type', 'question')
-    // 'all', 'siblings', 'communities' — all return public posts for now
-    // is_public = true handled by RLS
+    if (filter === 'bibelstelle')  q = q.eq('category', 'bibelstelle')
+    else if (filter === 'zeugnis')      q = q.eq('category', 'zeugnis')
+    else if (filter === 'frage')        q = q.eq('category', 'frage')
+    else if (filter === 'meilenstein')  q = q.eq('category', 'meilenstein')
+    else if (filter === 'ermutigung')   q = q.eq('category', 'ermutigung')
 
     return q
   }, [filter])
@@ -89,45 +90,79 @@ export function useFeed(filter = 'all') {
     }
   }
 
-  async function createPost({ type, body, title, bibleReference, bibleVerse, photoUrl, isPublic = true, communityIds = [] }) {
-    const tempId = `temp-${Date.now()}`
-    const optimistic = {
-      id: tempId, _optimistic: true,
-      author_id: user.id, type, title: title || null,
-      body, photo_url: photoUrl || null,
-      bible_reference: bibleReference || null,
-      bible_verse: bibleVerse || null,
-      is_public: isPublic, created_at: new Date().toISOString(),
-      profiles: null, reactions: [], commentCount: 0,
+  /**
+   * createPost
+   *   body, category (required)
+   *   visibilityMode: 'public' | 'siblings' | 'communities' | 'specific_include'
+   *   communityIds: array (used when visibilityMode = 'communities')
+   *   visibilityUserIds: array (used when visibilityMode = 'specific_include')
+   *   excludedUserIds: array (always applied for filtering)
+   *   photoFile: optional File object → uploaded to feed-photos bucket
+   */
+  async function createPost({
+    body,
+    category,
+    visibilityMode = 'public',
+    communityIds = [],
+    visibilityUserIds = [],
+    excludedUserIds = [],
+    photoFile = null,
+    bibleReference = null,
+    bibleVerse = null,
+  }) {
+    // Step 1: optional photo upload to Supabase Storage
+    let photo_url = null
+    if (photoFile) {
+      try {
+        photo_url = await uploadPhoto(photoFile, user.id)
+      } catch (err) {
+        console.error('Photo upload failed', err)
+      }
     }
-    setPosts(prev => [optimistic, ...prev])
+
+    // Map category → legacy `type` for backwards compatibility with PostCard rendering
+    const legacyType = ({
+      bibelstelle: 'bible',
+      zeugnis:     'testimony',
+      frage:       'question',
+      meilenstein: 'text',
+      ermutigung:  'text',
+      sonstiges:   'text',
+    })[category] || 'text'
+
+    const insertPayload = {
+      author_id: user.id,
+      type: photo_url ? 'photo' : legacyType,
+      category,
+      body,
+      photo_url,
+      bible_reference: bibleReference,
+      bible_verse: bibleVerse,
+      is_public: visibilityMode === 'public', // for legacy RLS fallback
+      visibility_mode: visibilityMode,
+      visibility_user_ids: visibilityMode === 'specific_include' ? visibilityUserIds : [],
+      excluded_user_ids: excludedUserIds,
+    }
 
     const { data, error } = await supabase
       .from('feed_posts')
-      .insert({
-        author_id: user.id, type, title: title || null,
-        body, photo_url: photoUrl || null,
-        bible_reference: bibleReference || null,
-        bible_verse: bibleVerse || null,
-        is_public: isPublic,
-      })
+      .insert(insertPayload)
       .select(POST_SELECT)
       .single()
 
     if (error) {
-      setPosts(prev => prev.filter(p => p.id !== tempId))
+      console.error('Post insert failed', error)
       return null
     }
 
-    // Link to communities if not public
-    if (!isPublic && communityIds.length > 0) {
+    if (visibilityMode === 'communities' && communityIds.length > 0) {
       await supabase
         .from('feed_post_communities')
         .insert(communityIds.map(cid => ({ post_id: data.id, community_id: cid })))
     }
 
     const post = { ...data, reactions: [], commentCount: 0 }
-    setPosts(prev => prev.map(p => p.id === tempId ? post : p))
+    setPosts(prev => [post, ...prev])
     return post
   }
 
@@ -140,7 +175,6 @@ export function useFeed(filter = 'all') {
     const post = posts.find(p => p.id === postId)
     const myReaction = post?.reactions?.find(r => r.user_id === user.id && r.type === type)
 
-    // Optimistic
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p
       const reactions = myReaction
@@ -186,4 +220,39 @@ export function useFeed(filter = 'all') {
     commentOnPost,
     reload: loadPosts,
   }
+}
+
+// ─── Photo upload helper ──────────────────────────────────────
+async function uploadPhoto(file, userId) {
+  const compressed = await compressImage(file, 1600, 0.85)
+  const ext = 'jpg'
+  const path = `${userId}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage
+    .from('feed-photos')
+    .upload(path, compressed, { contentType: 'image/jpeg', upsert: false })
+  if (error) throw error
+  const { data } = supabase.storage.from('feed-photos').getPublicUrl(path)
+  return data.publicUrl
+}
+
+function compressImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim }
+        else { width = Math.round(width * maxDim / height); height = maxDim }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')), 'image/jpeg', quality)
+    }
+    img.onerror = reject
+    img.src = url
+  })
 }
