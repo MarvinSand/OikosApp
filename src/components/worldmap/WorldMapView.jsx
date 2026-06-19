@@ -23,6 +23,7 @@ const C = {
   bg: 'var(--color-bg)',
   bgSec: 'var(--color-bg-secondary)',
   error: 'var(--color-error)',
+  surfaceBlur: 'var(--color-surface-blur)',
 }
 
 // ─── Utilities ───────────────────────────────────────────
@@ -426,7 +427,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
         <div style={{
           position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
           zIndex: 501, display: 'flex', gap: 8,
-          background: 'rgba(255,255,255,0.92)', padding: 5, borderRadius: 999,
+          background: C.surfaceBlur, padding: 5, borderRadius: 999,
           boxShadow: '0 2px 10px rgba(0,0,0,0.10)', backdropFilter: 'blur(8px)',
           border: `1px solid ${C.border}`,
         }}>
@@ -449,7 +450,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
         {!myProfile?.latitude && (
           <div style={{
             position: 'absolute', bottom: 100, left: 12, right: 72, zIndex: 500,
-            background: 'rgba(255,255,255,0.96)', borderRadius: 12,
+            background: C.surfaceBlur, borderRadius: 12,
             padding: '10px 12px', boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
             border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10,
           }}>
@@ -606,7 +607,7 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
           onClick={onCenterSelf}
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: 'rgba(255,255,255,0.92)',
+            background: C.surfaceBlur,
             border: `1px solid ${C.border}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -631,7 +632,7 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
           width: 36,
           height: 240,
           borderRadius: 18,
-          background: 'rgba(255,255,255,0.88)',
+          background: C.surfaceBlur,
           border: `1px solid ${C.border}`,
           boxShadow: '0 2px 14px rgba(0,0,0,0.13)',
           backdropFilter: 'blur(8px)',
@@ -672,7 +673,7 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
 
 const mapBtnStyle = {
   width: 40, height: 40, borderRadius: 12,
-  background: 'rgba(255,255,255,0.92)', border: `1px solid ${C.border}`,
+  background: C.surfaceBlur, border: `1px solid ${C.border}`,
   boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   cursor: 'pointer', color: C.accentDark, padding: 0,

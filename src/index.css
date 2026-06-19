@@ -31,6 +31,8 @@
     --color-warm-4:         #F5F5F7;
     --color-text-muted:     #6E6E73;
     --color-text-light:     #AEAEB2;
+
+    --color-surface-blur:   rgba(255,255,255,0.92);
   }
 
   /* ── Dark Mode (Instagram-Stil, babyblaue Akzente bleiben) ── */
@@ -60,6 +62,8 @@
     --color-warm-4:         #1C1C1E;
     --color-text-muted:     #AEAEB2;
     --color-text-light:     #6E6E73;
+
+    --color-surface-blur:   rgba(28,28,30,0.92);
 
     color-scheme: dark;
   }
