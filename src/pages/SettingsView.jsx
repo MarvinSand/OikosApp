@@ -165,8 +165,11 @@ export default function SettingsView() {
   const [section, setSection] = useState('hub')
 
   const [form, setForm] = useState({
-    full_name: '', username: '', city: '', show_city: true,
-    church_name: '', show_church: true, bio_text: '', show_bio: true,
+    full_name: '', username: '',
+    birthday: '', is_christian: null, gender: null,
+    city: '', show_city: true,
+    church_name: '', show_church: true,
+    bio_text: '', show_bio: true,
   })
   const [usernameError, setUsernameError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -183,6 +186,9 @@ export default function SettingsView() {
     setForm({
       full_name: profile.full_name || '',
       username: profile.username || '',
+      birthday: profile.birthday || '',
+      is_christian: profile.is_christian ?? null,
+      gender: profile.gender || null,
       city: profile.city || '',
       show_city: profile.show_city ?? true,
       church_name: profile.church_name || '',
@@ -207,6 +213,9 @@ export default function SettingsView() {
       await updateProfile({
         full_name: form.full_name.trim() || null,
         username: form.username.trim(),
+        birthday: form.birthday || null,
+        is_christian: form.is_christian,
+        gender: form.gender,
         city: form.city.trim() || null,
         show_city: form.show_city,
         church_name: form.church_name.trim() || null,
@@ -328,13 +337,11 @@ export default function SettingsView() {
             <MenuRow
               icon={User}
               title="Profil bearbeiten"
-              desc="Name, Wohnort, Gemeinde, Bio"
               onClick={() => setSection('profile')}
             />
             <MenuRow
               icon={ShieldCheck}
               title="Ansicht & Datenschutz"
-              desc="Weltkarte, Standort, Dark Mode"
               onClick={() => setSection('privacy')}
             />
           </div>
@@ -360,6 +367,8 @@ export default function SettingsView() {
       {/* ─── PROFIL BEARBEITEN ─── */}
       {section === 'profile' && (
         <div style={{ padding: '20px 16px' }}>
+
+          {/* ── Basis ── */}
           <FieldRow label="Name">
             <input type="text" value={form.full_name} onChange={e => setField('full_name', e.target.value)} placeholder="Dein Name" style={inputStyle} />
           </FieldRow>
@@ -374,6 +383,56 @@ export default function SettingsView() {
             />
             {usernameError && <p style={{ fontSize: 12, color: 'var(--color-error)', marginTop: 4 }}>{usernameError}</p>}
           </FieldRow>
+
+          {/* ── Optionale Infos ── */}
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '8px 0 16px' }}>
+            Optionale Infos
+          </h3>
+
+          <FieldRow label="Geburtstag">
+            <input
+              type="date"
+              value={form.birthday}
+              onChange={e => setField('birthday', e.target.value)}
+              style={inputStyle}
+            />
+          </FieldRow>
+
+          <FieldRow label="Ich bin Christ/in">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+              <span style={{ fontSize: 14, color: 'var(--color-text)' }}>Ich bin Christ/in</span>
+              <Toggle checked={form.is_christian === true} onChange={() => setField('is_christian', form.is_christian === true ? null : true)} />
+            </div>
+          </FieldRow>
+
+          <FieldRow label="Ich bin…">
+            <div style={{ display: 'flex', gap: 10 }}>
+              {[{ key: 'brother', label: '🧑 Bruder' }, { key: 'sister', label: '👧 Schwester' }].map(opt => {
+                const active = form.gender === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setField('gender', active ? null : opt.key)}
+                    style={{
+                      flex: 1, padding: '12px 0', borderRadius: 12, cursor: 'pointer',
+                      border: `2px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                      backgroundColor: active ? 'var(--color-accent-light)' : 'var(--color-bg)',
+                      fontSize: 14, fontWeight: active ? 700 : 500,
+                      color: active ? 'var(--color-accent-dark)' : 'var(--color-text)',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          </FieldRow>
+
+          {/* ── Öffentliches Profil ── */}
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '8px 0 16px' }}>
+            Öffentliches Profil
+          </h3>
 
           <FieldRow label="Wohnort">
             <input type="text" value={form.city} onChange={e => setField('city', e.target.value)} placeholder="z. B. München" style={inputStyle} />
@@ -414,14 +473,12 @@ export default function SettingsView() {
           <SettingToggle
             icon={Globe}
             title="Auf der Weltkarte sichtbar"
-            desc="Andere Geschwister können deinen Standort auf der Weltkarte sehen."
             checked={showOnMap}
             onChange={handleToggleMap}
           />
           <SettingToggle
             icon={Navigation}
             title="Standort erlauben"
-            desc="Erlaube der App, deinen Standort zu verwenden."
             checked={allowLocation}
             onChange={handleToggleLocation}
           />
@@ -432,7 +489,6 @@ export default function SettingsView() {
           <SettingToggle
             icon={Moon}
             title="Dark Mode"
-            desc="Dunkles Design mit babyblauen Akzenten."
             checked={theme === 'dark'}
             onChange={toggleTheme}
           />
