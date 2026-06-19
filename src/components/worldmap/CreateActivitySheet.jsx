@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Navigation, MapPin } from 'lucide-react'
+import { X, Navigation, MapPin, Search } from 'lucide-react'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { useToast } from '../../context/ToastContext'
 import { useCommunities } from '../../hooks/useCommunities'
+import { useAuth } from '../../hooks/useAuth'
+import { supabase } from '../../lib/supabase'
 import {
   GOOGLE_MAPS_LOADER_OPTIONS,
   DEFAULT_MAP_ID,
@@ -31,9 +33,10 @@ const EVENT_CATEGORIES = [
 const CUSTOM_EMOJIS = ['🎉', '☕', '🍽️', '🏃', '⚽', '🎸', '🎨', '🔥', '🌟', '🙏', '📚', '🎬', '🏕️', '🍕', '🧗', '🎲']
 
 const VISIBILITY = [
-  { key: 'public',      label: 'Öffentlich',        desc: 'Alle OIKOS-Nutzer',          emoji: '🌐' },
-  { key: 'communities', label: 'Gemeinde',          desc: 'Ausgewählte Communities',    emoji: '⛪' },
-  { key: 'siblings',    label: 'Meine Geschwister', desc: 'Nur verbundene Geschwister', emoji: '👥' },
+  { key: 'public',      label: 'Öffentlich',              emoji: '🌐', sub: null },
+  { key: 'communities', label: 'Community',               emoji: '⛪', sub: 'community' },
+  { key: 'siblings',    label: 'Meine Geschwister',       emoji: '👥', sub: null },
+  { key: 'specific',    label: 'Ausgewählte Geschwister', emoji: '🧑‍🤝‍🧑', sub: 'siblings' },
 ]
 
 const lbl = { display: 'block', fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 8 }
@@ -42,6 +45,80 @@ const inp = {
   border: `1.5px solid ${C.border}`, backgroundColor: C.bgSec,
   fontSize: 14, color: C.text,
   display: 'block', boxSizing: 'border-box',
+}
+
+function SiblingPicker({ selected, onChange }) {
+  const { user } = useAuth()
+  const [query, setQuery] = useState('')
+  const [siblings, setSiblings] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+    ;(async () => {
+      const { data: friendships } = await supabase
+        .from('friendships')
+        .select('requester_id, addressee_id')
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .eq('status', 'accepted')
+      const ids = (friendships || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
+      if (ids.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles').select('id, username, full_name, avatar_url').in('id', ids).order('full_name')
+        setSiblings(profiles || [])
+      }
+      setLoading(false)
+    })()
+  }, [user?.id])
+
+  const filtered = siblings.filter(s =>
+    (s.full_name || s.username || '').toLowerCase().includes(query.toLowerCase())
+  )
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', border: `1.5px solid ${C.border}`, borderRadius: 12, marginBottom: 10, background: C.bgSec }}>
+        <Search size={15} color={C.textTer} />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Geschwister suchen…"
+          style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, background: 'transparent', color: C.text }}
+        />
+      </div>
+      {loading && <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', margin: '14px 0' }}>Lade…</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
+        {filtered.map(s => {
+          const checked = selected.includes(s.id)
+          const name = s.full_name || s.username || '?'
+          const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+          return (
+            <button
+              key={s.id}
+              onClick={() => onChange(checked ? selected.filter(id => id !== s.id) : [...selected, s.id])}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, textAlign: 'left',
+                border: `1.5px solid ${checked ? C.accent : C.border}`,
+                background: checked ? C.accentLight : '#fff', cursor: 'pointer',
+              }}
+            >
+              {s.avatar_url
+                ? <img src={s.avatar_url} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                : <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: C.bgSec, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.textSec }}>{initials}</div>
+              }
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.text }}>{name}</span>
+              <div style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: `2px solid ${checked ? C.accentDark : C.border}`, background: checked ? C.accentDark : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {checked && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
+              </div>
+            </button>
+          )
+        })}
+        {!loading && filtered.length === 0 && (
+          <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', margin: '14px 0' }}>Keine Geschwister gefunden</p>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function MapPickerPinContent() {
@@ -59,12 +136,13 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
   const { myCommunities } = useCommunities()
 
-  // steps: 'visibility' → ('community') → 'category' → 'details'
+  // steps: 'visibility' → ('community'|'siblings') → 'category' → 'info' → 'when'
   const [step, setStep] = useState('visibility')
 
   const [form, setForm] = useState({
     visibility_mode: null,
     community_ids: [],
+    visibility_user_ids: [],
     category: '',
     customEmoji: '🎉',
     description: '',
@@ -106,21 +184,35 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   const selectedCat = EVENT_CATEGORIES.find(c => c.key === form.category)
   const resolvedEmoji = form.category === 'sonstiges' ? form.customEmoji : (selectedCat?.emoji || '📍')
 
-  const hasCommunityStep = form.visibility_mode === 'communities'
-  const totalSteps = hasCommunityStep ? 4 : 3
-  const stepIndex = step === 'visibility' ? 1
-    : step === 'community' ? 2
-    : step === 'category' ? (hasCommunityStep ? 3 : 2)
-    : (hasCommunityStep ? 4 : 3)
+  const subStep = form.visibility_mode === 'communities' ? 'community'
+    : form.visibility_mode === 'specific' ? 'siblings'
+    : null
+  const hasSubStep = !!subStep
+  // Schritte: visibility (+sub) → category → info → when
+  const totalSteps = hasSubStep ? 5 : 4
+  const order = hasSubStep
+    ? ['visibility', subStep, 'category', 'info', 'when']
+    : ['visibility', 'category', 'info', 'when']
+  const stepIndex = Math.max(0, order.indexOf(step)) + 1
 
   function selectVisibility(key) {
     set('visibility_mode', key)
     if (key === 'communities') {
+      setForm(f => ({ ...f, visibility_user_ids: [] }))
       setStep('community')
-    } else {
+    } else if (key === 'specific') {
       setForm(f => ({ ...f, community_ids: [] }))
+      setStep('siblings')
+    } else {
+      setForm(f => ({ ...f, community_ids: [], visibility_user_ids: [] }))
       setStep('category')
     }
+  }
+
+  function selectCategory(key) {
+    set('category', key)
+    // "Sonstiges" braucht erst noch ein Emoji – nicht automatisch weiter
+    if (key !== 'sonstiges') setStep('info')
   }
 
   // When location changes, pan the mini-map there
@@ -174,6 +266,9 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     if (form.visibility_mode === 'communities' && form.community_ids.length === 0) {
       showToast('Bitte mindestens eine Gemeinde wählen', 'error'); return
     }
+    if (form.visibility_mode === 'specific' && form.visibility_user_ids.length === 0) {
+      showToast('Bitte mindestens ein Geschwister wählen', 'error'); return
+    }
 
     setSubmitting(true)
     await onSubmit({
@@ -188,6 +283,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
       ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
       visibility_mode: form.visibility_mode,
       community_ids: form.visibility_mode === 'communities' ? form.community_ids : [],
+      visibility_user_ids: form.visibility_mode === 'specific' ? form.visibility_user_ids : [],
     })
     setSubmitting(false)
   }
@@ -197,6 +293,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     form.starts_at &&
     form.latitude &&
     !(form.visibility_mode === 'communities' && form.community_ids.length === 0) &&
+    !(form.visibility_mode === 'specific' && form.visibility_user_ids.length === 0) &&
     !submitting
 
   const tabStyle = (active) => ({
@@ -262,19 +359,14 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                     onClick={() => selectVisibility(v.key)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                      padding: '12px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+                      padding: '13px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
                       border: `1.5px solid ${active ? C.accent : C.border}`,
                       background: active ? C.accentLight : '#fff',
                     }}
                   >
                     <span style={{ fontSize: 20 }}>{v.emoji}</span>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>{v.label}</p>
-                      <p style={{ fontSize: 11, color: C.textSec, margin: '1px 0 0' }}>{v.desc}</p>
-                    </div>
-                    {(v.key === 'communities') && (
-                      <span style={{ fontSize: 13, color: C.textTer }}>›</span>
-                    )}
+                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: C.text }}>{v.label}</span>
+                    {v.sub && <span style={{ fontSize: 13, color: C.textTer }}>›</span>}
                   </button>
                 )
               })}
@@ -325,7 +417,28 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
           </div>
         )}
 
-        {/* ─── Schritt: Was für ein Event? ─── */}
+        {/* ─── Schritt (nur Ausgewählte): Geschwister auswählen ─── */}
+        {step === 'siblings' && (
+          <div>
+            <label style={lbl}>Welche Geschwister?</label>
+            <SiblingPicker
+              selected={form.visibility_user_ids}
+              onChange={(ids) => set('visibility_user_ids', ids)}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24 }}>
+              <button style={backBtn} onClick={() => setStep('visibility')}>← Zurück</button>
+              <button
+                style={nextBtn(form.visibility_user_ids.length > 0)}
+                disabled={form.visibility_user_ids.length === 0}
+                onClick={() => setStep('category')}
+              >
+                Weiter ({form.visibility_user_ids.length})
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Schritt: Was für ein Event? (Auto-Weiter beim Anklicken) ─── */}
         {step === 'category' && (
           <div>
             <label style={lbl}>Was für ein Event?</label>
@@ -335,7 +448,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                 return (
                   <button
                     key={cat.key}
-                    onClick={() => set('category', cat.key)}
+                    onClick={() => selectCategory(cat.key)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '12px 12px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
@@ -350,7 +463,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               })}
             </div>
 
-            {/* Eigenes Emoji bei "Sonstiges" */}
+            {/* Eigenes Emoji bei "Sonstiges" – Klick führt automatisch weiter */}
             {form.category === 'sonstiges' && (
               <div style={{ marginTop: 16 }}>
                 <p style={{ fontSize: 12, color: C.textSec, margin: '0 0 8px' }}>Eigenes Symbol wählen:</p>
@@ -358,7 +471,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                   {CUSTOM_EMOJIS.map(e => (
                     <button
                       key={e}
-                      onClick={() => set('customEmoji', e)}
+                      onClick={() => { set('customEmoji', e); setStep('info') }}
                       style={{
                         width: 42, height: 42, borderRadius: 10, fontSize: 20, cursor: 'pointer',
                         border: `2px solid ${form.customEmoji === e ? C.accent : C.border}`,
@@ -372,32 +485,33 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24 }}>
-              <button style={backBtn} onClick={() => setStep(hasCommunityStep ? 'community' : 'visibility')}>← Zurück</button>
-              <button
-                style={nextBtn(!!form.category)}
-                disabled={!form.category}
-                onClick={() => setStep('details')}
-              >
-                Weiter
-              </button>
+            <div style={{ marginTop: 24 }}>
+              <button style={backBtn} onClick={() => setStep(subStep || 'visibility')}>← Zurück</button>
             </div>
           </div>
         )}
 
-        {/* ─── Schritt: Infos, Zeit, Standort ─── */}
-        {step === 'details' && (
+        {/* ─── Schritt: Infos (optional) ─── */}
+        {step === 'info' && (
           <div>
-            {/* Freitext / Infos */}
             <label style={lbl}>Infos (optional)</label>
             <textarea
               value={form.description}
               onChange={e => set('description', e.target.value)}
               placeholder="Was sollten andere wissen?"
-              rows={3}
-              style={{ ...inp, resize: 'vertical', marginBottom: 18 }}
+              rows={4}
+              style={{ ...inp, resize: 'vertical' }}
             />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24 }}>
+              <button style={backBtn} onClick={() => setStep('category')}>← Zurück</button>
+              <button style={nextBtn(true)} onClick={() => setStep('when')}>Weiter</button>
+            </div>
+          </div>
+        )}
 
+        {/* ─── Schritt: Wann & Standort ─── */}
+        {step === 'when' && (
+          <div>
             {/* Zeit von – bis */}
             <label style={lbl}>Wann? (von – bis)</label>
             <div style={{ display: 'flex', gap: 10, marginBottom: 6 }}>
@@ -530,7 +644,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
 
             {/* Zurück + Submit */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 22 }}>
-              <button style={backBtn} onClick={() => setStep('category')}>← Zurück</button>
+              <button style={backBtn} onClick={() => setStep('info')}>← Zurück</button>
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}

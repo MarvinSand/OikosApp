@@ -111,6 +111,9 @@ export function useWorldMap() {
         ends_at: data.ends_at || null,
         max_participants: data.max_participants || null,
         visibility_mode: visibility,
+        visibility_user_ids: visibility === 'specific' && Array.isArray(data.visibility_user_ids)
+          ? data.visibility_user_ids
+          : [],
         is_public: visibility === 'public',
         expires_at: data.expires_at || expiresAt,
       })
