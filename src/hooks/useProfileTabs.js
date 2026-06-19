@@ -59,13 +59,22 @@ export function useProfileTabs(profileUserId) {
   async function load() {
     setLoading(true)
 
-    // 1. Connections count (mutual friendships)
-    const { data: fr } = await supabase
-      .from('friendships')
-      .select('id')
-      .or(`requester_id.eq.${profileUserId},addressee_id.eq.${profileUserId}`)
-      .eq('status', 'accepted')
-    setConnectionsCount((fr || []).length)
+    // 1. Connections count (accepted friendships).
+    // Use the SECURITY-DEFINER RPC so the count also works on other users'
+    // profiles, where the friendships RLS would otherwise expose only the
+    // single connection shared with the current user (phase34 migration).
+    const { data: conns, error: connError } = await supabase
+      .rpc('get_user_connections', { target_id: profileUserId })
+    if (connError) {
+      const { data: fr } = await supabase
+        .from('friendships')
+        .select('id')
+        .or(`requester_id.eq.${profileUserId},addressee_id.eq.${profileUserId}`)
+        .eq('status', 'accepted')
+      setConnectionsCount((fr || []).length)
+    } else {
+      setConnectionsCount((conns || []).length)
+    }
 
     // 1b. Public communities the user is a member of
     const { data: memberships } = await supabase
