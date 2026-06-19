@@ -10,12 +10,12 @@ import { useProfile } from '../hooks/useProfile'
 import { useProfileTabs } from '../hooks/useProfileTabs'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePublicMap } from '../hooks/usePublicMap'
-import { useFriendships } from '../hooks/useFriendships'
 import { useToast } from '../context/ToastContext'
 import { PostCard } from './FriendsView'
 import MapCanvas from '../components/map/MapCanvas'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
+import ConnectionsOverlay from '../components/feed/ConnectionsOverlay'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function getInitials(name) {
@@ -363,7 +363,6 @@ export default function ProfileView() {
     loading: tabsLoading, reload, reactToPost, deletePost,
   } = useProfileTabs(user?.id)
   const { updateMap, deleteMap } = useOikosMaps()
-  const { friends } = useFriendships()
   const { showToast } = useToast()
   const fileInputRef = useRef(null)
   const [activeTab, setActiveTab] = useState('maps')
@@ -648,24 +647,7 @@ export default function ProfileView() {
       )}
 
       {overlay === 'siblings' && (
-        <ProfileListOverlay
-          title={`Geschwister (${friends.length})`}
-          items={friends
-            .map(f => ({
-              id: f.otherUser?.id,
-              title: f.otherUser?.full_name || f.otherUser?.username || '—',
-              subtitle: f.otherUser?.username ? `@${f.otherUser.username}` : null,
-              avatarUrl: f.otherUser?.avatar_url,
-            }))
-            .filter(it => it.id)
-            .sort((a, b) => a.title.localeCompare(b.title, 'de'))}
-          emptyText="Noch keine Geschwister verbunden"
-          onClose={() => setOverlay(null)}
-          onSelect={(it) => {
-            setOverlay(null)
-            navigate(`/user/${it.id}`)
-          }}
-        />
+        <ConnectionsOverlay onClose={() => setOverlay(null)} />
       )}
 
       {overlay === 'communities' && (

@@ -4,7 +4,6 @@ import {
   UserCheck, Loader2, Tag, Check, Search,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { useFriendships } from '../../hooks/useFriendships'
 import { useCommunities } from '../../hooks/useCommunities'
 import { supabase } from '../../lib/supabase'
 
@@ -64,6 +63,7 @@ function UserPicker({ title, selected, onChange, onClose }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!user?.id) return
     ;(async () => {
       const { data } = await supabase
         .from('profiles')
@@ -74,7 +74,7 @@ function UserPicker({ title, selected, onChange, onClose }) {
       setAllUsers(data || [])
       setLoading(false)
     })()
-  }, [user.id])
+  }, [user?.id])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

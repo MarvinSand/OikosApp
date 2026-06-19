@@ -2,11 +2,11 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, BookOpen, Globe, BookMarked, User } from 'lucide-react'
 
 const tabs = [
-  { path: '/',             icon: Home,       label: 'Home'         },
-  { path: '/prayer',       icon: BookOpen,   label: 'For You'      },
-  { path: '/worldmap',     icon: Globe,      label: 'Weltkarte'    },
-  { path: '/discipleship', icon: BookMarked, label: 'Jüngerschaft' },
-  { path: '/profile',      icon: User,       label: 'Profil'       },
+  { path: '/',                 icon: Home,       label: 'Home',         match: ['/']                   },
+  { path: '/friends?tab=feed', icon: BookOpen,   label: 'For You',      match: ['/friends', '/prayer'] },
+  { path: '/worldmap',         icon: Globe,      label: 'Weltkarte',    match: ['/worldmap']           },
+  { path: '/discipleship',     icon: BookMarked, label: 'Jüngerschaft', match: ['/discipleship']       },
+  { path: '/profile',          icon: User,       label: 'Profil',       match: ['/profile']            },
 ]
 
 export default function SideNav() {
@@ -26,11 +26,12 @@ export default function SideNav() {
 
       {/* Nav Items */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
-        {tabs.map(({ path, icon: Icon, label }) => {
-          const isActive =
-            path === '/'
+        {tabs.map(({ path, icon: Icon, label, match }) => {
+          const isActive = match.some(m =>
+            m === '/'
               ? location.pathname === '/'
-              : location.pathname === path || location.pathname.startsWith(path + '/')
+              : location.pathname === m || location.pathname.startsWith(m + '/')
+          )
 
           return (
             <button
