@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
+import { useSwipeNav } from './hooks/useSwipeNav'
 import { ToastProvider } from './context/ToastContext'
 import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
@@ -44,6 +45,7 @@ function LoadingSpinner() {
 
 function AppShellInner() {
   const location = useLocation()
+  useSwipeNav()
   // Routes where the inner container should not be vertically scrollable
   // (full-bleed map views)
   const isFullScreenRoute =
