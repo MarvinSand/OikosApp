@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
-import { Plus, Navigation, ZoomIn, ZoomOut, Users, CalendarDays } from 'lucide-react'
+import { Plus, Navigation, Users, CalendarDays } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorldMap } from '../../hooks/useWorldMap'
 import { useToast } from '../../context/ToastContext'
@@ -67,9 +67,26 @@ function buildUserPinElement(user, { isOwn = false } = {}) {
 }
 
 function buildActivityPinElement(emoji) {
+  // Outer wrapper positions both the pulse ring and the pin circle
   const wrap = document.createElement('div')
-  wrap.style.cssText = `width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid ${C.accent};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.16);font-size:20px;cursor:pointer;transform:translateY(50%);`
-  wrap.textContent = emoji || '📍'
+  wrap.style.cssText = 'position:relative;width:52px;height:52px;transform:translateY(50%);cursor:pointer;'
+
+  // Pulsing ring behind the circle
+  const pulse = document.createElement('div')
+  pulse.style.cssText = `position:absolute;inset:-4px;border-radius:50%;background:rgba(90,200,250,0.25);animation:eventPinPulse 1.8s ease-in-out infinite;pointer-events:none;`
+  wrap.appendChild(pulse)
+
+  // Outer glow ring (second, slower)
+  const glow = document.createElement('div')
+  glow.style.cssText = `position:absolute;inset:-10px;border-radius:50%;background:rgba(90,200,250,0.10);animation:eventPinPulse 1.8s ease-in-out 0.6s infinite;pointer-events:none;`
+  wrap.appendChild(glow)
+
+  // The pin circle itself
+  const circle = document.createElement('div')
+  circle.style.cssText = `position:absolute;inset:4px;border-radius:50%;background:#fff;border:2.5px solid ${C.accent};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 14px rgba(90,200,250,0.45);font-size:20px;`
+  circle.textContent = emoji || '📍'
+  wrap.appendChild(circle)
+
   return wrap
 }
 
@@ -212,6 +229,72 @@ function useActivityClusterer({ map, activities, onActivityClick, enabled }) {
   }, [map, activities, enabled, onActivityClick])
 }
 
+// ─── Snapchat-style Zoom Sidebar ─────────────────────────
+// Zoom levels 2–20 mapped to emojis like Snapchat's travel modes
+const ZOOM_ICONS = [
+  { minZoom: 2,  emoji: '🌌', label: 'Weltall'    },
+  { minZoom: 4,  emoji: '🌍', label: 'Welt'       },
+  { minZoom: 6,  emoji: '🗺️', label: 'Kontinent'  },
+  { minZoom: 8,  emoji: '✈️', label: 'Land'       },
+  { minZoom: 10, emoji: '🚂', label: 'Region'     },
+  { minZoom: 12, emoji: '🚗', label: 'Stadt'      },
+  { minZoom: 14, emoji: '🛵', label: 'Viertel'    },
+  { minZoom: 16, emoji: '🚶', label: 'Straße'     },
+  { minZoom: 18, emoji: '🔍', label: 'Nahansicht' },
+]
+
+function getZoomIcon(zoom) {
+  let best = ZOOM_ICONS[0]
+  for (const z of ZOOM_ICONS) {
+    if (zoom >= z.minZoom) best = z
+  }
+  return best
+}
+
+function useSnapchatZoom({ map, minZoom = 2 }) {
+  const sliderRef = useRef(null)
+  const trackRef  = useRef(null)
+  const draggingRef = useRef(false)
+  const startYRef   = useRef(0)
+  const startZoomRef = useRef(0)
+  const [currentZoom, setCurrentZoom] = useState(10)
+
+  // Sync zoom state when Google Maps changes zoom externally
+  useEffect(() => {
+    if (!map) return
+    const listener = map.addListener('zoom_changed', () => {
+      setCurrentZoom(map.getZoom())
+    })
+    setCurrentZoom(map.getZoom())
+    return () => window.google.maps.event.removeListener(listener)
+  }, [map])
+
+  const onPointerDown = useCallback((e) => {
+    if (!map) return
+    draggingRef.current = true
+    startYRef.current = e.touches ? e.touches[0].clientY : e.clientY
+    startZoomRef.current = map.getZoom()
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }, [map])
+
+  const onPointerMove = useCallback((e) => {
+    if (!draggingRef.current || !map || !trackRef.current) return
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    const dy = startYRef.current - clientY          // positive = finger moved up = zoom in
+    const trackH = trackRef.current.getBoundingClientRect().height || 200
+    const zoomRange = 20 - minZoom
+    const delta = (dy / trackH) * zoomRange
+    const newZoom = Math.min(20, Math.max(minZoom, startZoomRef.current + delta))
+    map.setZoom(Math.round(newZoom))
+  }, [map, minZoom])
+
+  const onPointerUp = useCallback(() => {
+    draggingRef.current = false
+  }, [])
+
+  return { sliderRef, trackRef, currentZoom, onPointerDown, onPointerMove, onPointerUp }
+}
+
 // ─── Main Component ───────────────────────────────────────
 export default function WorldMapView({ onNavigateToProfile }) {
   const { user } = useAuth()
@@ -225,6 +308,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
 
   const [map, setMap] = useState(null)
   const minZoomRef = useRef(2)
+  const snapZoom = useSnapchatZoom({ map, minZoom: minZoomRef.current })
   const [selectedUser, setSelectedUser] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
@@ -292,7 +376,10 @@ export default function WorldMapView({ onNavigateToProfile }) {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: C.bgSec, overflow: 'hidden' }}>
-      <style>{`@keyframes oikosPinPulse { 0%,100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.15); opacity: 0; } }`}</style>
+      <style>{`
+        @keyframes oikosPinPulse  { 0%,100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.15); opacity: 0; } }
+        @keyframes eventPinPulse  { 0%,100% { transform: scale(0.85); opacity: 0.8; } 50% { transform: scale(1.25); opacity: 0; } }
+      `}</style>
 
       {/* Map area */}
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
@@ -339,24 +426,16 @@ export default function WorldMapView({ onNavigateToProfile }) {
           <LayerToggle active={showEvents} onClick={() => setShowEvents(v => !v)} icon={<CalendarDays size={15} />} label="Events" />
         </div>
 
-        {/* Custom map controls */}
-        <div style={{ position: 'absolute', bottom: 160, right: 12, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 500 }}>
-          {myProfile?.latitude && (
-            <button
-              onClick={() => {
-                if (!map) return
-                map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
-                map.setZoom(12)
-              }}
-              style={mapBtnStyle}
-              title="Zu meinem Standort"
-            >
-              <Navigation size={17} />
-            </button>
-          )}
-          <button onClick={() => map && map.setZoom(map.getZoom() + 1)} style={mapBtnStyle} title="Vergrößern"><ZoomIn size={17} /></button>
-          <button onClick={() => map && map.setZoom(Math.max(map.getZoom() - 1, minZoomRef.current))} style={mapBtnStyle} title="Verkleinern"><ZoomOut size={17} /></button>
-        </div>
+        {/* Snapchat-style zoom sidebar – right edge, drag up = zoom in */}
+        <ZoomSidebar
+          snapZoom={snapZoom}
+          minZoom={minZoomRef.current}
+          onCenterSelf={myProfile?.latitude ? () => {
+            if (!map) return
+            map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
+            map.setZoom(13)
+          } : null}
+        />
 
         {/* No location hint */}
         {!myProfile?.latitude && (
@@ -491,9 +570,123 @@ function OwnPinContent({ user }) {
   )
 }
 
+// ─── Snapchat Zoom Sidebar Component ─────────────────────
+function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
+  const { trackRef, currentZoom, onPointerDown, onPointerMove, onPointerUp } = snapZoom
+  const maxZoom = 20
+  const zoomRange = maxZoom - minZoom
+  // Progress 0 (far out) → 1 (max zoom in)
+  const progress = Math.max(0, Math.min(1, (currentZoom - minZoom) / zoomRange))
+  const currentIcon = getZoomIcon(currentZoom)
+
+  return (
+    <div style={{
+      position: 'absolute',
+      right: 10,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      zIndex: 500,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 10,
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+    }}>
+      {/* Mein Standort button above slider */}
+      {onCenterSelf && (
+        <button
+          onClick={onCenterSelf}
+          style={{
+            width: 40, height: 40, borderRadius: 12,
+            background: 'rgba(255,255,255,0.92)',
+            border: `1px solid ${C.border}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: C.accentDark, padding: 0,
+            backdropFilter: 'blur(6px)',
+          }}
+          title="Zu meinem Standort"
+        >
+          <Navigation size={17} />
+        </button>
+      )}
+
+      {/* Current zoom level icon */}
+      <div style={{
+        fontSize: 22, lineHeight: 1,
+        filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))',
+        transition: 'transform 0.15s',
+        transform: 'scale(1.05)',
+      }} title={currentIcon.label}>
+        {currentIcon.emoji}
+      </div>
+
+      {/* Drag track */}
+      <div
+        ref={trackRef}
+        style={{
+          width: 36,
+          height: 160,
+          borderRadius: 18,
+          background: 'rgba(255,255,255,0.82)',
+          border: `1px solid ${C.border}`,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+          backdropFilter: 'blur(8px)',
+          position: 'relative',
+          touchAction: 'none',
+          cursor: 'ns-resize',
+          overflow: 'hidden',
+        }}
+        onMouseDown={onPointerDown}
+        onMouseMove={onPointerMove}
+        onMouseUp={onPointerUp}
+        onMouseLeave={onPointerUp}
+        onTouchStart={onPointerDown}
+        onTouchMove={onPointerMove}
+        onTouchEnd={onPointerUp}
+      >
+        {/* Filled bar – grows from bottom */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0, left: 0, right: 0,
+          height: `${progress * 100}%`,
+          background: `linear-gradient(to top, ${C.accentDark}, ${C.accent})`,
+          borderRadius: 18,
+          transition: 'height 0.05s',
+        }} />
+
+        {/* Thumb knob */}
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          bottom: `calc(${progress * 100}% - 14px)`,
+          transform: 'translateX(-50%)',
+          width: 28, height: 28,
+          borderRadius: '50%',
+          background: '#fff',
+          border: `2.5px solid ${C.accent}`,
+          boxShadow: '0 2px 8px rgba(90,200,250,0.4)',
+          transition: 'bottom 0.05s',
+          pointerEvents: 'none',
+        }} />
+      </div>
+
+      {/* Zoom label below track */}
+      <div style={{
+        fontSize: 9, fontWeight: 700, color: C.textSec, letterSpacing: 0.5,
+        textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.2,
+        maxWidth: 40,
+      }}>
+        {currentIcon.label}
+      </div>
+    </div>
+  )
+}
+
 const mapBtnStyle = {
   width: 40, height: 40, borderRadius: 12,
-  background: '#fff', border: `1px solid ${C.border}`,
+  background: 'rgba(255,255,255,0.92)', border: `1px solid ${C.border}`,
   boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   cursor: 'pointer', color: C.accentDark, padding: 0,
