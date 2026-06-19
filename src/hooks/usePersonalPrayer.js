@@ -35,13 +35,14 @@ export function usePersonalPrayer() {
     setLoading(false)
   }
 
-  async function createRequest({ title, description, visibility, visibility_user_ids = [], visibility_community_id = null }) {
+  async function createRequest({ title, description, visibility, visibility_user_ids = [], visibility_community_id = null, category = null }) {
     const { data, error } = await supabase
       .from('personal_prayer_requests')
       .insert({
         owner_id: user.id, title, description: description || null, visibility,
         visibility_user_ids: visibility_user_ids.length > 0 ? visibility_user_ids : null,
         visibility_community_id: visibility_community_id || null,
+        category: category || null,
       })
       .select()
       .single()
