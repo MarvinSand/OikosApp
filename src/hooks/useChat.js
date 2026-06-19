@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 const PAGE_SIZE = 50
-const MSG_SELECT = 'id, conversation_id, sender_id, type, text, bible_verse_reference, bible_verse_text, personal_prayer_request_id, prayer_request_id, is_deleted, created_at'
+const MSG_SELECT = 'id, conversation_id, sender_id, type, text, bible_verse_reference, bible_verse_text, personal_prayer_request_id, prayer_request_id, is_deleted, created_at, reply_to_id, forwarded_from_id, is_pinned, pinned_at'
 
 async function attachProfiles(messages) {
   if (!messages || messages.length === 0) return messages
@@ -15,6 +15,21 @@ async function attachProfiles(messages) {
     .in('id', ids)
   const map = Object.fromEntries((profiles || []).map(p => [p.id, p]))
   return messages.map(m => ({ ...m, profiles: map[m.sender_id] || null }))
+}
+
+async function attachReactions(messages) {
+  if (!messages || messages.length === 0) return messages
+  const ids = messages.map(m => m.id)
+  const { data: reactions } = await supabase
+    .from('message_reactions')
+    .select('id, message_id, user_id, emoji, created_at')
+    .in('message_id', ids)
+  const map = {}
+  ;(reactions || []).forEach(r => {
+    if (!map[r.message_id]) map[r.message_id] = []
+    map[r.message_id].push(r)
+  })
+  return messages.map(m => ({ ...m, reactions: map[m.id] || [] }))
 }
 
 export function useChat(conversationId) {
@@ -47,7 +62,8 @@ export function useChat(conversationId) {
     if (!error && data) {
       const ordered = [...data].reverse()
       const withProfiles = await attachProfiles(ordered)
-      setMessages(withProfiles)
+      const withReactions = await attachReactions(withProfiles)
+      setMessages(withReactions)
       setHasMore(data.length === PAGE_SIZE)
       offsetRef.current = data.length
     }
@@ -83,11 +99,11 @@ export function useChat(conversationId) {
             .select('id, username, full_name, is_christian, gender')
             .eq('id', newMsg.sender_id)
             .maybeSingle()
-          const msgWithProfile = { ...newMsg, profiles: profile || null }
+          const msgWithProfile = { ...newMsg, profiles: profile || null, reactions: [] }
           setMessages(prev => {
             const exists = prev.find(m => m.id === newMsg.id)
             if (exists) {
-              return prev.map(m => m.id === newMsg.id ? msgWithProfile : m)
+              return prev.map(m => m.id === newMsg.id ? { ...msgWithProfile, reactions: m.reactions || [] } : m)
             }
             const tempIdx = prev.findIndex(m =>
               m._optimistic &&
@@ -118,6 +134,33 @@ export function useChat(conversationId) {
           setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated } : m))
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_reactions',
+        },
+        async (payload) => {
+          const row = payload.new || payload.old
+          if (!row?.message_id) return
+          setMessages(prev => {
+            if (!prev.some(m => m.id === row.message_id)) return prev
+            return prev.map(m => {
+              if (m.id !== row.message_id) return m
+              const current = m.reactions || []
+              if (payload.eventType === 'DELETE') {
+                return { ...m, reactions: current.filter(r => r.id !== row.id) }
+              }
+              if (payload.eventType === 'INSERT') {
+                if (current.some(r => r.id === row.id)) return m
+                return { ...m, reactions: [...current, payload.new] }
+              }
+              return m
+            })
+          })
+        }
+      )
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
@@ -137,13 +180,14 @@ export function useChat(conversationId) {
     if (!error && data) {
       const ordered = [...data].reverse()
       const withProfiles = await attachProfiles(ordered)
-      setMessages(prev => [...withProfiles, ...prev])
+      const withReactions = await attachReactions(withProfiles)
+      setMessages(prev => [...withReactions, ...prev])
       setHasMore(data.length === PAGE_SIZE)
       offsetRef.current = from + data.length
     }
   }
 
-  async function sendMessage(text) {
+  async function sendMessage(text, { replyToId = null } = {}) {
     if (!text.trim() || !user || !conversationId) return
     const tempId = `temp-${Date.now()}`
     const optimistic = {
@@ -155,23 +199,28 @@ export function useChat(conversationId) {
       text: text.trim(),
       is_deleted: false,
       created_at: new Date().toISOString(),
+      reply_to_id: replyToId,
       profiles: null,
+      reactions: [],
     }
     setMessages(prev => [...prev, optimistic])
 
+    const insertPayload = {
+      conversation_id: conversationId,
+      sender_id: user.id,
+      type: 'text',
+      text: text.trim(),
+    }
+    if (replyToId) insertPayload.reply_to_id = replyToId
+
     const { data, error } = await supabase
       .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        sender_id: user.id,
-        type: 'text',
-        text: text.trim(),
-      })
+      .insert(insertPayload)
       .select(MSG_SELECT)
       .single()
 
     if (!error && data) {
-      setMessages(prev => prev.map(m => m.id === tempId ? { ...data, profiles: null } : m))
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...data, profiles: null, reactions: [] } : m))
     } else {
       setMessages(prev => prev.filter(m => m.id !== tempId))
     }
@@ -223,6 +272,68 @@ export function useChat(conversationId) {
       .eq('sender_id', user.id)
   }
 
+  async function toggleReaction(messageId, emoji) {
+    if (!user) return
+    const target = messages.find(m => m.id === messageId)
+    const existing = (target?.reactions || []).find(r => r.user_id === user.id && r.emoji === emoji)
+
+    if (existing) {
+      setMessages(prev => prev.map(m => m.id === messageId
+        ? { ...m, reactions: (m.reactions || []).filter(r => r.id !== existing.id) }
+        : m))
+      await supabase.from('message_reactions').delete().eq('id', existing.id)
+    } else {
+      const optimistic = { id: `opt_${Date.now()}`, message_id: messageId, user_id: user.id, emoji, created_at: new Date().toISOString() }
+      setMessages(prev => prev.map(m => m.id === messageId
+        ? { ...m, reactions: [...(m.reactions || []), optimistic] }
+        : m))
+      const { data, error } = await supabase
+        .from('message_reactions')
+        .insert({ message_id: messageId, user_id: user.id, emoji })
+        .select()
+        .single()
+      if (error) {
+        setMessages(prev => prev.map(m => m.id === messageId
+          ? { ...m, reactions: (m.reactions || []).filter(r => r.id !== optimistic.id) }
+          : m))
+      } else if (data) {
+        setMessages(prev => prev.map(m => m.id === messageId
+          ? { ...m, reactions: (m.reactions || []).map(r => r.id === optimistic.id ? data : r) }
+          : m))
+      }
+    }
+  }
+
+  async function pinMessage(id) {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, is_pinned: true, pinned_at: new Date().toISOString() } : m))
+    await supabase
+      .from('messages')
+      .update({ is_pinned: true, pinned_at: new Date().toISOString(), pinned_by: user.id })
+      .eq('id', id)
+  }
+
+  async function unpinMessage(id) {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, is_pinned: false, pinned_at: null } : m))
+    await supabase
+      .from('messages')
+      .update({ is_pinned: false, pinned_at: null, pinned_by: null })
+      .eq('id', id)
+  }
+
+  async function forwardMessage(sourceMsg, targetConversationIds) {
+    if (!user || !sourceMsg || !targetConversationIds?.length) return
+    const rows = targetConversationIds.map(convId => ({
+      conversation_id: convId,
+      sender_id: user.id,
+      type: sourceMsg.type || 'text',
+      text: sourceMsg.text || null,
+      bible_verse_reference: sourceMsg.bible_verse_reference || null,
+      bible_verse_text: sourceMsg.bible_verse_text || null,
+      forwarded_from_id: sourceMsg.id,
+    }))
+    await supabase.from('messages').insert(rows)
+  }
+
   return {
     messages,
     loading,
@@ -234,5 +345,9 @@ export function useChat(conversationId) {
     deleteMessage,
     updateMessage,
     markAsRead,
+    toggleReaction,
+    pinMessage,
+    unpinMessage,
+    forwardMessage,
   }
 }

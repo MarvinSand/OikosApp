@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, Send, MessageCircle, ChevronUp, Search } from 'lucide-react'
+import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, Send, MessageCircle, ChevronUp, Search, SlidersHorizontal } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 import { usePrayerFeed } from '../hooks/usePrayerFeed'
@@ -614,7 +614,28 @@ export default function GebetPaul() {
   const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote } = usePrayerFeed('all')
   const { createRequest } = usePersonalPrayer()
   const [showCreate, setShowCreate] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [activeCategories, setActiveCategories] = useState([])
   const loaderRef = useRef(null)
+
+  function toggleCategory(key) {
+    setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])
+  }
+
+  const q = searchQuery.trim().toLowerCase()
+  const filteredRequests = requests.filter(r => {
+    if (activeCategories.length > 0 && !activeCategories.includes(r.category)) return false
+    if (!q) return true
+    const haystack = [
+      r.title || '',
+      r.description || '',
+      r.profiles?.full_name || '',
+      r.profiles?.username || '',
+    ].join(' ').toLowerCase()
+    return haystack.includes(q)
+  })
+  const hasActiveFilter = activeCategories.length > 0 || q.length > 0
 
   useEffect(() => {
     if (!loaderRef.current) return
@@ -645,6 +666,113 @@ export default function GebetPaul() {
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full" style={{ position: 'relative' }}>
       <PrayerFeedSwitcher active="gebet-paul" />
 
+      {/* Search + filter */}
+      <div style={{
+        backgroundColor: 'var(--color-bg)',
+        padding: '12px 16px 8px',
+        borderBottom: '1px solid var(--color-border)',
+      }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={15} color="var(--color-text-tertiary)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Gebet suchen…"
+              style={{
+                width: '100%', padding: '9px 36px 9px 34px', borderRadius: 12,
+                border: '1.5px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)',
+                fontSize: 14, color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+            {q && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  width: 22, height: 22, borderRadius: '50%', border: 'none',
+                  background: 'var(--color-border)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <X size={12} color="var(--color-text-secondary)" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            aria-label="Filter"
+            style={{
+              position: 'relative',
+              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              border: `1.5px solid ${showFilters || activeCategories.length ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              backgroundColor: showFilters || activeCategories.length ? 'rgba(74,103,65,0.1)' : 'var(--color-bg-secondary)',
+              color: showFilters || activeCategories.length ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <SlidersHorizontal size={17} />
+            {activeCategories.length > 0 && (
+              <span style={{
+                position: 'absolute', top: -4, right: -4,
+                minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
+                backgroundColor: 'var(--color-accent)', color: '#fff',
+                fontSize: 10, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1.5px solid var(--color-bg)',
+              }}>
+                {activeCategories.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {showFilters && (
+          <div style={{ paddingTop: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>
+              Kategorien
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {CATEGORIES.map(c => {
+                const active = activeCategories.includes(c.key)
+                return (
+                  <button
+                    key={c.key}
+                    onClick={() => toggleCategory(c.key)}
+                    style={{
+                      padding: '6px 11px', borderRadius: 999,
+                      border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                      backgroundColor: active ? 'rgba(74,103,65,0.12)' : 'var(--color-bg-secondary)',
+                      color: active ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                    }}
+                  >
+                    <span>{c.emoji}</span>
+                    <span>{c.label}</span>
+                  </button>
+                )
+              })}
+              {activeCategories.length > 0 && (
+                <button
+                  onClick={() => setActiveCategories([])}
+                  style={{
+                    padding: '6px 11px', borderRadius: 999,
+                    border: '1.5px solid var(--color-border)',
+                    backgroundColor: 'transparent', color: 'var(--color-text-muted)',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Zurücksetzen
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div style={{ padding: '14px 16px 0' }}>
         {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -666,7 +794,16 @@ export default function GebetPaul() {
           </div>
         )}
 
-        {!loading && requests.map(req => (
+        {!loading && requests.length > 0 && filteredRequests.length === 0 && hasActiveFilter && (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <p style={{ fontSize: 28, margin: '0 0 10px' }}>🔍</p>
+            <p style={{ fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>
+              Keine Gebete gefunden. Versuche andere Filter.
+            </p>
+          </div>
+        )}
+
+        {!loading && filteredRequests.map(req => (
           <PrayerCard
             key={req.id}
             request={req}
