@@ -19,6 +19,7 @@ import PrayerListDetailView from './pages/PrayerListDetailView'
 import AnsweredPrayersView from './pages/AnsweredPrayersView'
 import FeedPostView from './pages/FeedPostView'
 import PublicMapView from './pages/PublicMapView'
+import GebetPaul from './pages/GebetPaul'
 import MapView from './pages/MapView'
 import ConversationView from './pages/ConversationView'
 import NotificationsPage from './pages/NotificationsPage'
@@ -63,6 +64,7 @@ function AppShellInner() {
           <Route path="/" element={<Home />} />
           <Route path="/worldmap" element={<WorldMap />} />
           <Route path="/prayer" element={<PrayerView />} />
+          <Route path="/gebet-paul" element={<GebetPaul />} />
           <Route path="/prayer/list/:listId" element={<PrayerListDetailView />} />
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
