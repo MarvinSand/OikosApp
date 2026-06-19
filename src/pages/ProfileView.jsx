@@ -163,93 +163,97 @@ function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
 }
 
 // ─── Maps tab ─────────────────────────────────────────────────
-function MapsTab({ maps, ownerId, selectedMapId, onSelect, onSettings }) {
+function MapsTab({ maps, onSettings, onCreateMap }) {
   const navigate = useNavigate()
 
   return (
     <div className="py-3">
-      {selectedMapId && (
-        <InlineMapPreview
-          ownerId={ownerId}
-          mapId={selectedMapId}
-          onClose={() => onSelect(null)}
-          onFullscreen={() => navigate(`/user/${ownerId}/map/${selectedMapId}`)}
-        />
-      )}
+      <div className="grid grid-cols-2 gap-3 px-3">
+        {maps.map(m => (
+          <div
+            key={m.id}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 12,
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-bg)',
+              overflow: 'hidden',
+            }}
+          >
+            <button
+              onClick={() => navigate(`/map/${m.id}`)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                gap: 6,
+                padding: '14px 12px 10px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 22 }}>🗺</span>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                {m.name}
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                {m.personCount || 0} {m.personCount === 1 ? 'Person' : 'Personen'}
+              </p>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                <VisibilityIcon visibility={m.visibility} />
+                {VISIBILITY_LABEL[m.visibility] || 'Privat'}
+              </span>
+            </button>
 
-      {maps.length === 0 ? (
-        <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
-          Noch keine Maps erstellt
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 px-3">
-          {maps.map(m => {
-            const isSelected = m.id === selectedMapId
-            return (
-              <div
-                key={m.id}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: 12,
-                  border: `1px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                  backgroundColor: 'var(--color-bg)',
-                  overflow: 'hidden',
-                }}
-              >
-                <button
-                  onClick={() => onSelect(isSelected ? null : m.id)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: 6,
-                    padding: '14px 12px 10px',
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span style={{ fontSize: 22 }}>🗺</span>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-                    {m.name}
-                  </p>
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                    {m.personCount || 0} {m.personCount === 1 ? 'Person' : 'Personen'}
-                  </p>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                    <VisibilityIcon visibility={m.visibility} />
-                    {VISIBILITY_LABEL[m.visibility] || 'Privat'}
-                  </span>
-                </button>
+            <button
+              onClick={() => onSettings(m)}
+              aria-label="Map-Einstellungen"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px 0',
+                borderTopWidth: 1,
+                borderTopStyle: 'solid',
+                borderTopColor: 'var(--color-border)',
+                background: 'none',
+                border: 'none',
+                borderTop: '1px solid var(--color-border)',
+                cursor: 'pointer',
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              <Settings size={16} />
+            </button>
+          </div>
+        ))}
 
-                {/* Settings icon at the bottom */}
-                <button
-                  onClick={() => onSettings(m)}
-                  aria-label="Map-Einstellungen"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '8px 0',
-                    borderTop: '1px solid var(--color-border)',
-                    background: 'none',
-                    border: 'none',
-                    borderTopWidth: 1,
-                    borderTopStyle: 'solid',
-                    borderTopColor: 'var(--color-border)',
-                    cursor: 'pointer',
-                    color: 'var(--color-text-secondary)',
-                  }}
-                >
-                  <Settings size={16} />
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
+        {/* New map tile */}
+        <button
+          onClick={onCreateMap}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            borderRadius: 12,
+            border: '1.5px dashed var(--color-border)',
+            backgroundColor: 'var(--color-bg-secondary)',
+            cursor: 'pointer',
+            padding: '24px 12px',
+            minHeight: 120,
+          }}
+        >
+          <span style={{ fontSize: 24, color: 'var(--color-accent)' }}>+</span>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-accent)' }}>
+            Neue Map
+          </p>
+        </button>
+      </div>
     </div>
   )
 }
@@ -362,12 +366,11 @@ export default function ProfileView() {
     maps, posts, prayerRequests, connectionsCount, publicCommunities,
     loading: tabsLoading, reload, reactToPost, deletePost,
   } = useProfileTabs(user?.id)
-  const { updateMap, deleteMap } = useOikosMaps()
+  const { updateMap, deleteMap, createMap } = useOikosMaps()
   const { showToast } = useToast()
   const fileInputRef = useRef(null)
   const [activeTab, setActiveTab] = useState('maps')
   const [avatarUploading, setAvatarUploading] = useState(false)
-  const [selectedMapId, setSelectedMapId] = useState(null)
   const [settingsMap, setSettingsMap] = useState(null)
   const [overlay, setOverlay] = useState(null) // 'siblings' | 'communities' | null
 
@@ -619,10 +622,15 @@ export default function ProfileView() {
           {activeTab === 'maps' && (
             <MapsTab
               maps={maps}
-              ownerId={user?.id}
-              selectedMapId={selectedMapId}
-              onSelect={setSelectedMapId}
               onSettings={setSettingsMap}
+              onCreateMap={async () => {
+                try {
+                  const newMap = await createMap('Meine Map')
+                  if (newMap?.id) navigate(`/map/${newMap.id}`)
+                } catch {
+                  showToast('Fehler beim Erstellen', 'error')
+                }
+              }}
             />
           )}
           {activeTab === 'posts' && (

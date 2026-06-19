@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { ToastProvider } from './context/ToastContext'
@@ -19,6 +19,7 @@ import PrayerListDetailView from './pages/PrayerListDetailView'
 import AnsweredPrayersView from './pages/AnsweredPrayersView'
 import FeedPostView from './pages/FeedPostView'
 import PublicMapView from './pages/PublicMapView'
+import MapView from './pages/MapView'
 import ConversationView from './pages/ConversationView'
 import NotificationsPage from './pages/NotificationsPage'
 import BottomNav from './components/layout/BottomNav'
@@ -46,7 +47,8 @@ function AppShellInner() {
   // (full-bleed map views)
   const isFullScreenRoute =
     location.pathname === '/' ||
-    location.pathname === '/worldmap'
+    location.pathname === '/worldmap' ||
+    location.pathname.startsWith('/map/')
 
   return (
     <div className="h-[100dvh] flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
@@ -72,6 +74,7 @@ function AppShellInner() {
           <Route path="/community/:id" element={<CommunityDetail />} />
           <Route path="/user/:id" element={<UserProfile />} />
           <Route path="/user/:id/map/:mapId" element={<PublicMapView />} />
+          <Route path="/map/:mapId" element={<OwnMapPage />} />
           <Route path="/user/:id/connections" element={<ConnectionsView />} />
           <Route path="/profile" element={<ProfileView />} />
           <Route path="/profile/connections" element={<ConnectionsView />} />
@@ -93,6 +96,11 @@ function AppShell() {
     checkBirthdays(user.id)
   }, [user?.id])
   return <AppShellInner />
+}
+
+function OwnMapPage() {
+  const { mapId } = useParams()
+  return <MapView initialMapId={mapId} hideWorldMapToggle />
 }
 
 function DiscipleshipComingSoon() {

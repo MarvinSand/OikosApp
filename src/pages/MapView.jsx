@@ -257,7 +257,7 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
   )
 }
 
-export default function MapView({ hideWorldMapToggle = false } = {}) {
+export default function MapView({ hideWorldMapToggle = false, initialMapId = null } = {}) {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('oikos')
   const { user } = useAuth()
@@ -289,6 +289,13 @@ export default function MapView({ hideWorldMapToggle = false } = {}) {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Du'
+
+  useEffect(() => {
+    if (initialMapId && maps.length > 0) {
+      const found = maps.find(m => m.id === initialMapId)
+      if (found) setActiveMapId(initialMapId)
+    }
+  }, [initialMapId, maps.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load linked profiles whenever people changes
   useEffect(() => {
