@@ -252,47 +252,55 @@ function getZoomIcon(zoom) {
 }
 
 function useSnapchatZoom({ map, minZoom = 2 }) {
-  const sliderRef = useRef(null)
-  const trackRef  = useRef(null)
-  const draggingRef = useRef(false)
-  const startYRef   = useRef(0)
+  const trackRef     = useRef(null)
+  const draggingRef  = useRef(false)
+  const startYRef    = useRef(0)
   const startZoomRef = useRef(0)
   const [currentZoom, setCurrentZoom] = useState(10)
 
   // Sync zoom state when Google Maps changes zoom externally
   useEffect(() => {
     if (!map) return
-    const listener = map.addListener('zoom_changed', () => {
-      setCurrentZoom(map.getZoom())
-    })
+    const listener = map.addListener('zoom_changed', () => setCurrentZoom(map.getZoom()))
     setCurrentZoom(map.getZoom())
     return () => window.google.maps.event.removeListener(listener)
   }, [map])
 
-  const onPointerDown = useCallback((e) => {
-    if (!map) return
-    draggingRef.current = true
-    startYRef.current = e.touches ? e.touches[0].clientY : e.clientY
-    startZoomRef.current = map.getZoom()
-    e.currentTarget.setPointerCapture?.(e.pointerId)
-  }, [map])
+  // Global move/up listeners so dragging outside the track still works (PC + Mobile)
+  useEffect(() => {
+    function move(e) {
+      if (!draggingRef.current || !map || !trackRef.current) return
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY
+      const dy = startYRef.current - clientY   // up = positive = zoom in
+      const trackH = trackRef.current.getBoundingClientRect().height || 220
+      const zoomRange = 20 - minZoom
+      const delta = (dy / trackH) * zoomRange
+      const newZoom = Math.min(20, Math.max(minZoom, startZoomRef.current + delta))
+      map.setZoom(Math.round(newZoom))
+    }
+    function up() { draggingRef.current = false }
 
-  const onPointerMove = useCallback((e) => {
-    if (!draggingRef.current || !map || !trackRef.current) return
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY
-    const dy = startYRef.current - clientY          // positive = finger moved up = zoom in
-    const trackH = trackRef.current.getBoundingClientRect().height || 200
-    const zoomRange = 20 - minZoom
-    const delta = (dy / trackH) * zoomRange
-    const newZoom = Math.min(20, Math.max(minZoom, startZoomRef.current + delta))
-    map.setZoom(Math.round(newZoom))
+    window.addEventListener('mousemove', move)
+    window.addEventListener('mouseup',   up)
+    window.addEventListener('touchmove', move, { passive: true })
+    window.addEventListener('touchend',  up)
+    return () => {
+      window.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup',   up)
+      window.removeEventListener('touchmove', move)
+      window.removeEventListener('touchend',  up)
+    }
   }, [map, minZoom])
 
-  const onPointerUp = useCallback(() => {
-    draggingRef.current = false
-  }, [])
+  function onDragStart(e) {
+    if (!map) return
+    draggingRef.current = true
+    startYRef.current   = e.touches ? e.touches[0].clientY : e.clientY
+    startZoomRef.current = map.getZoom()
+    e.preventDefault?.()
+  }
 
-  return { sliderRef, trackRef, currentZoom, onPointerDown, onPointerMove, onPointerUp }
+  return { trackRef, currentZoom, onDragStart }
 }
 
 // ─── Main Component ───────────────────────────────────────
@@ -572,10 +580,9 @@ function OwnPinContent({ user }) {
 
 // ─── Snapchat Zoom Sidebar Component ─────────────────────
 function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
-  const { trackRef, currentZoom, onPointerDown, onPointerMove, onPointerUp } = snapZoom
+  const { trackRef, currentZoom, onDragStart } = snapZoom
   const maxZoom = 20
   const zoomRange = maxZoom - minZoom
-  // Progress 0 (far out) → 1 (max zoom in)
   const progress = Math.max(0, Math.min(1, (currentZoom - minZoom) / zoomRange))
   const currentIcon = getZoomIcon(currentZoom)
 
@@ -589,11 +596,11 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 10,
+      gap: 8,
       userSelect: 'none',
       WebkitUserSelect: 'none',
     }}>
-      {/* Mein Standort button above slider */}
+      {/* Mein Standort button */}
       {onCenterSelf && (
         <button
           onClick={onCenterSelf}
@@ -612,48 +619,37 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
         </button>
       )}
 
-      {/* Current zoom level icon */}
-      <div style={{
-        fontSize: 22, lineHeight: 1,
-        filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))',
-        transition: 'transform 0.15s',
-        transform: 'scale(1.05)',
-      }} title={currentIcon.label}>
+      {/* Current zoom emoji – no label */}
+      <div style={{ fontSize: 22, lineHeight: 1, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))' }}>
         {currentIcon.emoji}
       </div>
 
-      {/* Drag track */}
+      {/* Drag track – taller, global mouse/touch listeners handle the drag */}
       <div
         ref={trackRef}
         style={{
           width: 36,
-          height: 160,
+          height: 240,
           borderRadius: 18,
-          background: 'rgba(255,255,255,0.82)',
+          background: 'rgba(255,255,255,0.88)',
           border: `1px solid ${C.border}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+          boxShadow: '0 2px 14px rgba(0,0,0,0.13)',
           backdropFilter: 'blur(8px)',
           position: 'relative',
           touchAction: 'none',
           cursor: 'ns-resize',
           overflow: 'hidden',
         }}
-        onMouseDown={onPointerDown}
-        onMouseMove={onPointerMove}
-        onMouseUp={onPointerUp}
-        onMouseLeave={onPointerUp}
-        onTouchStart={onPointerDown}
-        onTouchMove={onPointerMove}
-        onTouchEnd={onPointerUp}
+        onMouseDown={onDragStart}
+        onTouchStart={onDragStart}
       >
-        {/* Filled bar – grows from bottom */}
+        {/* Filled bar – grows from bottom as you zoom in */}
         <div style={{
           position: 'absolute',
           bottom: 0, left: 0, right: 0,
           height: `${progress * 100}%`,
           background: `linear-gradient(to top, ${C.accentDark}, ${C.accent})`,
           borderRadius: 18,
-          transition: 'height 0.05s',
         }} />
 
         {/* Thumb knob */}
@@ -667,18 +663,8 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
           background: '#fff',
           border: `2.5px solid ${C.accent}`,
           boxShadow: '0 2px 8px rgba(90,200,250,0.4)',
-          transition: 'bottom 0.05s',
           pointerEvents: 'none',
         }} />
-      </div>
-
-      {/* Zoom label below track */}
-      <div style={{
-        fontSize: 9, fontWeight: 700, color: C.textSec, letterSpacing: 0.5,
-        textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.2,
-        maxWidth: 40,
-      }}>
-        {currentIcon.label}
       </div>
     </div>
   )
