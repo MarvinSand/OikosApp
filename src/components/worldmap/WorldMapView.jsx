@@ -660,7 +660,7 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
           transform: 'translateX(-50%)',
           width: 28, height: 28,
           borderRadius: '50%',
-          background: '#fff',
+          background: C.bg,
           border: `2.5px solid ${C.accent}`,
           boxShadow: '0 2px 8px rgba(90,200,250,0.4)',
           pointerEvents: 'none',

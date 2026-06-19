@@ -317,7 +317,7 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
               width: '100%', padding: '12px 0',
               border: `1.5px solid ${C.border}`,
               borderRadius: 12,
-              background: '#fff',
+              background: C.bg,
               color: C.text,
               fontSize: 14, fontWeight: 600,
               cursor: chatLoading ? 'not-allowed' : 'pointer',

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Navigation, MapPin, Search } from 'lucide-react'
+import { X, Navigation, MapPin, Search, Globe, Users, UserCheck } from 'lucide-react'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { useToast } from '../../context/ToastContext'
 import { useCommunities } from '../../hooks/useCommunities'
@@ -40,10 +40,10 @@ const EVENT_CATEGORIES = [
 const CUSTOM_EMOJIS = ['🎉', '☕', '🍽️', '🏃', '⚽', '🎸', '🎨', '🔥', '🌟', '🙏', '📚', '🎬', '🏕️', '🍕', '🧗', '🎲']
 
 const VISIBILITY = [
-  { key: 'public',      label: 'Öffentlich',              emoji: '🌐', sub: null },
-  { key: 'communities', label: 'Community',               emoji: '⛪', sub: 'community' },
-  { key: 'siblings',    label: 'Meine Geschwister',       emoji: '👥', sub: null },
-  { key: 'specific',    label: 'Ausgewählte Geschwister', emoji: '🧑‍🤝‍🧑', sub: 'siblings' },
+  { key: 'public',      label: 'Öffentlich',              icon: Globe,      sub: null },
+  { key: 'communities', label: 'Community',               icon: Users,      sub: 'community' },
+  { key: 'siblings',    label: 'Meine Geschwister',       icon: UserCheck,  sub: null },
+  { key: 'specific',    label: 'Ausgewählte Geschwister', icon: Users,      sub: 'siblings' },
 ]
 
 const lbl = { display: 'block', fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 8 }
@@ -106,7 +106,7 @@ function SiblingPicker({ selected, onChange }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, textAlign: 'left',
                 border: `1.5px solid ${checked ? C.accent : C.border}`,
-                background: checked ? C.accentLight : '#fff', cursor: 'pointer',
+                background: checked ? C.accentLight : C.bg, cursor: 'pointer',
               }}
             >
               {s.avatar_url
@@ -306,7 +306,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   const tabStyle = (active) => ({
     flex: 1, padding: '9px 4px', border: 'none', borderRadius: 10, cursor: 'pointer',
     fontSize: 12, fontWeight: active ? 700 : 500,
-    background: active ? '#fff' : 'transparent',
+    background: active ? C.bg : 'transparent',
     color: active ? C.accentDark : C.textSec,
     boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
     transition: 'all 0.15s',
@@ -360,20 +360,21 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {VISIBILITY.map(v => {
                 const active = form.visibility_mode === v.key
+                const Icon = v.icon
                 return (
                   <button
                     key={v.key}
                     onClick={() => selectVisibility(v.key)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                      padding: '13px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+                      padding: '14px 16px', borderRadius: 14, cursor: 'pointer', textAlign: 'left',
                       border: `1.5px solid ${active ? C.accent : C.border}`,
-                      background: active ? C.accentLight : '#fff',
+                      background: active ? `${C.accent}10` : C.bg,
                     }}
                   >
-                    <span style={{ fontSize: 20 }}>{v.emoji}</span>
-                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: C.text }}>{v.label}</span>
-                    {v.sub && <span style={{ fontSize: 13, color: C.textTer }}>›</span>}
+                    <Icon size={18} color={active ? C.accent : C.textSec} />
+                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: active ? C.accent : C.text }}>{v.label}</span>
+                    {v.sub && <span style={{ marginLeft: 'auto', fontSize: 13, color: C.textTer }}>›</span>}
                   </button>
                 )
               })}
@@ -400,7 +401,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                       style={{
                         padding: '9px 15px', borderRadius: 16, cursor: 'pointer',
                         border: `1.5px solid ${sel ? C.accent : C.border}`,
-                        background: sel ? C.accent : '#fff',
+                        background: sel ? C.accent : C.bg,
                         color: sel ? '#fff' : C.text,
                         fontSize: 13, fontWeight: sel ? 700 : 500,
                       }}
@@ -460,7 +461,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '12px 12px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
                       border: `1.5px solid ${active ? C.accent : C.border}`,
-                      background: active ? C.accentLight : '#fff',
+                      background: active ? C.accentLight : C.bg,
                     }}
                   >
                     <span style={{ fontSize: 22 }}>{cat.key === 'sonstiges' ? (form.customEmoji || '✨') : cat.emoji}</span>
@@ -482,7 +483,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                       style={{
                         width: 42, height: 42, borderRadius: 10, fontSize: 20, cursor: 'pointer',
                         border: `2px solid ${form.customEmoji === e ? C.accent : C.border}`,
-                        background: form.customEmoji === e ? C.accentLight : '#fff',
+                        background: form.customEmoji === e ? C.accentLight : C.bg,
                       }}
                     >
                       {e}
@@ -561,7 +562,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '12px 16px', borderRadius: 12, width: '100%',
                     border: `1.5px solid ${form.latitude ? C.accent : C.border}`,
-                    background: form.latitude ? C.accentLight : '#fff',
+                    background: form.latitude ? C.accentLight : C.bg,
                     fontSize: 14, fontWeight: 600,
                     color: form.latitude ? C.accentDark : C.text,
                     cursor: 'pointer', opacity: locating ? 0.7 : 1,
@@ -576,7 +577,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                     onClick={() => applyLocation(myProfile.latitude, myProfile.longitude, myProfile.city || '')}
                     style={{
                       marginTop: 8, padding: '9px 12px', borderRadius: 10,
-                      border: `1.5px solid ${C.border}`, background: '#fff',
+                      border: `1.5px solid ${C.border}`, background: C.bg,
                       fontSize: 12, color: C.textSec, fontWeight: 500,
                       cursor: 'pointer', width: '100%',
                     }}
