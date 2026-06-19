@@ -143,7 +143,7 @@ export default function OverlayPersonSheet({
                 width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
                 backgroundColor: person.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'white', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700,
+                color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700,
               }}>
                 {getInitials(person.name)}
               </div>

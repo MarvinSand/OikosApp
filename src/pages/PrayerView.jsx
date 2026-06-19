@@ -38,7 +38,7 @@ function Avatar({ name, size = 40, isChristian }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
     }}>{getInitials(name)}</div>
   )
 }
@@ -274,7 +274,7 @@ function NoteModal({ requestId, ownerName, onSave, onClose }) {
           <button
             onClick={handleSave}
             disabled={!text.trim() || saving}
-            style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}
+            style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}
           >
             {saving ? 'Speichere…' : 'Notiz speichern'}
           </button>
@@ -437,7 +437,7 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', margin: 0 }}>
             Möchtest du eine Notiz hinterlassen?
           </p>
-          <button onClick={handleNoteOpen} style={{ border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', borderRadius: 8, padding: '6px 12px', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={handleNoteOpen} style={{ border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', borderRadius: 8, padding: '6px 12px', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             Ja
           </button>
         </div>
@@ -650,7 +650,7 @@ function ProfilePreviewSheet({ profile, onClose }) {
                     const { data: convId, error } = await supabase.rpc('start_direct_chat', { other_user_id: profile.id })
                     if (!error) { onClose(); navigate(`/chat/${convId}`) }
                   }}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                 >
                   <MessageCircle size={15} /> Nachricht
                 </button>
@@ -663,7 +663,7 @@ function ProfilePreviewSheet({ profile, onClose }) {
                 <Clock size={14} /> Ausstehend
               </button>
             ) : (
-              <button onClick={handleFriendAction} disabled={actionLoading} style={{ width: '100%', padding: '11px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <button onClick={handleFriendAction} disabled={actionLoading} style={{ width: '100%', padding: '11px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <UserPlus size={15} /> {actionLoading ? '…' : 'Verbinden'}
               </button>
             )}
@@ -882,7 +882,7 @@ function PostRequestSheet({ onClose, onPost }) {
           </div>
         )}
 
-        <button onClick={handlePost} disabled={!title.trim() || saving} style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 20, cursor: title.trim() ? 'pointer' : 'not-allowed', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600 }}>
+        <button onClick={handlePost} disabled={!title.trim() || saving} style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 20, cursor: title.trim() ? 'pointer' : 'not-allowed', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600 }}>
           {saving ? 'Teile…' : 'Anliegen teilen 🙏'}
         </button>
       </div>
@@ -966,13 +966,13 @@ function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete, onU
         {editMode ? (
           <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
             <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
-            <button onClick={handleSaveEdit} disabled={!title.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
+            <button onClick={handleSaveEdit} disabled={!title.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
               {saving ? 'Speichere…' : 'Speichern'}
             </button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button onClick={handleAnswered} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: request.is_answered ? 'var(--color-warm-3)' : 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <button onClick={handleAnswered} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: request.is_answered ? 'var(--color-warm-3)' : 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <Check size={15} /> {request.is_answered ? 'Als offen markieren' : 'Als erhört markieren ✓'}
             </button>
             {!confirmDelete ? (
@@ -1015,7 +1015,7 @@ function MyPrayerSection({ myRequests, markAnswered, updateRequest, deleteReques
             Meine Anliegen
           </p>
           {sorted.length > 0 && (
-            <span style={{ backgroundColor: 'var(--color-warm-1)', color: 'white', borderRadius: 20, padding: '1px 7px', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700 }}>
+            <span style={{ backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', borderRadius: 20, padding: '1px 7px', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700 }}>
               {sorted.length}
             </span>
           )}
@@ -1023,7 +1023,7 @@ function MyPrayerSection({ myRequests, markAnswered, updateRequest, deleteReques
         <button
           onClick={onNew}
           className="tour-prayer-add"
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
         >
           <Plus size={12} /> Neu
         </button>
@@ -1325,7 +1325,7 @@ function FilterSheet({ filter, onApply, onClose }) {
 
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <button onClick={handleReset} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Zurücksetzen</button>
-          <button onClick={handleApply} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Filter anwenden</button>
+          <button onClick={handleApply} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Filter anwenden</button>
         </div>
       </div>
     </>
@@ -1439,7 +1439,7 @@ export default function PrayerView() {
           </div>
           <button
             onClick={() => setShowFilter(true)}
-            style={{ position: 'relative', border: 'none', background: filterActive ? 'var(--color-warm-1)' : 'none', cursor: 'pointer', padding: '5px 7px', borderRadius: 8, color: filterActive ? 'white' : 'var(--color-text-muted)', flexShrink: 0, marginBottom: 4 }}
+            style={{ position: 'relative', border: 'none', background: filterActive ? 'var(--color-warm-1)' : 'none', cursor: 'pointer', padding: '5px 7px', borderRadius: 8, color: filterActive ? 'var(--color-bg)' : 'var(--color-text-muted)', flexShrink: 0, marginBottom: 4 }}
           >
             <SlidersHorizontal size={18} />
             {filterActive && (
@@ -1494,7 +1494,7 @@ export default function PrayerView() {
               </button>
             )}
             {!filterActive && activeTab === 'all' && (
-              <button onClick={() => setShowPost(true)} style={{ marginTop: 16, padding: '12px 24px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              <button onClick={() => setShowPost(true)} style={{ marginTop: 16, padding: '12px 24px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                 + Anliegen teilen
               </button>
             )}
@@ -1544,4 +1544,4 @@ export default function PrayerView() {
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }
 const inp = { width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }
 const menuItem = { display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left' }
-const chip = { fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-1)', color: 'white' }
+const chip = { fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)' }

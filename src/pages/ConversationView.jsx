@@ -53,7 +53,7 @@ function Avatar({ name, size = 36, isChristian }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.33, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.33, fontWeight: 700,
     }}>
       {initials}
     </div>
@@ -94,7 +94,7 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
         fontWeight: 600,
         textTransform: 'uppercase',
         letterSpacing: '0.5px',
-        color: isOwn ? 'rgba(255,255,255,0.75)' : 'var(--color-text-light)',
+        color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-light)',
         margin: '0 0 4px 0',
       }}>
         🙏 Gebetsanliegen
@@ -103,7 +103,7 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
         fontFamily: 'Lora, serif',
         fontSize: 14,
         fontWeight: 700,
-        color: isOwn ? 'white' : 'var(--color-text)',
+        color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)',
         margin: '0 0 4px 0',
       }}>
         {msg.text}
@@ -113,7 +113,7 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
           fontFamily: 'Lora, serif',
           fontSize: 12,
           fontStyle: 'italic',
-          color: isOwn ? 'rgba(255,255,255,0.85)' : 'var(--color-text-muted)',
+          color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-muted)',
           margin: '0 0 8px 0',
         }}>
           {msg.bible_verse_text}
@@ -125,9 +125,9 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
         style={{
           padding: '5px 12px',
           borderRadius: 8,
-          border: isOwn ? '1.5px solid rgba(255,255,255,0.7)' : '1.5px solid var(--color-warm-1)',
+          border: isOwn ? '1.5px solid var(--color-bubble-own-text-muted)' : '1.5px solid var(--color-warm-1)',
           backgroundColor: 'transparent',
-          color: isOwn ? 'white' : 'var(--color-warm-1)',
+          color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-warm-1)',
           fontFamily: 'Lora, serif',
           fontSize: 12,
           fontWeight: 500,
@@ -148,7 +148,7 @@ function BibleVerseCard({ msg, isOwn }) {
         fontFamily: 'Lora, serif',
         fontSize: 13,
         fontWeight: 700,
-        color: isOwn ? 'white' : 'var(--color-text)',
+        color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)',
         margin: '0 0 4px 0',
       }}>
         📖 {msg.bible_verse_reference}
@@ -157,7 +157,7 @@ function BibleVerseCard({ msg, isOwn }) {
         fontFamily: 'Lora, serif',
         fontSize: 13,
         fontStyle: 'italic',
-        color: isOwn ? 'rgba(255,255,255,0.9)' : 'var(--color-text-muted)',
+        color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-muted)',
         margin: 0,
         lineHeight: 1.5,
       }}>
@@ -333,18 +333,18 @@ function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJump
         style={{
           maxWidth: '75%',
           padding: msg.is_deleted ? '8px 12px' : '10px 14px',
-          borderRadius: isOwn ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+          borderRadius: isOwn ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
           backgroundColor: msg.is_deleted
             ? 'transparent'
             : isOwn
-              ? 'var(--color-warm-1)'
-              : 'var(--color-white)',
+              ? 'var(--color-bubble-own)'
+              : 'var(--color-bubble-other)',
           border: msg.is_deleted
             ? 'none'
             : isOwn
-              ? 'none'
-              : '1.5px solid var(--color-warm-3)',
-          boxShadow: msg.is_deleted ? 'none' : '0 1px 4px rgba(58,46,36,0.07)',
+              ? '1px solid var(--color-bubble-own-border)'
+              : '1px solid var(--color-bubble-other-border)',
+          boxShadow: msg.is_deleted ? 'none' : 'var(--shadow-bubble)',
           cursor: msg.is_deleted ? 'default' : 'context-menu',
           userSelect: msg.is_deleted ? 'auto' : 'none',
           WebkitUserSelect: msg.is_deleted ? 'auto' : 'none',
@@ -384,8 +384,8 @@ function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJump
         ) : (
           <p style={{
             fontFamily: 'Lora, serif',
-            fontSize: 14,
-            color: isOwn ? 'white' : 'var(--color-text)',
+            fontSize: 14.5,
+            color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-bubble-other-text)',
             margin: 0,
             lineHeight: 1.5,
             whiteSpace: 'pre-wrap',
@@ -854,7 +854,7 @@ function BibleVerseModal({ onClose, onSend }) {
               borderRadius: 12,
               border: 'none',
               backgroundColor: reference.trim() && verseText.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
-              color: 'white',
+              color: 'var(--color-bg)',
               fontFamily: 'Lora, serif',
               fontSize: 14,
               fontWeight: 600,
@@ -1114,7 +1114,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, replyTo, onCancelReply })
             borderRadius: '50%',
             border: 'none',
             backgroundColor: showAttach ? 'var(--color-warm-1)' : 'var(--color-warm-4)',
-            color: showAttach ? 'white' : 'var(--color-warm-1)',
+            color: showAttach ? 'var(--color-bg)' : 'var(--color-warm-1)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -1436,7 +1436,8 @@ export default function ConversationView() {
       `}</style>
 
       {/* Header */}
-      <div className="bg-gradient-to-br from-[#F7F3EC] to-[var(--color-bg)] px-3 pt-3 pb-3 shrink-0 relative overflow-hidden border-b border-warm-3">
+      <div className="bg-gradient-to-br from-[var(--color-header-wash)] to-[var(--color-bg)] px-3 pt-3 pb-3 shrink-0 relative overflow-hidden border-b border-warm-3">
+        {/* Deko circles */}
         <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full bg-warm-3/35 pointer-events-none blur-xl" />
 
         <div className="flex items-center gap-2 relative z-10">

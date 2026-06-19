@@ -382,7 +382,7 @@ function TutorialCard({ step, rect, stepNum, total, loading, canGoBack, onAction
 
 const btn = (v) => {
   const base = { padding: '8px 0', borderRadius: 9, fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none', width: '100%' }
-  if (v === 'primary') return { ...base, backgroundColor: 'var(--color-warm-1)', color: 'white' }
+  if (v === 'primary') return { ...base, backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)' }
   if (v === 'danger')  return { ...base, background: 'none', border: '1.5px solid #E8C0B8', color: '#C0392B' }
   return { ...base, background: 'none', border: '1.5px solid var(--color-warm-3)', color: 'var(--color-text-muted)' }
 }
@@ -405,7 +405,7 @@ function MinimizedPill({ stepNum, total, onExpand, onSkip }) {
       <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Tutorial {stepNum + 1}/{total}</span>
       <button
         onClick={onExpand}
-        style={{ padding: '5px 10px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+        style={{ padding: '5px 10px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
       >
         Fortsetzen ↑
       </button>

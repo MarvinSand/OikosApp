@@ -39,7 +39,7 @@ function UserAvatar({ profile, size = 36 }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: profile?.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
       overflow: 'hidden',
     }}>
       {profile?.avatar_url
@@ -332,7 +332,7 @@ export default function FeedPostView() {
           <button
             onClick={sendComment}
             disabled={!draft.trim() || sending}
-            style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', backgroundColor: draft.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', cursor: draft.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background-color 0.2s' }}
+            style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', backgroundColor: draft.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', cursor: draft.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background-color 0.2s' }}
           >
             <Send size={16} />
           </button>

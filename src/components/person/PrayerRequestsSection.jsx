@@ -30,7 +30,7 @@ function AvatarBubble({ name, size = 40, isChristian }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
     }}>{getInitials(name)}</div>
   )
 }
@@ -47,7 +47,7 @@ function OverlappingPrayerAvatars({ prayersByUser, currentUserId }) {
             width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
             backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontFamily: 'Lora, serif', fontSize: 8, fontWeight: 700,
+            color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 8, fontWeight: 700,
             border: '2px solid white', marginLeft: i > 0 ? -8 : 0,
             position: 'relative', zIndex: 3 - i,
           }}>{getInitials(name)}</div>
@@ -92,7 +92,7 @@ function PrayedBySheet({ prayersByUser, onClose }) {
           const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
           return (
             <div key={userId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, backgroundColor: profile?.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, backgroundColor: profile?.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700 }}>
                 {initials}
               </div>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{name}</p>
@@ -156,7 +156,7 @@ function EditRequestSheet({ req, onSave, onClose }) {
         <button
           onClick={handleSave}
           disabled={!title.trim() || saving}
-          style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 16, backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}
+          style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 16, backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}
         >
           {saving ? 'Speichere…' : 'Speichern'}
         </button>
@@ -223,7 +223,7 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 10, padding: '1px 8px', borderRadius: 20, backgroundColor: '#FDF2F8', color: '#BE185D', fontWeight: 600, border: '1px solid rgba(190,24,93,0.12)' }}>Schwester</span>
               )}
               {isAnswered && (
-                <span style={{ fontFamily: 'Lora, serif', fontSize: 10, padding: '1px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-1)', color: 'white', fontWeight: 700 }}>🎉 Erhört</span>
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 10, padding: '1px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontWeight: 700 }}>🎉 Erhört</span>
               )}
             </div>
             <p style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 500, color: 'rgba(58,46,36,0.55)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
@@ -354,7 +354,7 @@ function AddRequestForm({ onSave, onCancel }) {
         </button>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onCancel} style={{ ...smallBtn, backgroundColor: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-warm-3)' }}>Abbrechen</button>
-          <button onClick={handleSave} disabled={!title.trim() || saving} style={{ ...smallBtn, backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', border: 'none' }}>Speichern</button>
+          <button onClick={handleSave} disabled={!title.trim() || saving} style={{ ...smallBtn, backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', border: 'none' }}>Speichern</button>
         </div>
       </div>
     </div>

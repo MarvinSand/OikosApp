@@ -29,7 +29,7 @@ function Avatar({ name, size = 40, isChristian, avatarUrl }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
     }}>{initials}</div>
   )
 }
@@ -550,7 +550,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
   return (
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
-        <button onClick={onCreateOpen} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <button onClick={onCreateOpen} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <Plus size={15} /> Erstellen
         </button>
         <button onClick={onJoinOpen} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'transparent', color: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
@@ -678,7 +678,7 @@ function CreateCommunitySheet({ onClose }) {
         <button
           onClick={handleCreate}
           disabled={!name.trim() || saving}
-          style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 20, backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed' }}
+          style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 20, backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed' }}
         >
           {saving ? 'Erstelle…' : 'Community erstellen'}
         </button>
@@ -721,7 +721,7 @@ function JoinCommunityModal({ onClose }) {
         {error && <p style={{ color: '#C0392B', fontFamily: 'Lora, serif', fontSize: 13, marginTop: 6, fontStyle: 'italic' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
-          <button onClick={handleJoin} disabled={!code.trim() || loading} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: code.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={handleJoin} disabled={!code.trim() || loading} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: code.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             {loading ? 'Beitrete…' : 'Beitreten'}
           </button>
         </div>
@@ -743,7 +743,7 @@ function ChatsAvatar({ name, size = 40, isChristian, avatarUrl }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
     }}>{initials}</div>
   )
 }
@@ -940,7 +940,7 @@ function ChatsTab() {
       <button
         onClick={() => setShowNewChat(true)}
         disabled={starting}
-        style={{ position: 'fixed', bottom: 90, right: 20, width: 52, height: 52, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(58,46,36,0.25)', zIndex: 10, color: 'white' }}
+        style={{ position: 'fixed', bottom: 90, right: 20, width: 52, height: 52, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(58,46,36,0.25)', zIndex: 10, color: 'var(--color-bg)' }}
       >
         <Plus size={24} />
       </button>
@@ -1029,7 +1029,7 @@ function FeedAvatar({ profile, size = 36 }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: profile?.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
       overflow: 'hidden',
     }}>
       {profile?.avatar_url
@@ -1281,7 +1281,7 @@ export function CreatePostSheet({ onClose, onSubmit }) {
             <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', textAlign: 'right', margin: 0 }}>{form.body.length}/500</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setStep(1)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Zurück</button>
-              <button onClick={() => setStep(3)} disabled={!valid()} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: valid() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: valid() ? 'pointer' : 'not-allowed' }}>Weiter</button>
+              <button onClick={() => setStep(3)} disabled={!valid()} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: valid() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: valid() ? 'pointer' : 'not-allowed' }}>Weiter</button>
             </div>
           </div>
         )}
@@ -1322,7 +1322,7 @@ export function CreatePostSheet({ onClose, onSubmit }) {
             )}
             <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
               <button onClick={() => setStep(2)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Zurück</button>
-              <button onClick={handleSubmit} disabled={saving || (!isPublic && selectedCommunities.length === 0)} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+              <button onClick={handleSubmit} disabled={saving || (!isPublic && selectedCommunities.length === 0)} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
                 {saving ? 'Teile…' : 'Teilen 🙌'}
               </button>
             </div>
@@ -1958,7 +1958,7 @@ const nameText = { fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, col
 const usernameText = { fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }
 const sectionLabel = { fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }
 const mutedText = { fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }
-const connectBtn = { padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }
+const connectBtn = { padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }
 const pendingBadge = { fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic', flexShrink: 0 }
 const friendsBadge = { fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-accent-dark)', fontWeight: 600, flexShrink: 0 }
 const actionBtn = { width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }

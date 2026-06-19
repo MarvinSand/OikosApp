@@ -179,7 +179,7 @@ function AddItemSheet({ listId, existingIds, onClose, onAdded }) {
             </div>
             <button
               onClick={() => handleAdd(req)} disabled={adding === req.id}
-              style={{ padding: '6px 14px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
+              style={{ padding: '6px 14px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
             >
               {adding === req.id ? '…' : '+ Hinzufügen'}
             </button>
@@ -247,7 +247,7 @@ function EditListSheet({ list, onClose, onSave, onDelete }) {
         </div>
 
         <button onClick={handleSave} disabled={!name.trim() || saving}
-          style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed', marginBottom: 10 }}>
+          style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed', marginBottom: 10 }}>
           {saving ? 'Speichere…' : 'Änderungen speichern'}
         </button>
 
@@ -485,7 +485,7 @@ function UpdateSheet({ item, onClose, onSave }) {
           style={{
             width: '100%', padding: '13px 0', borderRadius: 12, border: 'none',
             backgroundColor: content.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
-            color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600,
+            color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600,
             cursor: content.trim() ? 'pointer' : 'not-allowed',
           }}
         >
@@ -672,7 +672,7 @@ export default function PrayerListDetailView() {
         style={{
           position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))', right: 20,
           width: 52, height: 52, borderRadius: '50%', border: 'none',
-          backgroundColor: 'var(--color-warm-1)', color: 'white',
+          backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', boxShadow: '0 4px 16px rgba(74,103,65,0.35)', zIndex: 20,
         }}

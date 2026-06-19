@@ -105,7 +105,7 @@ function CreateListSheet({ onClose, onCreate }) {
           style={{
             width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
             backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
-            color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600,
+            color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600,
             cursor: name.trim() ? 'pointer' : 'not-allowed',
           }}
         >

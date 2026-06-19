@@ -95,7 +95,7 @@ function EditPersonForm({ person, onSave, onCancel }) {
         {RELATIONSHIP_TYPES.map(t => (
           <button
             key={t} onClick={() => setRelType(relType === t ? '' : t)}
-            style={{ padding: '5px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, backgroundColor: relType === t ? 'var(--color-warm-1)' : 'var(--color-white)', color: relType === t ? 'white' : 'var(--color-text-muted)' }}
+            style={{ padding: '5px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, backgroundColor: relType === t ? 'var(--color-warm-1)' : 'var(--color-white)', color: relType === t ? 'var(--color-bg)' : 'var(--color-text-muted)' }}
           >
             {t}
           </button>
@@ -116,7 +116,7 @@ function EditPersonForm({ person, onSave, onCancel }) {
         <button onClick={onCancel} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer' }}>
           Abbrechen
         </button>
-        <button onClick={handleSave} disabled={!name.trim() || saving} style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={handleSave} disabled={!name.trim() || saving} style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
           {saving ? 'Gespeichert ✓' : 'Speichern'}
         </button>
       </div>
@@ -246,7 +246,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
               <ColorSwatches colors={CONN_COLORS} selected={ownerColorDraft} onSelect={hex => setOwnerColorDraft(hex)} />
               <button
                 onClick={() => { setOwnerColor(ownerColorDraft); setOwnerPickerOpen(false) }}
-                style={{ marginTop: 12, width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ marginTop: 12, width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Speichern
               </button>
@@ -359,7 +359,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                     marginTop: 12, width: '100%',
                     padding: '10px 0', borderRadius: 10,
                     border: 'none', backgroundColor: colorSaving ? 'var(--color-warm-3)' : 'var(--color-warm-1)',
-                    color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                    color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13,
                     fontWeight: 600, cursor: colorSaving ? 'default' : 'pointer',
                   }}
                 >
@@ -420,7 +420,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
           </button>
           <button
             onClick={() => { setShowNewPersonForm(true); setNewPersonName('') }}
-            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-1)', background: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 13, color: 'white', cursor: 'pointer', fontWeight: 600 }}
+            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-1)', background: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-bg)', cursor: 'pointer', fontWeight: 600 }}
           >
             + Person hinzufügen
           </button>
@@ -452,7 +452,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
             <button
               onClick={handleAddNewPerson}
               disabled={!newPersonName.trim() || addingNewPerson}
-              style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: newPersonName.trim() && !addingNewPerson ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: newPersonName.trim() && !addingNewPerson ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               {addingNewPerson ? 'Wird hinzugefügt…' : 'Hinzufügen'}
             </button>
@@ -532,7 +532,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
               </button>
               <button
                 onClick={() => handleCreateWithLabel(labelInput.trim())}
-                style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Verbinden
               </button>
@@ -634,7 +634,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
 
         {/* Profile row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
             {linkedProfile.avatar_url
               ? <img src={linkedProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : getInitials(linkedProfile.full_name || linkedProfile.username || '?')
@@ -696,7 +696,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
                           padding: '8px 12px', borderRadius: 10,
                           border: `1.5px solid ${isSelected ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
                           backgroundColor: isSelected ? 'var(--color-warm-1)' : 'var(--color-white)',
-                          color: isSelected ? 'white' : 'var(--color-text)',
+                          color: isSelected ? 'var(--color-bg)' : 'var(--color-text)',
                           fontFamily: 'Lora, serif', fontSize: 13,
                           fontWeight: isSelected ? 600 : 400,
                           cursor: 'pointer', textAlign: 'left',
@@ -816,7 +816,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
               onClick={() => handleSelectProfile(profile)}
               style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-white)', marginBottom: 4, cursor: 'pointer', textAlign: 'left' }}
             >
-              <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
                 {profile.avatar_url
                   ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : getInitials(profile.full_name || profile.username || '?')
@@ -929,7 +929,7 @@ export default function PersonDetailSheet({
               width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
               backgroundColor: person.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700,
+              color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700,
             }}>
               {getInitials(person.name)}
             </div>
@@ -1013,7 +1013,7 @@ export default function PersonDetailSheet({
               style={{
                 width: '100%', padding: '11px 0', borderRadius: 10,
                 border: 'none', backgroundColor: colorSaving ? 'var(--color-warm-3)' : 'var(--color-warm-1)',
-                color: 'white', fontFamily: 'Lora, serif', fontSize: 13,
+                color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13,
                 fontWeight: 600, cursor: colorSaving ? 'default' : 'pointer',
               }}
             >

@@ -57,7 +57,7 @@ function Avatar({ name, size = 38, isChristian }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'white', fontFamily: 'Lora, serif', fontSize: size * 0.33, fontWeight: 700,
+      color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.33, fontWeight: 700,
     }}>
       {initials}
     </div>
@@ -98,26 +98,26 @@ function MessageBubble({ msg, isOwn }) {
       )}
       <div style={{
         maxWidth: '80%', padding: '9px 13px',
-        borderRadius: isOwn ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-        backgroundColor: isOwn ? 'var(--color-warm-1)' : 'var(--color-white)',
-        border: isOwn ? 'none' : '1.5px solid var(--color-warm-3)',
-        boxShadow: '0 1px 3px rgba(58,46,36,0.06)',
+        borderRadius: isOwn ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
+        backgroundColor: isOwn ? 'var(--color-bubble-own)' : 'var(--color-bubble-other)',
+        border: isOwn ? '1px solid var(--color-bubble-own-border)' : '1px solid var(--color-bubble-other-border)',
+        boxShadow: 'var(--shadow-bubble)',
       }}>
         {msg.type === 'prayer_request' ? (
           <div>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px', color: isOwn ? 'rgba(255,255,255,0.75)' : 'var(--color-warm-1)', margin: '0 0 4px' }}>🙏 Gebetsanliegen</p>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: isOwn ? 'white' : 'var(--color-text)', margin: 0 }}>{msg.text}</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px', color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-warm-1)', margin: '0 0 4px' }}>🙏 Gebetsanliegen</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)', margin: 0 }}>{msg.text}</p>
             {msg.bible_verse_text && (
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: isOwn ? 'rgba(255,255,255,0.8)' : 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.4 }}>{msg.bible_verse_text}</p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.4 }}>{msg.bible_verse_text}</p>
             )}
           </div>
         ) : msg.type === 'bible_verse' ? (
           <div>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: isOwn ? 'white' : 'var(--color-text)', margin: '0 0 3px' }}>📖 {msg.bible_verse_reference}</p>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: isOwn ? 'rgba(255,255,255,0.88)' : 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>{msg.bible_verse_text}</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)', margin: '0 0 3px' }}>📖 {msg.bible_verse_reference}</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>{msg.bible_verse_text}</p>
           </div>
         ) : (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: isOwn ? 'white' : 'var(--color-text)', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {msg.text}
           </p>
         )}
@@ -175,7 +175,7 @@ function InputBar({ onSend }) {
       <button
         onClick={handleSend}
         disabled={!text.trim()}
-        style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', flexShrink: 0, backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-4)', color: text.trim() ? 'white' : 'var(--color-text-light)', cursor: text.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', flexShrink: 0, backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-4)', color: text.trim() ? 'var(--color-bg)' : 'var(--color-text-light)', cursor: text.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         <SendHorizontal size={18} />
       </button>
@@ -320,7 +320,7 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
         <button
           onClick={handleSubmit}
           disabled={!content.trim() || saving}
-          style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 18, backgroundColor: content.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: content.trim() ? 'pointer' : 'not-allowed' }}
+          style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 18, backgroundColor: content.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: content.trim() ? 'pointer' : 'not-allowed' }}
         >
           {saving ? 'Veröffentliche…' : 'Veröffentlichen'}
         </button>
@@ -440,7 +440,7 @@ function CreateEventForm({ onClose, onSubmit }) {
         <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="z.B. Gemeindehaus" style={inp} />
         <label style={{ ...lbl, marginTop: 12 }}>Beschreibung</label>
         <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Was erwartet euch?" rows={2} style={{ ...inp, resize: 'none' }} />
-        <button onClick={handleSubmit} disabled={!canSubmit || saving} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 18, backgroundColor: canSubmit ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
+        <button onClick={handleSubmit} disabled={!canSubmit || saving} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 18, backgroundColor: canSubmit ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
           {saving ? 'Erstelle…' : 'Termin erstellen'}
         </button>
       </div>
@@ -509,7 +509,7 @@ function CommunityPrayerDetailSheet({ msg, onClose, onDelete, onUpdate }) {
         {editMode ? (
           <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
             <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
-            <button onClick={handleSaveEdit} disabled={!title.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
+            <button onClick={handleSaveEdit} disabled={!title.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
               {saving ? 'Speichere…' : 'Speichern'}
             </button>
           </div>
@@ -626,7 +626,7 @@ function CommNoteModal({ msgId, onSave, onClose }) {
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Überspringen</button>
-          <button onClick={handleSave} disabled={!text.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}>
+          <button onClick={handleSave} disabled={!text.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}>
             {saving ? 'Speichere…' : 'Notiz speichern'}
           </button>
         </div>
@@ -779,7 +779,7 @@ function PrayerCard({ msg, currentUserId, currentUserName, onSelect }) {
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', margin: 0 }}>
             Möchtest du eine Notiz hinterlassen?
           </p>
-          <button onClick={() => { setJustPrayed(false); setShowNoteModal(true) }} style={{ border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', borderRadius: 8, padding: '6px 12px', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => { setJustPrayed(false); setShowNoteModal(true) }} style={{ border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', borderRadius: 8, padding: '6px 12px', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             Ja
           </button>
         </div>
@@ -832,7 +832,7 @@ function AddPrayerSheet({ onClose, onSubmit }) {
         <input autoFocus type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. Heilung für meine Mutter" style={inp} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit()} />
         <label style={{ ...lbl, marginTop: 12 }}>Beschreibung (optional)</label>
         <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} placeholder="Mehr Details…" rows={3} style={{ ...inp, resize: 'none' }} />
-        <button onClick={handleSubmit} disabled={!title.trim() || saving} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 18, backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
+        <button onClick={handleSubmit} disabled={!title.trim() || saving} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 18, backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
           {saving ? 'Teile…' : 'Gebet teilen 🙏'}
         </button>
       </div>
@@ -1179,7 +1179,7 @@ export default function CommunityDetail() {
     <div className="h-full flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full">
 
       {/* ── Header ──────────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-[#F7F3EC] to-[var(--color-bg)] px-4 pt-3 pb-3.5 shrink-0 relative overflow-hidden border-b border-warm-3">
+      <div className="bg-gradient-to-br from-[var(--color-header-wash)] to-[var(--color-bg)] px-4 pt-3 pb-3.5 shrink-0 relative overflow-hidden border-b border-warm-3">
         {/* Deko circles */}
         <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full bg-warm-3/35 pointer-events-none blur-xl" />
         <div className="absolute -bottom-5 -left-3 w-16 h-16 rounded-full bg-warm-3/25 pointer-events-none blur-lg" />
@@ -1317,7 +1317,7 @@ export default function CommunityDetail() {
               {isAdmin && (
                 <button
                   onClick={() => setShowCreatePost(true)}
-                  style={{ width: '100%', padding: '12px 0', borderRadius: 14, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 16, boxShadow: '0 2px 8px rgba(175,138,100,0.3)' }}
+                  style={{ width: '100%', padding: '12px 0', borderRadius: 14, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 16, boxShadow: '0 2px 8px rgba(175,138,100,0.3)' }}
                 >
                   <Plus size={15} /> Ankündigung schreiben
                 </button>
@@ -1388,7 +1388,7 @@ export default function CommunityDetail() {
                 </h4>
                 <button
                   onClick={() => setShowAddPrayer(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
                 >
                   <Plus size={12} /> Gebet hinzufügen
                 </button>
