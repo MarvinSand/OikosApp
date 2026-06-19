@@ -32,16 +32,32 @@ export function useWorldMap() {
         .single()
       setMyProfile(profile)
 
-      const { data: users } = await supabase
-        .from('profiles')
-        .select('id, full_name, username, avatar_url, latitude, longitude, is_christian, city, country, church_name')
-        .eq('show_on_world_map', true)
-        .neq('id', user.id)
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null)
-      setVisibleUsers(users || [])
+      // Gegenseitige (akzeptierte) Freundschaften → nur diese Geschwister erscheinen auf der Karte
+      const { data: friendships } = await supabase
+        .from('friendships')
+        .select('requester_id, addressee_id')
+        .eq('status', 'accepted')
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+      const friendIds = [...new Set(
+        (friendships || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
+      )]
+
+      if (friendIds.length > 0) {
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('id, full_name, username, avatar_url, latitude, longitude, is_christian, city, country, church_name')
+          .in('id', friendIds)
+          .eq('show_on_world_map', true)
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null)
+        setVisibleUsers(users || [])
+      } else {
+        setVisibleUsers([])
+      }
 
       const now = new Date().toISOString()
+      // Kein is_public-Filter mehr – Row Level Security entscheidet, welche Events
+      // (öffentlich / Geschwister / Gemeinde / eigene) der Nutzer sehen darf.
       const { data: acts } = await supabase
         .from('world_map_activities')
         .select(`
@@ -49,7 +65,6 @@ export function useWorldMap() {
           author:profiles!author_id(id, full_name, username, avatar_url),
           participants:activity_participants(user_id, joined_at, profile:profiles!user_id(id, full_name, username, avatar_url, is_christian))
         `)
-        .eq('is_public', true)
         .or(`expires_at.is.null,expires_at.gt.${now}`)
         .order('created_at', { ascending: false })
         .limit(500)
@@ -74,9 +89,13 @@ export function useWorldMap() {
     : []
 
   async function createActivity(data) {
-    const expiresAt = data.starts_at
-      ? new Date(new Date(data.starts_at).getTime() + 3 * 60 * 60 * 1000).toISOString()
-      : null
+    const visibility = data.visibility_mode || 'public'
+    // Event verschwindet kurz nach Ende von der Karte (Ende, sonst Start +3h)
+    const expiresAt = data.ends_at
+      ? new Date(new Date(data.ends_at).getTime() + 60 * 60 * 1000).toISOString()
+      : (data.starts_at
+          ? new Date(new Date(data.starts_at).getTime() + 3 * 60 * 60 * 1000).toISOString()
+          : null)
     const { data: act, error } = await supabase
       .from('world_map_activities')
       .insert({
@@ -91,7 +110,8 @@ export function useWorldMap() {
         starts_at: data.starts_at || null,
         ends_at: data.ends_at || null,
         max_participants: data.max_participants || null,
-        is_public: data.is_public !== false,
+        visibility_mode: visibility,
+        is_public: visibility === 'public',
         expires_at: data.expires_at || expiresAt,
       })
       .select(`
@@ -101,6 +121,12 @@ export function useWorldMap() {
       `)
       .single()
     if (!error && act) {
+      // Bei Sichtbarkeit "Gemeinde": ausgewählte Communities verknüpfen
+      if (visibility === 'communities' && Array.isArray(data.community_ids) && data.community_ids.length > 0) {
+        const rows = data.community_ids.map(cid => ({ activity_id: act.id, community_id: cid }))
+        const { error: commError } = await supabase.from('activity_communities').insert(rows)
+        if (commError) console.error('activity_communities insert failed:', commError)
+      }
       // Automatically create the activity chat and add creator as member
       const { data: convId, error: chatError } = await supabase.rpc('create_activity_chat', { p_activity_id: act.id })
       if (chatError) console.error('create_activity_chat failed:', chatError)
