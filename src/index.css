@@ -33,6 +33,37 @@
     --color-text-light:     #AEAEB2;
   }
 
+  /* ── Dark Mode (Instagram-Stil, babyblaue Akzente bleiben) ── */
+  [data-theme="dark"] {
+    --color-bg:             #000000;
+    --color-bg-secondary:   #1C1C1E;
+    --color-surface:        #1C1C1E;
+    --color-border:         #2C2C2E;
+    --color-text:           #FFFFFF;
+    --color-text-secondary: #AEAEB2;
+    --color-text-tertiary:  #6E6E73;
+
+    --color-accent:         #5AC8FA;
+    --color-accent-light:   #11313D;
+    --color-accent-dark:    #5AC8FA;
+
+    --color-success:        #30D158;
+    --color-error:          #FF453A;
+    --color-gold:           #FFD60A;
+    --color-gold-light:     #3A3306;
+
+    --color-paper:          #1C1C1E;
+    --color-white:          #1C1C1E;
+    --color-warm-1:         #FFFFFF;
+    --color-warm-2:         #AEAEB2;
+    --color-warm-3:         #2C2C2E;
+    --color-warm-4:         #1C1C1E;
+    --color-text-muted:     #AEAEB2;
+    --color-text-light:     #6E6E73;
+
+    color-scheme: dark;
+  }
+
   * {
     box-sizing: border-box;
     margin: 0;
@@ -40,10 +71,15 @@
   }
 
   html, body, #root {
-    @apply h-full w-full bg-bg text-dark font-sans selection:bg-accent/20 selection:text-dark;
+    @apply h-full w-full bg-bg text-dark font-sans;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif;
+  }
+
+  ::selection {
+    background-color: rgba(90, 200, 250, 0.25);
+    color: var(--color-text);
   }
 }
 

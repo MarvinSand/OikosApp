@@ -7,32 +7,34 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Phase 27: clean black/white system + babyblau accent
-        bg: '#FFFFFF',
-        paper: '#F5F5F7',
+        // Phase 27: clean black/white system + babyblau accent.
+        // Tokens point at CSS variables so the whole app (Tailwind utilities
+        // AND inline var() styles) re-themes via a single [data-theme] switch.
+        bg: 'var(--color-bg)',
+        paper: 'var(--color-bg-secondary)',
         // Legacy "warm" tokens retargeted to the new neutral palette so
         // existing components automatically adopt the new look.
         warm: {
-          1: '#000000',           // primary text / former sage primary
-          2: '#6E6E73',           // secondary text
-          3: '#E5E5EA',           // borders / separators
-          4: '#F5F5F7',           // subtle backgrounds
+          1: 'var(--color-text)',            // primary text
+          2: 'var(--color-text-secondary)',  // secondary text
+          3: 'var(--color-border)',          // borders / separators
+          4: 'var(--color-bg-secondary)',    // subtle backgrounds
         },
         accent: {
-          DEFAULT: '#5AC8FA',     // Babyblau – the only accent color
-          light: '#E5F6FE',
-          dark: '#0A84FF',
+          DEFAULT: 'var(--color-accent)',    // Babyblau – the only accent color
+          light: 'var(--color-accent-light)',
+          dark: 'var(--color-accent-dark)',
         },
         gold: {
           DEFAULT: '#FFD60A',     // kept for Impact Map / Erhörte Gebete
           light: '#FFF4B8',
         },
         dark: {
-          DEFAULT: '#000000',
-          muted: '#6E6E73',
-          light: '#AEAEB2',
+          DEFAULT: 'var(--color-text)',
+          muted: 'var(--color-text-secondary)',
+          light: 'var(--color-text-tertiary)',
         },
-        primary: '#5AC8FA',
+        primary: 'var(--color-accent)',
         success: '#34C759',
         error: '#FF3B30',
       },
