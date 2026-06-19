@@ -195,7 +195,7 @@ function PrayerCard({ request, logs, notes, onPray, onComment }) {
             fontSize: 13, fontWeight: 700, cursor: hasPrayed ? 'default' : 'pointer',
           }}
         >
-          🙏 Ja{prayCount > 0 ? ` · ${prayCount}` : ''}
+          🙏 Gebetet{prayCount > 0 ? ` · ${prayCount}` : ''}
         </button>
 
         {/* Kommentare */}
