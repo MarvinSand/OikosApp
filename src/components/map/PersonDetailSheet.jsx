@@ -739,7 +739,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
                         padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
                         border: `1.5px solid ${showNonChristian ? 'var(--color-gold)' : 'var(--color-warm-3)'}`,
                         backgroundColor: showNonChristian ? 'var(--color-gold-light)' : 'var(--color-white)',
-                        color: showNonChristian ? '#8A6020' : 'var(--color-text-muted)',
+                        color: showNonChristian ? 'var(--color-gold-text)' : 'var(--color-text-muted)',
                         fontFamily: 'Lora, serif', fontSize: 12, fontWeight: showNonChristian ? 600 : 400,
                       }}
                     >
@@ -947,7 +947,7 @@ export default function PersonDetailSheet({
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: person.is_christian ? 'var(--color-accent-light)' : 'var(--color-warm-4)', color: person.is_christian ? 'var(--color-accent-dark)' : 'var(--color-text-muted)' }}>
                   {person.is_christian ? 'Christ 🌿' : 'Noch nicht 🌱'}
                 </span>
-                <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: '#8A6020' }}>
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: 'var(--color-gold-text)' }}>
                   Stufe {currentStageNum} – {stageName}
                 </span>
               </div>
@@ -1117,10 +1117,10 @@ const sheet = {
   position: 'fixed', bottom: 12,
   left: '50%', transform: 'translateX(-50%)',
   width: 'calc(100% - 24px)', maxWidth: 480,
-  backgroundColor: 'rgba(255, 253, 248, 0.92)',
+  backgroundColor: 'var(--color-surface-blur)',
   backdropFilter: 'blur(20px)',
   WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255, 255, 255, 0.6)',
+  border: '1px solid var(--color-border)',
   borderRadius: 32,
   zIndex: 50, maxHeight: 'calc(90vh - 24px)', overflowY: 'auto',
   padding: '20px 24px calc(80px + env(safe-area-inset-bottom, 0px))',

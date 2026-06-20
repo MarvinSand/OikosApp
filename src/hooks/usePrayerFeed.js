@@ -42,7 +42,7 @@ async function updatePrayerStats(supabaseClient, userId) {
   }
 }
 
-export function usePrayerFeed(tab) {
+export function usePrayerFeed(tab, statusFilter = 'open') {
   const { user } = useAuth()
   const [requests, setRequests] = useState([])
   const [logsMap, setLogsMap] = useState({})   // requestId → [log]
@@ -54,7 +54,15 @@ export function usePrayerFeed(tab) {
   useEffect(() => {
     if (!user) return
     loadFeed(true)
-  }, [tab, user?.id])
+  }, [tab, statusFilter, user?.id])
+
+  // Apply the answered/open status filter to a query.
+  // 'open' → only unanswered, 'answered' → only answered, 'all' → no restriction.
+  function applyStatus(query) {
+    if (statusFilter === 'answered') return query.eq('is_answered', true)
+    if (statusFilter === 'all') return query
+    return query.eq('is_answered', false)
+  }
 
   async function getOwnerIds() {
     if (tab === 'all') return null
@@ -104,10 +112,9 @@ export function usePrayerFeed(tab) {
     // Communities tab: skip entirely – only community chat prayers are shown there
     let personalItems = []
     if (tab !== 'communities') {
-      let query = supabase
+      let query = applyStatus(supabase
         .from('personal_prayer_requests')
-        .select('*, profiles!owner_id(id, username, full_name, gender, is_christian)')
-        .eq('is_answered', false)
+        .select('*, profiles!owner_id(id, username, full_name, gender, is_christian)'))
         .order('created_at', { ascending: false })
         .range(offsetRef.current, offsetRef.current + PAGE_SIZE - 1)
 

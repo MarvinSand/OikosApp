@@ -422,7 +422,7 @@ function PrayerCard({ request, logs, notes, currentUserId, onPray, onNote, onDel
               padding: '8px 16px', borderRadius: 20,
               border: hasPrayed ? 'none' : '1.5px solid var(--color-warm-1)',
               backgroundColor: hasPrayed ? 'var(--color-gold-light)' : 'transparent',
-              color: hasPrayed ? '#8A6020' : 'var(--color-warm-1)',
+              color: hasPrayed ? 'var(--color-gold-text)' : 'var(--color-warm-1)',
               fontFamily: 'Lora, serif', fontSize: 13, fontWeight: hasPrayed ? 700 : 500,
               cursor: hasPrayed ? 'default' : 'pointer',
               transition: 'all 0.2s',
@@ -960,7 +960,7 @@ function OwnRequestDetailSheet({ request, onClose, onMarkAnswered, onDelete, onU
 
         {!editMode && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
-            {request.is_answered && <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: '#8A6020' }}>🎉 Erhört</span>}
+            {request.is_answered && <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: 'var(--color-gold-text)' }}>🎉 Erhört</span>}
             <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>🙏 {prayCount} Gebete · {timeAgo(request.created_at)}</span>
           </div>
         )}

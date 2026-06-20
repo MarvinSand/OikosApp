@@ -7,8 +7,16 @@ import { usePersonalPrayer } from '../hooks/usePersonalPrayer'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../context/ToastContext'
+import DateFilterControl from '../components/ui/DateFilterControl'
+import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
 
 // ─── Konstanten ───────────────────────────────────────────────
+
+const STATUS_OPTIONS = [
+  { key: 'all',      label: 'Alle Anliegen' },
+  { key: 'open',     label: '☑️ Offene Anliegen' },
+  { key: 'answered', label: '✅ Erhörte Anliegen' },
+]
 
 const CATEGORIES = [
   { key: 'heilung',    label: 'Heilung',    emoji: '🌿' },
@@ -611,21 +619,25 @@ function CreatePrayerSheet({ onClose, onCreate }) {
 
 export default function GebetPaul() {
   const { showToast } = useToast()
-  const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote } = usePrayerFeed('all')
+  const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
+  const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote } = usePrayerFeed('all', statusFilter)
   const { createRequest } = usePersonalPrayer()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [activeCategories, setActiveCategories] = useState([])
+  const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
   const loaderRef = useRef(null)
 
   function toggleCategory(key) {
     setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])
   }
 
+  const dateActive = isDateFilterActive(dateFilter)
   const q = searchQuery.trim().toLowerCase()
   const filteredRequests = requests.filter(r => {
     if (activeCategories.length > 0 && !activeCategories.includes(r.category)) return false
+    if (!matchesDateFilter(r.created_at, dateFilter)) return false
     if (!q) return true
     const haystack = [
       r.title || '',
@@ -635,7 +647,9 @@ export default function GebetPaul() {
     ].join(' ').toLowerCase()
     return haystack.includes(q)
   })
-  const hasActiveFilter = activeCategories.length > 0 || q.length > 0
+  // Count of non-default filter facets (status counts when not the default "open")
+  const filterFacetCount = activeCategories.length + (dateActive ? 1 : 0) + (statusFilter !== 'open' ? 1 : 0)
+  const hasActiveFilter = filterFacetCount > 0 || q.length > 0
 
   useEffect(() => {
     if (!loaderRef.current) return
@@ -706,15 +720,15 @@ export default function GebetPaul() {
             style={{
               position: 'relative',
               width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-              border: `1.5px solid ${showFilters || activeCategories.length ? 'var(--color-accent)' : 'var(--color-border)'}`,
-              backgroundColor: showFilters || activeCategories.length ? 'rgba(74,103,65,0.1)' : 'var(--color-bg-secondary)',
-              color: showFilters || activeCategories.length ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              border: `1.5px solid ${showFilters || filterFacetCount ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              backgroundColor: showFilters || filterFacetCount ? 'rgba(74,103,65,0.1)' : 'var(--color-bg-secondary)',
+              color: showFilters || filterFacetCount ? 'var(--color-accent)' : 'var(--color-text-secondary)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
             <SlidersHorizontal size={17} />
-            {activeCategories.length > 0 && (
+            {filterFacetCount > 0 && (
               <span style={{
                 position: 'absolute', top: -4, right: -4,
                 minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
@@ -723,7 +737,7 @@ export default function GebetPaul() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: '1.5px solid var(--color-bg)',
               }}>
-                {activeCategories.length}
+                {filterFacetCount}
               </span>
             )}
           </button>
@@ -731,6 +745,37 @@ export default function GebetPaul() {
 
         {showFilters && (
           <div style={{ paddingTop: 10 }}>
+            {/* Status */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>
+              Status
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+              {STATUS_OPTIONS.map(s => {
+                const active = statusFilter === s.key
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() => setStatusFilter(s.key)}
+                    style={{
+                      padding: '6px 11px', borderRadius: 999,
+                      border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                      backgroundColor: active ? 'rgba(74,103,65,0.12)' : 'var(--color-bg-secondary)',
+                      color: active ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Zeitraum */}
+            <div style={{ marginBottom: 14 }}>
+              <DateFilterControl value={dateFilter} onChange={setDateFilter} />
+            </div>
+
+            {/* Kategorien */}
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>
               Kategorien
             </p>
@@ -769,6 +814,20 @@ export default function GebetPaul() {
                 </button>
               )}
             </div>
+
+            {filterFacetCount > 0 && (
+              <button
+                onClick={() => { setStatusFilter('open'); setDateFilter(EMPTY_DATE_FILTER); setActiveCategories([]) }}
+                style={{
+                  marginTop: 14, padding: '7px 14px', borderRadius: 999,
+                  border: '1.5px solid var(--color-border)',
+                  backgroundColor: 'transparent', color: 'var(--color-text-muted)',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                Alle Filter zurücksetzen
+              </button>
+            )}
           </div>
         )}
       </div>

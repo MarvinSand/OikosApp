@@ -205,7 +205,7 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
     }}>
       {isPinned && (
         <div style={{ position: 'absolute', top: 10, right: 44, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, color: '#8A6020', backgroundColor: 'rgba(201,168,76,0.15)', padding: '2px 7px', borderRadius: 20 }}>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, color: 'var(--color-gold-text)', backgroundColor: 'rgba(201,168,76,0.15)', padding: '2px 7px', borderRadius: 20 }}>
             📌 Angepinnt
           </span>
         </div>
@@ -762,7 +762,7 @@ function PrayerCard({ msg, currentUserId, currentUserName, onSelect }) {
               padding: '8px 16px', borderRadius: 20,
               border: hasPrayed ? 'none' : '1.5px solid var(--color-warm-1)',
               backgroundColor: hasPrayed ? 'var(--color-gold-light)' : 'transparent',
-              color: hasPrayed ? '#8A6020' : 'var(--color-warm-1)',
+              color: hasPrayed ? 'var(--color-gold-text)' : 'var(--color-warm-1)',
               fontFamily: 'Lora, serif', fontSize: 13, fontWeight: hasPrayed ? 700 : 500,
               cursor: hasPrayed ? 'default' : 'pointer',
               transition: 'all 0.2s',
@@ -1216,7 +1216,7 @@ export default function CommunityDetail() {
                 {community.is_public ? <><Globe size={11} /> Öffentlich</> : <><Lock size={11} /> Privat</>}
               </span>
               {myMembership?.role === 'admin' && (
-                <span className="font-serif text-[11px] font-bold px-2.5 py-1 rounded-full bg-gold-light/40 text-[#8A6020] border border-[var(--color-accent)]/40 shadow-sm flex items-center gap-1.5">
+                <span className="font-serif text-[11px] font-bold px-2.5 py-1 rounded-full bg-gold-light/40 text-[var(--color-gold-text)] border border-[var(--color-accent)]/40 shadow-sm flex items-center gap-1.5">
                   <Shield size={11}/> Admin
                 </span>
               )}

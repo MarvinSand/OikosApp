@@ -116,10 +116,10 @@ export default function OverlayPersonSheet({
         position: 'fixed', bottom: 12,
         left: '50%', transform: 'translateX(-50%)',
         width: 'calc(100% - 24px)', maxWidth: 480,
-        backgroundColor: 'rgba(255, 253, 248, 0.92)',
+        backgroundColor: 'var(--color-surface-blur)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.6)',
+        border: '1px solid var(--color-border)',
         borderRadius: 32,
         zIndex: 50,
         maxHeight: 'calc(90vh - 24px)',
@@ -161,7 +161,7 @@ export default function OverlayPersonSheet({
                   <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: person.is_christian ? 'var(--color-accent-light)' : 'var(--color-warm-4)', color: person.is_christian ? 'var(--color-accent-dark)' : 'var(--color-text-muted)' }}>
                     {person.is_christian ? 'Christ 🌿' : 'Noch nicht 🌱'}
                   </span>
-                  <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: '#8A6020' }}>
+                  <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: 'var(--color-gold-text)' }}>
                     Stufe {stageNum} – {stageName}
                   </span>
                 </div>

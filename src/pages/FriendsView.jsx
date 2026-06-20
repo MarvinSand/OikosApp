@@ -10,6 +10,8 @@ import { useToast } from '../context/ToastContext'
 import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
+import DateFilterControl from '../components/ui/DateFilterControl'
+import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
 
 // ─── Avatar ────────────────────────────────────────────────
 function Avatar({ name, size = 40, isChristian, avatarUrl }) {
@@ -578,7 +580,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
               <p style={usernameText}>👥 {c.memberCount} Mitglieder</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {c.role === 'admin' && <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: '#8A6020' }}>Admin</span>}
+              {c.role === 'admin' && <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: 'var(--color-gold-text)' }}>Admin</span>}
               <ChevronRight size={16} color="var(--color-text-light)" />
             </div>
           </button>
@@ -1649,6 +1651,7 @@ function FeedTab() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [activeCategories, setActiveCategories] = useState([])
+  const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
 
   // Infinite scroll via IntersectionObserver
   useEffect(() => {
@@ -1674,9 +1677,11 @@ function FeedTab() {
     setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])
   }
 
+  const dateActive = isDateFilterActive(dateFilter)
   const q = searchQuery.trim().toLowerCase()
   const filteredPosts = posts.filter(p => {
     if (activeCategories.length > 0 && !activeCategories.includes(p.category)) return false
+    if (!matchesDateFilter(p.created_at, dateFilter)) return false
     if (!q) return true
     const haystack = [
       p.title || '',
@@ -1689,7 +1694,8 @@ function FeedTab() {
     return haystack.includes(q)
   })
 
-  const hasActiveFilter = activeCategories.length > 0 || q.length > 0
+  const filterFacetCount = activeCategories.length + (dateActive ? 1 : 0)
+  const hasActiveFilter = filterFacetCount > 0 || q.length > 0
 
   return (
     <div style={{ position: 'relative' }}>
@@ -1733,15 +1739,15 @@ function FeedTab() {
             style={{
               position: 'relative',
               width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-              border: `1.5px solid ${showFilters || activeCategories.length ? 'var(--color-accent)' : 'var(--color-border)'}`,
-              backgroundColor: showFilters || activeCategories.length ? 'rgba(74,103,65,0.1)' : 'var(--color-bg-secondary)',
-              color: showFilters || activeCategories.length ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              border: `1.5px solid ${showFilters || filterFacetCount ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              backgroundColor: showFilters || filterFacetCount ? 'rgba(74,103,65,0.1)' : 'var(--color-bg-secondary)',
+              color: showFilters || filterFacetCount ? 'var(--color-accent)' : 'var(--color-text-secondary)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
             <SlidersHorizontal size={17} />
-            {activeCategories.length > 0 && (
+            {filterFacetCount > 0 && (
               <span style={{
                 position: 'absolute', top: -4, right: -4,
                 minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
@@ -1750,7 +1756,7 @@ function FeedTab() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: '1.5px solid var(--color-bg)',
               }}>
-                {activeCategories.length}
+                {filterFacetCount}
               </span>
             )}
           </button>
@@ -1758,6 +1764,12 @@ function FeedTab() {
 
         {showFilters && (
           <div style={{ paddingTop: 10 }}>
+            {/* Zeitraum */}
+            <div style={{ marginBottom: 14 }}>
+              <DateFilterControl value={dateFilter} onChange={setDateFilter} />
+            </div>
+
+            {/* Kategorien */}
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>
               Kategorien
             </p>
@@ -1796,6 +1808,20 @@ function FeedTab() {
                 </button>
               )}
             </div>
+
+            {filterFacetCount > 0 && (
+              <button
+                onClick={() => { setActiveCategories([]); setDateFilter(EMPTY_DATE_FILTER) }}
+                style={{
+                  marginTop: 14, padding: '7px 14px', borderRadius: 999,
+                  border: '1.5px solid var(--color-border)',
+                  backgroundColor: 'transparent', color: 'var(--color-text-muted)',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                Alle Filter zurücksetzen
+              </button>
+            )}
           </div>
         )}
       </div>

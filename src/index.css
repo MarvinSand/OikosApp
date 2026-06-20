@@ -21,6 +21,7 @@
     --color-error:          #FF3B30;
     --color-gold:           #FFD60A;
     --color-gold-light:     #FFF4B8;
+    --color-gold-text:      #8A6020;
 
     /* Legacy aliases – retargeted so existing components inherit the new look */
     --color-paper:          #F5F5F7;
@@ -73,6 +74,7 @@
     --color-error:          #FF453A;
     --color-gold:           #FFD60A;
     --color-gold-light:     #3A3306;
+    --color-gold-text:      #E8C56A;
 
     --color-paper:          #1C1C1E;
     --color-white:          #1C1C1E;

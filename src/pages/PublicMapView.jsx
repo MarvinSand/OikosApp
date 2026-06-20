@@ -97,7 +97,7 @@ function PublicPersonSheet({ person, currentUserId, onClose }) {
                   {person.is_christian ? 'Christ 🌿' : 'Noch nicht 🌱'}
                 </span>
                 {person.impact_stage > 0 && (
-                  <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: '#8A6020' }}>
+                  <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: 'var(--color-gold-text)' }}>
                     Stufe {person.impact_stage}
                   </span>
                 )}

@@ -773,7 +773,7 @@ export default function MapCanvas({
           {/* Ongoing hint */}
           <span style={{
             fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)',
-            fontStyle: 'italic', backgroundColor: 'rgba(255,253,248,0.92)',
+            fontStyle: 'italic', backgroundColor: 'var(--color-surface-blur)',
             padding: '4px 12px', borderRadius: 12,
             boxShadow: '0 1px 6px rgba(58,46,36,0.10)',
             pointerEvents: 'none',
