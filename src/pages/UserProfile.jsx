@@ -236,7 +236,7 @@ export default function UserProfile() {
           <Avatar profile={profile} />
 
           {/* Counts (siblings + communities) */}
-          <div className="flex-1 flex items-start gap-6">
+          <div className="flex-1 flex items-center justify-center gap-10">
             <button
               onClick={() => navigate(`/user/${targetId}/connections`)}
               className="flex flex-col items-center justify-center"
@@ -265,10 +265,22 @@ export default function UserProfile() {
           </div>
         </div>
 
-        {/* Name */}
-        <p style={{ marginTop: 14, fontSize: 18, fontWeight: 700, color: 'var(--color-text)' }}>
-          {displayName}
-        </p>
+        {/* Name + Glaubens-Bezeichnung */}
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)' }}>
+            {displayName}
+          </span>
+          {profile.gender === 'brother' && (
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, backgroundColor: '#DBEAFE', color: '#1E40AF' }}>
+              🙋‍♂️ Bruder im Glauben
+            </span>
+          )}
+          {profile.gender === 'sister' && (
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, backgroundColor: '#FCE7F3', color: '#9D174D' }}>
+              🙋‍♀️ Schwester im Glauben
+            </span>
+          )}
+        </div>
         {profile.username && (
           <p style={{ marginTop: 1, fontSize: 14, color: 'var(--color-text-secondary)' }}>
             @{profile.username}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChat } from '../hooks/useChat'
@@ -40,14 +40,86 @@ function previewText(msg) {
   if (msg.is_deleted) return '(Nachricht gelöscht)'
   if (msg.type === 'prayer_request') return `🙏 ${msg.text || 'Gebetsanliegen'}`
   if (msg.type === 'bible_verse') return `📖 ${msg.bible_verse_reference || 'Bibelvers'}`
+  if (msg.type === 'photo') return msg.is_view_once ? '📷 Foto (einmal ansehen)' : '📷 Foto'
   return msg.text || ''
+}
+
+// ─── Foto-Nachricht (inkl. „einmal ansehen") ──────────────────
+function PhotoMessage({ msg, isOwn, photoUrl, onView }) {
+  const viewed = !!msg.viewed_at || (msg.is_view_once && !msg.image_path)
+  const labelColor = isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-bubble-other-text)'
+
+  // View-once: bereits angesehen (oder Foto entfernt)
+  if (msg.is_view_once && viewed) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
+        <Eye size={16} color={labelColor} style={{ opacity: 0.7 }} />
+        <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, fontStyle: 'italic', color: labelColor, opacity: 0.8 }}>
+          Foto angesehen
+        </span>
+      </div>
+    )
+  }
+
+  // View-once: eigener Versand (nicht erneut ansehbar)
+  if (msg.is_view_once && isOwn) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
+        <Camera size={16} color={labelColor} />
+        <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: labelColor }}>
+          Foto · einmal ansehen
+        </span>
+      </div>
+    )
+  }
+
+  // View-once: Empfänger, noch nicht angesehen → antippen zum Ansehen
+  if (msg.is_view_once && !isOwn) {
+    return (
+      <button
+        onClick={() => onView(msg, photoUrl(msg.image_path))}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+          border: 'none', borderRadius: 12, cursor: 'pointer',
+          backgroundColor: 'rgba(127,127,127,0.14)', color: labelColor,
+          fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 600,
+        }}
+      >
+        <Camera size={16} /> Foto · Tippen zum Ansehen
+      </button>
+    )
+  }
+
+  // Normales Foto: inline anzeigen
+  const url = photoUrl(msg.image_path)
+  if (!url) {
+    return <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: labelColor, fontStyle: 'italic' }}>📷 Foto nicht verfügbar</span>
+  }
+  return (
+    <img
+      src={url}
+      alt="Foto"
+      onClick={() => onView(msg, url)}
+      style={{ maxWidth: 220, width: '100%', borderRadius: 12, display: 'block', cursor: 'pointer' }}
+    />
+  )
 }
 
 const QUICK_REACTIONS = ['🙏', '❤️', '🙌', '👍', '🔥', '😂', '🥺', '😮']
 
 // ─── Avatar ───────────────────────────────────────────────────
-function Avatar({ name, size = 36, isChristian }) {
+function Avatar({ name, size = 36, isChristian, avatarUrl }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name || ''}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+        onError={e => { e.target.style.display = 'none' }}
+      />
+    )
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
@@ -270,7 +342,7 @@ function useLongPress(callback, ms = 500) {
 }
 
 // ─── Message Bubble ───────────────────────────────────────────
-function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJumpTo, onToggleReaction, user, showToast, registerRef }) {
+function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJumpTo, onToggleReaction, user, showToast, registerRef, photoUrl, onViewPhoto }) {
   const bubbleRef = useRef(null)
 
   useEffect(() => {
@@ -381,6 +453,8 @@ function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJump
           <PrayerCard msg={msg} isOwn={isOwn} user={user} showToast={showToast} />
         ) : msg.type === 'bible_verse' ? (
           <BibleVerseCard msg={msg} isOwn={isOwn} />
+        ) : msg.type === 'photo' ? (
+          <PhotoMessage msg={msg} isOwn={isOwn} photoUrl={photoUrl} onView={onViewPhoto} />
         ) : (
           <p style={{
             fontFamily: 'Lora, serif',
@@ -1023,10 +1097,31 @@ function ReplyComposerPreview({ msg, onCancel }) {
 }
 
 // ─── Input Bar ────────────────────────────────────────────────
-function InputBar({ onSend, onOpenPrayer, onOpenVerse, replyTo, onCancelReply }) {
+function InputBar({ onSend, onOpenPrayer, onOpenVerse, onSendPhoto, replyTo, onCancelReply }) {
   const [text, setText] = useState('')
   const [showAttach, setShowAttach] = useState(false)
+  const [photoDraft, setPhotoDraft] = useState(null) // { file, url }
+  const [photoViewOnce, setPhotoViewOnce] = useState(true) // standardmäßig: einmal ansehen
+  const [photoSending, setPhotoSending] = useState(false)
   const textareaRef = useRef(null)
+  const fileInputRef = useRef(null)
+
+  function handlePhotoPick(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPhotoViewOnce(true)
+    setPhotoDraft({ file, url: URL.createObjectURL(file) })
+  }
+
+  async function confirmSendPhoto() {
+    if (!photoDraft || photoSending) return
+    setPhotoSending(true)
+    await onSendPhoto(photoDraft.file, { viewOnce: photoViewOnce })
+    URL.revokeObjectURL(photoDraft.url)
+    setPhotoDraft(null)
+    setPhotoSending(false)
+  }
 
   function autoResize() {
     const el = textareaRef.current
@@ -1101,6 +1196,94 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, replyTo, onCancelReply })
           >
             📖 Bibelvers teilen
           </button>
+          <button
+            onClick={() => { setShowAttach(false); fileInputRef.current?.click() }}
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              borderRadius: 12,
+              border: '1.5px solid var(--color-warm-3)',
+              backgroundColor: 'var(--color-bg)',
+              fontFamily: 'Lora, serif',
+              fontSize: 13,
+              fontWeight: 500,
+              color: 'var(--color-text)',
+              cursor: 'pointer',
+              textAlign: 'center',
+            }}
+          >
+            📷 Foto senden
+          </button>
+        </div>
+      )}
+
+      {/* Verstecktes Datei-Feld für Fotos */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoPick}
+        style={{ display: 'none' }}
+      />
+
+      {/* Foto-Compose-Sheet */}
+      {photoDraft && (
+        <div
+          onClick={() => { if (!photoSending) { URL.revokeObjectURL(photoDraft.url); setPhotoDraft(null) } }}
+          style={{ position: 'fixed', inset: 0, zIndex: 210, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 480, backgroundColor: 'var(--color-bg)',
+              borderTopLeftRadius: 24, borderTopRightRadius: 24,
+              padding: '16px 16px calc(16px + env(safe-area-inset-bottom, 0px))',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.25)',
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 14px' }} />
+            <img src={photoDraft.url} alt="Vorschau" style={{ width: '100%', maxHeight: '46vh', objectFit: 'contain', borderRadius: 14, backgroundColor: 'var(--color-bg-secondary)' }} />
+
+            {/* Einmal ansehen Toggle */}
+            <button
+              onClick={() => setPhotoViewOnce(v => !v)}
+              style={{
+                width: '100%', marginTop: 14, padding: '12px 14px', borderRadius: 14,
+                border: `1.5px solid ${photoViewOnce ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                backgroundColor: photoViewOnce ? 'var(--color-accent-light)' : 'var(--color-bg-secondary)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+              }}
+            >
+              <Eye size={20} color={photoViewOnce ? 'var(--color-accent-dark)' : 'var(--color-text-muted)'} />
+              <span style={{ flex: 1 }}>
+                <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Einmal ansehen</span>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-secondary)' }}>Foto wird nach dem Ansehen gelöscht</span>
+              </span>
+              <span style={{
+                width: 44, height: 26, borderRadius: 13, flexShrink: 0, position: 'relative',
+                backgroundColor: photoViewOnce ? 'var(--color-accent)' : 'var(--color-warm-3)', transition: 'background-color 0.15s',
+              }}>
+                <span style={{ position: 'absolute', top: 3, left: photoViewOnce ? 21 : 3, width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.15s' }} />
+              </span>
+            </button>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button
+                onClick={() => { URL.revokeObjectURL(photoDraft.url); setPhotoDraft(null) }}
+                disabled={photoSending}
+                style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={confirmSendPhoto}
+                disabled={photoSending}
+                style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-accent)', color: '#fff', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+              >
+                {photoSending ? 'Wird gesendet…' : 'Senden'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1202,6 +1385,7 @@ export default function ConversationView() {
   const {
     messages, loading, hasMore, loadMore,
     sendMessage, sendPrayerRequest, sendBibleVerse, deleteMessage,
+    sendPhoto, photoUrl, markPhotoViewed,
     toggleReaction, pinMessage, unpinMessage, forwardMessage,
   } = useChat(conversationId)
 
@@ -1209,6 +1393,7 @@ export default function ConversationView() {
   const [infoLoading, setInfoLoading] = useState(true)
   const [showPrayer, setShowPrayer] = useState(false)
   const [showVerse, setShowVerse] = useState(false)
+  const [viewerPhoto, setViewerPhoto] = useState(null) // { msg, url }
 
   // Long-press / right-click menu state
   const [menuMsg, setMenuMsg] = useState(null)
@@ -1267,7 +1452,7 @@ export default function ConversationView() {
         if (otherUserId) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, username, full_name, is_christian, gender')
+            .select('id, username, full_name, is_christian, gender, avatar_url')
             .eq('id', otherUserId)
             .maybeSingle()
           setConvInfo({
@@ -1282,6 +1467,22 @@ export default function ConversationView() {
     }
     loadInfo()
   }, [conversationId, user?.id])
+
+  // Fallback: Falls die Mitglieder-Abfrage den anderen User nicht liefert
+  // (z. B. RLS), den Gesprächspartner aus den geladenen Nachrichten ableiten.
+  useEffect(() => {
+    if (infoLoading) return
+    if (convInfo && (convInfo.type !== 'direct' || convInfo.otherUserId)) return
+    const m = messages.find(x => x.sender_id && x.sender_id !== user?.id && x.profiles)
+    if (!m) return
+    const p = m.profiles
+    setConvInfo({
+      type: 'direct',
+      name: p.full_name || p.username || 'Unbekannt',
+      otherUserId: m.sender_id,
+      otherUser: p,
+    })
+  }, [infoLoading, convInfo, messages, user?.id])
 
   // Auto-scroll to bottom on initial load and new messages
   useEffect(() => {
@@ -1473,6 +1674,7 @@ export default function ConversationView() {
                   name={convInfo?.name}
                   size={40}
                   isChristian={convInfo?.type === 'direct' ? convInfo?.otherUser?.is_christian : false}
+                  avatarUrl={convInfo?.type === 'direct' ? convInfo?.otherUser?.avatar_url : undefined}
                 />
               )}
               <div className="min-w-0">
@@ -1555,6 +1757,8 @@ export default function ConversationView() {
                 user={user}
                 showToast={showToast}
                 registerRef={registerRef}
+                photoUrl={photoUrl}
+                onViewPhoto={(m, url) => setViewerPhoto({ msg: m, url })}
               />
             </div>
           )
@@ -1568,9 +1772,51 @@ export default function ConversationView() {
         onSend={handleSend}
         onOpenPrayer={() => setShowPrayer(true)}
         onOpenVerse={() => setShowVerse(true)}
+        onSendPhoto={async (file, opts) => {
+          const res = await sendPhoto(file, opts)
+          if (res?.error) showToast('Foto konnte nicht gesendet werden', 'error')
+        }}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
       />
+
+      {/* Foto-Viewer (Vollbild) */}
+      {viewerPhoto && (
+        <div
+          onClick={() => {
+            const { msg } = viewerPhoto
+            setViewerPhoto(null)
+            if (msg?.is_view_once && msg.sender_id !== user?.id) markPhotoViewed(msg)
+          }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            backgroundColor: 'rgba(0,0,0,0.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              const { msg } = viewerPhoto
+              setViewerPhoto(null)
+              if (msg?.is_view_once && msg.sender_id !== user?.id) markPhotoViewed(msg)
+            }}
+            aria-label="Schließen"
+            style={{ position: 'absolute', top: 'max(16px, env(safe-area-inset-top))', right: 16, width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <X size={22} />
+          </button>
+          {viewerPhoto.url
+            ? <img src={viewerPhoto.url} alt="Foto" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />
+            : <span style={{ color: '#fff', fontFamily: 'Lora, serif' }}>Foto nicht verfügbar</span>}
+          {viewerPhoto.msg?.is_view_once && (
+            <div style={{ position: 'absolute', bottom: 'max(24px, env(safe-area-inset-bottom))', left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.85)', fontFamily: 'Lora, serif', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <Eye size={14} /> Einmal ansehen – wird nach dem Schließen gelöscht
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Prayer attachment sheet */}
       {showPrayer && (

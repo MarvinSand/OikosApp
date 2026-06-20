@@ -1,5 +1,5 @@
 -- ============================================================================
--- OikosApp – Sammel-Migration Phase 26 bis 34
+-- OikosApp – Sammel-Migration Phase 26 bis 35
 -- Alles seit Phase 25 in EINEM Skript. Im Supabase SQL-Editor ausführen.
 -- Vollständig idempotent: kann gefahrlos mehrfach ausgeführt werden.
 -- ============================================================================
@@ -428,3 +428,46 @@ $$;
 
 grant execute on function public.get_user_connections(uuid) to authenticated;
 
+
+-- ════════════════════════════════════════════════════════════════════════
+-- phase35_chat_photos – Foto-Nachrichten inkl. "einmal ansehen" (view-once)
+-- ════════════════════════════════════════════════════════════════════════
+--
+-- MANUELLER SCHRITT (Supabase Dashboard → Storage):
+--   Bucket "chat-photos" anlegen, Public = ON. Policies:
+--     • INSERT: authenticated (auth.role() = 'authenticated')
+--     • DELETE: authenticated (damit Empfänger view-once Fotos löschen kann)
+--     • SELECT: public read
+--   (Da die App noch keine aktiven Nutzer hat, sind einfache Policies ok.)
+
+-- Spalten für Foto-Nachrichten
+alter table public.messages
+  add column if not exists image_path text,
+  add column if not exists is_view_once boolean not null default false,
+  add column if not exists viewed_at timestamptz default null;
+
+-- view-once Fotos entwerten: Empfänger (= Mitglied, aber nicht Sender) darf
+-- das Foto als angesehen markieren und den Pfad löschen. SECURITY DEFINER
+-- umgeht die "nur Sender darf ändern"-Restriktion kontrolliert.
+create or replace function public.mark_photo_viewed(p_message_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.messages m
+     set viewed_at = now(),
+         image_path = null
+   where m.id = p_message_id
+     and m.is_view_once = true
+     and m.viewed_at is null
+     and exists (
+       select 1 from public.conversation_members cm
+       where cm.conversation_id = m.conversation_id
+         and cm.user_id = auth.uid()
+     );
+end;
+$$;
+
+grant execute on function public.mark_photo_viewed(uuid) to authenticated;

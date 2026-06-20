@@ -52,7 +52,8 @@ function AppShellInner() {
   const isFullScreenRoute =
     location.pathname === '/' ||
     location.pathname === '/worldmap' ||
-    location.pathname.startsWith('/map/')
+    location.pathname.startsWith('/map/') ||
+    location.pathname.startsWith('/chat/')
 
   return (
     <div className="h-[100dvh] flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">

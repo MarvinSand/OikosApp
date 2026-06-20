@@ -21,6 +21,10 @@ export default function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
 
+  // Im geöffneten Chat die untere Navigation ausblenden (eigene Eingabeleiste,
+  // sonst entsteht eine Lücke / Überlappung).
+  if (location.pathname.startsWith('/chat/')) return null
+
   return (
     <nav
       className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md flex justify-around items-stretch px-1 z-40"

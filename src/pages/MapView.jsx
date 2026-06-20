@@ -412,7 +412,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   }
 
   return (
-    <div className="h-full flex flex-col bg-bg relative">
+    <div className="h-full flex flex-col bg-bg relative overflow-hidden" style={{ overscrollBehavior: 'none' }}>
 
       {/* Tab Toggle (only shown when not embedded inside Home) */}
       {!hideWorldMapToggle && (
@@ -441,7 +441,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       )}
 
       {/* Header Island (OIKOS mode only) */}
-      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
+      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-paper/90 backdrop-blur-md border border-warm-3 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
           className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[65%] hover:opacity-80 transition-opacity"
@@ -478,14 +478,14 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             <div className="relative">
               <button
                 onClick={() => setShowAddMenu(v => !v)}
-                className="tour-map-add flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-white border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
+                className="tour-map-add flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
               >
                 <Plus size={15} /> Hinzufügen
               </button>
               {showAddMenu && (
                 <>
                   <div onClick={() => setShowAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-glass border border-warm-3 overflow-hidden z-20 min-w-[160px]">
+                  <div className="absolute right-0 top-full mt-1 bg-paper rounded-xl shadow-glass border border-warm-3 overflow-hidden z-20 min-w-[160px]">
                     <button
                       onClick={() => { setShowAddMenu(false); setShowAddPerson(true) }}
                       className="flex items-center gap-2.5 w-full px-4 py-3 border-none bg-transparent hover:bg-warm-4 font-serif text-[13px] text-dark font-medium cursor-pointer text-left transition-colors"
@@ -511,7 +511,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       {showMapMenu && activeTab === 'oikos' && (
         <>
           <div onClick={() => setShowMapMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-          <div className="absolute top-[110px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-white rounded-2xl z-30 shadow-glass border border-warm-3 overflow-hidden">
+          <div className="absolute top-[110px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-paper rounded-2xl z-30 shadow-glass border border-warm-3 overflow-hidden">
             {maps.map((m) => (
               <button
                 key={m.id}
@@ -554,7 +554,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       )}
 
       {/* Canvas (OIKOS mode only) */}
-      <div style={{ flex: 1, minHeight: 0, display: activeTab === 'oikos' ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', padding: 8, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 0, display: activeTab === 'oikos' ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', padding: 8, overflow: 'hidden', position: 'relative', touchAction: 'none', overscrollBehavior: 'none' }}>
         {!activeMap ? (
           <div style={{ textAlign: 'center', padding: 32 }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 17, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 24, lineHeight: 1.6 }}>

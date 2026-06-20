@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 const PAGE_SIZE = 50
-const MSG_SELECT = 'id, conversation_id, sender_id, type, text, bible_verse_reference, bible_verse_text, personal_prayer_request_id, prayer_request_id, is_deleted, created_at, reply_to_id, forwarded_from_id, is_pinned, pinned_at'
+const MSG_SELECT = 'id, conversation_id, sender_id, type, text, bible_verse_reference, bible_verse_text, personal_prayer_request_id, prayer_request_id, is_deleted, created_at, reply_to_id, forwarded_from_id, is_pinned, pinned_at, image_path, is_view_once, viewed_at'
 
 async function attachProfiles(messages) {
   if (!messages || messages.length === 0) return messages
@@ -11,7 +11,7 @@ async function attachProfiles(messages) {
   if (ids.length === 0) return messages
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, username, full_name, is_christian, gender')
+    .select('id, username, full_name, is_christian, gender, avatar_url')
     .in('id', ids)
   const map = Object.fromEntries((profiles || []).map(p => [p.id, p]))
   return messages.map(m => ({ ...m, profiles: map[m.sender_id] || null }))
@@ -96,7 +96,7 @@ export function useChat(conversationId) {
           const newMsg = payload.new
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, username, full_name, is_christian, gender')
+            .select('id, username, full_name, is_christian, gender, avatar_url')
             .eq('id', newMsg.sender_id)
             .maybeSingle()
           const msgWithProfile = { ...newMsg, profiles: profile || null, reactions: [] }
@@ -320,6 +320,54 @@ export function useChat(conversationId) {
       .eq('id', id)
   }
 
+  // ── Foto senden (optional: einmal ansehen / view-once) ──────────
+  async function sendPhoto(file, { viewOnce = true } = {}) {
+    if (!file || !user || !conversationId) return { error: new Error('missing') }
+    const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+    const path = `${conversationId}/${user.id}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('chat-photos')
+      .upload(path, file, { upsert: false, contentType: file.type || 'image/jpeg' })
+    if (upErr) return { error: upErr }
+
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        type: 'photo',
+        image_path: path,
+        is_view_once: !!viewOnce,
+      })
+      .select(MSG_SELECT)
+      .single()
+
+    if (!error && data) {
+      setMessages(prev => prev.find(m => m.id === data.id) ? prev : [...prev, { ...data, profiles: null, reactions: [] }])
+    }
+    return { error }
+  }
+
+  // Öffentliche URL eines Chat-Fotos
+  function photoUrl(path) {
+    if (!path) return null
+    return supabase.storage.from('chat-photos').getPublicUrl(path).data?.publicUrl || null
+  }
+
+  // Foto als angesehen markieren: aus Storage löschen + in DB entwerten.
+  // Nur sinnvoll beim Empfänger eines view-once Fotos.
+  async function markPhotoViewed(msg) {
+    if (!msg || msg.viewed_at || !msg.is_view_once) return
+    setMessages(prev => prev.map(m => m.id === msg.id
+      ? { ...m, viewed_at: new Date().toISOString(), image_path: null }
+      : m))
+    if (msg.image_path) {
+      try { await supabase.storage.from('chat-photos').remove([msg.image_path]) } catch {}
+    }
+    // SECURITY DEFINER RPC – umgeht die "nur Sender darf ändern"-Restriktion
+    try { await supabase.rpc('mark_photo_viewed', { p_message_id: msg.id }) } catch {}
+  }
+
   async function forwardMessage(sourceMsg, targetConversationIds) {
     if (!user || !sourceMsg || !targetConversationIds?.length) return
     const rows = targetConversationIds.map(convId => ({
@@ -342,6 +390,9 @@ export function useChat(conversationId) {
     sendMessage,
     sendPrayerRequest,
     sendBibleVerse,
+    sendPhoto,
+    photoUrl,
+    markPhotoViewed,
     deleteMessage,
     updateMessage,
     markAsRead,
