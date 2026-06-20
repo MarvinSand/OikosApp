@@ -226,6 +226,24 @@
   }
 }
 
+/* Eingabeleiste fix direkt über der Bottom-Nav verankert – bewegt sich nie,
+   unabhängig von Höhenberechnungen des Containers. */
+.chat-input-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 42rem; /* = md:max-w-2xl */
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  z-index: 35;
+}
+@media (min-width: 768px) {
+  /* Auf Desktop gibt es keine Bottom-Nav */
+  .chat-input-bar {
+    bottom: 0;
+  }
+}
+
 /* Retain old animations for backward compatibility */
 @keyframes stagePulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(90, 200, 250, 0.5); }

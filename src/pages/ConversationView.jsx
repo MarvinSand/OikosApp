@@ -1097,31 +1097,10 @@ function ReplyComposerPreview({ msg, onCancel }) {
 }
 
 // ─── Input Bar ────────────────────────────────────────────────
-function InputBar({ onSend, onOpenPrayer, onOpenVerse, onSendPhoto, replyTo, onCancelReply }) {
+function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyTo, onCancelReply }) {
   const [text, setText] = useState('')
   const [showAttach, setShowAttach] = useState(false)
-  const [photoDraft, setPhotoDraft] = useState(null) // { file, url }
-  const [photoViewOnce, setPhotoViewOnce] = useState(true) // standardmäßig: einmal ansehen
-  const [photoSending, setPhotoSending] = useState(false)
   const textareaRef = useRef(null)
-  const fileInputRef = useRef(null)
-
-  function handlePhotoPick(e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setPhotoViewOnce(true)
-    setPhotoDraft({ file, url: URL.createObjectURL(file) })
-  }
-
-  async function confirmSendPhoto() {
-    if (!photoDraft || photoSending) return
-    setPhotoSending(true)
-    await onSendPhoto(photoDraft.file, { viewOnce: photoViewOnce })
-    URL.revokeObjectURL(photoDraft.url)
-    setPhotoDraft(null)
-    setPhotoSending(false)
-  }
 
   function autoResize() {
     const el = textareaRef.current
@@ -1148,7 +1127,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onSendPhoto, replyTo, onC
   }
 
   return (
-    <div style={{ position: 'sticky', bottom: 0, backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)', zIndex: 20 }}>
+    <div className="chat-input-bar" style={{ backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)' }}>
       {/* Reply preview */}
       {replyTo && <ReplyComposerPreview msg={replyTo} onCancel={onCancelReply} />}
 
@@ -1197,7 +1176,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onSendPhoto, replyTo, onC
             📖 Bibelvers teilen
           </button>
           <button
-            onClick={() => { setShowAttach(false); fileInputRef.current?.click() }}
+            onClick={() => { setShowAttach(false); onOpenPhotoPicker() }}
             style={{
               flex: 1,
               padding: '10px 12px',
@@ -1214,76 +1193,6 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onSendPhoto, replyTo, onC
           >
             📷 Foto senden
           </button>
-        </div>
-      )}
-
-      {/* Verstecktes Datei-Feld für Fotos */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handlePhotoPick}
-        style={{ display: 'none' }}
-      />
-
-      {/* Foto-Compose-Sheet */}
-      {photoDraft && (
-        <div
-          onClick={() => { if (!photoSending) { URL.revokeObjectURL(photoDraft.url); setPhotoDraft(null) } }}
-          style={{ position: 'fixed', inset: 0, zIndex: 210, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%', maxWidth: 480, backgroundColor: 'var(--color-bg)',
-              borderTopLeftRadius: 24, borderTopRightRadius: 24,
-              padding: '16px 16px calc(16px + env(safe-area-inset-bottom, 0px))',
-              boxShadow: '0 -8px 32px rgba(0,0,0,0.25)',
-            }}
-          >
-            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 14px' }} />
-            <img src={photoDraft.url} alt="Vorschau" style={{ width: '100%', maxHeight: '46vh', objectFit: 'contain', borderRadius: 14, backgroundColor: 'var(--color-bg-secondary)' }} />
-
-            {/* Einmal ansehen Toggle */}
-            <button
-              onClick={() => setPhotoViewOnce(v => !v)}
-              style={{
-                width: '100%', marginTop: 14, padding: '12px 14px', borderRadius: 14,
-                border: `1.5px solid ${photoViewOnce ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                backgroundColor: photoViewOnce ? 'var(--color-accent-light)' : 'var(--color-bg-secondary)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
-              }}
-            >
-              <Eye size={20} color={photoViewOnce ? 'var(--color-accent-dark)' : 'var(--color-text-muted)'} />
-              <span style={{ flex: 1 }}>
-                <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Einmal ansehen</span>
-                <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-secondary)' }}>Foto wird nach dem Ansehen gelöscht</span>
-              </span>
-              <span style={{
-                width: 44, height: 26, borderRadius: 13, flexShrink: 0, position: 'relative',
-                backgroundColor: photoViewOnce ? 'var(--color-accent)' : 'var(--color-warm-3)', transition: 'background-color 0.15s',
-              }}>
-                <span style={{ position: 'absolute', top: 3, left: photoViewOnce ? 21 : 3, width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.15s' }} />
-              </span>
-            </button>
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-              <button
-                onClick={() => { URL.revokeObjectURL(photoDraft.url); setPhotoDraft(null) }}
-                disabled={photoSending}
-                style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={confirmSendPhoto}
-                disabled={photoSending}
-                style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-accent)', color: '#fff', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-              >
-                {photoSending ? 'Wird gesendet…' : 'Senden'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1394,6 +1303,28 @@ export default function ConversationView() {
   const [showPrayer, setShowPrayer] = useState(false)
   const [showVerse, setShowVerse] = useState(false)
   const [viewerPhoto, setViewerPhoto] = useState(null) // { msg, url }
+  const [photoDraft, setPhotoDraft] = useState(null) // { file, url }
+  const [photoViewOnce, setPhotoViewOnce] = useState(true) // standardmäßig: einmal ansehen
+  const [photoSending, setPhotoSending] = useState(false)
+  const photoInputRef = useRef(null)
+
+  function handlePhotoPick(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPhotoViewOnce(true)
+    setPhotoDraft({ file, url: URL.createObjectURL(file) })
+  }
+
+  async function confirmSendPhoto() {
+    if (!photoDraft || photoSending) return
+    setPhotoSending(true)
+    const res = await sendPhoto(photoDraft.file, { viewOnce: photoViewOnce })
+    if (res?.error) showToast('Foto konnte nicht gesendet werden', 'error')
+    URL.revokeObjectURL(photoDraft.url)
+    setPhotoDraft(null)
+    setPhotoSending(false)
+  }
 
   // Long-press / right-click menu state
   const [menuMsg, setMenuMsg] = useState(null)
@@ -1629,7 +1560,7 @@ export default function ConversationView() {
   })
 
   return (
-    <div className="flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full chat-nav-clearance" style={{ height: '100dvh' }}>
+    <div className="flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full" style={{ height: '100dvh' }}>
       <style>{`
         @keyframes menuFadeIn { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: none; } }
         @keyframes msgHighlight { 0% { background-color: rgba(196,151,74,0); } 25% { background-color: rgba(196,151,74,0.25); } 100% { background-color: rgba(196,151,74,0); } }
@@ -1708,9 +1639,14 @@ export default function ConversationView() {
         onScroll={handleScroll}
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
-          padding: '12px 16px',
-          paddingBottom: 8,
+          paddingTop: 12,
+          paddingLeft: 16,
+          paddingRight: 16,
+          // Platz für die fixierte Eingabeleiste + Bottom-Nav, damit die
+          // letzte Nachricht nicht verdeckt wird.
+          paddingBottom: 'calc(132px + env(safe-area-inset-bottom, 0px))',
         }}
       >
         {hasMore && (
@@ -1772,13 +1708,80 @@ export default function ConversationView() {
         onSend={handleSend}
         onOpenPrayer={() => setShowPrayer(true)}
         onOpenVerse={() => setShowVerse(true)}
-        onSendPhoto={async (file, opts) => {
-          const res = await sendPhoto(file, opts)
-          if (res?.error) showToast('Foto konnte nicht gesendet werden', 'error')
-        }}
+        onOpenPhotoPicker={() => photoInputRef.current?.click()}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
       />
+
+      {/* Verstecktes Datei-Feld + Foto-Compose-Sheet (Top-Level, damit nicht im
+          transformierten fixed Input-Bar gefangen) */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoPick}
+        style={{ display: 'none' }}
+      />
+
+      {photoDraft && (
+        <div
+          onClick={() => { if (!photoSending) { URL.revokeObjectURL(photoDraft.url); setPhotoDraft(null) } }}
+          style={{ position: 'fixed', inset: 0, zIndex: 210, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 480, backgroundColor: 'var(--color-bg)',
+              borderTopLeftRadius: 24, borderTopRightRadius: 24,
+              padding: '16px 16px calc(16px + env(safe-area-inset-bottom, 0px))',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.25)',
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 14px' }} />
+            <img src={photoDraft.url} alt="Vorschau" style={{ width: '100%', maxHeight: '46vh', objectFit: 'contain', borderRadius: 14, backgroundColor: 'var(--color-bg-secondary)' }} />
+
+            {/* Einmal ansehen Toggle */}
+            <button
+              onClick={() => setPhotoViewOnce(v => !v)}
+              style={{
+                width: '100%', marginTop: 14, padding: '12px 14px', borderRadius: 14,
+                border: `1.5px solid ${photoViewOnce ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                backgroundColor: photoViewOnce ? 'var(--color-accent-light)' : 'var(--color-bg-secondary)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+              }}
+            >
+              <Eye size={20} color={photoViewOnce ? 'var(--color-accent-dark)' : 'var(--color-text-muted)'} />
+              <span style={{ flex: 1 }}>
+                <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Einmal ansehen</span>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-secondary)' }}>Foto wird nach dem Ansehen gelöscht</span>
+              </span>
+              <span style={{
+                width: 44, height: 26, borderRadius: 13, flexShrink: 0, position: 'relative',
+                backgroundColor: photoViewOnce ? 'var(--color-accent)' : 'var(--color-warm-3)', transition: 'background-color 0.15s',
+              }}>
+                <span style={{ position: 'absolute', top: 3, left: photoViewOnce ? 21 : 3, width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.15s' }} />
+              </span>
+            </button>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button
+                onClick={() => { URL.revokeObjectURL(photoDraft.url); setPhotoDraft(null) }}
+                disabled={photoSending}
+                style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={confirmSendPhoto}
+                disabled={photoSending}
+                style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-accent)', color: '#fff', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+              >
+                {photoSending ? 'Wird gesendet…' : 'Senden'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Foto-Viewer (Vollbild) */}
       {viewerPhoto && (
