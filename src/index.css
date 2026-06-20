@@ -215,6 +215,17 @@
   }
 }
 
+/* Bodenfreiheit im Chat, damit die Eingabeleiste direkt über der Bottom-Nav
+   sitzt (Höhe der Nav inkl. Safe-Area). Auf Desktop keine Nav -> 0. */
+.chat-nav-clearance {
+  padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .chat-nav-clearance {
+    padding-bottom: 0;
+  }
+}
+
 /* Retain old animations for backward compatibility */
 @keyframes stagePulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(90, 200, 250, 0.5); }

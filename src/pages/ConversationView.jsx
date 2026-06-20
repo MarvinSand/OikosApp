@@ -1287,7 +1287,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onSendPhoto, replyTo, onC
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px', paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px' }}>
         {/* Plus button */}
         <button
           onClick={() => setShowAttach(v => !v)}
@@ -1629,7 +1629,7 @@ export default function ConversationView() {
   })
 
   return (
-    <div className="h-full flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full">
+    <div className="h-full flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full chat-nav-clearance">
       <style>{`
         @keyframes menuFadeIn { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: none; } }
         @keyframes msgHighlight { 0% { background-color: rgba(196,151,74,0); } 25% { background-color: rgba(196,151,74,0.25); } 100% { background-color: rgba(196,151,74,0); } }

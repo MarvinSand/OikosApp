@@ -8,9 +8,8 @@ export default function PrayerFeedSwitcher({ active }) {
   const navigate = useNavigate()
 
   const tabs = [
-    { key: 'feed',        label: '📰 Feed',          target: '/friends?tab=feed' },
-    { key: 'prayer',      label: '🙏 Gebete',         target: '/prayer' },
-    { key: 'gebet-paul',  label: '✨ Gebet (Paul)',   target: '/gebet-paul' },
+    { key: 'feed',        label: '📰 Feed',    target: '/friends?tab=feed' },
+    { key: 'gebet-paul',  label: '🙏 Gebete',  target: '/gebet-paul' },
   ]
 
   return (

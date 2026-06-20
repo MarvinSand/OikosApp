@@ -261,12 +261,12 @@ export default function ProfileView() {
           </span>
           {profile?.gender === 'brother' && (
             <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, backgroundColor: '#DBEAFE', color: '#1E40AF' }}>
-              🙋‍♂️ Bruder im Glauben
+              🙋‍♂️ Bruder in Christus
             </span>
           )}
           {profile?.gender === 'sister' && (
             <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, backgroundColor: '#FCE7F3', color: '#9D174D' }}>
-              🙋‍♀️ Schwester im Glauben
+              🙋‍♀️ Schwester in Christus
             </span>
           )}
         </div>
