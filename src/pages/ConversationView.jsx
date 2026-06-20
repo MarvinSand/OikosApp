@@ -1629,7 +1629,7 @@ export default function ConversationView() {
   })
 
   return (
-    <div className="h-full flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full chat-nav-clearance">
+    <div className="flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full chat-nav-clearance" style={{ height: '100dvh' }}>
       <style>{`
         @keyframes menuFadeIn { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: none; } }
         @keyframes msgHighlight { 0% { background-color: rgba(196,151,74,0); } 25% { background-color: rgba(196,151,74,0.25); } 100% { background-color: rgba(196,151,74,0); } }
