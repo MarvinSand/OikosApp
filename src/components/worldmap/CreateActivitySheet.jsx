@@ -231,7 +231,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   }, [miniMap, form.latitude, form.longitude])
 
   function handleGetGPS() {
-    if (!navigator.geolocation) { showToast('Geolocation nicht unterstützt', 'error'); return }
+    if (!navigator.geolocation) { showToast('Standort wird auf diesem Gerät nicht unterstützt – bitte Adresse oder Karte nutzen', 'error'); return }
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
       async pos => {
@@ -239,16 +239,23 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
         applyLocation(latitude, longitude)
         setLocating(false)
         setReverseLoading(true)
-        const label = await reverseGeocode(latitude, longitude)
+        try {
+          const label = await reverseGeocode(latitude, longitude)
+          if (label) setLocationLabel(label)
+        } catch { /* Label optional – Koordinaten sind gesetzt */ }
         setReverseLoading(false)
-        if (label) setLocationLabel(label)
         showToast('Standort ermittelt ✓')
       },
-      () => {
-        showToast('Standort konnte nicht ermittelt werden', 'error')
+      err => {
         setLocating(false)
+        const msg = err?.code === 1
+          ? 'Standortzugriff blockiert. Bitte in den Browser-/Safari-Einstellungen erlauben – oder „Adresse" bzw. „Karte" nutzen.'
+          : err?.code === 2
+            ? 'Standort nicht verfügbar. Bitte „Adresse" oder „Karte" nutzen.'
+            : 'Zeitüberschreitung beim Ermitteln. Bitte erneut versuchen – oder „Adresse"/„Karte" nutzen.'
+        showToast(msg, 'error')
       },
-      { timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     )
   }
 

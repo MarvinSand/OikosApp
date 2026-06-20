@@ -519,7 +519,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
               }
               setShowCreateSheet(false)
             } else {
-              showToast('Fehler beim Erstellen', 'error')
+              console.error('createActivity failed:', error)
+              showToast(error.message ? `Fehler: ${error.message}` : 'Fehler beim Erstellen', 'error')
             }
           }}
         />

@@ -125,6 +125,13 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   }
 
+  /* Kein Dokument-Scroll / kein iOS-Bounce ins Leere. Gescrollt wird nur in
+     den inneren Bereichen (z. B. Feed/Profil über den Content-Wrapper). */
+  html, body {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   ::selection {
     background-color: rgba(90, 200, 250, 0.25);
     color: var(--color-text);
