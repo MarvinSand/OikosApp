@@ -317,6 +317,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
 
   const [map, setMap] = useState(null)
   const minZoomRef = useRef(2)
+  const didInitCenterRef = useRef(false)
   const snapZoom = useSnapchatZoom({ map, minZoom: minZoomRef.current })
   const [selectedUser, setSelectedUser] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
@@ -355,6 +356,13 @@ export default function WorldMapView({ onNavigateToProfile }) {
     )
     minZoomRef.current = minZ
     mapInstance.setOptions({ minZoom: minZ })
+    // Initial-Position nur EINMAL setzen. Danach bleibt die Karte unkontrolliert,
+    // damit Zoomen/Verschieben nicht zum eigenen Standort zurückspringt.
+    if (!didInitCenterRef.current) {
+      mapInstance.setCenter(defaultCenter)
+      mapInstance.setZoom(defaultZoom)
+      didInitCenterRef.current = true
+    }
   }
 
   const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
@@ -394,10 +402,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <GoogleMap
           mapContainerStyle={{ width: '100%', height: '100%' }}
-          center={defaultCenter}
-          zoom={defaultZoom}
           onLoad={handleMapLoad}
-          onUnmount={() => setMap(null)}
+          onUnmount={() => { setMap(null); didInitCenterRef.current = false }}
           options={{
             mapId: DEFAULT_MAP_ID,
             disableDefaultUI: true,

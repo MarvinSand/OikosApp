@@ -36,8 +36,23 @@ const EVENT_CATEGORIES = [
   { key: 'sonstiges',      label: 'Sonstiges',      emoji: null }, // eigenes Emoji
 ]
 
-// Auswahl-Emojis für "Sonstiges"
+// Schnellauswahl-Emojis für "Sonstiges" (zusätzlich kann jedes beliebige
+// Emoji über die native Tastatur eingegeben werden)
 const CUSTOM_EMOJIS = ['🎉', '☕', '🍽️', '🏃', '⚽', '🎸', '🎨', '🔥', '🌟', '🙏', '📚', '🎬', '🏕️', '🍕', '🧗', '🎲']
+
+// Letztes Emoji/Graphem aus einer Eingabe extrahieren (für die freie Eingabe).
+function lastGrapheme(str) {
+  const trimmed = (str || '').trim()
+  if (!trimmed) return ''
+  try {
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+      const seg = [...new Intl.Segmenter().segment(trimmed)]
+      return seg.length ? seg[seg.length - 1].segment : trimmed
+    }
+  } catch { /* fallthrough */ }
+  const arr = Array.from(trimmed)
+  return arr.length ? arr[arr.length - 1] : trimmed
+}
 
 const VISIBILITY = [
   { key: 'public',      label: 'Öffentlich',              icon: Globe,      sub: null },
@@ -152,6 +167,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     visibility_user_ids: [],
     category: '',
     customEmoji: '🎉',
+    customTitle: '',
     description: '',
     location_name: '',
     latitude: null,
@@ -271,6 +287,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
 
   async function handleSubmit() {
     if (!form.category) { showToast('Bitte Event-Art wählen', 'error'); return }
+    if (form.category === 'sonstiges' && !form.customTitle.trim()) { showToast('Bitte eine Überschrift angeben', 'error'); return }
     if (form.category === 'sonstiges' && !form.customEmoji) { showToast('Bitte ein Symbol wählen', 'error'); return }
     if (!form.starts_at) { showToast('Bitte Startzeit angeben', 'error'); return }
     if (form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)) {
@@ -286,7 +303,9 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
 
     setSubmitting(true)
     await onSubmit({
-      title: selectedCat?.label || 'Event',
+      title: form.category === 'sonstiges'
+        ? (form.customTitle.trim() || 'Event')
+        : (selectedCat?.label || 'Event'),
       activity_type: form.category,
       activity_emoji: resolvedEmoji,
       description: form.description.trim() || null,
@@ -304,6 +323,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
 
   const canSubmit =
     form.category &&
+    !(form.category === 'sonstiges' && (!form.customTitle.trim() || !form.customEmoji)) &&
     form.starts_at &&
     form.latitude &&
     !(form.visibility_mode === 'communities' && form.community_ids.length === 0) &&
@@ -478,15 +498,37 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               })}
             </div>
 
-            {/* Eigenes Emoji bei "Sonstiges" – Klick führt automatisch weiter */}
+            {/* "Sonstiges": eigener Titel + frei wählbares Emoji */}
             {form.category === 'sonstiges' && (
-              <div style={{ marginTop: 16 }}>
-                <p style={{ fontSize: 12, color: C.textSec, margin: '0 0 8px' }}>Eigenes Symbol wählen:</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ marginTop: 18 }}>
+                <label style={lbl}>Überschrift des Events *</label>
+                <input
+                  value={form.customTitle}
+                  onChange={e => set('customTitle', e.target.value)}
+                  placeholder="z. B. Grillabend, Spieleabend …"
+                  maxLength={60}
+                  style={inp}
+                />
+
+                <label style={{ ...lbl, marginTop: 16 }}>Symbol *</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <input
+                    value={form.customEmoji}
+                    onChange={e => set('customEmoji', lastGrapheme(e.target.value))}
+                    placeholder="🙂"
+                    aria-label="Emoji"
+                    style={{ ...inp, width: 64, flexShrink: 0, textAlign: 'center', fontSize: 26, padding: '8px 0' }}
+                  />
+                  <span style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>
+                    Tippe ins Feld und wähle über die Emoji-Tastatur ein beliebiges Symbol – oder nimm eines unten.
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
                   {CUSTOM_EMOJIS.map(e => (
                     <button
                       key={e}
-                      onClick={() => { set('customEmoji', e); setStep('info') }}
+                      onClick={() => set('customEmoji', e)}
                       style={{
                         width: 42, height: 42, borderRadius: 10, fontSize: 20, cursor: 'pointer',
                         border: `2px solid ${form.customEmoji === e ? C.accent : C.border}`,
@@ -497,6 +539,14 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                     </button>
                   ))}
                 </div>
+
+                <button
+                  style={{ ...nextBtn(form.customTitle.trim() && form.customEmoji), marginTop: 18, width: '100%' }}
+                  disabled={!form.customTitle.trim() || !form.customEmoji}
+                  onClick={() => setStep('info')}
+                >
+                  Weiter
+                </button>
               </div>
             )}
 

@@ -218,6 +218,13 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
             </div>
           </div>
 
+          {/* Beschreibung – direkt unter Name + Sichtbarkeit */}
+          {activity.description && (
+            <p style={{ fontSize: 13.5, color: C.text, lineHeight: 1.6, margin: '0 0 14px' }}>
+              {activity.description}
+            </p>
+          )}
+
           {/* Meta */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
             {timeRange && (
@@ -278,15 +285,6 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
             </p>
             <ChevronRight size={15} color={C.textTer} />
           </button>
-
-          {activity.description && (
-            <>
-              <div style={{ height: 1, background: C.border, margin: '0 0 14px' }} />
-              <p style={{ fontSize: 13, color: C.textSec, lineHeight: 1.65, marginBottom: 14 }}>
-                {activity.description}
-              </p>
-            </>
-          )}
 
           {/* Join / Leave – Auswahlfeld zum Beitreten (nur für Nicht-Ersteller) */}
           {!isOwner && (
