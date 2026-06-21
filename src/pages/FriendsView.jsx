@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Forward } from 'lucide-react'
+import ForwardSheet from '../components/prayer/ForwardSheet'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
@@ -1042,7 +1043,7 @@ function FeedAvatar({ profile, size = 36 }) {
 }
 
 // ─── Post Card ───────────────────────────────────────────────
-export function PostCard({ post, currentUserId, onReact, onDelete, onClick }) {
+export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onForward }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
@@ -1172,8 +1173,15 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick }) {
           </button>
         ))}
         <button
-          onClick={() => onClick(post)}
+          onClick={e => { e.stopPropagation(); onForward?.(post) }}
+          aria-label="Beitrag weiterleiten"
           style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: 4 }}
+        >
+          <Forward size={14} />
+        </button>
+        <button
+          onClick={() => onClick(post)}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: 4 }}
         >
           <MessageSquare size={13} />
           {post.commentCount > 0 ? `${post.commentCount} Antworten` : 'Antworten'}
@@ -1653,6 +1661,7 @@ function FeedTab() {
   const [activeCategories, setActiveCategories] = useState([])
   const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
   const [searchParams, setSearchParams] = useSearchParams()
+  const [forwardPost, setForwardPost] = useState(null)
 
   // Direkt den Composer öffnen, wenn man vom Profil "+ Beitrag" kommt
   useEffect(() => {
@@ -1873,6 +1882,7 @@ function FeedTab() {
           onReact={reactToPost}
           onDelete={handleDelete}
           onClick={p => navigate(`/feed/post/${p.id}`)}
+          onForward={setForwardPost}
         />
       ))}
 
@@ -1919,6 +1929,23 @@ function FeedTab() {
             setShowComposer(false)
             await handleCreate(data)
           }}
+        />
+      )}
+
+      {forwardPost && (
+        <ForwardSheet
+          previewTitle={forwardPost.title || forwardPost.body || 'Beitrag'}
+          buildMessage={() => {
+            const parts = []
+            if (forwardPost.title) parts.push(forwardPost.title)
+            if (forwardPost.type === 'bible') {
+              if (forwardPost.bible_reference) parts.push(`📖 ${forwardPost.bible_reference}`)
+              if (forwardPost.bible_verse) parts.push(`„${forwardPost.bible_verse}“`)
+            }
+            if (forwardPost.body) parts.push(forwardPost.body)
+            return { type: 'text', text: parts.join('\n\n') || 'Beitrag' }
+          }}
+          onClose={() => setForwardPost(null)}
         />
       )}
     </div>

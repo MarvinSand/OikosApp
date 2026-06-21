@@ -164,25 +164,26 @@ function ListSkeleton() {
 }
 
 // ─── PrayerListsSection ───────────────────────────────────────
-export default function PrayerListsSection() {
+export default function PrayerListsSection({ variant = 'full' }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { lists, loading, createList } = usePrayerLists()
   const [showCreate, setShowCreate] = useState(false)
   const [answeredCount, setAnsweredCount] = useState(0)
+  const compact = variant === 'compact'
 
   useEffect(() => {
-    if (!user) return
+    if (!user || compact) return
     Promise.all([
       supabase.from('personal_prayer_requests').select('*', { count: 'exact', head: true }).eq('owner_id', user.id).eq('is_answered', true),
       supabase.from('prayer_requests').select('*', { count: 'exact', head: true }).eq('owner_id', user.id).eq('is_answered', true),
     ]).then(([{ count: c1 }, { count: c2 }]) => {
       setAnsweredCount((c1 || 0) + (c2 || 0))
     })
-  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, compact]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ margin: '12px 0 0', borderBottom: '1px solid var(--color-warm-3)' }}>
+    <div style={{ margin: compact ? 0 : '12px 0 0', borderBottom: compact ? 'none' : '1px solid var(--color-warm-3)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 10px' }}>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
@@ -227,7 +228,7 @@ export default function PrayerListsSection() {
       </div>
 
       {/* Erhörte Gebete Link */}
-      {answeredCount > 0 && (
+      {!compact && answeredCount > 0 && (
         <div style={{ padding: '0 16px 14px' }}>
           <button
             onClick={() => navigate('/prayer/answered')}

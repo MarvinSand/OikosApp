@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Users, Clock } from 'lucide-react'
+import { ChevronRight, Users, Clock, CalendarDays } from 'lucide-react'
 import ProgressBar from './ProgressBar'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
@@ -14,7 +14,11 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
   const [current, setCurrent] = useState(Number(goal.current_value) || 0)
 
   const isHours = goal.goal_type === 'hours'
-  const unit = isHours ? 'Std' : 'Pers.'
+  const isDays = goal.goal_type === 'days'
+  const isTimeBased = isHours || isDays // wird über den Gebetsmodus erfasst
+  const unit = isHours ? 'Std' : isDays ? 'Tage' : 'Pers.'
+  const TypeIcon = isHours ? Clock : isDays ? CalendarDays : Users
+  const typeLabel = isHours ? 'Stunden-Ziel' : isDays ? 'Tage-Ziel' : 'Personen-Ziel'
 
   async function handleJoin(e) {
     e.stopPropagation()
@@ -56,8 +60,8 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
             {goal.title}
           </p>
           <p style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>
-            {isHours ? <Clock size={11} /> : <Users size={11} />}
-            {isHours ? 'Stunden-Ziel' : 'Personen-Ziel'}
+            <TypeIcon size={11} />
+            {typeLabel}
           </p>
         </div>
         <ChevronRight size={18} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
@@ -71,7 +75,7 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
         <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>
           🙏 {count} {count === 1 ? 'Person betet' : 'Personen beten'} mit
         </span>
-        {isHours ? (
+        {isTimeBased ? (
           <button
             onClick={(e) => { e.stopPropagation(); onPrayHours?.(goal) }}
             style={{

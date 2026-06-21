@@ -55,7 +55,7 @@ export function usePrayerGoals() {
 
   useEffect(() => { load() }, [load])
 
-  async function createGoal({ title, description = null, icon = '🙏', color = '#5AC8FA', goalType = 'people', targetValue, visibility = 'public', communityId = null }) {
+  async function createGoal({ title, description = null, icon = '🙏', color = '#5AC8FA', goalType = 'people', targetValue, visibility = 'public', communityId = null, prayerRequestId = null, personalPrayerRequestId = null }) {
     const { data, error } = await supabase
       .from('prayer_goals')
       .insert({
@@ -68,6 +68,8 @@ export function usePrayerGoals() {
         target_value: targetValue,
         visibility,
         community_id: visibility === 'community' ? communityId : null,
+        prayer_request_id: prayerRequestId,
+        personal_prayer_request_id: personalPrayerRequestId,
       })
       .select()
       .single()

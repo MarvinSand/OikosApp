@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { X, Clock, Users } from 'lucide-react'
+import { X, Clock, Users, CalendarDays } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import { useCommunities } from '../../hooks/useCommunities'
 
 const GOAL_COLORS = ['#5AC8FA', '#7A9E7E', '#D4A853', '#C0392B', '#8E44AD', '#2980B9', '#E67E22', '#2C3E50']
 const GOAL_EMOJIS = ['🙏', '🌍', '🇩🇪', '🔥', '🕊️', '❤️', '✝️', '🌅', '🛡️', '🤲', '⛪', '🌿']
 
-export default function CreateGoalSheet({ onClose, onCreate }) {
-  const [title, setTitle] = useState('')
+export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '' }) {
+  const [title, setTitle] = useState(initialTitle)
   const [description, setDescription] = useState('')
   const [icon, setIcon] = useState('🙏')
   const [color, setColor] = useState('#5AC8FA')
@@ -66,23 +66,24 @@ export default function CreateGoalSheet({ onClose, onCreate }) {
         <label style={lbl}>Art des Ziels</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           {[
-            { val: 'people', icon: <Users size={15} />, label: 'Personen', hint: 'z.B. 100 Menschen beten' },
-            { val: 'hours', icon: <Clock size={15} />, label: 'Stunden', hint: 'z.B. 1000 Std. beten' },
+            { val: 'people', icon: <Users size={15} />, label: 'Personen', hint: 'z.B. 100 beten mit' },
+            { val: 'hours', icon: <Clock size={15} />, label: 'Stunden', hint: 'z.B. 1000 Std.' },
+            { val: 'days', icon: <CalendarDays size={15} />, label: 'Tage', hint: 'z.B. 30 Tage' },
           ].map(t => (
             <button
               key={t.val}
               type="button"
               onClick={() => setGoalType(t.val)}
               style={{
-                flex: 1, padding: '12px 10px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+                flex: 1, padding: '12px 8px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
                 border: `1.5px solid ${goalType === t.val ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
                 backgroundColor: goalType === t.val ? 'var(--color-warm-4)' : 'var(--color-bg)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', marginBottom: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', marginBottom: 2 }}>
                 {t.icon} {t.label}
               </div>
-              <div style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)' }}>{t.hint}</div>
+              <div style={{ fontFamily: 'Lora, serif', fontSize: 10, color: 'var(--color-text-muted)' }}>{t.hint}</div>
             </button>
           ))}
         </div>
@@ -104,8 +105,10 @@ export default function CreateGoalSheet({ onClose, onCreate }) {
         <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. 1000 Stunden für Deutschland" style={inp} />
 
         {/* Zielwert */}
-        <label style={{ ...lbl, marginTop: 14 }}>{goalType === 'hours' ? 'Ziel (Stunden) *' : 'Ziel (Anzahl Personen) *'}</label>
-        <input type="number" inputMode="numeric" min="1" value={targetValue} onChange={e => setTargetValue(e.target.value)} placeholder={goalType === 'hours' ? '1000' : '100'} style={inp} />
+        <label style={{ ...lbl, marginTop: 14 }}>
+          {goalType === 'hours' ? 'Ziel (Stunden) *' : goalType === 'days' ? 'Ziel (Tage) *' : 'Ziel (Anzahl Personen) *'}
+        </label>
+        <input type="number" inputMode="numeric" min="1" value={targetValue} onChange={e => setTargetValue(e.target.value)} placeholder={goalType === 'hours' ? '1000' : goalType === 'days' ? '30' : '100'} style={inp} />
 
         {/* Beschreibung */}
         <label style={{ ...lbl, marginTop: 14 }}>Beschreibung (optional)</label>

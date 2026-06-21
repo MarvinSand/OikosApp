@@ -1,15 +1,22 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, Send, MessageCircle, ChevronUp, Search, SlidersHorizontal } from 'lucide-react'
+import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, Send, MessageCircle, ChevronUp, Search, SlidersHorizontal, BookmarkPlus, Forward, Play } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 import { usePrayerFeed } from '../hooks/usePrayerFeed'
 import { usePersonalPrayer } from '../hooks/usePersonalPrayer'
+import { usePrayerGoals } from '../hooks/usePrayerGoals'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../context/ToastContext'
 import DateFilterControl from '../components/ui/DateFilterControl'
 import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
+import PrayerListsSection from '../components/prayer/PrayerListsSection'
+import PrayerModeSetupSheet from '../components/prayer/PrayerModeSetupSheet'
+import AddToListSheet from '../components/prayer/AddToListSheet'
+import ForwardSheet from '../components/prayer/ForwardSheet'
+import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
+import CreateGoalSheet from '../components/prayer/CreateGoalSheet'
 
 // ─── Konstanten ───────────────────────────────────────────────
 
@@ -134,7 +141,7 @@ function CommentInput({ onSubmit }) {
 
 // ─── Gebets-Karte ─────────────────────────────────────────────
 
-function PrayerCard({ request, logs, notes, onPray, onComment }) {
+function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward }) {
   const { user } = useAuth()
   const [showComments, setShowComments] = useState(false)
   const [showCommentInput, setShowCommentInput] = useState(false)
@@ -220,6 +227,33 @@ function PrayerCard({ request, logs, notes, onPray, onComment }) {
           <MessageCircle size={14} />
           Kommentar{notes?.length > 0 ? ` · ${notes.length}` : ''}
           {showComments ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
+
+        {/* Bookmark + Weiterleiten */}
+        <button
+          onClick={() => onBookmark?.(request)}
+          aria-label="Zu Liste hinzufügen"
+          style={{
+            marginLeft: 'auto',
+            width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+            border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
+            color: 'var(--color-text-secondary)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <BookmarkPlus size={16} />
+        </button>
+        <button
+          onClick={() => onForward?.(request)}
+          aria-label="Gebet weiterleiten"
+          style={{
+            width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+            border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
+            color: 'var(--color-text-secondary)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <Forward size={16} />
         </button>
       </div>
 
@@ -348,8 +382,8 @@ function SiblingPicker({ selected, onChange }) {
 
 // ─── Neues Gebet erstellen ────────────────────────────────────
 
-// steps: 1=visibility, 2=sub-selection (community/siblings), 3=category, 4=details
-function CreatePrayerSheet({ onClose, onCreate }) {
+// steps: 1=visibility, 2=sub-selection (community/siblings), 3=category, 4=details, 5=goal-prompt
+function CreatePrayerSheet({ onClose, onCreate, onRequestGoal }) {
   const { myCommunities } = useCommunities()
   const [step, setStep] = useState(1)
   const [visibility, setVisibility] = useState(null)
@@ -378,11 +412,13 @@ function CreatePrayerSheet({ onClose, onCreate }) {
     setSelectedSiblings([])
   }
 
+  const [createdRequest, setCreatedRequest] = useState(null)
+
   async function handleSubmit() {
     if (!text.trim() || submitting) return
     setSubmitting(true)
     try {
-      await onCreate({
+      const created = await onCreate({
         title: title.trim() || (CATEGORIES.find(c => c.key === category)?.label || ''),
         description: text.trim(),
         visibility: visibility === 'specific' ? 'siblings' : (visibility || 'public'),
@@ -390,7 +426,8 @@ function CreatePrayerSheet({ onClose, onCreate }) {
         visibility_community_id: visibility === 'community' ? selectedCommunity : null,
         visibility_user_ids: visibility === 'specific' ? selectedSiblings : [],
       })
-      onClose()
+      setCreatedRequest(created || null)
+      setStep(5) // Gebetsziel-Abfrage
     } finally {
       setSubmitting(false)
     }
@@ -611,6 +648,41 @@ function CreatePrayerSheet({ onClose, onCreate }) {
             </div>
           </div>
         )}
+
+        {/* Schritt 5: Gebetsziel-Abfrage */}
+        {step === 5 && (
+          <div style={{ padding: '0 16px 28px', textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>🎯</div>
+            <p style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 800, color: 'var(--color-text)' }}>
+              Gebet geteilt!
+            </p>
+            <p style={{ margin: '0 0 22px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+              Möchtest du dir dafür ein Gebetsziel setzen? Zum Beispiel eine bestimmte
+              Anzahl an Stunden, Personen oder Tagen in Folge.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                onClick={() => onRequestGoal?.({ title: title.trim() || (CATEGORIES.find(c => c.key === category)?.label || ''), request: createdRequest })}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 12, border: 'none',
+                  background: 'var(--color-accent)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                🎯 Gebetsziel festlegen
+              </button>
+              <button
+                onClick={onClose}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 12,
+                  border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
+                  color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Nein, danke
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -623,6 +695,7 @@ export default function GebetPaul() {
   const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
   const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote } = usePrayerFeed('all', statusFilter)
   const { createRequest } = usePersonalPrayer()
+  const { createGoal } = usePrayerGoals()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -630,6 +703,13 @@ export default function GebetPaul() {
   const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
   const loaderRef = useRef(null)
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // Gebetsmodus / Bookmark / Weiterleiten / Gebetsziel
+  const [showPrayerModeSetup, setShowPrayerModeSetup] = useState(false)
+  const [prayerModeItems, setPrayerModeItems] = useState(null)
+  const [bookmarkRequest, setBookmarkRequest] = useState(null)
+  const [forwardRequest, setForwardRequest] = useState(null)
+  const [goalSheet, setGoalSheet] = useState(null) // { title, request }
 
   // Direkt das Erstellen-Sheet öffnen, wenn man vom Profil "+ Gebetsanliegen" kommt
   useEffect(() => {
@@ -669,14 +749,30 @@ export default function GebetPaul() {
     return () => obs.disconnect()
   }, [loadMore])
 
-  async function handleCreate({ title, description, visibility, category, visibility_community_id }) {
+  async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids }) {
     try {
-      await createRequest({ title, description, visibility, visibility_community_id })
+      const created = await createRequest({ title, description, visibility, category, visibility_community_id, visibility_user_ids })
       showToast('Gebet geteilt 🙏')
       reload()
+      return created
     } catch {
       showToast('Fehler beim Teilen', 'error')
+      return null
     }
+  }
+
+  function handleRequestGoal({ title, request }) {
+    setShowCreate(false)
+    setGoalSheet({ title: title || '', request: request || null })
+  }
+
+  async function handleCreateGoal(payload) {
+    const linked = goalSheet?.request
+    await createGoal({
+      ...payload,
+      personalPrayerRequestId: linked && !linked.person_id ? linked.id : null,
+      prayerRequestId: linked && linked.person_id ? linked.id : null,
+    })
   }
 
   async function handleComment(requestId, text, isPublic) {
@@ -690,6 +786,25 @@ export default function GebetPaul() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full" style={{ position: 'relative' }}>
       <PrayerFeedSwitcher active="gebet-paul" />
+
+      {/* Gebetslisten (kompakt) + Gebetsmodus */}
+      <div style={{ padding: '14px 0 4px', borderBottom: '1px solid var(--color-border)' }}>
+        <PrayerListsSection variant="compact" />
+        <div style={{ padding: '4px 16px 12px' }}>
+          <button
+            onClick={() => setShowPrayerModeSetup(true)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '13px', borderRadius: 14, border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))',
+              color: '#fff', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700,
+              boxShadow: '0 4px 14px rgba(90,200,250,0.30)',
+            }}
+          >
+            <Play size={17} fill="#fff" /> Gebetsmodus starten
+          </button>
+        </div>
+      </div>
 
       {/* Search + filter */}
       <div style={{
@@ -881,6 +996,8 @@ export default function GebetPaul() {
             notes={notesMap[req.id]}
             onPray={logPrayer}
             onComment={handleComment}
+            onBookmark={setBookmarkRequest}
+            onForward={setForwardRequest}
           />
         ))}
 
@@ -908,6 +1025,54 @@ export default function GebetPaul() {
         <CreatePrayerSheet
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
+          onRequestGoal={handleRequestGoal}
+        />
+      )}
+
+      {/* Gebetsmodus-Setup */}
+      {showPrayerModeSetup && (
+        <PrayerModeSetupSheet
+          onClose={() => setShowPrayerModeSetup(false)}
+          onStart={(items) => { setShowPrayerModeSetup(false); setPrayerModeItems(items) }}
+        />
+      )}
+
+      {/* Geführter Gebetsmodus */}
+      {prayerModeItems && (
+        <GuidedPrayerMode
+          items={prayerModeItems}
+          onClose={() => { setPrayerModeItems(null); reload() }}
+        />
+      )}
+
+      {/* Zu Liste hinzufügen */}
+      {bookmarkRequest && (
+        <AddToListSheet
+          request={bookmarkRequest}
+          onClose={() => setBookmarkRequest(null)}
+        />
+      )}
+
+      {/* Weiterleiten */}
+      {forwardRequest && (
+        <ForwardSheet
+          previewTitle={forwardRequest.title}
+          buildMessage={() => ({
+            type: 'prayer_request',
+            text: forwardRequest.title || 'Gebetsanliegen',
+            bible_verse_text: forwardRequest.description || null,
+            [forwardRequest.person_id ? 'prayer_request_id' : 'personal_prayer_request_id']: forwardRequest.id,
+          })}
+          onClose={() => setForwardRequest(null)}
+        />
+      )}
+
+      {/* Gebetsziel anlegen */}
+      {goalSheet && (
+        <CreateGoalSheet
+          initialTitle={goalSheet.title}
+          onClose={() => setGoalSheet(null)}
+          onCreate={handleCreateGoal}
         />
       )}
     </div>

@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MessageCircle, Bell, ChevronRight } from 'lucide-react'
 import { useConversations } from '../hooks/useConversations'
 import { useNotifications } from '../hooks/useNotifications'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
 import DailyPrayerCard from '../components/home/DailyPrayerCard'
-import HomeCommunitySection from '../components/home/HomeCommunitySection'
-import PrayerListsSection from '../components/prayer/PrayerListsSection'
+import WelcomeBanner from '../components/home/WelcomeBanner'
+import HomeCommunityTab from '../components/home/HomeCommunityTab'
 import GoalCard from '../components/prayer/GoalCard'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
 
@@ -61,10 +61,56 @@ function FeaturedGoals() {
   )
 }
 
+// ─── Premium Segmented Tabs (Aktuelles / Community) ───────────
+function HomeTabs({ active, onChange }) {
+  const tabs = [
+    { key: 'aktuelles', label: 'Aktuelles' },
+    { key: 'community', label: 'Community' },
+  ]
+  return (
+    <div
+      style={{
+        display: 'flex', gap: 4, padding: 4, margin: '12px 16px 0',
+        borderRadius: 14, backgroundColor: 'var(--color-bg-secondary)',
+      }}
+    >
+      {tabs.map(t => {
+        const isActive = t.key === active
+        return (
+          <button
+            key={t.key}
+            onClick={() => onChange(t.key)}
+            style={{
+              flex: 1, padding: '9px 0', borderRadius: 11, border: 'none', cursor: 'pointer',
+              fontFamily: 'Lora, serif', fontSize: 14, fontWeight: isActive ? 700 : 600,
+              letterSpacing: '-0.01em',
+              color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              backgroundColor: isActive ? 'var(--color-bg)' : 'transparent',
+              boxShadow: isActive ? '0 2px 8px rgba(58,46,36,0.10)' : 'none',
+              transition: 'color 0.2s, background-color 0.2s',
+            }}
+          >
+            {t.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function Home() {
   const navigate = useNavigate()
   const { hasUnread } = useConversations()
   const { unreadCount } = useNotifications()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') === 'community' ? 'community' : 'aktuelles'
+
+  function setTab(key) {
+    const next = new URLSearchParams(searchParams)
+    if (key === 'aktuelles') next.delete('tab')
+    else next.set('tab', key)
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <div className="h-full w-full flex flex-col bg-bg">
@@ -141,23 +187,27 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Premium-Tabs */}
+      <HomeTabs active={tab} onChange={setTab} />
+
       {/* Scrollbarer Inhalt */}
       <div className="flex-1 overflow-y-auto hide-scrollbar" style={{ paddingBottom: 32 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
-          {/* Gebet des Tages */}
-          <DailyPrayerCard />
+        {tab === 'aktuelles' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
+            {/* Willkommensnachricht (wegklickbar) */}
+            <WelcomeBanner />
 
-          {/* Gemeinsam beten / Gebetsziele */}
-          <FeaturedGoals />
+            {/* Gebet des Tages */}
+            <DailyPrayerCard />
 
-          {/* Community */}
-          <HomeCommunitySection />
-        </div>
-
-        {/* Meine Gebetslisten (eigene Section-Optik mit horizontalem Scroll) */}
-        <div style={{ marginTop: 8 }}>
-          <PrayerListsSection />
-        </div>
+            {/* Gemeinsam beten / Gebetsziele */}
+            <FeaturedGoals />
+          </div>
+        ) : (
+          <div style={{ padding: '20px 16px 0' }}>
+            <HomeCommunityTab />
+          </div>
+        )}
       </div>
     </div>
   )
