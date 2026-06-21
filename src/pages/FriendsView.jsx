@@ -1652,6 +1652,16 @@ function FeedTab() {
   const [showFilters, setShowFilters] = useState(false)
   const [activeCategories, setActiveCategories] = useState([])
   const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Direkt den Composer öffnen, wenn man vom Profil "+ Beitrag" kommt
+  useEffect(() => {
+    if (searchParams.get('compose') === '1') {
+      setShowComposer(true)
+      searchParams.delete('compose')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   // Infinite scroll via IntersectionObserver
   useEffect(() => {

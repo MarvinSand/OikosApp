@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, Send, MessageCircle, ChevronUp, Search, SlidersHorizontal } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
@@ -628,6 +629,16 @@ export default function GebetPaul() {
   const [activeCategories, setActiveCategories] = useState([])
   const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
   const loaderRef = useRef(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Direkt das Erstellen-Sheet öffnen, wenn man vom Profil "+ Gebetsanliegen" kommt
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      setShowCreate(true)
+      searchParams.delete('create')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   function toggleCategory(key) {
     setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])

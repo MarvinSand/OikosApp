@@ -390,9 +390,15 @@ export default function ProfileView() {
               currentUserId={user?.id}
               onReact={reactToPost}
               onDelete={handleDeletePost}
+              onCreatePost={() => navigate('/friends?tab=feed&compose=1')}
             />
           )}
-          {activeTab === 'prayers' && <PrayersTab prayers={prayerRequests} />}
+          {activeTab === 'prayers' && (
+            <PrayersTab
+              prayers={prayerRequests}
+              onCreatePrayer={() => navigate('/gebet-paul?create=1')}
+            />
+          )}
         </>
       )}
 

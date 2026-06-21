@@ -74,9 +74,42 @@ export const VISIBILITY_LABEL = {
 // onOpen(map) is required. onSettings / onCreateMap are optional – when omitted
 // (e.g. viewing someone else's profile) the per-map settings button and the
 // "Neue Map" tile are hidden, making the tab read-only.
+// Wiederverwendbarer Leerzustand mit optionalem Aktions-Button (eigenes Profil)
+function TabEmptyState({ emoji, title, subtitle, buttonLabel, onClick }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+      <p style={{ fontSize: 38, margin: '0 0 12px' }}>{emoji}</p>
+      <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{title}</p>
+      {subtitle && (
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 18px', lineHeight: 1.5 }}>{subtitle}</p>
+      )}
+      {onClick && buttonLabel && (
+        <button
+          onClick={onClick}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 20px',
+            borderRadius: 999, border: 'none', backgroundColor: 'var(--color-accent)',
+            color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          {buttonLabel}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
-  if (maps.length === 0 && !onCreateMap) {
-    return (
+  if (maps.length === 0) {
+    return onCreateMap ? (
+      <TabEmptyState
+        emoji="🗺"
+        title="Noch keine Oikos Map"
+        subtitle="Erstelle deine erste Oikos Map und halte fest, für wen du betest."
+        buttonLabel="+ Oikos Map erstellen"
+        onClick={onCreateMap}
+      />
+    ) : (
       <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
         Keine sichtbaren Maps
       </p>
@@ -176,10 +209,18 @@ export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
 }
 
 // ─── Posts tab ────────────────────────────────────────────────
-export function PostsTab({ posts, currentUserId, onReact, onDelete }) {
+export function PostsTab({ posts, currentUserId, onReact, onDelete, onCreatePost }) {
   const navigate = useNavigate()
   if (posts.length === 0) {
-    return (
+    return onCreatePost ? (
+      <TabEmptyState
+        emoji="📝"
+        title="Noch keine Posts"
+        subtitle="Teile deinen ersten Beitrag mit der Community."
+        buttonLabel="+ Beitrag erstellen"
+        onClick={onCreatePost}
+      />
+    ) : (
       <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
         Noch keine Posts
       </p>
@@ -202,9 +243,17 @@ export function PostsTab({ posts, currentUserId, onReact, onDelete }) {
 }
 
 // ─── Prayers tab ──────────────────────────────────────────────
-export function PrayersTab({ prayers }) {
+export function PrayersTab({ prayers, onCreatePrayer }) {
   if (prayers.length === 0) {
-    return (
+    return onCreatePrayer ? (
+      <TabEmptyState
+        emoji="🙏"
+        title="Noch keine Gebetsanliegen"
+        subtitle="Teile dein erstes Gebetsanliegen mit deinen Geschwistern."
+        buttonLabel="+ Gebetsanliegen erstellen"
+        onClick={onCreatePrayer}
+      />
+    ) : (
       <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
         Noch keine Gebetsanliegen geteilt
       </p>
