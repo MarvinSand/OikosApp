@@ -1,9 +1,11 @@
 -- ============================================================
--- Phase 37: Gruppengebete mit Zielen + Gebet des Tages
--- - prayer_goals: gemeinsame Gebetsziele (Stunden / Personen) mit Fortschritt
+-- Phase 37+38 (kombiniert): Gruppengebete mit Zielen + Gebet des Tages
+-- - prayer_goals: gemeinsame Gebetsziele (Stunden / Personen / Tage) mit Fortschritt
 -- - prayer_goal_contributions: einzelne Beiträge (Minuten bzw. Teilnahme)
 -- - daily_prayers / daily_prayer_logs: tägliches Gruppengebet
--- Idempotent – kann mehrfach ausgeführt werden.
+-- - optionale Verknüpfung eines Ziels mit einem (persönlichen) Anliegen
+-- Idempotent – kann mehrfach ausgeführt werden (auch auf DBs, in denen die
+-- frühere phase37 bereits lief).
 -- ============================================================
 
 -- ─── Gebetsziele ──────────────────────────────────────────────
@@ -14,18 +16,36 @@ create table if not exists public.prayer_goals (
   description text,
   icon text default '🙏',
   color text default '#5AC8FA',
-  goal_type text not null default 'people' check (goal_type in ('hours', 'people')),
+  goal_type text not null default 'people' check (goal_type in ('hours', 'people', 'days')),
   target_value numeric not null check (target_value > 0),
   current_value numeric default 0,
   participant_count integer default 0,
   visibility text not null default 'public' check (visibility in ('public', 'community')),
   community_id uuid references public.communities(id) on delete cascade,
+  prayer_request_id uuid references public.prayer_requests(id) on delete set null,
+  personal_prayer_request_id uuid references public.personal_prayer_requests(id) on delete set null,
   is_featured boolean default false,
   starts_at timestamptz default now(),
   ends_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- ─── Nachträgliche Anpassungen für bereits migrierte DBs ───────
+-- goal_type-Check um 'days' erweitern
+alter table public.prayer_goals
+  drop constraint if exists prayer_goals_goal_type_check;
+alter table public.prayer_goals
+  add constraint prayer_goals_goal_type_check
+  check (goal_type in ('hours', 'people', 'days'));
+
+-- optionale Verknüpfung Ziel ↔ Anliegen
+alter table public.prayer_goals
+  add column if not exists prayer_request_id uuid
+    references public.prayer_requests(id) on delete set null;
+alter table public.prayer_goals
+  add column if not exists personal_prayer_request_id uuid
+    references public.personal_prayer_requests(id) on delete set null;
 
 -- ─── Beiträge zu Zielen ───────────────────────────────────────
 create table if not exists public.prayer_goal_contributions (
@@ -126,6 +146,9 @@ do $$ begin
 end $$;
 
 -- ─── RPC: Beitrag zu einem Ziel (hält Zähler konsistent) ──────
+-- people → 1 Teilnahme pro Nutzer (dedup)
+-- hours  → Summe Minuten / 60
+-- days   → Anzahl distinct Tage mit Beitrag
 create or replace function public.contribute_to_prayer_goal(p_goal_id uuid, p_minutes integer default 0)
 returns void
 language plpgsql security definer set search_path = public
@@ -149,6 +172,7 @@ begin
       values (p_goal_id, v_uid, 0);
     end if;
   else
+    -- hours und days: eine Contribution pro Session
     insert into public.prayer_goal_contributions (goal_id, user_id, minutes)
     values (p_goal_id, v_uid, greatest(0, coalesce(p_minutes, 0)));
   end if;
@@ -158,6 +182,8 @@ begin
     current_value = case
       when g.goal_type = 'people'
         then (select count(distinct user_id) from public.prayer_goal_contributions where goal_id = p_goal_id)
+      when g.goal_type = 'days'
+        then (select count(distinct (created_at at time zone 'UTC')::date) from public.prayer_goal_contributions where goal_id = p_goal_id)
       else round((select coalesce(sum(minutes), 0) from public.prayer_goal_contributions where goal_id = p_goal_id) / 60.0, 1)
     end,
     updated_at = now()
