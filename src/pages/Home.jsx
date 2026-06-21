@@ -1,7 +1,65 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageCircle, Bell } from 'lucide-react'
+import { MessageCircle, Bell, ChevronRight } from 'lucide-react'
 import { useConversations } from '../hooks/useConversations'
 import { useNotifications } from '../hooks/useNotifications'
+import { usePrayerGoals } from '../hooks/usePrayerGoals'
+import DailyPrayerCard from '../components/home/DailyPrayerCard'
+import HomeCommunitySection from '../components/home/HomeCommunitySection'
+import PrayerListsSection from '../components/prayer/PrayerListsSection'
+import GoalCard from '../components/prayer/GoalCard'
+import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
+
+// ─── Gemeinsam beten (Featured Goals) ─────────────────────────
+function FeaturedGoals() {
+  const navigate = useNavigate()
+  const { featuredGoals, loading, reload } = usePrayerGoals()
+  const [prayGoal, setPrayGoal] = useState(null)
+
+  if (!loading && featuredGoals.length === 0) return null
+
+  const prayItems = prayGoal ? [{
+    type: 'topic',
+    request: { id: prayGoal.id, title: prayGoal.title, description: prayGoal.description, icon: prayGoal.icon },
+    ampel: null,
+  }] : []
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
+          Gemeinsam beten
+        </p>
+        <button onClick={() => navigate('/goals')} style={{ display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600 }}>
+          Alle ansehen <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={{ height: 140, borderRadius: 16, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {featuredGoals.map(g => (
+            <GoalCard
+              key={g.id}
+              goal={g}
+              onOpenDetail={() => navigate(`/goals/${g.id}`)}
+              onPrayHours={setPrayGoal}
+            />
+          ))}
+        </div>
+      )}
+
+      {prayGoal && (
+        <GuidedPrayerMode
+          items={prayItems}
+          goalId={prayGoal.id}
+          onClose={() => { setPrayGoal(null); reload() }}
+        />
+      )}
+    </div>
+  )
+}
 
 export default function Home() {
   const navigate = useNavigate()
@@ -83,54 +141,22 @@ export default function Home() {
         </div>
       </header>
 
-      <div
-        className="flex-1 flex flex-col items-center justify-center gap-4 px-8"
-        style={{ color: 'var(--color-text-tertiary)' }}
-      >
-        <span style={{ fontSize: 48 }}>✝️</span>
-        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)', textAlign: 'center' }}>
-          Willkommen bei OIKOS
-        </p>
-        <p style={{ fontSize: 14, textAlign: 'center', lineHeight: 1.6 }}>
-          Deine OIKOS Map findest du jetzt im <strong>Profil-Tab</strong>. Auf der <strong>Weltkarte</strong> siehst du Geschwister und Events.
-        </p>
-        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-          <button
-            onClick={() => navigate('/worldmap')}
-            style={{
-              padding: '10px 18px', borderRadius: 12, border: 'none',
-              background: 'var(--color-accent)', color: '#fff',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            🌍 Weltkarte
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            style={{
-              padding: '10px 18px', borderRadius: 12,
-              border: '1.5px solid var(--color-border)', background: 'none',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              color: 'var(--color-text)',
-            }}
-          >
-            🗺 Meine Maps
-          </button>
+      {/* Scrollbarer Inhalt */}
+      <div className="flex-1 overflow-y-auto hide-scrollbar" style={{ paddingBottom: 32 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
+          {/* Gebet des Tages */}
+          <DailyPrayerCard />
+
+          {/* Gemeinsam beten / Gebetsziele */}
+          <FeaturedGoals />
+
+          {/* Community */}
+          <HomeCommunitySection />
         </div>
 
-        {/* In Bearbeitung badge */}
-        <div style={{
-          marginTop: 24,
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '10px 16px',
-          borderRadius: 12,
-          backgroundColor: 'var(--color-bg-secondary)',
-          border: '1px solid var(--color-border)',
-        }}>
-          <span style={{ fontSize: 16 }}>🚧</span>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-            In Bearbeitung
-          </p>
+        {/* Meine Gebetslisten (eigene Section-Optik mit horizontalem Scroll) */}
+        <div style={{ marginTop: 8 }}>
+          <PrayerListsSection />
         </div>
       </div>
     </div>

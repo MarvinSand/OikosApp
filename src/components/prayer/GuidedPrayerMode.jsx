@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { usePrayerSession } from '../../hooks/usePrayerSession'
+import { useAuth } from '../../hooks/useAuth'
+import { supabase } from '../../lib/supabase'
 
 const TIMER_OPTIONS = [
   { label: '30 Sek', seconds: 30 },
@@ -8,6 +10,13 @@ const TIMER_OPTIONS = [
   { label: '2 Min', seconds: 120 },
   { label: '3 Min', seconds: 180 },
   { label: 'Kein Timer', seconds: 0 },
+]
+
+const SESSION_GOAL_OPTIONS = [
+  { label: 'Kein Ziel', minutes: 0 },
+  { label: '5 Min', minutes: 5 },
+  { label: '10 Min', minutes: 10 },
+  { label: '15 Min', minutes: 15 },
 ]
 
 const CIRCUMFERENCE = 2 * Math.PI * 54
@@ -90,8 +99,8 @@ function PrayerCard({ item, swipeDelta }) {
 
       {/* Avatar / Icon */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
-        {type === 'personal' ? (
-          <div style={{ fontSize: 54, lineHeight: 1, marginBottom: 8 }}>🙏</div>
+        {type === 'personal' || type === 'topic' ? (
+          <div style={{ fontSize: 54, lineHeight: 1, marginBottom: 8 }}>{request?.icon || '🙏'}</div>
         ) : (
           <div style={{
             width: 64, height: 64, borderRadius: '50%', backgroundColor: '#D4A853',
@@ -172,6 +181,7 @@ const darkBg = 'linear-gradient(160deg, #1A1208 0%, #251608 50%, #1A1208 100%)'
 // ─── Setup Screen ─────────────────────────────────────────────
 function SetupScreen({ items, onStart, onClose }) {
   const [selectedSeconds, setSelectedSeconds] = useState(60)
+  const [goalMinutes, setGoalMinutes] = useState(0)
   const estimatedMinutes = selectedSeconds > 0 ? Math.max(1, Math.ceil((items.length * selectedSeconds) / 60)) : null
 
   return (
@@ -235,10 +245,37 @@ function SetupScreen({ items, onStart, onClose }) {
             </button>
           ))}
         </div>
+
+        {/* Session-Ziel: Gesamtzeit */}
+        <p style={{
+          fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)',
+          textTransform: 'uppercase', letterSpacing: '0.7px', textAlign: 'center', margin: '24px 0 14px',
+        }}>
+          🎯 Mein Gebetsziel
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {SESSION_GOAL_OPTIONS.map(opt => (
+            <button
+              key={opt.minutes}
+              onClick={() => setGoalMinutes(opt.minutes)}
+              style={{
+                padding: '9px 16px', borderRadius: 20, cursor: 'pointer',
+                border: `1.5px solid ${goalMinutes === opt.minutes ? '#D4A853' : 'rgba(255,255,255,0.12)'}`,
+                backgroundColor: goalMinutes === opt.minutes ? 'rgba(212,168,83,0.18)' : 'transparent',
+                fontFamily: 'Lora, serif', fontSize: 13,
+                color: goalMinutes === opt.minutes ? '#D4A853' : 'rgba(240,237,230,0.55)',
+                fontWeight: goalMinutes === opt.minutes ? 700 : 400,
+                transition: 'all 0.15s',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <button
-        onClick={() => onStart(selectedSeconds)}
+        onClick={() => onStart(selectedSeconds, goalMinutes)}
         style={{
           padding: '16px 52px', borderRadius: 50, border: 'none',
           backgroundColor: '#D4A853', color: '#1A1208',
@@ -258,16 +295,28 @@ function SetupScreen({ items, onStart, onClose }) {
 }
 
 // ─── Session Screen ───────────────────────────────────────────
-function SessionScreen({ session, onClose }) {
+function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
   const { currentCard, cardIndex, totalCards, timerDuration, timeLeft, timerExpired, markPrayed, skipCard, goBack } = session
   const swipeStartX = useRef(null)
   const [swipeDelta, setSwipeDelta] = useState(0)
   const [cardKey, setCardKey] = useState(0)
+  const [elapsedSec, setElapsedSec] = useState(0)
 
   useEffect(() => {
     setCardKey(k => k + 1)
     setSwipeDelta(0)
   }, [cardIndex])
+
+  // Verstrichene Gesamtzeit für das Session-Ziel
+  useEffect(() => {
+    if (sessionGoalMinutes <= 0) return
+    const t = setInterval(() => setElapsedSec(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [sessionGoalMinutes])
+
+  const goalPct = sessionGoalMinutes > 0 ? Math.min(100, Math.round((elapsedSec / (sessionGoalMinutes * 60)) * 100)) : 0
+  const elapsedMin = Math.floor(elapsedSec / 60)
+  const elapsedRest = elapsedSec % 60
 
   function handleTouchStart(e) { swipeStartX.current = e.touches[0].clientX }
 
@@ -321,6 +370,18 @@ function SessionScreen({ session, onClose }) {
             width: `${progress * 100}%`, transition: 'width 0.35s ease',
           }} />
         </div>
+
+        {/* Session-Ziel (dezent) */}
+        {sessionGoalMinutes > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8 }}>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)' }}>
+              🎯 {elapsedMin}:{String(elapsedRest).padStart(2, '0')} / {sessionGoalMinutes} Min
+            </span>
+            {goalPct >= 100 && (
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#D4A853' }}>· erreicht ✓</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Card + Timer */}
@@ -457,6 +518,17 @@ function SummaryScreen({ summary, onClose, onRestart }) {
           ))}
         </div>
 
+        {summary.goalContribution > 0 && (
+          <div style={{
+            marginBottom: 24, padding: '12px 16px', borderRadius: 14,
+            background: 'rgba(212,168,83,0.12)', border: '1px solid rgba(212,168,83,0.25)',
+          }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: '#D4A853', margin: 0 }}>
+              ✨ Du hast <strong>{summary.goalContribution} Min</strong> zu einem gemeinsamen Gebetsziel beigetragen.
+            </p>
+          </div>
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <button
             onClick={onClose}
@@ -486,19 +558,123 @@ function SummaryScreen({ summary, onClose, onRestart }) {
   )
 }
 
+// ─── Continue Screen (Weiterbeten für andere) ─────────────────
+function ContinueScreen({ excludeIds, onContinue, onSkip }) {
+  const { user } = useAuth()
+  const [requests, setRequests] = useState(null) // null = lädt
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      // RLS sorgt dafür, dass nur sichtbare Anliegen geladen werden
+      const { data } = await supabase
+        .from('prayer_requests')
+        .select('*, profiles!owner_id(id, username, full_name, gender, is_christian)')
+        .neq('owner_id', user.id)
+        .eq('is_answered', false)
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(40)
+      if (!active) return
+      const pool = (data || []).filter(r => !excludeIds.includes(r.id))
+      const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 3)
+      setRequests(shuffled)
+    }
+    load()
+    return () => { active = false }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleYes() {
+    const cards = (requests || []).map(r => ({ type: 'oikos', request: r, ampel: null }))
+    onContinue(cards)
+  }
+
+  if (requests === null) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: darkBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid rgba(212,168,83,0.3)', borderTopColor: '#D4A853', animation: 'spin 1s linear infinite' }} />
+      </div>
+    )
+  }
+
+  if (requests.length === 0) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: darkBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
+        <BgOrbs />
+        <div style={{ zIndex: 1, width: '100%', maxWidth: 360 }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>🕊</div>
+          <h1 style={{ fontFamily: 'Lora, serif', fontSize: 24, fontWeight: 700, color: '#F0EDE6', margin: '0 0 28px' }}>
+            Gut gemacht!
+          </h1>
+          <button onClick={onSkip} style={{ width: '100%', padding: '16px 0', borderRadius: 50, border: 'none', backgroundColor: '#D4A853', color: '#1A1208', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+            Weiter
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: darkBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', overflowY: 'auto' }}>
+      <BgOrbs />
+      <div style={{ zIndex: 1, width: '100%', maxWidth: 380 }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🙏</div>
+          <h1 style={{ fontFamily: 'Lora, serif', fontSize: 23, fontWeight: 700, color: '#F0EDE6', margin: '0 0 6px' }}>
+            Möchtest du noch für andere beten?
+          </h1>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'rgba(240,237,230,0.55)', margin: 0 }}>
+            Diese Geschwister freuen sich über dein Gebet.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+          {requests.map(r => {
+            const name = r.profiles?.full_name || r.profiles?.username || 'Unbekannt'
+            return (
+              <div key={r.id} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '12px 14px' }}>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: '#F0EDE6', margin: '0 0 2px' }}>
+                  {r.title}
+                </p>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'rgba(240,237,230,0.5)', margin: 0 }}>
+                  von {name}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button onClick={handleYes} style={{ width: '100%', padding: '16px 0', borderRadius: 50, border: 'none', backgroundColor: '#D4A853', color: '#1A1208', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 22px rgba(212,168,83,0.3)' }}>
+            🙏 Ja, weiterbeten
+          </button>
+          <button onClick={onSkip} style={{ width: '100%', padding: '14px 0', borderRadius: 50, border: '1.5px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'rgba(240,237,230,0.6)', cursor: 'pointer' }}>
+            Nein, fertig
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main: GuidedPrayerMode ───────────────────────────────────
-export default function GuidedPrayerMode({ items, listId, listName, onClose }) {
+export default function GuidedPrayerMode({ items, listId, listName, goalId, dailyPrayerId, onClose }) {
   const [phase, setPhase] = useState('setup')
+  const [goalMinutes, setGoalMinutes] = useState(0)
+  const [excludeIds, setExcludeIds] = useState(() => (items || []).map(c => c?.request?.id).filter(Boolean))
+  const lastTimerRef = useRef(60)
   const session = usePrayerSession()
 
   useEffect(() => {
     if (session.isFinished && phase === 'session') {
-      setPhase('finished')
+      setPhase('continue')
     }
   }, [session.isFinished]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleStart(timerSeconds) {
-    session.startSession(items, listId, timerSeconds)
+  function handleStart(timerSeconds, sessionGoalMinutes) {
+    lastTimerRef.current = timerSeconds
+    setGoalMinutes(sessionGoalMinutes || 0)
+    session.startSession(items, listId, timerSeconds, { goalId, dailyPrayerId })
     setPhase('session')
   }
 
@@ -515,17 +691,33 @@ export default function GuidedPrayerMode({ items, listId, listName, onClose }) {
   function handleSessionClose() {
     if (session.prayedCount > 0) {
       session.endSession()
-      // isFinished → useEffect → setPhase('finished')
+      // isFinished → useEffect → setPhase('continue')
     } else {
       handleClose()
     }
+  }
+
+  // "Ja, weiterbeten" → neue Session mit zufälligen Anliegen anderer (ohne Ziel-Bindung)
+  function handleContinue(extraCards) {
+    setExcludeIds(prev => [...prev, ...extraCards.map(c => c?.request?.id).filter(Boolean)])
+    setGoalMinutes(0)
+    session.resetSession()
+    session.startSession(extraCards, null, lastTimerRef.current, {})
+    setPhase('session')
+  }
+
+  function handleSkipContinue() {
+    setPhase('finished')
   }
 
   if (phase === 'setup') {
     return <SetupScreen items={items} onStart={handleStart} onClose={handleClose} />
   }
   if (phase === 'session') {
-    return <SessionScreen session={session} onClose={handleSessionClose} />
+    return <SessionScreen session={session} sessionGoalMinutes={goalMinutes} onClose={handleSessionClose} />
+  }
+  if (phase === 'continue') {
+    return <ContinueScreen excludeIds={excludeIds} onContinue={handleContinue} onSkip={handleSkipContinue} />
   }
   return <SummaryScreen summary={session.sessionSummary} onClose={handleClose} onRestart={handleRestart} />
 }

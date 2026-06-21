@@ -21,6 +21,8 @@ export function usePrayerSession() {
   const wakeLockRef = useRef(null)
   const cardsRef = useRef([])
   const cardIndexRef = useRef(0)
+  const goalIdRef = useRef(null)
+  const dailyIdRef = useRef(null)
 
   const currentCard = cards[cardIndex] || null
   const totalCards = cards.length
@@ -55,11 +57,13 @@ export function usePrayerSession() {
     if (wakeLockRef.current) { wakeLockRef.current.release().catch(() => {}); wakeLockRef.current = null }
   }
 
-  function startSession(itemCards, listIdentifier, durationSeconds = 60) {
+  function startSession(itemCards, listIdentifier, durationSeconds = 60, opts = {}) {
     prayedSetRef.current = new Set()
     prayedCountRef.current = 0
     cardsRef.current = itemCards
     cardIndexRef.current = 0
+    goalIdRef.current = opts.goalId || null
+    dailyIdRef.current = opts.dailyPrayerId || null
     setCards(itemCards)
     setListId(listIdentifier)
     setCardIndex(0)
@@ -79,9 +83,10 @@ export function usePrayerSession() {
     try {
       if (card.type === 'personal') {
         await supabase.from('personal_prayer_logs').insert({ request_id: card.request.id, user_id: user.id })
-      } else {
+      } else if (card.type === 'oikos') {
         await supabase.from('prayer_logs').insert({ prayer_request_id: card.request.id, user_id: user.id })
       }
+      // type === 'topic' (Gebetsziel/Thema): kein Log nötig
     } catch { /* non-critical in session */ }
   }
 
@@ -102,13 +107,31 @@ export function usePrayerSession() {
       })
     } catch { /* non-critical */ }
 
+    // Beitrag zu Gruppen-Ziel (Stunden werden über die Gebetszeit erfasst)
+    const contributedMinutes = Math.max(1, Math.round(duration / 60))
+    if (goalIdRef.current && finalPrayedCount > 0) {
+      try {
+        await supabase.rpc('contribute_to_prayer_goal', { p_goal_id: goalIdRef.current, p_minutes: contributedMinutes })
+      } catch { /* non-critical */ }
+    }
+    if (dailyIdRef.current && finalPrayedCount > 0) {
+      try {
+        await supabase.from('daily_prayer_logs').insert({ daily_prayer_id: dailyIdRef.current, user_id: user.id })
+      } catch { /* non-critical (z.B. bereits heute gebetet) */ }
+    }
+
     let streak = 0
     try {
       const { data: stats } = await supabase.from('user_prayer_stats').select('current_streak').eq('user_id', user.id).single()
       streak = stats?.current_streak || 0
     } catch { /* non-critical */ }
 
-    setSessionSummary({ prayedCount: finalPrayedCount, duration, streak })
+    setSessionSummary({
+      prayedCount: finalPrayedCount,
+      duration,
+      streak,
+      goalContribution: goalIdRef.current ? contributedMinutes : 0,
+    })
   }
 
   async function markPrayed() {
@@ -166,6 +189,8 @@ export function usePrayerSession() {
     prayedCountRef.current = 0
     cardsRef.current = []
     cardIndexRef.current = 0
+    goalIdRef.current = null
+    dailyIdRef.current = null
     releaseWakeLock()
   }
 

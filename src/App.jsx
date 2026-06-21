@@ -17,6 +17,8 @@ import CommunityDetail from './pages/CommunityDetail'
 import UserProfile from './pages/UserProfile'
 import PrayerView from './pages/PrayerView'
 import PrayerListDetailView from './pages/PrayerListDetailView'
+import PrayerGoalsView from './pages/PrayerGoalsView'
+import PrayerGoalDetail from './pages/PrayerGoalDetail'
 import AnsweredPrayersView from './pages/AnsweredPrayersView'
 import PrayerStatsView from './pages/PrayerStatsView'
 import FeedPostView from './pages/FeedPostView'
@@ -70,6 +72,8 @@ function AppShellInner() {
           <Route path="/prayer" element={<PrayerView />} />
           <Route path="/gebet-paul" element={<GebetPaul />} />
           <Route path="/prayer/list/:listId" element={<PrayerListDetailView />} />
+          <Route path="/goals" element={<PrayerGoalsView />} />
+          <Route path="/goals/:id" element={<PrayerGoalDetail />} />
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
