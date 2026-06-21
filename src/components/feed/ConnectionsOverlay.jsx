@@ -289,7 +289,7 @@ function menuItemStyle(color) {
 export default function ConnectionsOverlay({ onClose, profileUserId }) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { friends, loading, removeFriend } = useFriendships()
+  const { friends, loading, removeFriend, getFriendshipStatus, sendRequest, acceptRequest, getFriendship } = useFriendships()
   const { showToast } = useToast()
 
   const [query, setQuery] = useState('')
@@ -298,6 +298,8 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
   const [countryFilter, setCountryFilter] = useState('')
   const [churchFilter, setChurchFilter] = useState('')
   const [profileDetails, setProfileDetails] = useState({})
+  const [notConnected, setNotConnected] = useState([])
+  const [sendingId, setSendingId] = useState(null)
 
   // Determine whose connections we're showing (defaults to current user)
   const targetUserId = profileUserId || user?.id
@@ -360,6 +362,59 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
       return true
     })
   }, [enriched, query, cityFilter, countryFilter, churchFilter])
+
+  // Noch nicht verbundene Geschwister laden (nur eigenes Profil)
+  useEffect(() => {
+    if (!isOwn || !user) return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, is_christian, avatar_url, city, country, church_name')
+        .neq('id', user.id)
+      if (cancelled || !data) return
+      const connectedIds = new Set(friends.map(f => f.otherUser?.id).filter(Boolean))
+      setNotConnected(data.filter(p => !connectedIds.has(p.id)))
+    })()
+    return () => { cancelled = true }
+  }, [isOwn, user, friends])
+
+  const filteredNotConnected = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return notConnected
+      .filter(p => {
+        if (q && !((p.full_name || '').toLowerCase().includes(q) || (p.username || '').toLowerCase().includes(q))) return false
+        if (cityFilter && !(p.city || '').toLowerCase().includes(cityFilter.toLowerCase())) return false
+        if (countryFilter && !(p.country || '').toLowerCase().includes(countryFilter.toLowerCase())) return false
+        if (churchFilter && !(p.church_name || '').toLowerCase().includes(churchFilter.toLowerCase())) return false
+        return true
+      })
+      .sort((a, b) => (a.full_name || a.username || '').localeCompare(b.full_name || b.username || '', 'de'))
+  }, [notConnected, query, cityFilter, countryFilter, churchFilter])
+
+  async function handleConnect(id) {
+    setSendingId(id)
+    try {
+      await sendRequest(id)
+      showToast('Anfrage gesendet ✓')
+    } catch (e) {
+      showToast(e.message || 'Fehler', 'error')
+    } finally {
+      setSendingId(null)
+    }
+  }
+
+  async function handleAcceptFor(id) {
+    setSendingId(id)
+    try {
+      const f = getFriendship(id)
+      if (f) { await acceptRequest(f.id); showToast('Verbunden ✓') }
+    } catch (e) {
+      showToast(e.message || 'Fehler', 'error')
+    } finally {
+      setSendingId(null)
+    }
+  }
 
   const hasAnyFilter = !!(cityFilter || countryFilter || churchFilter)
 
@@ -570,7 +625,68 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
             onRemove={() => handleRemove(p.friendshipId)}
           />
         ))}
+
+        {/* Noch nicht verbundene Geschwister */}
+        {!loading && isOwn && filteredNotConnected.length > 0 && (
+          <>
+            <p style={{
+              fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+              color: 'var(--color-text-muted)', margin: '22px 0 4px',
+            }}>
+              Noch nicht verbunden ({filteredNotConnected.length})
+            </p>
+            {filteredNotConnected.map(p => (
+              <NotConnectedRow
+                key={p.id}
+                profile={p}
+                status={getFriendshipStatus(p.id)}
+                busy={sendingId === p.id}
+                onProfile={() => handleProfile(p.id)}
+                onConnect={() => handleConnect(p.id)}
+                onAccept={() => handleAcceptFor(p.id)}
+              />
+            ))}
+          </>
+        )}
       </div>
+    </div>
+  )
+}
+
+// ─── Zeile für noch nicht verbundene Geschwister ──────────────
+function NotConnectedRow({ profile, status, busy, onProfile, onConnect, onAccept }) {
+  const btnBase = {
+    border: 'none', borderRadius: 999, padding: '8px 16px', fontSize: 13, fontWeight: 700,
+    cursor: busy ? 'default' : 'pointer', flexShrink: 0,
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
+      <button
+        onClick={onProfile}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', minWidth: 0 }}
+      >
+        <Avatar profile={profile} />
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {profile.full_name || profile.username || '—'}
+          </p>
+          {profile.username && (
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>@{profile.username}</p>
+          )}
+        </div>
+      </button>
+
+      {status === 'sent' ? (
+        <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 600, padding: '8px 12px' }}>Angefragt</span>
+      ) : status === 'received' ? (
+        <button onClick={onAccept} disabled={busy} style={{ ...btnBase, backgroundColor: 'var(--color-accent)', color: '#fff' }}>
+          {busy ? '…' : 'Annehmen'}
+        </button>
+      ) : (
+        <button onClick={onConnect} disabled={busy} style={{ ...btnBase, backgroundColor: 'var(--color-accent)', color: '#fff' }}>
+          {busy ? '…' : 'Verbinden'}
+        </button>
+      )}
     </div>
   )
 }
