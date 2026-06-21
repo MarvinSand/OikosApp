@@ -1,5 +1,5 @@
 -- ============================================================================
--- OikosApp – Sammel-Migration Phase 26 bis 35
+-- OikosApp – Sammel-Migration Phase 26 bis 36
 -- Alles seit Phase 25 in EINEM Skript. Im Supabase SQL-Editor ausführen.
 -- Vollständig idempotent: kann gefahrlos mehrfach ausgeführt werden.
 -- ============================================================================
@@ -471,3 +471,54 @@ end;
 $$;
 
 grant execute on function public.mark_photo_viewed(uuid) to authenticated;
+
+-- ════════════════════════════════════════════════════════════════════════
+-- phase36 – Fix: RLS-Rekursion world_map_activities <-> activity_communities
+-- Symptom: 500 (Internal Server Error) beim Erstellen/Lesen von Weltkarte-Events.
+--   Ursache: Die Lese-Policy "wm communities readable" liest activity_communities,
+--   und deren Policy "ac owner manage" liest world_map_activities -> Postgres
+--   meldet "infinite recursion detected in policy".
+--   Lösung: beide Prüfungen über SECURITY-DEFINER-Funktionen entkoppeln.
+-- ════════════════════════════════════════════════════════════════════════
+
+-- Besitzprüfung ohne erneute RLS auf world_map_activities
+create or replace function public.is_world_activity_owner(p_activity_id uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.world_map_activities a
+    where a.id = p_activity_id and a.author_id = auth.uid()
+  );
+$$;
+grant execute on function public.is_world_activity_owner(uuid) to authenticated;
+
+drop policy if exists "ac owner manage" on public.activity_communities;
+create policy "ac owner manage"
+  on public.activity_communities for all
+  using (public.is_world_activity_owner(activity_id))
+  with check (public.is_world_activity_owner(activity_id));
+
+-- Community-Sichtbarkeit ohne erneute RLS auf activity_communities
+create or replace function public.can_see_activity_communities(p_activity_id uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.activity_communities ac
+    join public.community_members cm on cm.community_id = ac.community_id
+    where ac.activity_id = p_activity_id
+      and cm.user_id = auth.uid()
+  );
+$$;
+grant execute on function public.can_see_activity_communities(uuid) to authenticated;
+
+drop policy if exists "wm communities readable" on public.world_map_activities;
+create policy "wm communities readable"
+  on public.world_map_activities for select
+  using (
+    visibility_mode = 'communities'
+    and auth.uid() is not null
+    and public.can_see_activity_communities(id)
+  );
