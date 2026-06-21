@@ -310,7 +310,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const { showToast } = useToast()
   const {
     visibleUsers, activities, myProfile,
-    loading, createActivity, joinActivity, joinActivityChat, leaveActivity, deleteActivity,
+    loading, createActivity, joinActivity, joinActivityChat, leaveActivity, deleteActivity, updateActivity,
   } = useWorldMap()
 
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
@@ -509,6 +509,13 @@ export default function WorldMapView({ onNavigateToProfile }) {
           onJoinChat={joinActivityChat}
           onLeave={leaveActivity}
           onDelete={(id) => { deleteActivity(id); setSelectedActivity(null) }}
+          onEdit={async (id, updates) => {
+            const { error } = await updateActivity(id, updates)
+            if (error) { showToast('Änderung fehlgeschlagen', 'error'); return false }
+            setSelectedActivity(prev => prev ? { ...prev, ...updates } : prev)
+            showToast('Event aktualisiert ✓')
+            return true
+          }}
         />
       )}
       {showCreateSheet && (

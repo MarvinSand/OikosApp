@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { X, Calendar, Clock, MapPin, Users, Trash2, MessageCircle, ChevronRight, Check } from 'lucide-react'
+import { X, Calendar, Clock, MapPin, Users, Trash2, Pencil, MessageCircle, ChevronRight, Check } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 
 const C = {
@@ -114,13 +114,14 @@ function ParticipantsListSheet({ participants, onClose }) {
   )
 }
 
-export default function ActivitySheet({ activity, currentUserId, onClose, onJoin, onJoinChat, onLeave, onDelete }) {
+export default function ActivitySheet({ activity, currentUserId, onClose, onJoin, onJoinChat, onLeave, onDelete, onEdit }) {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [joining, setJoining] = useState(false)
   const [chatLoading, setChatLoading] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [convId, setConvId] = useState(activity.conversation_id || null)
+  const [editing, setEditing] = useState(false)
 
   const participants = activity.participants || []
   const isJoined = participants.some(p => p.user_id === currentUserId)
@@ -207,6 +208,11 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
               </p>
             </div>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              {isOwner && onEdit && (
+                <button onClick={() => setEditing(true)} aria-label="Event bearbeiten" style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.accentDark, padding: 6, display: 'flex', borderRadius: 8 }}>
+                  <Pencil size={18} />
+                </button>
+              )}
               {isOwner && (
                 <button onClick={handleDelete} style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.error, padding: 6, display: 'flex', borderRadius: 8 }}>
                   <Trash2 size={18} />
@@ -335,7 +341,117 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
           onClose={() => setShowParticipants(false)}
         />
       )}
+
+      {editing && (
+        <EditActivityPanel
+          activity={activity}
+          onSave={(updates) => onEdit(activity.id, updates)}
+          onCancel={() => setEditing(false)}
+        />
+      )}
     </>,
     document.body
+  )
+}
+
+// ─── Edit-Panel für eigene Events ─────────────────────────────
+function toLocalInput(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
+function lastGrapheme(str) {
+  const t = (str || '').trim()
+  if (!t) return ''
+  const arr = Array.from(t)
+  return arr.length ? arr[arr.length - 1] : t
+}
+
+function EditActivityPanel({ activity, onSave, onCancel }) {
+  const { showToast } = useToast()
+  const [title, setTitle] = useState(activity.title || '')
+  const [emoji, setEmoji] = useState(activity.activity_emoji || '📍')
+  const [description, setDescription] = useState(activity.description || '')
+  const [startsAt, setStartsAt] = useState(toLocalInput(activity.starts_at))
+  const [endsAt, setEndsAt] = useState(toLocalInput(activity.ends_at))
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    if (!title.trim()) { showToast('Bitte eine Überschrift angeben', 'error'); return }
+    if (endsAt && startsAt && new Date(endsAt) <= new Date(startsAt)) {
+      showToast('Ende muss nach dem Start liegen', 'error'); return
+    }
+    setSaving(true)
+    const ok = await onSave({
+      title: title.trim(),
+      activity_emoji: emoji || '📍',
+      description: description.trim() || null,
+      starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+      ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+    })
+    setSaving(false)
+    if (ok !== false) onCancel()
+  }
+
+  const lblS = { display: 'block', fontSize: 12, fontWeight: 600, color: C.text, margin: '0 0 6px' }
+  const inpS = {
+    width: '100%', padding: '10px 12px', borderRadius: 10, boxSizing: 'border-box',
+    border: `1.5px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 14, outline: 'none',
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10001 }}>
+      <div onClick={onCancel} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        background: C.bg, borderRadius: '20px 20px 0 0',
+        padding: '20px 20px calc(28px + env(safe-area-inset-bottom, 0px))',
+        maxHeight: '88%', overflowY: 'auto', animation: 'worldSheetUp 0.25s ease-out',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 16px' }} />
+        <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: '0 0 16px' }}>Event bearbeiten</p>
+
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+          <div style={{ flexShrink: 0 }}>
+            <label style={lblS}>Symbol</label>
+            <input
+              value={emoji}
+              onChange={e => setEmoji(lastGrapheme(e.target.value))}
+              aria-label="Emoji"
+              style={{ ...inpS, width: 60, textAlign: 'center', fontSize: 24, padding: '8px 0' }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={lblS}>Überschrift</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} maxLength={60} style={inpS} />
+          </div>
+        </div>
+
+        <label style={lblS}>Infos</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Was sollten andere wissen?" style={{ ...inpS, resize: 'vertical', marginBottom: 14 }} />
+
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <div style={{ flex: 1 }}>
+            <label style={lblS}>Beginn</label>
+            <input type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)} style={inpS} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={lblS}>Ende</label>
+            <input type="datetime-local" value={endsAt} onChange={e => setEndsAt(e.target.value)} style={inpS} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onCancel} disabled={saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${C.border}`, background: 'none', color: C.textSec, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            Abbrechen
+          </button>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: C.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            {saving ? 'Speichern…' : 'Speichern'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

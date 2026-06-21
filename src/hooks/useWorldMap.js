@@ -189,6 +189,31 @@ export function useWorldMap() {
     setActivities(prev => prev.filter(a => a.id !== activityId))
   }
 
+  // Eigenes Event bearbeiten (Titel, Beschreibung, Emoji, Zeiten)
+  async function updateActivity(activityId, updates) {
+    const patch = { ...updates }
+    // Ablaufzeit neu berechnen, wenn sich die Zeiten ändern
+    if ('ends_at' in updates || 'starts_at' in updates) {
+      patch.expires_at = updates.ends_at
+        ? new Date(new Date(updates.ends_at).getTime() + 60 * 60 * 1000).toISOString()
+        : (updates.starts_at
+            ? new Date(new Date(updates.starts_at).getTime() + 3 * 60 * 60 * 1000).toISOString()
+            : null)
+    }
+    const { data, error } = await supabase
+      .from('world_map_activities')
+      .update(patch)
+      .eq('id', activityId)
+      .eq('author_id', user.id)
+      .select('*, author:profiles!author_id(id, full_name, username, avatar_url)')
+      .single()
+    if (!error && data) {
+      // bestehende Felder (participants, conversation_id) erhalten
+      setActivities(prev => prev.map(a => a.id === activityId ? { ...a, ...data } : a))
+    }
+    return { data, error }
+  }
+
   async function updateLocationVisibility(showOnMap) {
     const { error } = await supabase
       .from('profiles')
@@ -216,6 +241,7 @@ export function useWorldMap() {
     joinActivityChat,
     leaveActivity,
     deleteActivity,
+    updateActivity,
     updateLocationVisibility,
     myActivities,
     reload: loadData,
