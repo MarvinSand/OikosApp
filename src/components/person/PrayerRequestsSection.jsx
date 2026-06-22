@@ -412,8 +412,11 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
       showToast('Anliegen hinzugefügt')
       // Server-Stand nachladen, damit das Anliegen sicher persistiert ist
       reload()
-    } catch {
-      showToast('Fehler beim Speichern', 'error')
+    } catch (err) {
+      // Echten Fehler (z.B. RLS-Ablehnung) in der Konsole sichtbar machen.
+      console.error('[PrayerRequestsSection] Anliegen speichern fehlgeschlagen:', err)
+      const msg = err?.message ? `Fehler beim Speichern: ${err.message}` : 'Fehler beim Speichern'
+      showToast(msg, 'error')
     }
   }
 
