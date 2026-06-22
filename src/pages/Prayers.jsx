@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, Send, MessageCircle, ChevronUp, Search, SlidersHorizontal, BookmarkPlus, Forward, Play } from 'lucide-react'
+import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, Send, MessageCircle, ChevronUp, Search, SlidersHorizontal, BookmarkPlus, Forward, Play, MoreVertical, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 import { usePrayerFeed } from '../hooks/usePrayerFeed'
@@ -42,6 +42,13 @@ const VISIBILITY_OPTIONS = [
   { key: 'siblings', label: 'Meine Geschwister',      icon: UserCheck },
   { key: 'specific', label: 'Ausgewählte Geschwister', icon: Users },
 ]
+
+const menuItemStyle = {
+  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+  padding: '11px 14px', border: 'none', background: 'none',
+  fontSize: 14, fontWeight: 500, color: 'var(--color-text)',
+  cursor: 'pointer', textAlign: 'left',
+}
 
 function timeAgo(iso) {
   const d = new Date(iso)
@@ -142,15 +149,17 @@ function CommentInput({ onSubmit }) {
 
 // ─── Gebets-Karte ─────────────────────────────────────────────
 
-function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward }) {
+function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete }) {
   const { user } = useAuth()
   const [showComments, setShowComments] = useState(false)
   const [showCommentInput, setShowCommentInput] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
 
   const prayCount = (logs || []).length
   const hasPrayed = (logs || []).some(l => l.user_id === user?.id)
   const cat = CATEGORIES.find(c => c.key === request.category)
   const profile = request.profiles
+  const isOwner = request.owner_id === user?.id && request._sourceType !== 'community_message'
 
   return (
     <div style={{
@@ -230,32 +239,53 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
           {showComments ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
 
-        {/* Bookmark + Weiterleiten */}
-        <button
-          onClick={() => onBookmark?.(request)}
-          aria-label="Zu Liste hinzufügen"
-          style={{
-            marginLeft: 'auto',
-            width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-            border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
-            color: 'var(--color-text-secondary)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <BookmarkPlus size={16} />
-        </button>
-        <button
-          onClick={() => onForward?.(request)}
-          aria-label="Gebet weiterleiten"
-          style={{
-            width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-            border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
-            color: 'var(--color-text-secondary)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <Forward size={16} />
-        </button>
+        {/* 3-Punkte-Menü: Merken / Weiterleiten / Löschen */}
+        <div style={{ marginLeft: 'auto', position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={() => setShowMenu(v => !v)}
+            aria-label="Weitere Optionen"
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
+              color: 'var(--color-text-secondary)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <MoreVertical size={16} />
+          </button>
+          {showMenu && (
+            <>
+              <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+              <div style={{
+                position: 'absolute', right: 0, bottom: '100%', marginBottom: 6,
+                backgroundColor: 'var(--color-bg)', borderRadius: 12,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.16)', border: '1px solid var(--color-border)',
+                zIndex: 20, minWidth: 190, overflow: 'hidden',
+              }}>
+                <button
+                  onClick={() => { setShowMenu(false); onBookmark?.(request) }}
+                  style={menuItemStyle}
+                >
+                  <BookmarkPlus size={15} /> Zu Liste hinzufügen
+                </button>
+                <button
+                  onClick={() => { setShowMenu(false); onForward?.(request) }}
+                  style={{ ...menuItemStyle, borderTop: '1px solid var(--color-border)' }}
+                >
+                  <Forward size={15} /> Weiterleiten
+                </button>
+                {isOwner && (
+                  <button
+                    onClick={() => { setShowMenu(false); onDelete?.(request) }}
+                    style={{ ...menuItemStyle, borderTop: '1px solid var(--color-border)', color: 'var(--color-danger, #d23f3f)' }}
+                  >
+                    <Trash2 size={15} /> Löschen
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Kommentar-Bereich */}
@@ -611,7 +641,7 @@ function CreatePrayerSheet({ onClose, onCreate, onRequestGoal, onDecline }) {
 export default function Prayers() {
   const { showToast } = useToast()
   const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
-  const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote } = usePrayerFeed('all', statusFilter)
+  const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote, deleteRequest } = usePrayerFeed('all', statusFilter)
   const { createRequest } = usePersonalPrayer()
   const { createGoal } = usePrayerGoals()
   const [showCreate, setShowCreate] = useState(false)
@@ -699,6 +729,16 @@ export default function Prayers() {
       await addNote(requestId, text, isPublic)
     } catch {
       showToast('Fehler beim Kommentieren', 'error')
+    }
+  }
+
+  async function handleDelete(request) {
+    if (!window.confirm('Dieses Gebetsanliegen wirklich löschen?')) return
+    try {
+      await deleteRequest(request.id)
+      showToast('Gebetsanliegen gelöscht')
+    } catch {
+      showToast('Fehler beim Löschen', 'error')
     }
   }
 
@@ -917,6 +957,7 @@ export default function Prayers() {
             onComment={handleComment}
             onBookmark={setBookmarkRequest}
             onForward={setForwardRequest}
+            onDelete={handleDelete}
           />
         ))}
 

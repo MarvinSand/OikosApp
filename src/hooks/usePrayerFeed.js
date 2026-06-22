@@ -341,10 +341,22 @@ export function usePrayerFeed(tab, statusFilter = 'open') {
     return data
   }
 
+  async function deleteRequest(requestId) {
+    const item = requests.find(r => r.id === requestId)
+    if (!item) return
+    // Nur eigene Anliegen löschbar; Community-Nachrichten sind keine echten Anliegen.
+    if (item.owner_id !== user.id || item._sourceType === 'community_message') return
+    // person_id vorhanden → prayer_requests, sonst personal_prayer_requests.
+    const table = item.person_id ? 'prayer_requests' : 'personal_prayer_requests'
+    const { error } = await supabase.from(table).delete().eq('id', requestId).eq('owner_id', user.id)
+    if (error) throw error
+    setRequests(rs => rs.filter(r => r.id !== requestId))
+  }
+
   return {
     requests, logsMap, notesMap, loading, hasMore,
     loadMore: () => loadFeed(false),
     reload: () => loadFeed(true),
-    logPrayer, addNote,
+    logPrayer, addNote, deleteRequest,
   }
 }
