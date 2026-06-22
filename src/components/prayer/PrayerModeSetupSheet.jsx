@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Globe, UserCheck, Home as HomeIcon, ListChecks, Shuffle, ArrowDownNarrowWide, ArrowUpNarrowWide } from 'lucide-react'
+import { X, Globe, UserCheck, Home as HomeIcon, ListChecks, MapPin, Shuffle, ArrowDownNarrowWide, ArrowUpNarrowWide } from 'lucide-react'
 import { usePrayerLists } from '../../hooks/usePrayerLists'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useAuth } from '../../hooks/useAuth'
@@ -17,6 +17,7 @@ const CATEGORIES = [
 
 const SOURCES = [
   { key: 'list',      label: 'Liste',       icon: ListChecks },
+  { key: 'oikos',     label: 'Oikos Map',   icon: MapPin },
   { key: 'all',       label: 'Alle Nutzer', icon: Globe },
   { key: 'siblings',  label: 'Geschwister', icon: UserCheck },
   { key: 'community', label: 'Community',   icon: HomeIcon },
