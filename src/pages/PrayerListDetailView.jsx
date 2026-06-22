@@ -528,7 +528,7 @@ export default function PrayerListDetailView() {
   async function handleDeleteList() {
     await deleteList(listId)
     showToast('Liste gelöscht')
-    navigate('/prayer')
+    navigate('/prayers')
   }
 
   async function handleMarkAnswered(item, { note, shareAsTestimony }) {
@@ -583,7 +583,7 @@ export default function PrayerListDetailView() {
       {/* Header */}
       <div style={{ backgroundColor: list.color + '22', borderBottom: '1px solid var(--color-warm-3)', padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(8px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => navigate('/prayer')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 6, borderRadius: 8, flexShrink: 0 }}>
+          <button onClick={() => navigate('/prayers')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 6, borderRadius: 8, flexShrink: 0 }}>
             <ArrowLeft size={22} />
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>

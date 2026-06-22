@@ -40,13 +40,14 @@ function EmptyState({ text, onCreate }) {
 
 export default function PrayerGoalsView() {
   const navigate = useNavigate()
-  const { publicGoals, myGoals, communityGoals, loading, createGoal, reload } = usePrayerGoals()
+  const { publicGoals, myGoals, communityGoals, sharedGoals, loading, createGoal, reload } = usePrayerGoals()
   const [tab, setTab] = useState('discover')
   const [showCreate, setShowCreate] = useState(false)
   const [prayGoal, setPrayGoal] = useState(null)
 
   const goalsByTab = { discover: publicGoals, mine: myGoals, community: communityGoals }
   const goals = goalsByTab[tab]
+  const showShared = tab === 'discover' && sharedGoals.length > 0
 
   function openHoursPrayer(goal) {
     setPrayGoal(goal)
@@ -102,7 +103,26 @@ export default function PrayerGoalsView() {
       {/* Liste */}
       <div style={{ padding: '16px 0' }}>
         {loading && <Skeleton />}
-        {!loading && goals.length === 0 && (
+
+        {!loading && showShared && (
+          <div style={{ padding: '0 16px', marginBottom: 18 }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 10px' }}>
+              Mit dir geteilt
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {sharedGoals.map(g => (
+                <GoalCard
+                  key={g.id}
+                  goal={g}
+                  onOpenDetail={() => navigate(`/goals/${g.id}`)}
+                  onPrayHours={openHoursPrayer}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && goals.length === 0 && !showShared && (
           <EmptyState
             text={tab === 'mine' ? 'Du hast noch keine Gebetsziele erstellt.' : tab === 'community' ? 'In deinen Communities gibt es noch keine Ziele.' : 'Noch keine öffentlichen Gebetsziele.'}
             onCreate={() => setShowCreate(true)}

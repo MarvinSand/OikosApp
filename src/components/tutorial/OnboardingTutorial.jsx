@@ -127,7 +127,7 @@ const STEPS = [
   {
     icon: '🙏', title: 'Beten Tab',
     body: 'Hier findest du alle geteilten Gebete – deine eigenen und die deiner Geschwister. Du kannst mitbeten und Notizen hinterlassen.',
-    selector: '.tour-nav-prayer', placement: 'above', route: '/prayer', onEnter: 'closePerson',
+    selector: '.tour-nav-prayer', placement: 'above', route: '/prayers', onEnter: 'closePerson',
   },
   // 18 – Friends
   {

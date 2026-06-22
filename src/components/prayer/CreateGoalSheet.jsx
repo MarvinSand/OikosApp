@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Clock, Users, CalendarDays } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import { useCommunities } from '../../hooks/useCommunities'
+import SiblingPicker from './SiblingPicker'
 
 const GOAL_COLORS = ['#5AC8FA', '#7A9E7E', '#D4A853', '#C0392B', '#8E44AD', '#2980B9', '#E67E22', '#2C3E50']
 const GOAL_EMOJIS = ['🙏', '🌍', '🇩🇪', '🔥', '🕊️', '❤️', '✝️', '🌅', '🛡️', '🤲', '⛪', '🌿']
@@ -15,12 +16,15 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '' }
   const [targetValue, setTargetValue] = useState('')
   const [visibility, setVisibility] = useState('public')
   const [communityId, setCommunityId] = useState('')
+  const [selectedSiblings, setSelectedSiblings] = useState([])
   const [saving, setSaving] = useState(false)
   const { showToast } = useToast()
   const { myCommunities } = useCommunities()
 
   const targetNum = parseInt(targetValue, 10)
-  const valid = title.trim() && targetNum > 0 && (visibility !== 'community' || communityId)
+  const valid = title.trim() && targetNum > 0 &&
+    (visibility !== 'community' || communityId) &&
+    (visibility !== 'specific' || selectedSiblings.length > 0)
 
   async function handleCreate() {
     if (!valid) return
@@ -34,6 +38,7 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '' }
         targetValue: targetNum,
         visibility,
         communityId: visibility === 'community' ? communityId : null,
+        visibilityUserIds: visibility === 'specific' ? selectedSiblings : [],
       })
       showToast('Gebetsziel erstellt ✓')
       onClose()
@@ -128,17 +133,20 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '' }
 
         {/* Sichtbarkeit */}
         <label style={lbl}>Sichtbarkeit</label>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
           {[
             { val: 'public', icon: '🌐', label: 'Öffentlich' },
             { val: 'community', icon: '🏘', label: 'Community' },
+            { val: 'siblings', icon: '🤝', label: 'Verbundene Geschwister' },
+            { val: 'specific', icon: '👥', label: 'Ausgewählte Geschwister' },
           ].map(v => (
             <button key={v.val} type="button" onClick={() => setVisibility(v.val)} style={{
-              flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer',
+              padding: '10px', borderRadius: 10, cursor: 'pointer',
               border: `1.5px solid ${visibility === v.val ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
               backgroundColor: visibility === v.val ? 'var(--color-warm-4)' : 'var(--color-bg)',
-              fontFamily: 'Lora, serif', fontSize: 13, fontWeight: visibility === v.val ? 600 : 400,
+              fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: visibility === v.val ? 600 : 400,
               color: visibility === v.val ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
+              textAlign: 'left', lineHeight: 1.3,
             }}>{v.icon} {v.label}</button>
           ))}
         </div>
@@ -154,6 +162,12 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '' }
               {myCommunities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )
+        )}
+
+        {visibility === 'specific' && (
+          <div style={{ marginBottom: 12 }}>
+            <SiblingPicker selected={selectedSiblings} onChange={setSelectedSiblings} />
+          </div>
         )}
 
         <button

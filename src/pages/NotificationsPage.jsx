@@ -18,7 +18,7 @@ function resolveDestination(n) {
       return '/friends'
     case 'prayer_shared':
     case 'prayer_log':
-      return '/prayer'
+      return '/prayers'
     case 'oikos_entry':
       return '/'
     default:

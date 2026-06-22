@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, MapPin, HandHeart, Users, BookMarked, ChevronRight } from 'lucide-react'
+import { X, MapPin, HandHeart, Users, Globe, ChevronRight } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
 const FEATURES = [
   { icon: MapPin,    title: 'OIKOS Map',    text: 'Begleite Menschen aus deinem Umfeld im Gebet.', target: '/profile' },
   { icon: HandHeart, title: 'Gebete & Ziele', text: 'Teile Anliegen, bete mit und setzt euch Gebetsziele.', target: '/prayers' },
   { icon: Users,     title: 'Community',     text: 'Finde Geschwister und betet gemeinsam.', target: '/?tab=community' },
-  { icon: BookMarked,title: 'Jüngerschaft',  text: 'Wachse Schritt für Schritt im Glauben.', target: '/discipleship' },
+  { icon: Globe,     title: 'Weltkarte',     text: 'Sieh, wo weltweit gebetet wird.', target: '/worldmap' },
 ]
 
 // Kurzer, wegklickbarer Willkommens-Banner auf der Home-Startseite.

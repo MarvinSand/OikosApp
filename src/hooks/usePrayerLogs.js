@@ -97,7 +97,7 @@ export function usePrayerLogs(prayerRequestId) {
           type: 'prayer_log',
           title: `${myName} hat für „${req.title}" gebetet`,
           body: null,
-          related_url: req.person_id ? `/?openPerson=${req.person_id}` : '/prayer',
+          related_url: req.person_id ? `/?openPerson=${req.person_id}` : '/prayers',
         })
       }
     } catch { /* non-critical */ }

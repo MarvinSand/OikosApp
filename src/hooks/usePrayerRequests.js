@@ -14,14 +14,16 @@ export function usePrayerRequests(personId) {
 
   async function load() {
     setLoading(true)
+    // Ohne .or()-Filter laden (PostgREST-Eigenheiten vermeiden) und clientseitig filtern,
+    // damit eigene Anliegen zuverlässig erhalten bleiben.
     const { data } = await supabase
       .from('prayer_requests')
       .select('*, profiles!owner_id(id, full_name, username, gender, is_christian)')
       .eq('person_id', personId)
-      .or(`owner_id.eq.${user.id},is_public.eq.true`)
       .order('is_answered')
       .order('created_at')
-    setRequests(data || [])
+    const visible = (data || []).filter(r => r.owner_id === user.id || r.is_public === true)
+    setRequests(visible)
     setLoading(false)
   }
 

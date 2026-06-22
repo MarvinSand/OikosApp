@@ -48,7 +48,7 @@ function OverlappingPrayerAvatars({ prayersByUser, currentUserId }) {
             backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 8, fontWeight: 700,
-            border: '2px solid white', marginLeft: i > 0 ? -8 : 0,
+            border: '2px solid var(--color-white)', marginLeft: i > 0 ? -8 : 0,
             position: 'relative', zIndex: 3 - i,
           }}>{getInitials(name)}</div>
         )
@@ -202,9 +202,9 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
     <>
       <Confetti show={confetti} />
       <div style={{
-        backgroundColor: 'rgba(255,255,255,0.85)',
+        backgroundColor: 'var(--color-white)',
         borderRadius: 16, padding: '16px 18px',
-        border: isAnswered ? '1.5px solid var(--color-warm-1)' : '1px solid rgba(255,255,255,0.6)',
+        border: isAnswered ? '1.5px solid var(--color-warm-1)' : '1px solid var(--color-border)',
         boxShadow: '0 2px 12px rgba(58,46,36,0.08)',
         marginBottom: 2,
       }}>
@@ -226,7 +226,7 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 10, padding: '1px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontWeight: 700 }}>🎉 Erhört</span>
               )}
             </div>
-            <p style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 500, color: 'rgba(58,46,36,0.55)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
+            <p style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 500, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
               {!isOwner && author?.username ? `@${author.username} · ` : ''}{timeAgo(req.created_at)}
             </p>
           </div>
@@ -239,7 +239,7 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
               {showMenu && (
                 <>
                   <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, backgroundColor: 'rgba(255,255,255,0.97)', borderRadius: 12, boxShadow: '0 4px 20px rgba(58,46,36,0.16)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 190, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, backgroundColor: 'var(--color-white)', borderRadius: 12, boxShadow: '0 4px 20px rgba(58,46,36,0.16)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 190, overflow: 'hidden' }}>
                     <button onClick={() => { setShowMenu(false); setShowEdit(true) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}>
                       <Pencil size={14} /> Bearbeiten
                     </button>
@@ -279,7 +279,7 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
         )}
 
         {/* Gebets-Zeile */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(58,46,36,0.12)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--color-border)' }}>
           {/* Linke Seite: Wer hat gebetet */}
           <button
             onClick={() => prayCount > 0 && setShowPrayedBy(true)}
@@ -293,7 +293,7 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
                 </span>
               </>
             ) : (
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: 'var(--color-text-light)', fontStyle: 'italic', padding: '3px 10px', borderRadius: 20, backgroundColor: 'rgba(58,46,36,0.04)', border: '1px solid rgba(58,46,36,0.08)' }}>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: 'var(--color-text-light)', fontStyle: 'italic', padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
                 Noch keine Gebete
               </span>
             )}
@@ -410,6 +410,8 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
       await addRequest(data)
       setShowAddForm(false)
       showToast('Anliegen hinzugefügt')
+      // Server-Stand nachladen, damit das Anliegen sicher persistiert ist
+      reload()
     } catch {
       showToast('Fehler beim Speichern', 'error')
     }

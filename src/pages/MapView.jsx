@@ -485,15 +485,6 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         {activeMap && (
           <div className="flex gap-1 items-center">
             <button
-              onClick={startMapPrayerMode}
-              disabled={loadingPrayerMode}
-              title="Gebetsmodus"
-              aria-label="Gebetsmodus starten"
-              className="p-1 rounded-full transition-colors flex items-center text-warm-1 hover:bg-warm-1/10"
-            >
-              <HandHeart size={18} />
-            </button>
-            <button
               onClick={() => setConnectionMode(v => !v)}
               title="Verbindungsmodus"
               className={`p-1 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
@@ -545,6 +536,19 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           </div>
         )}
       </div>
+
+      {/* Gebetsmodus-Button (babyblau, unter der Menübar) */}
+      {activeTab === 'oikos' && activeMap && (
+        <button
+          onClick={startMapPrayerMode}
+          disabled={loadingPrayerMode}
+          aria-label="Gebetsmodus starten"
+          className="absolute top-[104px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border-none px-4 py-2 font-serif text-[13px] font-semibold text-white cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-60"
+          style={{ backgroundColor: '#5AC8FA' }}
+        >
+          <HandHeart size={16} /> {loadingPrayerMode ? 'Lädt…' : 'Gebetsmodus'}
+        </button>
+      )}
 
       {/* Dropdown-Menü für Map-Auswahl */}
       {showMapMenu && activeTab === 'oikos' && (

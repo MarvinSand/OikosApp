@@ -8,6 +8,7 @@ export function usePrayerGoals() {
   const [publicGoals, setPublicGoals] = useState([])
   const [myGoals, setMyGoals] = useState([])
   const [communityGoals, setCommunityGoals] = useState([])
+  const [sharedGoals, setSharedGoals] = useState([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -50,12 +51,45 @@ export function usePrayerGoals() {
     setPublicGoals(results[0].data || [])
     setMyGoals(results[1].data || [])
     setCommunityGoals(communityIds.length > 0 ? (results[2].data || []) : [])
+
+    // Mit dir geteilte Ziele: verbundene Geschwister + gezielt für dich freigegeben
+    const { data: friendsRaw } = await supabase
+      .from('friendships')
+      .select('requester_id, addressee_id')
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+      .eq('status', 'accepted')
+    const friendIds = (friendsRaw || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
+
+    const sharedQueries = []
+    if (friendIds.length > 0) {
+      sharedQueries.push(
+        supabase.from('prayer_goals').select('*')
+          .eq('visibility', 'siblings')
+          .in('created_by', friendIds)
+          .order('created_at', { ascending: false })
+      )
+    }
+    sharedQueries.push(
+      supabase.from('prayer_goals').select('*')
+        .eq('visibility', 'specific')
+        .contains('visibility_user_ids', [user.id])
+        .order('created_at', { ascending: false })
+    )
+    const sharedResults = await Promise.all(sharedQueries)
+    const sharedMap = new Map()
+    for (const r of sharedResults) {
+      for (const g of (r.data || [])) {
+        if (g.created_by !== user.id) sharedMap.set(g.id, g)
+      }
+    }
+    setSharedGoals([...sharedMap.values()])
+
     setLoading(false)
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load() }, [load])
 
-  async function createGoal({ title, description = null, icon = '🙏', color = '#5AC8FA', goalType = 'people', targetValue, visibility = 'public', communityId = null, prayerRequestId = null, personalPrayerRequestId = null }) {
+  async function createGoal({ title, description = null, icon = '🙏', color = '#5AC8FA', goalType = 'people', targetValue, visibility = 'public', communityId = null, visibilityUserIds = [], prayerRequestId = null, personalPrayerRequestId = null }) {
     const { data, error } = await supabase
       .from('prayer_goals')
       .insert({
@@ -68,6 +102,7 @@ export function usePrayerGoals() {
         target_value: targetValue,
         visibility,
         community_id: visibility === 'community' ? communityId : null,
+        visibility_user_ids: visibility === 'specific' ? visibilityUserIds : [],
         prayer_request_id: prayerRequestId,
         personal_prayer_request_id: personalPrayerRequestId,
       })
@@ -82,5 +117,5 @@ export function usePrayerGoals() {
   // Für die Home-Seite: aktivste öffentlichen Ziele
   const featuredGoals = publicGoals.slice(0, 3)
 
-  return { publicGoals, myGoals, communityGoals, featuredGoals, loading, createGoal, reload: load }
+  return { publicGoals, myGoals, communityGoals, sharedGoals, featuredGoals, loading, createGoal, reload: load }
 }

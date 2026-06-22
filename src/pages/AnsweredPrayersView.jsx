@@ -123,7 +123,7 @@ export default function AnsweredPrayersView() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
-            onClick={() => navigate('/prayer')}
+            onClick={() => navigate('/prayers')}
             style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 6, borderRadius: 8, flexShrink: 0 }}
           >
             <ArrowLeft size={22} />
