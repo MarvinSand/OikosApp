@@ -14,30 +14,31 @@ export function usePrayerRequests(personId) {
 
   async function load() {
     setLoading(true)
-    // Ohne .or()-Filter laden (PostgREST-Eigenheiten vermeiden) und clientseitig filtern,
-    // damit eigene Anliegen zuverlässig erhalten bleiben.
-    let { data, error } = await supabase
+    // Kernliste OHNE Profil-Embed laden – so kann ein nicht auflösbarer Join die
+    // Liste niemals still leeren (dadurch verschwand ein gerade gespeichertes
+    // Anliegen wieder). Clientseitig filtern statt .or() (PostgREST-Eigenheiten).
+    const { data, error } = await supabase
       .from('prayer_requests')
-      .select('*, profiles!owner_id(id, full_name, username, gender, is_christian)')
+      .select('*')
       .eq('person_id', personId)
       .order('is_answered')
       .order('created_at')
-    if (error) {
-      // Kann der Profil-Embed nicht aufgelöst werden, würde die Liste sonst still
-      // geleert – dadurch verschwand ein gerade gespeichertes Anliegen wieder.
-      // Fallback ohne Embed, damit die Anliegen erhalten bleiben.
-      console.error('[usePrayerRequests] load() mit Profil-Embed fehlgeschlagen, lade ohne Embed:', error)
-      const res = await supabase
-        .from('prayer_requests')
-        .select('*')
-        .eq('person_id', personId)
-        .order('is_answered')
-        .order('created_at')
-      data = res.data
-    }
+    if (error) console.error('[usePrayerRequests] load() fehlgeschlagen:', error)
     const visible = (data || []).filter(r => r.owner_id === user.id || r.is_public === true)
     setRequests(visible)
     setLoading(false)
+
+    // Autoren-Profile separat (best effort) nachladen und einmischen – ein Fehler
+    // hier lässt die bereits angezeigten Anliegen unberührt.
+    const ownerIds = [...new Set(visible.map(r => r.owner_id).filter(Boolean))]
+    if (ownerIds.length === 0) return
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, full_name, username, gender, is_christian')
+      .in('id', ownerIds)
+    if (!profs?.length) return
+    const byId = Object.fromEntries(profs.map(p => [p.id, p]))
+    setRequests(rows => rows.map(r => r.profiles ? r : { ...r, profiles: byId[r.owner_id] || null }))
   }
 
   async function addRequest({ title, description, is_public }) {
