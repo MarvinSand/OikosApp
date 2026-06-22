@@ -7,7 +7,6 @@ import { usePrayerGoals } from '../hooks/usePrayerGoals'
 import TopPrayerToday from '../components/home/TopPrayerToday'
 import WelcomeBanner from '../components/home/WelcomeBanner'
 import HomeCommunityTab from '../components/home/HomeCommunityTab'
-import ViralPostsCarousel from '../components/home/ViralPostsCarousel'
 import GoalCard from '../components/prayer/GoalCard'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
@@ -165,9 +164,6 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
             {/* Willkommensnachricht (wegklickbar) */}
             <WelcomeBanner />
-
-            {/* Virale Feedposts dieser Woche */}
-            <ViralPostsCarousel />
 
             {/* Gebet mit den meisten Interaktionen heute */}
             <TopPrayerToday />

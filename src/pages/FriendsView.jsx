@@ -1151,7 +1151,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onFo
           <img src={post.photo_url} alt="" style={{ width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 10, marginBottom: 8, display: 'block' }} />
         )}
 
-        <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: post.type === 'question' ? 15 : 14 }}>
+        <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: post.type === 'question' ? 15 : 14, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
           {displayBody}
         </p>
         {bodyLong && (
