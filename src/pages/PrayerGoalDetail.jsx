@@ -30,8 +30,8 @@ export default function PrayerGoalDetail() {
     return (
       <div className="bg-bg min-h-full flex flex-col items-center justify-center gap-4 px-8" style={{ color: 'var(--color-text-muted)' }}>
         <p style={{ fontFamily: 'Lora, serif' }}>Dieses Gebetsziel wurde nicht gefunden.</p>
-        <button onClick={() => navigate('/goals')} style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontWeight: 600, cursor: 'pointer' }}>
-          Zu den Zielen
+        <button onClick={() => navigate('/')} style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontWeight: 600, cursor: 'pointer' }}>
+          Zur Startseite
         </button>
       </div>
     )
@@ -67,7 +67,7 @@ export default function PrayerGoalDetail() {
         padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(8px)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => navigate('/goals')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 6, flexShrink: 0 }}>
+          <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 6, flexShrink: 0 }}>
             <ArrowLeft size={22} />
           </button>
           <h1 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

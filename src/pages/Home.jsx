@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { MessageCircle, Bell, ChevronRight } from 'lucide-react'
+import { MessageCircle, Bell } from 'lucide-react'
 import { useConversations } from '../hooks/useConversations'
 import { useNotifications } from '../hooks/useNotifications'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
@@ -33,9 +33,6 @@ function TopGroupGoal() {
         <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
           Gruppengebet
         </p>
-        <button onClick={() => navigate('/goals')} style={{ display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-accent)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600 }}>
-          Alle ansehen <ChevronRight size={14} />
-        </button>
       </div>
 
       {loading ? (

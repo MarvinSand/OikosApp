@@ -16,7 +16,6 @@ import FriendsView from './pages/FriendsView'
 import CommunityDetail from './pages/CommunityDetail'
 import UserProfile from './pages/UserProfile'
 import PrayerListDetailView from './pages/PrayerListDetailView'
-import PrayerGoalsView from './pages/PrayerGoalsView'
 import PrayerGoalDetail from './pages/PrayerGoalDetail'
 import AnsweredPrayersView from './pages/AnsweredPrayersView'
 import PrayerStatsView from './pages/PrayerStatsView'
@@ -70,7 +69,6 @@ function AppShellInner() {
           <Route path="/worldmap" element={<WorldMap />} />
           <Route path="/prayers" element={<Prayers />} />
           <Route path="/prayer/list/:listId" element={<PrayerListDetailView />} />
-          <Route path="/goals" element={<PrayerGoalsView />} />
           <Route path="/goals/:id" element={<PrayerGoalDetail />} />
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
