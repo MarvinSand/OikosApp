@@ -16,7 +16,6 @@ import PrayerModeSetupSheet from '../components/prayer/PrayerModeSetupSheet'
 import AddToListSheet from '../components/prayer/AddToListSheet'
 import ForwardSheet from '../components/prayer/ForwardSheet'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
-import CreateGoalSheet from '../components/prayer/CreateGoalSheet'
 import SiblingPicker from '../components/prayer/SiblingPicker'
 
 // ─── Konstanten ───────────────────────────────────────────────
@@ -329,61 +328,71 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
 
 // ─── Neues Gebet erstellen ────────────────────────────────────
 
-// steps: 1=visibility, 2=sub-selection (community/siblings), 3=category, 4=details, 5=goal-prompt
-function CreatePrayerSheet({ onClose, onCreate, onRequestGoal, onDecline }) {
+const GOAL_TYPES = [
+  { val: 'people', label: 'Personen', hint: 'beten mit',  placeholder: '100' },
+  { val: 'hours',  label: 'Stunden',  hint: 'Gebetszeit', placeholder: '1000' },
+  { val: 'days',   label: 'Tage',     hint: 'am Stück',   placeholder: '30' },
+]
+
+// Erstellen-Sheet: alles in EINER Ansicht (Anliegen -> Kategorie -> Gebetsziel
+// -> Sichtbarkeit), danach eine Übersicht und "Gebet erstellen".
+function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
   const { myCommunities } = useCommunities()
-  const [step, setStep] = useState(1)
-  const [visibility, setVisibility] = useState(null)
-  const [selectedCommunity, setSelectedCommunity] = useState(null)
-  const [selectedSiblings, setSelectedSiblings] = useState([])
-  const [category, setCategory] = useState(null)
+  const { showToast } = useToast()
+  const [phase, setPhase] = useState('form') // 'form' | 'review'
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
+  const [category, setCategory] = useState(null)
+  const [visibility, setVisibility] = useState('public')
+  const [selectedCommunity, setSelectedCommunity] = useState(null)
+  const [selectedSiblings, setSelectedSiblings] = useState([])
+  const [goalEnabled, setGoalEnabled] = useState(false)
+  const [goalType, setGoalType] = useState('people')
+  const [goalTarget, setGoalTarget] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // +1 Schritt für das Gebetsziel, das nach dem Anliegen kommt
-  const totalSteps = (visibility === 'community' || visibility === 'specific') ? 5 : 4
-  const stepDisplay = step <= 1 ? 1 : (visibility === 'community' || visibility === 'specific') ? step : step - 1
+  const goalTargetNum = parseInt(goalTarget, 10)
+  const goalOk = !goalEnabled || goalTargetNum > 0
+  const visOk =
+    (visibility !== 'community' || selectedCommunity) &&
+    (visibility !== 'specific' || selectedSiblings.length > 0)
+  const formValid = text.trim().length > 0 && visOk && goalOk
 
-  function goToSubSelection(vis) {
-    setVisibility(vis)
-    if (vis === 'community' || vis === 'specific') {
-      setStep(2)
-    } else {
-      setStep(3)
-    }
-  }
+  const effectiveTitle = title.trim() || (CATEGORIES.find(c => c.key === category)?.label || 'Gebet')
+  const catObj = CATEGORIES.find(c => c.key === category)
+  const visObj = VISIBILITY_OPTIONS.find(v => v.key === visibility)
+  const goalTypeObj = GOAL_TYPES.find(g => g.val === goalType)
 
-  function backFromSub() {
-    setStep(1)
-    setSelectedCommunity(null)
-    setSelectedSiblings([])
-  }
-
-  const [createdRequest, setCreatedRequest] = useState(null)
-
-  async function handleSubmit() {
-    if (!text.trim() || submitting) return
+  async function handleFinalCreate() {
+    if (submitting) return
     setSubmitting(true)
     try {
       const created = await onCreate({
-        title: title.trim() || (CATEGORIES.find(c => c.key === category)?.label || ''),
+        title: effectiveTitle,
         description: text.trim(),
-        visibility: visibility === 'specific' ? 'siblings' : (visibility || 'public'),
+        visibility: visibility === 'specific' ? 'siblings' : visibility,
         category,
         visibility_community_id: visibility === 'community' ? selectedCommunity : null,
         visibility_user_ids: visibility === 'specific' ? selectedSiblings : [],
       })
-      setCreatedRequest(created || null)
-      setStep(5) // Gebetsziel-Abfrage
-    } finally {
+      if (goalEnabled && goalTargetNum > 0) {
+        await onCreateGoal({
+          title: effectiveTitle,
+          description: text.trim() || null,
+          goalType,
+          targetValue: goalTargetNum,
+          visibility,
+          communityId: visibility === 'community' ? selectedCommunity : null,
+          visibilityUserIds: visibility === 'specific' ? selectedSiblings : [],
+        }, created)
+      }
+      onDone()
+    } catch (e) {
+      console.error('[CreatePrayer] Fehler beim Erstellen:', e)
+      showToast('Fehler beim Erstellen: ' + (e?.message || 'unbekannt'), 'error')
       setSubmitting(false)
     }
   }
-
-  const canSubmit = text.trim().length > 0 && !submitting &&
-    (visibility !== 'community' || selectedCommunity) &&
-    (visibility !== 'specific' || selectedSiblings.length > 0)
 
   return (
     <div
@@ -396,237 +405,132 @@ function CreatePrayerSheet({ onClose, onCreate, onRequestGoal, onDecline }) {
         maxHeight: '92dvh', overflowY: 'auto',
       }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px', position: 'sticky', top: 0, backgroundColor: 'var(--color-bg)', zIndex: 1 }}>
           <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-text)' }}>
-            Neues Gebet
+            {phase === 'review' ? 'Übersicht' : 'Neues Gebet'}
           </p>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>
             <X size={16} />
           </button>
         </div>
 
-        {/* Schritt-Indikator */}
-        <div style={{ display: 'flex', gap: 4, padding: '0 16px 16px' }}>
-          {Array.from({ length: totalSteps }).map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: stepDisplay > i ? 'var(--color-accent)' : 'var(--color-border)' }} />
-          ))}
-        </div>
-
-        {/* Schritt 1: Sichtbarkeit */}
-        {step === 1 && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-              Wer soll dieses Gebet sehen?
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {VISIBILITY_OPTIONS.map(o => {
-                const Icon = o.icon
-                return (
-                  <button
-                    key={o.key}
-                    onClick={() => goToSubSelection(o.key)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '14px 16px', borderRadius: 14,
-                      border: `1.5px solid ${visibility === o.key ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                      background: visibility === o.key ? 'var(--color-accent)10' : 'var(--color-bg)',
-                      cursor: 'pointer', textAlign: 'left',
-                    }}
-                  >
-                    <Icon size={18} color={visibility === o.key ? 'var(--color-accent)' : 'var(--color-text-secondary)'} />
-                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: visibility === o.key ? 'var(--color-accent)' : 'var(--color-text)' }}>
-                      {o.label}
-                    </span>
-                    {(o.key === 'community' || o.key === 'specific') && (
-                      <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>›</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Schritt 2a: Community auswählen */}
-        {step === 2 && visibility === 'community' && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-              Welche Community?
-            </p>
-            {myCommunities.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '24px 0' }}>
-                Du bist noch in keiner Community.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {myCommunities.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => { setSelectedCommunity(c.id); setStep(3) }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '14px 16px', borderRadius: 14,
-                      border: `1.5px solid ${selectedCommunity === c.id ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                      background: selectedCommunity === c.id ? 'var(--color-accent)10' : 'var(--color-bg)',
-                      cursor: 'pointer', textAlign: 'left',
-                    }}
-                  >
-                    <span style={{ fontSize: 22 }}>{c.icon || '🏠'}</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{c.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            <button onClick={backFromSub} style={{ marginTop: 16, fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
-              ← Zurück
-            </button>
-          </div>
-        )}
-
-        {/* Schritt 2b: Geschwister auswählen */}
-        {step === 2 && visibility === 'specific' && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-              Welche Geschwister?
-            </p>
-            <SiblingPicker selected={selectedSiblings} onChange={setSelectedSiblings} />
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <button onClick={backFromSub} style={{ fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                ← Zurück
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                disabled={selectedSiblings.length === 0}
-                style={{
-                  flex: 1, padding: '10px', borderRadius: 12, border: 'none',
-                  background: selectedSiblings.length > 0 ? 'var(--color-accent)' : 'var(--color-border)',
-                  color: '#fff', fontSize: 14, fontWeight: 700,
-                  cursor: selectedSiblings.length > 0 ? 'pointer' : 'default',
-                }}
-              >
-                Weiter ({selectedSiblings.length} ausgewählt)
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Schritt 3: Kategorie */}
-        {step === 3 && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-              Worum geht es?
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {CATEGORIES.map(c => (
-                <button
-                  key={c.key}
-                  onClick={() => { setCategory(c.key); setStep(4) }}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                    padding: '16px 12px', borderRadius: 14,
-                    border: `1.5px solid ${category === c.key ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                    background: category === c.key ? 'var(--color-accent)10' : 'var(--color-bg)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <span style={{ fontSize: 24 }}>{c.emoji}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: category === c.key ? 'var(--color-accent)' : 'var(--color-text)' }}>
-                    {c.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setStep(visibility === 'community' || visibility === 'specific' ? 2 : 1)} style={{ marginTop: 16, fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
-              ← Zurück
-            </button>
-          </div>
-        )}
-
-        {/* Schritt 4: Titel & Text */}
-        {step === 4 && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-              Dein Gebetsanliegen
-            </p>
-
-            {/* Überschrift */}
+        {phase === 'form' ? (
+          <div style={{ padding: '0 16px 28px' }}>
+            {/* 1) Anliegen */}
+            <p style={secTitle}>1 · Dein Anliegen</p>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder={`Überschrift (z. B. ${CATEGORIES.find(c => c.key === category)?.label || 'Gebet'})`}
-              style={{
-                width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, fontWeight: 600,
-                border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
-                color: 'var(--color-text)', outline: 'none', marginBottom: 10,
-                boxSizing: 'border-box',
-              }}
+              placeholder="Überschrift (optional)"
+              style={{ ...field, fontWeight: 600, marginBottom: 8 }}
             />
-
-            {/* Freitext */}
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
               placeholder="Schreibe dein Anliegen…"
-              rows={5}
-              style={{
-                width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 13,
-                border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
-                color: 'var(--color-text)', outline: 'none', lineHeight: 1.6,
-                resize: 'vertical', boxSizing: 'border-box',
-              }}
+              rows={4}
+              style={{ ...field, lineHeight: 1.6, resize: 'vertical' }}
             />
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <button onClick={() => setStep(3)} style={{ fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
+            {/* 2) Kategorie */}
+            <p style={secTitle}>2 · Kategorie</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {CATEGORIES.map(c => (
+                <button key={c.key} onClick={() => setCategory(category === c.key ? null : c.key)} style={chip(category === c.key)}>
+                  <span style={{ fontSize: 20 }}>{c.emoji}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{c.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* 3) Gebetsziel */}
+            <p style={secTitle}>3 · Gebetsziel (optional)</p>
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border)', cursor: 'pointer' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>🎯 Ziel hinzufügen</span>
+              <input type="checkbox" checked={goalEnabled} onChange={e => setGoalEnabled(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--color-accent)' }} />
+            </label>
+            {goalEnabled && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  {GOAL_TYPES.map(t => (
+                    <button key={t.val} onClick={() => setGoalType(t.val)} style={{ ...chip(goalType === t.val), flex: 1 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>{t.label}</span>
+                      <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>{t.hint}</span>
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number" inputMode="numeric" min="1"
+                  value={goalTarget}
+                  onChange={e => setGoalTarget(e.target.value)}
+                  placeholder={`Zielwert (z. B. ${goalTypeObj?.placeholder})`}
+                  style={field}
+                />
+              </div>
+            )}
+
+            {/* 4) Sichtbarkeit */}
+            <p style={secTitle}>4 · Wer soll es sehen?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {VISIBILITY_OPTIONS.map(o => {
+                const Icon = o.icon
+                const active = visibility === o.key
+                return (
+                  <button key={o.key} onClick={() => setVisibility(o.key)} style={row(active)}>
+                    <Icon size={18} color={active ? 'var(--color-accent)' : 'var(--color-text-secondary)'} />
+                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: active ? 'var(--color-accent)' : 'var(--color-text)' }}>{o.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {visibility === 'community' && (
+              myCommunities.length === 0 ? (
+                <p style={hint}>Du bist noch in keiner Community.</p>
+              ) : (
+                <select value={selectedCommunity || ''} onChange={e => setSelectedCommunity(e.target.value || null)} style={{ ...field, marginTop: 8, appearance: 'none' }}>
+                  <option value="">— Community auswählen —</option>
+                  {myCommunities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              )
+            )}
+            {visibility === 'specific' && (
+              <div style={{ marginTop: 8 }}>
+                <SiblingPicker selected={selectedSiblings} onChange={setSelectedSiblings} />
+              </div>
+            )}
+
+            <button
+              onClick={() => setPhase('review')}
+              disabled={!formValid}
+              style={{ ...primaryBtn(formValid), marginTop: 22 }}
+            >
+              Weiter zur Übersicht
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: '0 16px 28px' }}>
+            {/* Übersicht */}
+            <div style={{ background: 'var(--color-bg-secondary)', borderRadius: 14, padding: '14px 16px', marginBottom: 14 }}>
+              <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: 'var(--color-text)' }}>{effectiveTitle}</p>
+              {text.trim() && <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{text.trim()}</p>}
+            </div>
+            <SummaryRow label="Kategorie" value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
+            <SummaryRow label="Gebetsziel" value={goalEnabled && goalTargetNum > 0 ? `${goalTarget} ${goalTypeObj?.label}` : 'Keins'} />
+            <SummaryRow label="Sichtbarkeit" value={
+              visibility === 'community'
+                ? `${visObj?.label} · ${myCommunities.find(c => c.id === selectedCommunity)?.name || ''}`
+                : visibility === 'specific'
+                ? `${visObj?.label} · ${selectedSiblings.length} ausgewählt`
+                : (visObj?.label || '')
+            } />
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
+              <button onClick={() => setPhase('form')} disabled={submitting} style={{ padding: '13px 18px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 600, cursor: submitting ? 'default' : 'pointer' }}>
                 ← Zurück
               </button>
-              <button
-                onClick={handleSubmit}
-                disabled={!canSubmit}
-                style={{
-                  flex: 1, padding: '12px', borderRadius: 12, border: 'none',
-                  background: canSubmit ? 'var(--color-accent)' : 'var(--color-border)',
-                  color: '#fff', fontSize: 14, fontWeight: 700,
-                  cursor: canSubmit ? 'pointer' : 'default',
-                }}
-              >
-                {submitting ? 'Speichert…' : 'Weiter'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Schritt 5: Gebetsziel-Abfrage */}
-        {step === 5 && (
-          <div style={{ padding: '0 16px 28px', textAlign: 'center' }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>🎯</div>
-            <p style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 800, color: 'var(--color-text)' }}>
-              Fast geschafft 🎯
-            </p>
-            <p style={{ margin: '0 0 22px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-              Möchtest du dir dafür ein Gebetsziel setzen? Zum Beispiel eine bestimmte
-              Anzahl an Stunden, Personen oder Tagen in Folge.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button
-                onClick={() => onRequestGoal?.({ title: title.trim() || (CATEGORIES.find(c => c.key === category)?.label || ''), request: createdRequest })}
-                style={{
-                  width: '100%', padding: '13px', borderRadius: 12, border: 'none',
-                  background: 'var(--color-accent)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                }}
-              >
-                🎯 Gebetsziel festlegen
-              </button>
-              <button
-                onClick={() => (onDecline ? onDecline() : onClose())}
-                style={{
-                  width: '100%', padding: '13px', borderRadius: 12,
-                  border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
-                  color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                }}
-              >
-                Nein, danke
+              <button onClick={handleFinalCreate} disabled={submitting} style={{ ...primaryBtn(!submitting), flex: 1 }}>
+                {submitting ? 'Erstellt…' : '🙏 Gebet erstellen'}
               </button>
             </div>
           </div>
@@ -634,6 +538,44 @@ function CreatePrayerSheet({ onClose, onCreate, onRequestGoal, onDecline }) {
       </div>
     </div>
   )
+}
+
+function SummaryRow({ label, value }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 2px', borderBottom: '1px solid var(--color-border)' }}>
+      <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)', textAlign: 'right' }}>{value}</span>
+    </div>
+  )
+}
+
+const secTitle = { margin: '20px 0 10px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.4px' }
+const field = { width: '100%', padding: '11px 12px', borderRadius: 10, fontSize: 14, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box', display: 'block' }
+const hint = { fontSize: 13, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '8px 0 0' }
+function chip(active) {
+  return {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+    padding: '12px 6px', borderRadius: 12, cursor: 'pointer',
+    border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+    background: active ? 'var(--color-bg-secondary)' : 'var(--color-bg)',
+    color: active ? 'var(--color-accent)' : 'var(--color-text)',
+  }
+}
+function row(active) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14,
+    border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+    background: active ? 'var(--color-bg-secondary)' : 'var(--color-bg)',
+    cursor: 'pointer', textAlign: 'left', width: '100%',
+  }
+}
+function primaryBtn(enabled) {
+  return {
+    width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+    background: enabled ? 'var(--color-accent)' : 'var(--color-border)',
+    color: '#fff', fontSize: 15, fontWeight: 700,
+    cursor: enabled ? 'pointer' : 'default',
+  }
 }
 
 // ─── Haupt-Seite ──────────────────────────────────────────────
@@ -657,7 +599,6 @@ export default function Prayers() {
   const [prayerModeItems, setPrayerModeItems] = useState(null)
   const [bookmarkRequest, setBookmarkRequest] = useState(null)
   const [forwardRequest, setForwardRequest] = useState(null)
-  const [goalSheet, setGoalSheet] = useState(null) // { title, request }
 
   // Direkt das Erstellen-Sheet öffnen, wenn man vom Profil "+ Gebetsanliegen" kommt
   useEffect(() => {
@@ -698,25 +639,15 @@ export default function Prayers() {
   }, [loadMore])
 
   async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids }) {
-    try {
-      const created = await createRequest({ title, description, visibility, category, visibility_community_id, visibility_user_ids })
-      // Kein Toast hier – die Bestätigung "Gebetsanliegen erstellt 🙏" kommt erst,
-      // wenn der Nutzer den Folge-Step abschließt (Ziel festgelegt oder "Nein, danke").
-      reload()
-      return created
-    } catch {
-      showToast('Fehler beim Teilen', 'error')
-      return null
-    }
+    // Fehler werden absichtlich NICHT geschluckt – das Sheet zeigt die echte
+    // Ursache an, damit ein nicht gepostetes Gebet sichtbar/diagnostizierbar wird.
+    const created = await createRequest({ title, description, visibility, category, visibility_community_id, visibility_user_ids })
+    reload()
+    return created
   }
 
-  function handleRequestGoal({ title, request }) {
-    setShowCreate(false)
-    setGoalSheet({ title: title || '', request: request || null })
-  }
-
-  async function handleCreateGoal(payload) {
-    const linked = goalSheet?.request
+  async function handleCreateGoal(payload, createdRequest) {
+    const linked = createdRequest
     await createGoal({
       ...payload,
       personalPrayerRequestId: linked && !linked.person_id ? linked.id : null,
@@ -985,8 +916,8 @@ export default function Prayers() {
         <CreatePrayerSheet
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
-          onRequestGoal={handleRequestGoal}
-          onDecline={() => { setShowCreate(false); showToast('Gebetsanliegen erstellt 🙏') }}
+          onCreateGoal={handleCreateGoal}
+          onDone={() => { setShowCreate(false); showToast('Gebet erstellt 🙏') }}
         />
       )}
 
@@ -1025,16 +956,6 @@ export default function Prayers() {
             [forwardRequest.person_id ? 'prayer_request_id' : 'personal_prayer_request_id']: forwardRequest.id,
           })}
           onClose={() => setForwardRequest(null)}
-        />
-      )}
-
-      {/* Gebetsziel anlegen */}
-      {goalSheet && (
-        <CreateGoalSheet
-          initialTitle={goalSheet.title}
-          successMessage="Gebetsanliegen erstellt 🙏"
-          onClose={() => setGoalSheet(null)}
-          onCreate={handleCreateGoal}
         />
       )}
     </div>
