@@ -303,14 +303,23 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
     if (ids.length === 0) { showToast('Diese Map hat noch keine Personen'); return }
     setLoadingPrayerMode(true)
     try {
-      const { data } = await supabase
+      // Ohne Profil-Embed laden – ein nicht auflösbarer Join würde sonst die
+      // ganze Abfrage scheitern lassen ("Keine offenen Gebete" trotz vorhandener).
+      const { data, error } = await supabase
         .from('prayer_requests')
-        .select('*, profiles!owner_id(id, full_name, username, gender, is_christian)')
+        .select('*')
         .in('person_id', ids)
         .eq('owner_id', user.id)
         .eq('is_answered', false)
         .order('created_at', { ascending: false })
-      const items = (data || []).map(r => ({ type: 'oikos', request: r, ampel: null }))
+      if (error) throw error
+      // Name der betreffenden Person als Anzeige-Label anhängen.
+      const nameById = Object.fromEntries(people.map(p => [p.id, p.name]))
+      const items = (data || []).map(r => ({
+        type: 'oikos',
+        request: { ...r, profiles: { full_name: nameById[r.person_id] || 'Person' } },
+        ampel: null,
+      }))
       if (items.length === 0) { showToast('Keine offenen Gebete in dieser Map'); return }
       setMapPrayerItems(items)
     } catch {
