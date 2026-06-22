@@ -165,7 +165,7 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
     <div style={{
       backgroundColor: 'var(--color-bg)',
       border: '1px solid var(--color-border)',
-      borderRadius: 16, overflow: 'hidden',
+      borderRadius: 16, overflow: showMenu ? 'visible' : 'hidden',
       marginBottom: 12,
     }}>
       {/* Header */}
@@ -258,8 +258,8 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
               <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
               <div style={{
                 position: 'absolute', right: 0, bottom: '100%', marginBottom: 6,
-                backgroundColor: 'var(--color-bg)', borderRadius: 12,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.16)', border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-bg-secondary)', borderRadius: 12,
+                boxShadow: '0 8px 28px rgba(0,0,0,0.35)', border: '1px solid var(--color-border)',
                 zIndex: 20, minWidth: 190, overflow: 'hidden',
               }}>
                 <button

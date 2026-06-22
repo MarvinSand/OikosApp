@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
 import { Plus, Navigation, Users, CalendarDays } from 'lucide-react'
@@ -323,9 +324,12 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const [selectedActivity, setSelectedActivity] = useState(null)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
-  // Zwei unabhängige Ebenen – beide können gleichzeitig aktiv sein
+  // Zwei unabhängige Ebenen – beide können gleichzeitig aktiv sein.
+  // ?layer=siblings (z.B. von "Auf der Map suchen") → nur Geschwister, keine Events.
+  const [searchParams] = useSearchParams()
+  const siblingsOnly = searchParams.get('layer') === 'siblings'
   const [showGeschwister, setShowGeschwister] = useState(true)
-  const [showEvents, setShowEvents] = useState(true)
+  const [showEvents, setShowEvents] = useState(!siblingsOnly)
 
   useEffect(() => {
     if (!localStorage.getItem(PRIVACY_KEY)) setShowPrivacyBanner(true)

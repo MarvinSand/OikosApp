@@ -256,6 +256,19 @@ function FriendsTab() {
 
   return (
     <div>
+      {/* Auf der Weltkarte nach Geschwistern suchen */}
+      <button
+        onClick={() => navigate('/worldmap?layer=siblings')}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          width: '100%', padding: '12px', marginBottom: 14, borderRadius: 12,
+          border: 'none', backgroundColor: 'var(--color-accent)', color: '#fff',
+          fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+        }}
+      >
+        <Globe size={17} /> Auf der Map suchen
+      </button>
+
       {/* Suchfeld */}
       <div style={{ position: 'relative', marginBottom: 12 }}>
         <Search size={15} color="var(--color-text-light)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
@@ -1955,44 +1968,24 @@ function FeedTab() {
 // ─── FriendsView (Main) ──────────────────────────────────────
 export default function FriendsView() {
   const [searchParams] = useSearchParams()
-  const initialTab = searchParams.get('tab') === 'chats' ? 'chats' : searchParams.get('tab') === 'friends' ? 'friends' : 'feed'
-  const [activeTab, setActiveTab] = useState(initialTab)
+  const tabParam = searchParams.get('tab')
+  // Eigenständige Ansichten – kein Tab-Wechsler mehr. Chat, Communities und
+  // Geschwister sind jeweils separate Seiten mit eigenem Einstieg.
+  const activeTab = ['chats', 'friends', 'communities'].includes(tabParam) ? tabParam : 'feed'
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
-  const { unreadCount } = useNotifications()
-  const { hasUnread } = useConversations()
+
+  const headerTitle = activeTab === 'chats' ? 'Chats' : activeTab === 'communities' ? 'Communities' : 'Geschwister'
 
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {activeTab === 'feed' && <PrayerFeedSwitcher active="feed" />}
       {activeTab !== 'feed' && (
-        <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10" style={{ paddingTop: 16 }}>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[22px] font-bold text-dark m-0">
-              Geschwister
-            </h2>
-          </div>
-          <div className="flex gap-2">
-            {[{ key: 'chats', label: 'Chats' }, { key: 'communities', label: 'Communities' }, { key: 'friends', label: 'Geschwister' }].map(t => (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`flex-1 pb-2.5 border-b-2 transition-all duration-200 text-[14.5px] relative
-                  ${activeTab === t.key
-                    ? 'font-bold'
-                    : 'border-transparent text-dark-muted hover:text-dark font-medium'}`}
-                style={activeTab === t.key
-                  ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }
-                  : undefined}
-              >
-                {t.label}
-                {t.key === 'chats' && hasUnread && (
-                  <div className="absolute top-1 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
-                )}
-              </button>
-            ))}
-          </div>
+        <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10" style={{ paddingTop: 16, paddingBottom: 14 }}>
+          <h2 className="text-[22px] font-bold text-dark m-0">
+            {headerTitle}
+          </h2>
         </div>
       )}
 
