@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 // Reihenfolge der Haupt-Tabs (identisch zur BottomNav)
 const NAV_ORDER = [
   { path: '/',                 match: ['/'] },
-  { path: '/friends?tab=feed', match: ['/friends', '/prayer', '/gebet-paul'] },
+  { path: '/friends?tab=feed', match: ['/friends', '/prayer', '/prayers'] },
   { path: '/worldmap',         match: ['/worldmap'] },
   { path: '/discipleship',     match: ['/discipleship'] },
   { path: '/profile',          match: ['/profile'] },

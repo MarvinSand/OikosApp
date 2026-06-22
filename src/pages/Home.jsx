@@ -7,16 +7,20 @@ import { usePrayerGoals } from '../hooks/usePrayerGoals'
 import DailyPrayerCard from '../components/home/DailyPrayerCard'
 import WelcomeBanner from '../components/home/WelcomeBanner'
 import HomeCommunityTab from '../components/home/HomeCommunityTab'
+import ViralPostsCarousel from '../components/home/ViralPostsCarousel'
 import GoalCard from '../components/prayer/GoalCard'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
+import SegmentedTabs from '../components/layout/SegmentedTabs'
 
-// ─── Gemeinsam beten (Featured Goals) ─────────────────────────
-function FeaturedGoals() {
+// ─── Gruppengebet mit meistem Engagement (Top-Goal) ───────────
+function TopGroupGoal() {
   const navigate = useNavigate()
   const { featuredGoals, loading, reload } = usePrayerGoals()
   const [prayGoal, setPrayGoal] = useState(null)
 
   if (!loading && featuredGoals.length === 0) return null
+
+  const topGoal = featuredGoals[0] // sortiert nach participant_count (meiste Teilnehmer)
 
   const prayItems = prayGoal ? [{
     type: 'topic',
@@ -28,9 +32,9 @@ function FeaturedGoals() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
-          Gemeinsam beten
+          Gruppengebet
         </p>
-        <button onClick={() => navigate('/goals')} style={{ display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600 }}>
+        <button onClick={() => navigate('/goals')} style={{ display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-accent)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600 }}>
           Alle ansehen <ChevronRight size={14} />
         </button>
       </div>
@@ -38,16 +42,11 @@ function FeaturedGoals() {
       {loading ? (
         <div style={{ height: 140, borderRadius: 16, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {featuredGoals.map(g => (
-            <GoalCard
-              key={g.id}
-              goal={g}
-              onOpenDetail={() => navigate(`/goals/${g.id}`)}
-              onPrayHours={setPrayGoal}
-            />
-          ))}
-        </div>
+        <GoalCard
+          goal={topGoal}
+          onOpenDetail={() => navigate(`/goals/${topGoal.id}`)}
+          onPrayHours={setPrayGoal}
+        />
       )}
 
       {prayGoal && (
@@ -61,42 +60,10 @@ function FeaturedGoals() {
   )
 }
 
-// ─── Premium Segmented Tabs (Aktuelles / Community) ───────────
-function HomeTabs({ active, onChange }) {
-  const tabs = [
-    { key: 'aktuelles', label: 'Aktuelles' },
-    { key: 'community', label: 'Community' },
-  ]
-  return (
-    <div
-      style={{
-        display: 'flex', gap: 4, padding: 4, margin: '12px 16px 0',
-        borderRadius: 14, backgroundColor: 'var(--color-bg-secondary)',
-      }}
-    >
-      {tabs.map(t => {
-        const isActive = t.key === active
-        return (
-          <button
-            key={t.key}
-            onClick={() => onChange(t.key)}
-            style={{
-              flex: 1, padding: '9px 0', borderRadius: 11, border: 'none', cursor: 'pointer',
-              fontFamily: 'Lora, serif', fontSize: 14, fontWeight: isActive ? 700 : 600,
-              letterSpacing: '-0.01em',
-              color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-              backgroundColor: isActive ? 'var(--color-bg)' : 'transparent',
-              boxShadow: isActive ? '0 2px 8px rgba(58,46,36,0.10)' : 'none',
-              transition: 'color 0.2s, background-color 0.2s',
-            }}
-          >
-            {t.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
+const HOME_TABS = [
+  { key: 'aktuelles', label: 'Aktuelles' },
+  { key: 'community', label: 'Community' },
+]
 
 export default function Home() {
   const navigate = useNavigate()
@@ -188,7 +155,9 @@ export default function Home() {
       </header>
 
       {/* Premium-Tabs */}
-      <HomeTabs active={tab} onChange={setTab} />
+      <div style={{ padding: '12px 16px 0' }}>
+        <SegmentedTabs tabs={HOME_TABS} active={tab} onSelect={setTab} />
+      </div>
 
       {/* Scrollbarer Inhalt */}
       <div className="flex-1 overflow-y-auto hide-scrollbar" style={{ paddingBottom: 32 }}>
@@ -197,11 +166,14 @@ export default function Home() {
             {/* Willkommensnachricht (wegklickbar) */}
             <WelcomeBanner />
 
+            {/* Virale Feedposts dieser Woche */}
+            <ViralPostsCarousel />
+
             {/* Gebet des Tages */}
             <DailyPrayerCard />
 
-            {/* Gemeinsam beten / Gebetsziele */}
-            <FeaturedGoals />
+            {/* Gruppengebet mit meistem Engagement */}
+            <TopGroupGoal />
           </div>
         ) : (
           <div style={{ padding: '20px 16px 0' }}>

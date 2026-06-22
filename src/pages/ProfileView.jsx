@@ -396,7 +396,7 @@ export default function ProfileView() {
           {activeTab === 'prayers' && (
             <PrayersTab
               prayers={prayerRequests}
-              onCreatePrayer={() => navigate('/gebet-paul?create=1')}
+              onCreatePrayer={() => navigate('/prayers?create=1')}
             />
           )}
         </>

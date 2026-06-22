@@ -690,7 +690,7 @@ function CreatePrayerSheet({ onClose, onCreate, onRequestGoal }) {
 
 // ─── Haupt-Seite ──────────────────────────────────────────────
 
-export default function GebetPaul() {
+export default function Prayers() {
   const { showToast } = useToast()
   const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
   const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote } = usePrayerFeed('all', statusFilter)
@@ -785,7 +785,7 @@ export default function GebetPaul() {
 
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full" style={{ position: 'relative' }}>
-      <PrayerFeedSwitcher active="gebet-paul" />
+      <PrayerFeedSwitcher active="prayers" />
 
       {/* Gebetslisten (kompakt) + Gebetsmodus */}
       <div style={{ padding: '14px 0 4px', borderBottom: '1px solid var(--color-border)' }}>

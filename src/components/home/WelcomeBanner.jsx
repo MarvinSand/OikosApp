@@ -1,17 +1,19 @@
 import { useState } from 'react'
-import { X, MapPin, HandHeart, Users, BookMarked } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { X, MapPin, HandHeart, Users, BookMarked, ChevronRight } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
 const FEATURES = [
-  { icon: MapPin,    title: 'OIKOS Map',    text: 'Begleite Menschen aus deinem Umfeld im Gebet.' },
-  { icon: HandHeart, title: 'Gebete & Ziele', text: 'Teile Anliegen, bete mit und setzt euch Gebetsziele.' },
-  { icon: Users,     title: 'Community',     text: 'Finde Geschwister und betet gemeinsam.' },
-  { icon: BookMarked,title: 'Jüngerschaft',  text: 'Wachse Schritt für Schritt im Glauben.' },
+  { icon: MapPin,    title: 'OIKOS Map',    text: 'Begleite Menschen aus deinem Umfeld im Gebet.', target: '/profile' },
+  { icon: HandHeart, title: 'Gebete & Ziele', text: 'Teile Anliegen, bete mit und setzt euch Gebetsziele.', target: '/prayers' },
+  { icon: Users,     title: 'Community',     text: 'Finde Geschwister und betet gemeinsam.', target: '/?tab=community' },
+  { icon: BookMarked,title: 'Jüngerschaft',  text: 'Wachse Schritt für Schritt im Glauben.', target: '/discipleship' },
 ]
 
 // Kurzer, wegklickbarer Willkommens-Banner auf der Home-Startseite.
 export default function WelcomeBanner() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const storageKey = user ? `oikos_welcome_dismissed_${user.id}` : null
   const [dismissed, setDismissed] = useState(() => {
     if (!storageKey) return false
@@ -58,9 +60,21 @@ export default function WelcomeBanner() {
         Schön, dass du da bist. Das kannst du hier entdecken:
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {FEATURES.map(({ icon: Icon, title, text }) => (
-          <div key={title} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {FEATURES.map(({ icon: Icon, title, text, target }) => (
+          <button
+            key={title}
+            onClick={() => navigate(target)}
+            aria-label={`${title} öffnen`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
+              padding: 6, margin: -6, borderRadius: 12, border: 'none', background: 'none',
+              cursor: 'pointer', transition: 'background-color 0.15s',
+            }}
+            onMouseDown={e => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.04)' }}
+            onMouseUp={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+          >
             <div style={{
               width: 34, height: 34, borderRadius: 10, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -77,7 +91,8 @@ export default function WelcomeBanner() {
                 {text}
               </p>
             </div>
-          </div>
+            <ChevronRight size={16} color="var(--color-text-tertiary)" style={{ flexShrink: 0 }} />
+          </button>
         ))}
       </div>
     </div>

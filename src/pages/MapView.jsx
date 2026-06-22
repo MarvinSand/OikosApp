@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePlaces } from '../hooks/usePlaces'
 import { supabase } from '../lib/supabase'
+import { useToast } from '../context/ToastContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
 import MapCanvas from '../components/map/MapCanvas'
 import NewMapModal from '../components/map/NewMapModal'
 import AddPersonModal from '../components/map/AddPersonModal'
@@ -259,6 +261,7 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
 
 export default function MapView({ hideWorldMapToggle = false, initialMapId = null } = {}) {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('oikos')
   const { user } = useAuth()
   const {
@@ -288,7 +291,34 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [linkedProfiles, setLinkedProfiles] = useState({})
   const [searchParams, setSearchParams] = useSearchParams()
 
+  // Gebetsmodus für die Personen dieser Map
+  const [mapPrayerItems, setMapPrayerItems] = useState(null)
+  const [loadingPrayerMode, setLoadingPrayerMode] = useState(false)
+
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Du'
+
+  async function startMapPrayerMode() {
+    if (loadingPrayerMode) return
+    const ids = people.map(p => p.id).filter(id => id && id !== 'dummy-tutorial')
+    if (ids.length === 0) { showToast('Diese Map hat noch keine Personen'); return }
+    setLoadingPrayerMode(true)
+    try {
+      const { data } = await supabase
+        .from('prayer_requests')
+        .select('*, profiles!owner_id(id, full_name, username, gender, is_christian)')
+        .in('person_id', ids)
+        .eq('owner_id', user.id)
+        .eq('is_answered', false)
+        .order('created_at', { ascending: false })
+      const items = (data || []).map(r => ({ type: 'oikos', request: r, ampel: null }))
+      if (items.length === 0) { showToast('Keine offenen Gebete in dieser Map'); return }
+      setMapPrayerItems(items)
+    } catch {
+      showToast('Fehler beim Laden', 'error')
+    } finally {
+      setLoadingPrayerMode(false)
+    }
+  }
 
   useEffect(() => {
     if (initialMapId && maps.length > 0) {
@@ -454,6 +484,15 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
 
         {activeMap && (
           <div className="flex gap-1 items-center">
+            <button
+              onClick={startMapPrayerMode}
+              disabled={loadingPrayerMode}
+              title="Gebetsmodus"
+              aria-label="Gebetsmodus starten"
+              className="p-1 rounded-full transition-colors flex items-center text-warm-1 hover:bg-warm-1/10"
+            >
+              <HandHeart size={18} />
+            </button>
             <button
               onClick={() => setConnectionMode(v => !v)}
               title="Verbindungsmodus"
@@ -704,6 +743,14 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             const pl = await createPlace({ ...opts, posX: 0, posY: 0 })
             if (pl) setSelectedPlace(pl)
           }}
+        />
+      )}
+
+      {/* Gebetsmodus für die Personen dieser Map */}
+      {mapPrayerItems && (
+        <GuidedPrayerMode
+          items={mapPrayerItems}
+          onClose={() => setMapPrayerItems(null)}
         />
       )}
     </div>
