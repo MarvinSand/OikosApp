@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { usePrayerSession } from '../../hooks/usePrayerSession'
 import { useAuth } from '../../hooks/useAuth'
-import { supabase } from '../../lib/supabase'
+import { fetchPrayerModeItems } from '../../hooks/usePrayerModeSource'
 
 const TIMER_OPTIONS = [
   { label: '30 Sek', seconds: 30 },
@@ -558,67 +558,36 @@ function SummaryScreen({ summary, onClose, onRestart }) {
   )
 }
 
-// ─── Continue Screen (Weiterbeten für andere) ─────────────────
+// ─── Continue Screen (Weiterbeten – Quelle wählen) ────────────
+const CONTINUE_SOURCES = [
+  { key: 'oikos',    emoji: '🏠', label: 'Meine Oikos Map',         desc: 'Offene Anliegen meiner Oikos-Personen' },
+  { key: 'siblings', emoji: '👥', label: 'Anliegen meiner Geschwister', desc: 'Gebete verbundener Geschwister' },
+  { key: 'all',      emoji: '🌍', label: 'Öffentliche Anliegen',    desc: 'Anliegen aus der ganzen Gemeinschaft' },
+]
+
 function ContinueScreen({ excludeIds, onContinue, onSkip }) {
   const { user } = useAuth()
-  const [requests, setRequests] = useState(null) // null = lädt
+  const [loadingSource, setLoadingSource] = useState(null)
+  const [notice, setNotice] = useState(null)
 
-  useEffect(() => {
-    let active = true
-    async function load() {
-      // Ohne eingeloggten User keinen Query absetzen → sonst hängt der Ladescreen ewig.
-      if (!user) { if (active) setRequests([]); return }
-      try {
-        // RLS sorgt dafür, dass nur sichtbare Anliegen geladen werden
-        const { data } = await supabase
-          .from('prayer_requests')
-          .select('*, profiles!owner_id(id, username, full_name, gender, is_christian)')
-          .neq('owner_id', user.id)
-          .eq('is_answered', false)
-          .eq('is_public', true)
-          .order('created_at', { ascending: false })
-          .limit(40)
-        if (!active) return
-        const pool = (data || []).filter(r => !excludeIds.includes(r.id))
-        const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 3)
-        setRequests(shuffled)
-      } catch {
-        // Bei Fehler trotzdem einen Terminal-Screen zeigen statt endlosem Spinner.
-        if (active) setRequests([])
+  async function pick(source) {
+    if (loadingSource || !user) return
+    setLoadingSource(source)
+    setNotice(null)
+    try {
+      const items = await fetchPrayerModeItems({ source, userId: user.id, sort: 'random' })
+      const filtered = items.filter(i => !excludeIds.includes(i.request?.id))
+      if (filtered.length === 0) {
+        const label = CONTINUE_SOURCES.find(s => s.key === source)?.label || 'dieser Quelle'
+        setNotice(`Keine weiteren offenen Anliegen bei „${label}".`)
+        setLoadingSource(null)
+        return
       }
+      onContinue(filtered.slice(0, 10))
+    } catch {
+      setNotice('Anliegen konnten nicht geladen werden.')
+      setLoadingSource(null)
     }
-    load()
-    return () => { active = false }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function handleYes() {
-    const cards = (requests || []).map(r => ({ type: 'oikos', request: r, ampel: null }))
-    onContinue(cards)
-  }
-
-  if (requests === null) {
-    return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: darkBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid rgba(212,168,83,0.3)', borderTopColor: '#D4A853', animation: 'spin 1s linear infinite' }} />
-      </div>
-    )
-  }
-
-  if (requests.length === 0) {
-    return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: darkBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
-        <BgOrbs />
-        <div style={{ zIndex: 1, width: '100%', maxWidth: 360 }}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>🕊</div>
-          <h1 style={{ fontFamily: 'Lora, serif', fontSize: 24, fontWeight: 700, color: '#F0EDE6', margin: '0 0 28px' }}>
-            Gut gemacht!
-          </h1>
-          <button onClick={onSkip} style={{ width: '100%', padding: '16px 0', borderRadius: 50, border: 'none', backgroundColor: '#D4A853', color: '#1A1208', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-            Weiter
-          </button>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -628,37 +597,51 @@ function ContinueScreen({ excludeIds, onContinue, onSkip }) {
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🙏</div>
           <h1 style={{ fontFamily: 'Lora, serif', fontSize: 23, fontWeight: 700, color: '#F0EDE6', margin: '0 0 6px' }}>
-            Möchtest du noch für andere beten?
+            Möchtest du weiterbeten?
           </h1>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'rgba(240,237,230,0.55)', margin: 0 }}>
-            Diese Geschwister freuen sich über dein Gebet.
+            Wähle, wofür du als Nächstes beten möchtest.
           </p>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-          {requests.map(r => {
-            const name = r.profiles?.full_name || r.profiles?.username || 'Unbekannt'
-            return (
-              <div key={r.id} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '12px 14px' }}>
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: '#F0EDE6', margin: '0 0 2px' }}>
-                  {r.title}
-                </p>
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'rgba(240,237,230,0.5)', margin: 0 }}>
-                  von {name}
-                </p>
-              </div>
-            )
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+          {CONTINUE_SOURCES.map(s => (
+            <button
+              key={s.key}
+              onClick={() => pick(s.key)}
+              disabled={!!loadingSource}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left',
+                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 16, padding: '14px 16px', cursor: loadingSource ? 'default' : 'pointer',
+                opacity: loadingSource && loadingSource !== s.key ? 0.5 : 1,
+              }}
+            >
+              <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0 }}>{s.emoji}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: '#F0EDE6' }}>
+                  {s.label}
+                </span>
+                <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 12, color: 'rgba(240,237,230,0.5)' }}>
+                  {s.desc}
+                </span>
+              </span>
+              {loadingSource === s.key && (
+                <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(212,168,83,0.3)', borderTopColor: '#D4A853', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+              )}
+            </button>
+          ))}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button onClick={handleYes} style={{ width: '100%', padding: '16px 0', borderRadius: 50, border: 'none', backgroundColor: '#D4A853', color: '#1A1208', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 22px rgba(212,168,83,0.3)' }}>
-            🙏 Ja, weiterbeten
-          </button>
-          <button onClick={onSkip} style={{ width: '100%', padding: '14px 0', borderRadius: 50, border: '1.5px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'rgba(240,237,230,0.6)', cursor: 'pointer' }}>
-            Nein, fertig
-          </button>
-        </div>
+        {notice && (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'rgba(230,126,34,0.85)', textAlign: 'center', margin: '0 0 16px' }}>
+            {notice}
+          </p>
+        )}
+
+        <button onClick={onSkip} disabled={!!loadingSource} style={{ width: '100%', padding: '14px 0', borderRadius: 50, border: '1.5px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'rgba(240,237,230,0.6)', cursor: loadingSource ? 'default' : 'pointer' }}>
+          Fertig
+        </button>
       </div>
     </div>
   )

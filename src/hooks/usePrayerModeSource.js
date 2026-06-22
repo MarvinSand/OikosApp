@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 // mit GuidedPrayerMode (siehe PrayerListDetailView / Home).
 //
 // params:
-//   source:      'list' | 'all' | 'siblings' | 'community'
+//   source:      'list' | 'all' | 'siblings' | 'community' | 'oikos'
 //   userId:      aktueller Nutzer
 //   listId:      bei source='list'
 //   communityId: bei source='community'
@@ -16,6 +16,8 @@ export async function fetchPrayerModeItems({ source, userId, listId = null, comm
 
   if (source === 'list' && listId) {
     items = await fetchListItems(listId)
+  } else if (source === 'oikos') {
+    items = await fetchOikosItems(userId)
   } else {
     items = await fetchFeedItems({ source, userId, communityId })
   }
@@ -40,6 +42,35 @@ export async function fetchPrayerModeItems({ source, userId, listId = null, comm
   }
 
   return items
+}
+
+// Offene Anliegen aller eigenen Oikos-Personen (über alle Maps des Nutzers).
+// Ohne Profil-Embed (vermeidet stille Join-Fehler); als Label dient der
+// Name der betreffenden Person.
+async function fetchOikosItems(userId) {
+  const { data: maps } = await supabase.from('oikos_maps').select('id').eq('user_id', userId)
+  const mapIds = (maps || []).map(m => m.id)
+  if (mapIds.length === 0) return []
+
+  const { data: people } = await supabase.from('oikos_people').select('id, name').in('map_id', mapIds)
+  const peopleIds = (people || []).map(p => p.id)
+  if (peopleIds.length === 0) return []
+  const nameById = Object.fromEntries((people || []).map(p => [p.id, p.name]))
+
+  const { data } = await supabase
+    .from('prayer_requests')
+    .select('*')
+    .in('person_id', peopleIds)
+    .eq('owner_id', userId)
+    .eq('is_answered', false)
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  return (data || []).map(r => ({
+    type: 'oikos',
+    request: { ...r, profiles: { full_name: nameById[r.person_id] || 'Person' } },
+    ampel: null,
+  }))
 }
 
 async function fetchFeedItems({ source, userId, communityId }) {
