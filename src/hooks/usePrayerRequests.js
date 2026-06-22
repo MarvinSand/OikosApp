@@ -16,12 +16,25 @@ export function usePrayerRequests(personId) {
     setLoading(true)
     // Ohne .or()-Filter laden (PostgREST-Eigenheiten vermeiden) und clientseitig filtern,
     // damit eigene Anliegen zuverlässig erhalten bleiben.
-    const { data } = await supabase
+    let { data, error } = await supabase
       .from('prayer_requests')
       .select('*, profiles!owner_id(id, full_name, username, gender, is_christian)')
       .eq('person_id', personId)
       .order('is_answered')
       .order('created_at')
+    if (error) {
+      // Kann der Profil-Embed nicht aufgelöst werden, würde die Liste sonst still
+      // geleert – dadurch verschwand ein gerade gespeichertes Anliegen wieder.
+      // Fallback ohne Embed, damit die Anliegen erhalten bleiben.
+      console.error('[usePrayerRequests] load() mit Profil-Embed fehlgeschlagen, lade ohne Embed:', error)
+      const res = await supabase
+        .from('prayer_requests')
+        .select('*')
+        .eq('person_id', personId)
+        .order('is_answered')
+        .order('created_at')
+      data = res.data
+    }
     const visible = (data || []).filter(r => r.owner_id === user.id || r.is_public === true)
     setRequests(visible)
     setLoading(false)
