@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Globe, UserCheck, Home as HomeIcon, ListChecks, MapPin, Shuffle, ArrowDownNarrowWide, ArrowUpNarrowWide } from 'lucide-react'
 import { usePrayerLists } from '../../hooks/usePrayerLists'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
+import { supabase } from '../../lib/supabase'
 import { fetchPrayerModeItems } from '../../hooks/usePrayerModeSource'
 
 const CATEGORIES = [
@@ -40,9 +41,17 @@ export default function PrayerModeSetupSheet({ onClose, onStart }) {
   const [source, setSource] = useState('all')
   const [listId, setListId] = useState('')
   const [communityId, setCommunityId] = useState('')
+  const [mapId, setMapId] = useState('')
+  const [maps, setMaps] = useState([])
   const [categories, setCategories] = useState([])
   const [sort, setSort] = useState('random')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    supabase.from('oikos_maps').select('id, name').eq('user_id', user.id).order('created_at')
+      .then(({ data }) => setMaps(data || []))
+  }, [user?.id])
 
   function toggleCategory(key) {
     setCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])
@@ -51,13 +60,14 @@ export default function PrayerModeSetupSheet({ onClose, onStart }) {
   const canStart =
     !loading &&
     (source !== 'list' || listId) &&
-    (source !== 'community' || communityId)
+    (source !== 'community' || communityId) &&
+    (source !== 'oikos' || mapId)
 
   async function handleStart() {
     if (!canStart) return
     setLoading(true)
     try {
-      const items = await fetchPrayerModeItems({ source, userId: user.id, listId, communityId, categories, sort })
+      const items = await fetchPrayerModeItems({ source, userId: user.id, listId, communityId, mapId: mapId === '__all__' ? null : mapId, categories, sort })
       if (!items.length) {
         showToast('Keine passenden Gebete gefunden', 'error')
         setLoading(false)
@@ -122,6 +132,21 @@ export default function PrayerModeSetupSheet({ onClose, onStart }) {
             <select value={listId} onChange={e => setListId(e.target.value)} style={{ ...inp, appearance: 'none', marginBottom: 16 }}>
               <option value="">— Liste auswählen —</option>
               {lists.map(l => <option key={l.id} value={l.id}>{l.icon} {l.name}</option>)}
+            </select>
+          )
+        )}
+
+        {/* Oikos Map wählen */}
+        {source === 'oikos' && (
+          maps.length === 0 ? (
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 16 }}>
+              Du hast noch keine Oikos Map.
+            </p>
+          ) : (
+            <select value={mapId} onChange={e => setMapId(e.target.value)} style={{ ...inp, appearance: 'none', marginBottom: 16 }}>
+              <option value="">— Map auswählen —</option>
+              {maps.length > 1 && <option value="__all__">Alle Maps</option>}
+              {maps.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           )
         )}

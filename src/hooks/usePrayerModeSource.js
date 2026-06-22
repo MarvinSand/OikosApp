@@ -9,15 +9,16 @@ import { supabase } from '../lib/supabase'
 //   userId:      aktueller Nutzer
 //   listId:      bei source='list'
 //   communityId: bei source='community'
+//   mapId:       bei source='oikos' (leer/null = alle eigenen Maps)
 //   categories:  string[] (leer = alle)
 //   sort:        'random' | 'oldest' | 'newest'
-export async function fetchPrayerModeItems({ source, userId, listId = null, communityId = null, categories = [], sort = 'random' }) {
+export async function fetchPrayerModeItems({ source, userId, listId = null, communityId = null, mapId = null, categories = [], sort = 'random' }) {
   let items = []
 
   if (source === 'list' && listId) {
     items = await fetchListItems(listId)
   } else if (source === 'oikos') {
-    items = await fetchOikosItems(userId)
+    items = await fetchOikosItems(userId, mapId)
   } else {
     items = await fetchFeedItems({ source, userId, communityId })
   }
@@ -44,12 +45,17 @@ export async function fetchPrayerModeItems({ source, userId, listId = null, comm
   return items
 }
 
-// Offene Anliegen aller eigenen Oikos-Personen (über alle Maps des Nutzers).
-// Ohne Profil-Embed (vermeidet stille Join-Fehler); als Label dient der
-// Name der betreffenden Person.
-async function fetchOikosItems(userId) {
-  const { data: maps } = await supabase.from('oikos_maps').select('id').eq('user_id', userId)
-  const mapIds = (maps || []).map(m => m.id)
+// Offene Anliegen der eigenen Oikos-Personen. Ohne mapId über alle Maps des
+// Nutzers, sonst nur die gewählte Map. Ohne Profil-Embed (vermeidet stille
+// Join-Fehler); als Label dient der Name der betreffenden Person.
+async function fetchOikosItems(userId, mapId = null) {
+  let mapIds
+  if (mapId) {
+    mapIds = [mapId]
+  } else {
+    const { data: maps } = await supabase.from('oikos_maps').select('id').eq('user_id', userId)
+    mapIds = (maps || []).map(m => m.id)
+  }
   if (mapIds.length === 0) return []
 
   const { data: people } = await supabase.from('oikos_people').select('id, name').in('map_id', mapIds)
