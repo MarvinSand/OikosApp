@@ -4,7 +4,7 @@ import { MessageCircle, Bell, ChevronRight } from 'lucide-react'
 import { useConversations } from '../hooks/useConversations'
 import { useNotifications } from '../hooks/useNotifications'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
-import DailyPrayerCard from '../components/home/DailyPrayerCard'
+import TopPrayerToday from '../components/home/TopPrayerToday'
 import WelcomeBanner from '../components/home/WelcomeBanner'
 import HomeCommunityTab from '../components/home/HomeCommunityTab'
 import ViralPostsCarousel from '../components/home/ViralPostsCarousel'
@@ -169,8 +169,8 @@ export default function Home() {
             {/* Virale Feedposts dieser Woche */}
             <ViralPostsCarousel />
 
-            {/* Gebet des Tages */}
-            <DailyPrayerCard />
+            {/* Gebet mit den meisten Interaktionen heute */}
+            <TopPrayerToday />
 
             {/* Gruppengebet mit meistem Engagement */}
             <TopGroupGoal />

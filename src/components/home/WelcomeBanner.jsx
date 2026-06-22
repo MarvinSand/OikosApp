@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, MapPin, HandHeart, Users, Globe, ChevronRight } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
@@ -7,7 +7,7 @@ const FEATURES = [
   { icon: MapPin,    title: 'OIKOS Map',    text: 'Begleite Menschen aus deinem Umfeld im Gebet.', target: '/profile' },
   { icon: HandHeart, title: 'Gebete & Ziele', text: 'Teile Anliegen, bete mit und setzt euch Gebetsziele.', target: '/prayers' },
   { icon: Users,     title: 'Community',     text: 'Finde Geschwister und betet gemeinsam.', target: '/?tab=community' },
-  { icon: Globe,     title: 'Weltkarte',     text: 'Sieh, wo weltweit gebetet wird.', target: '/worldmap' },
+  { icon: Globe,     title: 'Weltkarte',     text: 'Sieh Events und wo deine Geschwister sind.', target: '/worldmap' },
 ]
 
 // Kurzer, wegklickbarer Willkommens-Banner auf der Home-Startseite.
@@ -19,6 +19,13 @@ export default function WelcomeBanner() {
     if (!storageKey) return false
     try { return localStorage.getItem(storageKey) === '1' } catch { return false }
   })
+
+  // user wird oft erst nach dem ersten Render geladen → dismissed-Status neu aus localStorage lesen,
+  // damit der Banner nach dem Wegklicken nicht erneut auftaucht.
+  useEffect(() => {
+    if (!storageKey) return
+    try { setDismissed(localStorage.getItem(storageKey) === '1') } catch { /* ignore */ }
+  }, [storageKey])
 
   if (dismissed) return null
 

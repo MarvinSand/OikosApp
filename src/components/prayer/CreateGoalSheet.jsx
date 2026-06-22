@@ -7,7 +7,7 @@ import SiblingPicker from './SiblingPicker'
 const GOAL_COLORS = ['#5AC8FA', '#7A9E7E', '#D4A853', '#C0392B', '#8E44AD', '#2980B9', '#E67E22', '#2C3E50']
 const GOAL_EMOJIS = ['🙏', '🌍', '🇩🇪', '🔥', '🕊️', '❤️', '✝️', '🌅', '🛡️', '🤲', '⛪', '🌿']
 
-export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '' }) {
+export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', successMessage = 'Gebetsziel erstellt ✓' }) {
   const [title, setTitle] = useState(initialTitle)
   const [description, setDescription] = useState('')
   const [icon, setIcon] = useState('🙏')
@@ -40,7 +40,7 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '' }
         communityId: visibility === 'community' ? communityId : null,
         visibilityUserIds: visibility === 'specific' ? selectedSiblings : [],
       })
-      showToast('Gebetsziel erstellt ✓')
+      showToast(successMessage)
       onClose()
     } catch {
       showToast('Fehler beim Erstellen', 'error')

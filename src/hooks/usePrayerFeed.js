@@ -119,7 +119,8 @@ export function usePrayerFeed(tab, statusFilter = 'open') {
         .range(offsetRef.current, offsetRef.current + PAGE_SIZE - 1)
 
       if (tab === 'all') {
-        query = query.eq('visibility', 'public').neq('owner_id', user.id)
+        // Eigene öffentliche Anliegen sollen ebenfalls im For-You-Feed erscheinen.
+        query = query.eq('visibility', 'public')
       } else if (tab === 'siblings') {
         query = query.in('owner_id', ownerIds).in('visibility', ['public', 'siblings'])
       }

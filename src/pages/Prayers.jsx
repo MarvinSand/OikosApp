@@ -300,7 +300,7 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
 // ─── Neues Gebet erstellen ────────────────────────────────────
 
 // steps: 1=visibility, 2=sub-selection (community/siblings), 3=category, 4=details, 5=goal-prompt
-function CreatePrayerSheet({ onClose, onCreate, onRequestGoal }) {
+function CreatePrayerSheet({ onClose, onCreate, onRequestGoal, onDecline }) {
   const { myCommunities } = useCommunities()
   const [step, setStep] = useState(1)
   const [visibility, setVisibility] = useState(null)
@@ -572,7 +572,7 @@ function CreatePrayerSheet({ onClose, onCreate, onRequestGoal }) {
           <div style={{ padding: '0 16px 28px', textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 10 }}>🎯</div>
             <p style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 800, color: 'var(--color-text)' }}>
-              Gebet geteilt!
+              Fast geschafft 🎯
             </p>
             <p style={{ margin: '0 0 22px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
               Möchtest du dir dafür ein Gebetsziel setzen? Zum Beispiel eine bestimmte
@@ -589,7 +589,7 @@ function CreatePrayerSheet({ onClose, onCreate, onRequestGoal }) {
                 🎯 Gebetsziel festlegen
               </button>
               <button
-                onClick={onClose}
+                onClick={() => (onDecline ? onDecline() : onClose())}
                 style={{
                   width: '100%', padding: '13px', borderRadius: 12,
                   border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
@@ -670,7 +670,8 @@ export default function Prayers() {
   async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids }) {
     try {
       const created = await createRequest({ title, description, visibility, category, visibility_community_id, visibility_user_ids })
-      showToast('Gebet geteilt 🙏')
+      // Kein Toast hier – die Bestätigung "Gebetsanliegen erstellt 🙏" kommt erst,
+      // wenn der Nutzer den Folge-Step abschließt (Ziel festgelegt oder "Nein, danke").
       reload()
       return created
     } catch {
@@ -944,6 +945,7 @@ export default function Prayers() {
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
           onRequestGoal={handleRequestGoal}
+          onDecline={() => { setShowCreate(false); showToast('Gebetsanliegen erstellt 🙏') }}
         />
       )}
 
@@ -989,6 +991,7 @@ export default function Prayers() {
       {goalSheet && (
         <CreateGoalSheet
           initialTitle={goalSheet.title}
+          successMessage="Gebetsanliegen erstellt 🙏"
           onClose={() => setGoalSheet(null)}
           onCreate={handleCreateGoal}
         />

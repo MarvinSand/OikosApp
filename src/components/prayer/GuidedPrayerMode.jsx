@@ -566,19 +566,26 @@ function ContinueScreen({ excludeIds, onContinue, onSkip }) {
   useEffect(() => {
     let active = true
     async function load() {
-      // RLS sorgt dafür, dass nur sichtbare Anliegen geladen werden
-      const { data } = await supabase
-        .from('prayer_requests')
-        .select('*, profiles!owner_id(id, username, full_name, gender, is_christian)')
-        .neq('owner_id', user.id)
-        .eq('is_answered', false)
-        .eq('is_public', true)
-        .order('created_at', { ascending: false })
-        .limit(40)
-      if (!active) return
-      const pool = (data || []).filter(r => !excludeIds.includes(r.id))
-      const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 3)
-      setRequests(shuffled)
+      // Ohne eingeloggten User keinen Query absetzen → sonst hängt der Ladescreen ewig.
+      if (!user) { if (active) setRequests([]); return }
+      try {
+        // RLS sorgt dafür, dass nur sichtbare Anliegen geladen werden
+        const { data } = await supabase
+          .from('prayer_requests')
+          .select('*, profiles!owner_id(id, username, full_name, gender, is_christian)')
+          .neq('owner_id', user.id)
+          .eq('is_answered', false)
+          .eq('is_public', true)
+          .order('created_at', { ascending: false })
+          .limit(40)
+        if (!active) return
+        const pool = (data || []).filter(r => !excludeIds.includes(r.id))
+        const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 3)
+        setRequests(shuffled)
+      } catch {
+        // Bei Fehler trotzdem einen Terminal-Screen zeigen statt endlosem Spinner.
+        if (active) setRequests([])
+      }
     }
     load()
     return () => { active = false }
