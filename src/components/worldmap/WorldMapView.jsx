@@ -40,6 +40,39 @@ function pinScale(zoom) {
   return +(1.55 - t * (1.55 - 0.8)).toFixed(3)  // 1.55 … 0.8
 }
 
+// Zählt, wie viele andere Pins im Umkreis von ~radiusPx Bildschirm-Pixeln liegen.
+// Grundlage: Web-Mercator – Welt ist bei Zoom z genau 256·2^z px breit.
+function countNeighbors(lat, lng, positions, zoom, radiusPx = 64) {
+  const worldPx = 256 * Math.pow(2, zoom)
+  const radDeg = radiusPx * (360 / worldPx)
+  const cosLat = Math.cos((lat * Math.PI) / 180) || 1
+  let n = 0
+  for (const p of positions) {
+    const dLat = p.lat - lat
+    const dLng = (p.lng - lng) * cosLat
+    if (dLat === 0 && dLng === 0) continue          // sich selbst nicht mitzählen
+    if (Math.abs(dLat) > radDeg || Math.abs(dLng) > radDeg) continue
+    if (Math.sqrt(dLat * dLat + dLng * dLng) < radDeg) n++
+  }
+  return n
+}
+
+// Je mehr Nachbarn in der Nähe, desto kleiner der Pin – damit alle erkennbar bleiben.
+function densityScale(neighbors) {
+  return Math.max(0.55, 1 - neighbors * 0.09)
+}
+
+// Wendet kombinierten Zoom- + Dichte-Maßstab auf jeden Pin an.
+function applyPinScales(markerData, positions, zoom) {
+  const base = pinScale(zoom)
+  for (const d of markerData) {
+    const layer = d.marker.content?.querySelector?.('[data-pin-scale]')
+    if (!layer) continue
+    const n = countNeighbors(d.lat, d.lng, positions, zoom)
+    layer.style.transform = `scale(${(base * densityScale(n)).toFixed(3)})`
+  }
+}
+
 // ─── Pin DOM builders ────────────────────────────────────
 function buildUserPinElement(user, { isOwn = false, zoom } = {}) {
   const size = isOwn ? 58 : 48
@@ -148,20 +181,19 @@ function PrivacyBanner({ onClose }) {
 }
 
 // ─── User-pin clusterer ───────────────────────────────────
-function useUserClusterer({ map, users, onUserClick, enabled, zoom }) {
+function useUserClusterer({ map, users, onUserClick, enabled, zoom, allPositions }) {
   const clustererRef = useRef(null)
   const markersRef = useRef([])
+  const markerDataRef = useRef([])
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
+  const positionsRef = useRef(allPositions)
+  positionsRef.current = allPositions
 
-  // Pins bei Zoom-Änderung live skalieren (ohne Marker neu zu bauen)
+  // Pins bei Zoom-/Dichte-Änderung live skalieren (ohne Marker neu zu bauen)
   useEffect(() => {
-    const k = pinScale(zoom)
-    markersRef.current.forEach(m => {
-      const layer = m.content?.querySelector?.('[data-pin-scale]')
-      if (layer) layer.style.transform = `scale(${k})`
-    })
-  }, [zoom])
+    applyPinScales(markerDataRef.current, allPositions, zoom)
+  }, [zoom, allPositions])
 
   useEffect(() => {
     if (!map || !enabled || !window.google?.maps?.marker?.AdvancedMarkerElement) {
@@ -171,6 +203,7 @@ function useUserClusterer({ map, users, onUserClick, enabled, zoom }) {
       }
       markersRef.current.forEach(m => { m.map = null })
       markersRef.current = []
+      markerDataRef.current = []
       return
     }
 
@@ -185,6 +218,8 @@ function useUserClusterer({ map, users, onUserClick, enabled, zoom }) {
       return marker
     })
     markersRef.current = newMarkers
+    markerDataRef.current = users.map((u, i) => ({ marker: newMarkers[i], lat: u.latitude, lng: u.longitude }))
+    applyPinScales(markerDataRef.current, positionsRef.current, zoomRef.current)
 
     const clusterer = new MarkerClusterer({
       map,
@@ -206,25 +241,25 @@ function useUserClusterer({ map, users, onUserClick, enabled, zoom }) {
       newMarkers.forEach(m => { m.map = null })
       clustererRef.current = null
       markersRef.current = []
+      markerDataRef.current = []
     }
   }, [map, users, enabled, onUserClick])
 }
 
 // ─── Activity-pin clusterer ───────────────────────────────
-function useActivityClusterer({ map, activities, onActivityClick, enabled, zoom }) {
+function useActivityClusterer({ map, activities, onActivityClick, enabled, zoom, allPositions }) {
   const clustererRef = useRef(null)
   const markersRef = useRef([])
+  const markerDataRef = useRef([])
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
+  const positionsRef = useRef(allPositions)
+  positionsRef.current = allPositions
 
-  // Pins bei Zoom-Änderung live skalieren (ohne Marker neu zu bauen)
+  // Pins bei Zoom-/Dichte-Änderung live skalieren (ohne Marker neu zu bauen)
   useEffect(() => {
-    const k = pinScale(zoom)
-    markersRef.current.forEach(m => {
-      const layer = m.content?.querySelector?.('[data-pin-scale]')
-      if (layer) layer.style.transform = `scale(${k})`
-    })
-  }, [zoom])
+    applyPinScales(markerDataRef.current, allPositions, zoom)
+  }, [zoom, allPositions])
 
   useEffect(() => {
     if (!map || !enabled || !window.google?.maps?.marker?.AdvancedMarkerElement) {
@@ -248,6 +283,8 @@ function useActivityClusterer({ map, activities, onActivityClick, enabled, zoom 
       return marker
     })
     markersRef.current = newMarkers
+    markerDataRef.current = activities.map((a, i) => ({ marker: newMarkers[i], lat: a.latitude, lng: a.longitude }))
+    applyPinScales(markerDataRef.current, positionsRef.current, zoomRef.current)
 
     const clusterer = new MarkerClusterer({
       map,
@@ -269,6 +306,7 @@ function useActivityClusterer({ map, activities, onActivityClick, enabled, zoom 
       newMarkers.forEach(m => { m.map = null })
       clustererRef.current = null
       markersRef.current = []
+      markerDataRef.current = []
     }
   }, [map, activities, enabled, onActivityClick])
 }
@@ -381,6 +419,16 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const usersForMap = useMemo(() => (showGeschwister ? visibleUsers : []), [showGeschwister, visibleUsers])
   const activitiesForMap = useMemo(() => (showEvents ? activities : []), [showEvents, activities])
 
+  // Alle Pin-Positionen (Personen + Events + eigener Standort) für die
+  // dichte-abhängige Skalierung – so bleiben Pins auch in Ballungen erkennbar.
+  const allPinPositions = useMemo(() => {
+    const arr = []
+    usersForMap.forEach(u => arr.push({ lat: u.latitude, lng: u.longitude }))
+    activitiesForMap.forEach(a => arr.push({ lat: a.latitude, lng: a.longitude }))
+    if (myProfile?.latitude) arr.push({ lat: myProfile.latitude, lng: myProfile.longitude })
+    return arr
+  }, [usersForMap, activitiesForMap, myProfile?.latitude, myProfile?.longitude])
+
   const defaultCenter = myProfile?.latitude
     ? { lat: myProfile.latitude, lng: myProfile.longitude }
     : { lat: 51.1657, lng: 10.4515 }
@@ -409,6 +457,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
     onUserClick: handleUserClick,
     enabled: showGeschwister && isLoaded,
     zoom: snapZoom.currentZoom,
+    allPositions: allPinPositions,
   })
 
   useActivityClusterer({
@@ -417,6 +466,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
     onActivityClick: handleActivityClick,
     enabled: showEvents && isLoaded,
     zoom: snapZoom.currentZoom,
+    allPositions: allPinPositions,
   })
 
   if (loading || !isLoaded) {
@@ -466,7 +516,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
               position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
               zIndex={9999}
             >
-              <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} />
+              <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} allPositions={allPinPositions} />
             </AdvancedMarker>
           )}
         </GoogleMap>
@@ -598,15 +648,19 @@ function LayerToggle({ active, onClick, icon, label }) {
 }
 
 // ─── Own Pin Content (React-rendered into AdvancedMarker) ─
-function OwnPinContent({ user, zoom }) {
+function OwnPinContent({ user, zoom, allPositions }) {
   const size = 58
   const borderColor = C.accentDark
   const bg = user?.avatar_url ? 'transparent' : borderColor
+  const neighbors = user?.latitude != null
+    ? countNeighbors(user.latitude, user.longitude, allPositions || [], zoom)
+    : 0
+  const scale = pinScale(zoom) * densityScale(neighbors)
   return (
     <div style={{ position: 'relative', width: size, height: size, transform: 'translateY(50%)' }}>
       <div style={{
         position: 'relative', width: '100%', height: '100%',
-        transformOrigin: '50% 50%', transform: `scale(${pinScale(zoom)})`,
+        transformOrigin: '50% 50%', transform: `scale(${scale})`,
         transition: 'transform 0.18s ease',
       }}>
         <div style={{
