@@ -146,13 +146,13 @@ export default function Auth() {
             </div>
             <button
               onClick={goToRegister}
-              className="w-full py-3 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+              className="w-full py-3 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 transition-all duration-300"
             >
               Jetzt starten →
             </button>
             <button
               onClick={goFromWelcomeToLogin}
-              className="w-full py-2 rounded-xl text-sm font-medium text-dark-muted hover:text-warm-1 transition-colors"
+              className="w-full py-2 rounded-xl text-sm font-medium text-dark-muted hover:text-accent transition-colors"
             >
               Bereits registriert? Anmelden
             </button>
@@ -217,7 +217,7 @@ export default function Auth() {
                           onClick={() => setGender(val)}
                           className={`flex-1 py-3 px-2 rounded-xl text-sm font-medium transition-all border ${
                             gender === val 
-                              ? 'bg-warm-1 text-white border-warm-1 shadow-md shadow-warm-1/20' 
+                              ? 'bg-accent text-white border-accent shadow-md shadow-accent/20' 
                               : 'bg-paper text-dark-muted border-warm-3 hover:border-warm-2/50'
                           }`}
                         >
@@ -248,7 +248,7 @@ export default function Auth() {
                     <button 
                       type="button" 
                       onClick={goToReset} 
-                      className="text-xs font-medium text-warm-1 hover:text-warm-2 transition-colors"
+                      className="text-xs font-medium text-accent hover:text-accent-dark transition-colors"
                     >
                       Passwort vergessen?
                     </button>
@@ -266,7 +266,7 @@ export default function Auth() {
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(v => !v)} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-warm-1 transition-colors rounded-lg"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-accent transition-colors rounded-lg"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -287,7 +287,7 @@ export default function Auth() {
                     type="button"
                     onClick={handleResendConfirmation}
                     disabled={isLoading}
-                    className="text-xs font-bold text-warm-1 hover:text-warm-2 transition-colors disabled:opacity-50"
+                    className="text-xs font-bold text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
                   >
                     Bestätigungs-E-Mail erneut senden →
                   </button>
@@ -297,7 +297,7 @@ export default function Auth() {
               <button
                 type="submit" 
                 disabled={isLoading || (view === 'register' && (!gender || !username.trim()))}
-                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}
               </button>
@@ -308,7 +308,7 @@ export default function Auth() {
         {/* Password Reset Logic */}
         {view === 'reset' && (
           <div className="animate-fade-in">
-            <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-warm-1 transition-colors mb-6">
+            <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-accent transition-colors mb-6">
               ← Zurück
             </button>
             <h3 className="text-2xl font-bold text-dark mb-2">Passwort zurücksetzen</h3>
@@ -339,7 +339,7 @@ export default function Auth() {
               <button 
                 type="submit" 
                 disabled={isLoading || !email.trim()} 
-                className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Sende…' : 'Link senden'}
               </button>
@@ -360,7 +360,7 @@ export default function Auth() {
             </p>
             <button
               onClick={goToLogin}
-              className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+              className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 transition-all duration-300"
             >
               Zum Login
             </button>
@@ -383,7 +383,7 @@ export default function Auth() {
               <button 
                 onClick={handleResend} 
                 disabled={isLoading} 
-                className="text-sm font-bold text-warm-1 hover:text-warm-2 transition-colors disabled:opacity-50"
+                className="text-sm font-bold text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
               >
                 Erneut senden
               </button>
