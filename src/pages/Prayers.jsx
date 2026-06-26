@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, Send, MessageCircle, ChevronUp, Search, SlidersHorizontal, BookmarkPlus, Forward, Play, MoreVertical, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
@@ -16,6 +16,7 @@ import PrayerModeSetupSheet from '../components/prayer/PrayerModeSetupSheet'
 import AddToListSheet from '../components/prayer/AddToListSheet'
 import ForwardSheet from '../components/prayer/ForwardSheet'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
+import GoalCard from '../components/prayer/GoalCard'
 import SiblingPicker from '../components/prayer/SiblingPicker'
 
 // ─── Konstanten ───────────────────────────────────────────────
@@ -585,7 +586,8 @@ export default function Prayers() {
   const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
   const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote, deleteRequest } = usePrayerFeed('all', statusFilter)
   const { createRequest } = usePersonalPrayer()
-  const { createGoal } = usePrayerGoals()
+  const { createGoal, publicGoals, myGoals, communityGoals, sharedGoals, reload: reloadGoals } = usePrayerGoals()
+  const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -599,6 +601,7 @@ export default function Prayers() {
   const [prayerModeItems, setPrayerModeItems] = useState(null)
   const [bookmarkRequest, setBookmarkRequest] = useState(null)
   const [forwardRequest, setForwardRequest] = useState(null)
+  const [prayGoal, setPrayGoal] = useState(null)
 
   // Direkt das Erstellen-Sheet öffnen, wenn man vom Profil "+ Gebetsanliegen" kommt
   useEffect(() => {
@@ -627,6 +630,35 @@ export default function Prayers() {
     ].join(' ').toLowerCase()
     return haystack.includes(q)
   })
+  // Sichtbare Gebetsziele (dedupliziert) – sollen ebenfalls im Gebete-Feed
+  // erscheinen, auch Gebete mit Gebetsziel.
+  const allGoals = (() => {
+    const byId = new Map()
+    for (const g of [...publicGoals, ...sharedGoals, ...communityGoals, ...myGoals]) {
+      if (g && !byId.has(g.id)) byId.set(g.id, g)
+    }
+    return [...byId.values()]
+  })()
+  // IDs der mit einem Ziel verknüpften persönlichen Anliegen – diese werden als
+  // Ziel-Karte gezeigt, damit nichts doppelt erscheint.
+  const goalLinkedRequestIds = new Set(allGoals.map(g => g.personal_prayer_request_id).filter(Boolean))
+
+  const filteredGoals = allGoals.filter(g => {
+    if (statusFilter === 'answered') return false        // Ziele haben keinen "erhört"-Status
+    if (activeCategories.length > 0) return false         // Ziele haben keine Kategorie
+    if (!matchesDateFilter(g.created_at, dateFilter)) return false
+    if (!q) return true
+    return [g.title || '', g.description || ''].join(' ').toLowerCase().includes(q)
+  })
+
+  // Anliegen (ohne die ziel-verknüpften) + Ziele zu einer Liste mergen, nach Datum.
+  const feedEntries = [
+    ...filteredRequests
+      .filter(r => !goalLinkedRequestIds.has(r.id))
+      .map(r => ({ kind: 'request', id: 'r-' + r.id, created_at: r.created_at, request: r })),
+    ...filteredGoals.map(g => ({ kind: 'goal', id: 'g-' + g.id, created_at: g.created_at, goal: g })),
+  ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+
   // Count of non-default filter facets (status counts when not the default "open")
   const filterFacetCount = activeCategories.length + (dateActive ? 1 : 0) + (statusFilter !== 'open' ? 1 : 0)
   const hasActiveFilter = filterFacetCount > 0 || q.length > 0
@@ -869,7 +901,7 @@ export default function Prayers() {
           </div>
         )}
 
-        {!loading && requests.length > 0 && filteredRequests.length === 0 && hasActiveFilter && (
+        {!loading && feedEntries.length === 0 && hasActiveFilter && (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <p style={{ fontSize: 28, margin: '0 0 10px' }}>🔍</p>
             <p style={{ fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>
@@ -878,18 +910,28 @@ export default function Prayers() {
           </div>
         )}
 
-        {!loading && filteredRequests.map(req => (
-          <PrayerCard
-            key={req.id}
-            request={req}
-            logs={logsMap[req.id]}
-            notes={notesMap[req.id]}
-            onPray={logPrayer}
-            onComment={handleComment}
-            onBookmark={setBookmarkRequest}
-            onForward={setForwardRequest}
-            onDelete={handleDelete}
-          />
+        {!loading && feedEntries.map(entry => (
+          entry.kind === 'goal' ? (
+            <div key={entry.id} style={{ marginBottom: 12 }}>
+              <GoalCard
+                goal={entry.goal}
+                onOpenDetail={() => navigate(`/goals/${entry.goal.id}`)}
+                onPrayHours={setPrayGoal}
+              />
+            </div>
+          ) : (
+            <PrayerCard
+              key={entry.id}
+              request={entry.request}
+              logs={logsMap[entry.request.id]}
+              notes={notesMap[entry.request.id]}
+              onPray={logPrayer}
+              onComment={handleComment}
+              onBookmark={setBookmarkRequest}
+              onForward={setForwardRequest}
+              onDelete={handleDelete}
+            />
+          )
         ))}
 
         {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}
@@ -934,6 +976,15 @@ export default function Prayers() {
         <GuidedPrayerMode
           items={prayerModeItems}
           onClose={() => { setPrayerModeItems(null); reload() }}
+        />
+      )}
+
+      {/* Mitbeten bei einem zeitbasierten Gebetsziel */}
+      {prayGoal && (
+        <GuidedPrayerMode
+          items={[{ type: 'topic', request: { id: prayGoal.id, title: prayGoal.title, description: prayGoal.description, icon: prayGoal.icon }, ampel: null }]}
+          goalId={prayGoal.id}
+          onClose={() => { setPrayGoal(null); reloadGoals() }}
         />
       )}
 
