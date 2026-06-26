@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
+import AddressAutocomplete from '../components/common/AddressAutocomplete'
 
 function validateUsername(val) {
   if (!val || val.trim().length < 3) return 'Mindestens 3 Zeichen'
@@ -180,6 +181,8 @@ export default function SettingsView() {
   // Datenschutz-Toggles
   const [showOnMap, setShowOnMap] = useState(false)
   const [allowLocation, setAllowLocation] = useState(true)
+  const [locValue, setLocValue] = useState(null)
+  const [savingLoc, setSavingLoc] = useState(false)
 
   useEffect(() => {
     if (!profile) return
@@ -198,6 +201,11 @@ export default function SettingsView() {
     })
     setShowOnMap(profile.show_on_world_map ?? false)
     setAllowLocation(profile.allow_location ?? true)
+    setLocValue(
+      profile.latitude != null && profile.longitude != null
+        ? { shortName: profile.city || 'Mein Standort', lat: profile.latitude, lng: profile.longitude }
+        : null
+    )
   }, [profile])
 
   function setField(key, value) {
@@ -253,6 +261,20 @@ export default function SettingsView() {
     } catch {
       setAllowLocation(!next)
       showToast('Fehler beim Speichern', 'error')
+    }
+  }
+
+  async function handleSelectLocation(loc) {
+    if (!loc?.lat || !loc?.lng) return
+    setLocValue({ shortName: loc.shortName, lat: loc.lat, lng: loc.lng })
+    setSavingLoc(true)
+    try {
+      await updateProfile({ latitude: loc.lat, longitude: loc.lng })
+      showToast('Standort aktualisiert ✓')
+    } catch {
+      showToast('Fehler beim Speichern', 'error')
+    } finally {
+      setSavingLoc(false)
     }
   }
 
@@ -476,6 +498,24 @@ export default function SettingsView() {
             checked={showOnMap}
             onChange={handleToggleMap}
           />
+
+          {/* Standort-Adresse für die Weltkarte */}
+          <div style={{ padding: '12px 4px 4px' }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+              Mein Standort auf der Weltkarte
+            </label>
+            <AddressAutocomplete
+              value={locValue}
+              onChange={handleSelectLocation}
+              placeholder="Adresse oder Ort suchen…"
+            />
+            <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', margin: '6px 2px 0', lineHeight: 1.5 }}>
+              {locValue
+                ? (savingLoc ? 'Wird gespeichert…' : 'Dieser Ort wird anderen auf der Weltkarte angezeigt, wenn „Auf der Weltkarte sichtbar" aktiv ist.')
+                : 'Lege fest, wo du auf der Weltkarte erscheinst.'}
+            </p>
+          </div>
+
           <SettingToggle
             icon={Navigation}
             title="Standort erlauben"
