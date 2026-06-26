@@ -40,36 +40,12 @@ function pinScale(zoom) {
   return +(1.55 - t * (1.55 - 0.8)).toFixed(3)  // 1.55 … 0.8
 }
 
-// Zählt, wie viele andere Pins im Umkreis von ~radiusPx Bildschirm-Pixeln liegen.
-// Grundlage: Web-Mercator – Welt ist bei Zoom z genau 256·2^z px breit.
-function countNeighbors(lat, lng, positions, zoom, radiusPx = 64) {
-  const worldPx = 256 * Math.pow(2, zoom)
-  const radDeg = radiusPx * (360 / worldPx)
-  const cosLat = Math.cos((lat * Math.PI) / 180) || 1
-  let n = 0
-  for (const p of positions) {
-    const dLat = p.lat - lat
-    const dLng = (p.lng - lng) * cosLat
-    if (dLat === 0 && dLng === 0) continue          // sich selbst nicht mitzählen
-    if (Math.abs(dLat) > radDeg || Math.abs(dLng) > radDeg) continue
-    if (Math.sqrt(dLat * dLat + dLng * dLng) < radDeg) n++
-  }
-  return n
-}
-
-// Je mehr Nachbarn in der Nähe, desto kleiner der Pin – damit alle erkennbar bleiben.
-function densityScale(neighbors) {
-  return Math.max(0.55, 1 - neighbors * 0.09)
-}
-
-// Wendet kombinierten Zoom- + Dichte-Maßstab auf jeden Pin an.
-function applyPinScales(markerData, positions, zoom) {
-  const base = pinScale(zoom)
-  for (const d of markerData) {
-    const layer = d.marker.content?.querySelector?.('[data-pin-scale]')
-    if (!layer) continue
-    const n = countNeighbors(d.lat, d.lng, positions, zoom)
-    layer.style.transform = `scale(${(base * densityScale(n)).toFixed(3)})`
+// Wendet einheitlichen Zoom-Maßstab auf alle Pin-Scale-Layer an.
+function applyPinScales(markers, zoom) {
+  const k = pinScale(zoom)
+  for (const m of markers) {
+    const layer = m.content?.querySelector?.('[data-pin-scale]')
+    if (layer) layer.style.transform = `scale(${k})`
   }
 }
 
@@ -115,43 +91,91 @@ function buildUserPinElement(user, { isOwn = false, zoom } = {}) {
   return wrap
 }
 
-function buildActivityPinElement(emoji, { zoom } = {}) {
+// participants = array of { profile: { avatar_url, full_name } }
+function buildActivityPinElement(emoji, participants, { zoom } = {}) {
   const size = 58
-  const radius = '34%'  // abgerundetes Quadrat (squircle) statt Kreis
+  const radius = '34%'  // abgerundetes Quadrat (squircle)
 
-  // Äußerer Wrapper hält den Anker stabil
   const wrap = document.createElement('div')
-  wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translateY(50%);cursor:pointer;`
+  // Etwas höher als size, damit kleine Personen-Avatare unten noch Platz haben
+  wrap.style.cssText = `position:relative;width:${size}px;height:${size + 18}px;transform:translateY(calc(50% - 9px));cursor:pointer;`
 
-  // Skalierungs-Layer fürs haptische Zoom-Verhalten
+  // Skalierungs-Layer
   const scaleLayer = document.createElement('div')
   scaleLayer.dataset.pinScale = '1'
-  scaleLayer.style.cssText = `position:relative;width:100%;height:100%;transform-origin:50% 50%;transform:scale(${pinScale(zoom)});transition:transform 0.18s ease;`
+  scaleLayer.style.cssText = `position:relative;width:${size}px;height:${size}px;transform-origin:50% 50%;transform:scale(${pinScale(zoom)});transition:transform 0.18s ease;`
 
-  // Drei gestaffelte Radar-Ping-Ringe → starkes, auffälliges Pulsieren
+  // Drei gestaffelte Radar-Ping-Ringe
   ;[0, 0.6, 1.2].forEach(delay => {
     const ring = document.createElement('div')
     ring.style.cssText = `position:absolute;inset:0;border-radius:${radius};background:rgba(90,200,250,0.35);border:2px solid rgba(90,200,250,0.55);animation:eventPinPulse 1.8s ease-out ${delay}s infinite;pointer-events:none;`
     scaleLayer.appendChild(ring)
   })
 
-  // The pin square itself (rounded corners) – schlägt wie ein Herzschlag
+  // Event-Quadrat selbst – schlägt wie ein Herzschlag
   const square = document.createElement('div')
   square.style.cssText = `position:absolute;inset:4px;border-radius:${radius};background:${C.accent};border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(90,200,250,0.7);font-size:24px;transform-origin:50% 50%;animation:eventPinBeat 1.2s ease-in-out infinite;`
   square.textContent = emoji || '📍'
   scaleLayer.appendChild(square)
-
   wrap.appendChild(scaleLayer)
+
+  // Kleine Personen-Avatare als Add-On unter dem Event-Pin (max 3)
+  const shown = (participants || []).slice(0, 3)
+  if (shown.length > 0) {
+    const avatarRow = document.createElement('div')
+    const avatarSize = 16
+    const overlap = 5
+    const rowW = shown.length * avatarSize - (shown.length - 1) * overlap
+    avatarRow.style.cssText = `position:absolute;bottom:0;left:${(size - rowW) / 2}px;display:flex;flex-direction:row;pointer-events:none;`
+    shown.forEach((p, i) => {
+      const profile = p.profile || p
+      const av = document.createElement('div')
+      av.style.cssText = `width:${avatarSize}px;height:${avatarSize}px;border-radius:50%;border:1.5px solid #fff;overflow:hidden;background:${C.accent};display:flex;align-items:center;justify-content:center;margin-left:${i > 0 ? -overlap : 0}px;box-shadow:0 1px 3px rgba(0,0,0,0.22);`
+      if (profile?.avatar_url) {
+        const img = document.createElement('img')
+        img.src = profile.avatar_url
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;'
+        img.referrerPolicy = 'no-referrer'
+        av.appendChild(img)
+      } else {
+        const initEl = document.createElement('span')
+        initEl.style.cssText = 'font-size:7px;font-weight:700;color:#fff;'
+        initEl.textContent = getInitials(profile?.full_name)
+        av.appendChild(initEl)
+      }
+      avatarRow.appendChild(av)
+    })
+    wrap.appendChild(avatarRow)
+  }
+
   return wrap
 }
 
-function buildClusterElement(count, color) {
+// Cluster-Icon: zeigt Personenhaufen, Event-Symbol oder beides
+function buildClusterElement(count, isMixed, hasEvent) {
   const wrap = document.createElement('div')
-  wrap.style.cssText = `width:44px;height:44px;border-radius:50%;background:${color};border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2);transform:translateY(50%);`
-  const span = document.createElement('span')
-  span.style.cssText = 'font-size:14px;font-weight:700;color:#fff;'
-  span.textContent = String(count)
-  wrap.appendChild(span)
+  wrap.style.cssText = `position:relative;width:52px;height:52px;transform:translateY(50%);`
+
+  const bg = isMixed
+    ? `linear-gradient(135deg, ${C.accent} 50%, ${C.accentDark} 50%)`
+    : hasEvent ? C.accent : C.accentDark
+
+  const circle = document.createElement('div')
+  circle.style.cssText = `width:52px;height:52px;border-radius:50%;background:${bg};border:2.5px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.22);gap:1px;`
+
+  // Anzahl
+  const num = document.createElement('span')
+  num.style.cssText = 'font-size:14px;font-weight:800;color:#fff;line-height:1;'
+  num.textContent = String(count)
+  circle.appendChild(num)
+
+  // Icon-Zeile: Person + Kalender wenn gemischt, sonst nur eins
+  const icons = document.createElement('span')
+  icons.style.cssText = 'font-size:9px;color:rgba(255,255,255,0.9);line-height:1;'
+  icons.textContent = isMixed ? '👤 📅' : hasEvent ? '📅' : '👤'
+  circle.appendChild(icons)
+
+  wrap.appendChild(circle)
   return wrap
 }
 
@@ -180,121 +204,67 @@ function PrivacyBanner({ onClose }) {
   )
 }
 
-// ─── User-pin clusterer ───────────────────────────────────
-function useUserClusterer({ map, users, onUserClick, enabled, zoom, allPositions }) {
+// ─── Combined pin clusterer (Personen + Events in einem Cluster) ─────────────
+// Events bekommen höheren zIndex → übertrumpfen Personen-Pins bei Überlappung.
+// Das Cluster-Icon zeigt an, ob nur Personen, nur Events oder beides drin sind.
+function useCombinedClusterer({ map, users, activities, onUserClick, onActivityClick, showUsers, showEvents, zoom }) {
   const clustererRef = useRef(null)
-  const markersRef = useRef([])
-  const markerDataRef = useRef([])
+  const allMarkersRef = useRef([])
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
-  const positionsRef = useRef(allPositions)
-  positionsRef.current = allPositions
 
-  // Pins bei Zoom-/Dichte-Änderung live skalieren (ohne Marker neu zu bauen)
+  // Pins bei Zoom-Änderung live skalieren (ohne Marker neu zu bauen)
   useEffect(() => {
-    applyPinScales(markerDataRef.current, allPositions, zoom)
-  }, [zoom, allPositions])
+    applyPinScales(allMarkersRef.current, zoom)
+  }, [zoom])
 
   useEffect(() => {
-    if (!map || !enabled || !window.google?.maps?.marker?.AdvancedMarkerElement) {
-      if (clustererRef.current) {
-        clustererRef.current.clearMarkers()
-        clustererRef.current = null
-      }
-      markersRef.current.forEach(m => { m.map = null })
-      markersRef.current = []
-      markerDataRef.current = []
+    if (!map || !window.google?.maps?.marker?.AdvancedMarkerElement) {
+      if (clustererRef.current) { clustererRef.current.clearMarkers(); clustererRef.current = null }
+      allMarkersRef.current.forEach(m => { m.map = null })
+      allMarkersRef.current = []
       return
     }
 
-    const newMarkers = users.map(u => {
+    const userMarkers = showUsers ? users.map(u => {
       const content = buildUserPinElement(u, { isOwn: false, zoom: zoomRef.current })
+      content.dataset.pinType = 'user'
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
         position: { lat: u.latitude, lng: u.longitude },
         content,
+        zIndex: 10,
         gmpClickable: true,
       })
       marker.addListener('gmp-click', () => onUserClick(u))
       return marker
-    })
-    markersRef.current = newMarkers
-    markerDataRef.current = users.map((u, i) => ({ marker: newMarkers[i], lat: u.latitude, lng: u.longitude }))
-    applyPinScales(markerDataRef.current, positionsRef.current, zoomRef.current)
+    }) : []
 
-    const clusterer = new MarkerClusterer({
-      map,
-      markers: newMarkers,
-      renderer: {
-        render: ({ count, position }) => {
-          return new window.google.maps.marker.AdvancedMarkerElement({
-            position,
-            content: buildClusterElement(count, C.accent),
-            zIndex: 100 + count,
-          })
-        },
-      },
-    })
-    clustererRef.current = clusterer
-
-    return () => {
-      clusterer.clearMarkers()
-      newMarkers.forEach(m => { m.map = null })
-      clustererRef.current = null
-      markersRef.current = []
-      markerDataRef.current = []
-    }
-  }, [map, users, enabled, onUserClick])
-}
-
-// ─── Activity-pin clusterer ───────────────────────────────
-function useActivityClusterer({ map, activities, onActivityClick, enabled, zoom, allPositions }) {
-  const clustererRef = useRef(null)
-  const markersRef = useRef([])
-  const markerDataRef = useRef([])
-  const zoomRef = useRef(zoom)
-  zoomRef.current = zoom
-  const positionsRef = useRef(allPositions)
-  positionsRef.current = allPositions
-
-  // Pins bei Zoom-/Dichte-Änderung live skalieren (ohne Marker neu zu bauen)
-  useEffect(() => {
-    applyPinScales(markerDataRef.current, allPositions, zoom)
-  }, [zoom, allPositions])
-
-  useEffect(() => {
-    if (!map || !enabled || !window.google?.maps?.marker?.AdvancedMarkerElement) {
-      if (clustererRef.current) {
-        clustererRef.current.clearMarkers()
-        clustererRef.current = null
-      }
-      markersRef.current.forEach(m => { m.map = null })
-      markersRef.current = []
-      return
-    }
-
-    const newMarkers = activities.map(a => {
-      const content = buildActivityPinElement(a.activity_emoji, { zoom: zoomRef.current })
+    const actMarkers = showEvents ? activities.map(a => {
+      const content = buildActivityPinElement(a.activity_emoji, a.participants || [], { zoom: zoomRef.current })
+      content.dataset.pinType = 'activity'
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
         position: { lat: a.latitude, lng: a.longitude },
         content,
+        zIndex: 50,   // Events immer über Personen
         gmpClickable: true,
       })
       marker.addListener('gmp-click', () => onActivityClick(a))
       return marker
-    })
-    markersRef.current = newMarkers
-    markerDataRef.current = activities.map((a, i) => ({ marker: newMarkers[i], lat: a.latitude, lng: a.longitude }))
-    applyPinScales(markerDataRef.current, positionsRef.current, zoomRef.current)
+    }) : []
+
+    const allMarkers = [...userMarkers, ...actMarkers]
+    allMarkersRef.current = allMarkers
 
     const clusterer = new MarkerClusterer({
       map,
-      markers: newMarkers,
+      markers: allMarkers,
       renderer: {
-        render: ({ count, position }) => {
+        render: ({ count, position, markers }) => {
+          const hasEvent = markers.some(m => m.content?.dataset?.pinType === 'activity')
+          const hasUser  = markers.some(m => m.content?.dataset?.pinType === 'user')
+          const content  = buildClusterElement(count, hasEvent && hasUser, hasEvent)
           return new window.google.maps.marker.AdvancedMarkerElement({
-            position,
-            content: buildClusterElement(count, C.accentDark),
-            zIndex: 50 + count,
+            position, content, zIndex: 200 + count,
           })
         },
       },
@@ -303,12 +273,11 @@ function useActivityClusterer({ map, activities, onActivityClick, enabled, zoom,
 
     return () => {
       clusterer.clearMarkers()
-      newMarkers.forEach(m => { m.map = null })
+      allMarkers.forEach(m => { m.map = null })
       clustererRef.current = null
-      markersRef.current = []
-      markerDataRef.current = []
+      allMarkersRef.current = []
     }
-  }, [map, activities, enabled, onActivityClick])
+  }, [map, users, activities, showUsers, showEvents, onUserClick, onActivityClick])
 }
 
 // ─── Snapchat-style Zoom Sidebar ─────────────────────────
@@ -416,19 +385,6 @@ export default function WorldMapView({ onNavigateToProfile }) {
     setShowPrivacyBanner(false)
   }
 
-  const usersForMap = useMemo(() => (showGeschwister ? visibleUsers : []), [showGeschwister, visibleUsers])
-  const activitiesForMap = useMemo(() => (showEvents ? activities : []), [showEvents, activities])
-
-  // Alle Pin-Positionen (Personen + Events + eigener Standort) für die
-  // dichte-abhängige Skalierung – so bleiben Pins auch in Ballungen erkennbar.
-  const allPinPositions = useMemo(() => {
-    const arr = []
-    usersForMap.forEach(u => arr.push({ lat: u.latitude, lng: u.longitude }))
-    activitiesForMap.forEach(a => arr.push({ lat: a.latitude, lng: a.longitude }))
-    if (myProfile?.latitude) arr.push({ lat: myProfile.latitude, lng: myProfile.longitude })
-    return arr
-  }, [usersForMap, activitiesForMap, myProfile?.latitude, myProfile?.longitude])
-
   const defaultCenter = myProfile?.latitude
     ? { lat: myProfile.latitude, lng: myProfile.longitude }
     : { lat: 51.1657, lng: 10.4515 }
@@ -451,22 +407,15 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
   const handleActivityClick = useMemo(() => (a) => setSelectedActivity(a), [])
 
-  useUserClusterer({
+  useCombinedClusterer({
     map,
-    users: usersForMap,
+    users: visibleUsers,
+    activities,
     onUserClick: handleUserClick,
-    enabled: showGeschwister && isLoaded,
-    zoom: snapZoom.currentZoom,
-    allPositions: allPinPositions,
-  })
-
-  useActivityClusterer({
-    map,
-    activities: activitiesForMap,
     onActivityClick: handleActivityClick,
-    enabled: showEvents && isLoaded,
+    showUsers: showGeschwister && isLoaded,
+    showEvents: showEvents && isLoaded,
     zoom: snapZoom.currentZoom,
-    allPositions: allPinPositions,
   })
 
   if (loading || !isLoaded) {
@@ -492,8 +441,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <GoogleMap
           mapContainerStyle={{ width: '100%', height: '100%' }}
-          center={defaultCenter}
-          zoom={defaultZoom}
+          defaultCenter={defaultCenter}
+          defaultZoom={defaultZoom}
           onLoad={handleMapLoad}
           onUnmount={() => setMap(null)}
           options={{
@@ -516,7 +465,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
               position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
               zIndex={9999}
             >
-              <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} allPositions={allPinPositions} />
+              <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} />
             </AdvancedMarker>
           )}
         </GoogleMap>
@@ -648,14 +597,11 @@ function LayerToggle({ active, onClick, icon, label }) {
 }
 
 // ─── Own Pin Content (React-rendered into AdvancedMarker) ─
-function OwnPinContent({ user, zoom, allPositions }) {
+function OwnPinContent({ user, zoom }) {
   const size = 58
   const borderColor = C.accentDark
   const bg = user?.avatar_url ? 'transparent' : borderColor
-  const neighbors = user?.latitude != null
-    ? countNeighbors(user.latitude, user.longitude, allPositions || [], zoom)
-    : 0
-  const scale = pinScale(zoom) * densityScale(neighbors)
+  const scale = pinScale(zoom)
   return (
     <div style={{ position: 'relative', width: size, height: size, transform: 'translateY(50%)' }}>
       <div style={{
