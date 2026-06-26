@@ -1,4 +1,4 @@
--- Phase 44: Benutzernamen müssen eindeutig sein (case-insensitive).
+-- Phase 45: Benutzernamen müssen eindeutig sein (case-insensitive).
 -- Idempotent: kann mehrfach ausgeführt werden.
 
 -- 1) Eindeutigkeit auf DB-Ebene als Sicherheitsnetz (ignoriert NULL/leere Werte).
