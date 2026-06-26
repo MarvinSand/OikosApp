@@ -3,14 +3,32 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Settings, Copy, LogOut, SendHorizontal,
   MoreVertical, Shield, Plus, Trash2, MapPin, Clock, Pin, Globe, Lock, Users,
-  ShieldOff, UserMinus, User, MessageSquare, RefreshCw, Pencil, X, Check, ChevronRight
+  ShieldOff, UserMinus, User, MessageSquare, RefreshCw, Pencil, X, Check, ChevronRight,
+  MessageCircle, CalendarDays, HandHeart
 } from 'lucide-react'
+import SegmentedTabs from '../components/layout/SegmentedTabs'
+import MemberAvatarStack from '../components/community/MemberAvatarStack'
+import { communityCover, getInitials as getCommunityInitials } from '../lib/communityTheme'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunityDetail } from '../hooks/useCommunityDetail'
 import { useCommunities } from '../hooks/useCommunities'
 import { useChat } from '../hooks/useChat'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
+
+// ─── Shared header styles ─────────────────────────────────────
+const glassBtn = {
+  width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  border: 'none', cursor: 'pointer',
+  backgroundColor: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(6px)',
+}
+const metaChip = {
+  display: 'inline-flex', alignItems: 'center', gap: 5,
+  fontFamily: 'Lora, serif', fontSize: 11.5, fontWeight: 600,
+  color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-bg-secondary)',
+  border: '1px solid var(--color-border)', padding: '4px 10px', borderRadius: 999,
+}
 
 // ─── Helpers ──────────────────────────────────────────────────
 function formatTime(iso) {
@@ -1140,10 +1158,10 @@ export default function CommunityDetail() {
   }
 
   const tabs = [
-    { key: 'chat', label: '💬 Chat' },
-    { key: 'board', label: '📌 Pinnwand' },
-    { key: 'events', label: '📅 Events' },
-    { key: 'prayers', label: '🙏 Gebete' },
+    { key: 'chat', label: 'Chat', icon: MessageCircle },
+    { key: 'board', label: 'Pinnwand', icon: Pin },
+    { key: 'events', label: 'Events', icon: CalendarDays },
+    { key: 'prayers', label: 'Gebete', icon: HandHeart },
   ]
 
   // ── Loading ──────────────────────────────────────────────────
@@ -1173,99 +1191,78 @@ export default function CommunityDetail() {
     )
   }
 
-  const initials = (community.name || 'Unbekannt').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const initials = getCommunityInitials(community.name)
+  const cover = communityCover(community.id || community.name)
+  const memberPreview = members.map(m => ({ avatar_url: m.profile?.avatar_url || null, full_name: m.profile?.full_name || m.profile?.username })).slice(0, 6)
+  const isAdminRole = myMembership?.role === 'admin'
 
   return (
     <div className="h-full flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full">
 
-      {/* ── Header ──────────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-[var(--color-header-wash)] to-[var(--color-bg)] px-4 pt-3 pb-3.5 shrink-0 relative overflow-hidden border-b border-warm-3">
-        {/* Deko circles */}
-        <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full bg-warm-3/35 pointer-events-none blur-xl" />
-        <div className="absolute -bottom-5 -left-3 w-16 h-16 rounded-full bg-warm-3/25 pointer-events-none blur-lg" />
-
-        {/* Back + Settings row */}
-        <div className="flex items-center justify-between mb-3 relative z-10">
-          <button onClick={() => navigate(-1)} className="p-1.5 text-dark hover:bg-black/5 rounded-full transition-colors">
-            <ArrowLeft size={22} />
-          </button>
-          <button onClick={() => setShowSettings(true)} className="p-2 rounded-xl bg-white/60 text-dark-muted hover:bg-white/80 transition-colors shadow-sm backdrop-blur-sm">
-            <Settings size={20} />
-          </button>
+      {/* ── Header mit Cover-Banner ──────────────────────────── */}
+      <div style={{ flexShrink: 0, backgroundColor: 'var(--color-bg)' }}>
+        {/* Cover */}
+        <div style={{ position: 'relative', height: 116, background: cover.gradient, paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.16), transparent 45%, rgba(0,0,0,0.22))', pointerEvents: 'none' }} />
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 12px' }}>
+            <button onClick={() => navigate(-1)} aria-label="Zurück" style={glassBtn}>
+              <ArrowLeft size={20} color="#fff" />
+            </button>
+            <button onClick={() => setShowSettings(true)} aria-label="Einstellungen" style={glassBtn}>
+              <Settings size={19} color="#fff" />
+            </button>
+          </div>
         </div>
 
-        {/* Community info */}
-        <div className="flex gap-4 items-start relative z-10">
-          <div className="w-14 h-14 rounded-2xl shrink-0 bg-warm-1 flex items-center justify-center font-serif text-xl font-bold text-white shadow-lg shadow-warm-1/30 border border-warm-2/30">
-            {initials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="font-serif text-[22px] font-bold text-dark mb-1 leading-tight tracking-tight">
-              {community.name}
-            </h2>
-            {community.description && (
-              <p className="font-serif text-sm text-dark-muted mb-2 italic leading-snug truncate">
-                {community.description}
-              </p>
-            )}
-            <div className="flex gap-2 flex-wrap">
-              <span className="font-serif text-[11px] font-medium text-dark-muted bg-white/70 backdrop-blur-sm px-2.5 py-1 rounded-full border border-warm-3/80 shadow-sm flex items-center gap-1.5">
-                <Users size={12}/> {members.length} Mitglieder
-              </span>
-              <span className="font-serif text-[11px] font-medium text-dark-muted bg-white/70 backdrop-blur-sm px-2.5 py-1 rounded-full border border-warm-3/80 shadow-sm flex items-center gap-1.5">
-                {community.is_public ? <><Globe size={11} /> Öffentlich</> : <><Lock size={11} /> Privat</>}
-              </span>
-              {myMembership?.role === 'admin' && (
-                <span className="font-serif text-[11px] font-bold px-2.5 py-1 rounded-full bg-gold-light/40 text-[var(--color-gold-text)] border border-[var(--color-accent)]/40 shadow-sm flex items-center gap-1.5">
-                  <Shield size={11}/> Admin
-                </span>
-              )}
+        {/* Info */}
+        <div style={{ padding: '0 16px 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: -32 }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 20, flexShrink: 0,
+              background: cover.gradient, border: '4px solid var(--color-bg)',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.22)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontFamily: 'Lora, serif', fontSize: 27, fontWeight: 800,
+            }}>
+              {initials}
             </div>
+            <button
+              onClick={() => setShowMembers(v => !v)}
+              aria-label="Mitglieder anzeigen"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px 7px 10px', borderRadius: 999, border: `1px solid ${showMembers ? 'var(--color-accent)' : 'var(--color-border)'}`, backgroundColor: 'var(--color-white)', cursor: 'pointer', boxShadow: '0 2px 8px rgba(58,46,36,0.06)' }}
+            >
+              <MemberAvatarStack members={memberPreview} count={members.length} size={24} max={3} />
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 700, color: 'var(--color-text)' }}>{members.length}</span>
+            </button>
+          </div>
+
+          <h2 style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 800, color: 'var(--color-text)', margin: '12px 0 2px', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+            {community.name}
+          </h2>
+          {community.description && (
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
+              {community.description}
+            </p>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: community.description ? 0 : 10 }}>
+            <span style={metaChip}>
+              <Users size={12} /> {members.length} Mitglieder
+            </span>
+            <span style={metaChip}>
+              {community.is_public ? <><Globe size={12} /> Öffentlich</> : <><Lock size={12} /> Privat</>}
+            </span>
+            {isAdminRole && (
+              <span style={{ ...metaChip, color: 'var(--color-gold-text)', backgroundColor: 'var(--color-gold-light)', borderColor: 'var(--color-accent)' }}>
+                <Shield size={12} /> Admin
+              </span>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* ── Stats Strip ─────────────────────────────────────── */}
-      <div className="flex bg-white/60 backdrop-blur-md border border-warm-3/60 mx-4 mt-[-4px] mb-2 rounded-xl shadow-glass-sm relative z-20">
-        {[
-          { value: members.length, label: 'Mitglieder' },
-          { value: prayerMessages.length, label: 'Gebete' },
-          { value: posts.filter(p => !p.is_pinned).length, label: 'Beiträge' },
-        ].map((stat, i) => (
-          <div key={i} className={`flex-1 py-1.5 text-center ${i < 2 ? 'border-r border-warm-3/40' : ''}`}>
-            <p className="font-serif text-[16px] font-bold text-warm-1 m-0">{stat.value}</p>
-            <p className="font-serif text-[9px] text-dark-muted m-0 tracking-wide uppercase">{stat.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Tab Bar ─────────────────────────────────────────── */}
-      <div style={{ display: 'flex', backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)', flexShrink: 0, paddingRight: 8 }}>
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            style={{
-              flex: 1, padding: '10px 0', border: 'none', background: 'none',
-              fontFamily: 'Lora, serif', fontSize: 12,
-              fontWeight: activeTab === t.key ? 600 : 400,
-              color: activeTab === t.key ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
-              cursor: 'pointer', whiteSpace: 'nowrap',
-              borderBottom: activeTab === t.key ? '2px solid var(--color-warm-1)' : '2px solid transparent',
-              transition: 'all 0.15s',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-        <div className="border-l border-warm-3 my-2 mx-1" />
-        <button
-          onClick={() => setShowMembers(v => !v)}
-          className={`px-3 flex items-center gap-1.5 font-sans text-[11px] font-bold tracking-wide transition-colors rounded-lg my-1.5 ${showMembers ? 'bg-warm-1 text-white' : 'bg-warm-4 text-dark-muted hover:bg-warm-3'}`}
-        >
-          <Users size={14} /> 
-          <span className="hidden sm:inline">Mitglieder</span>
-        </button>
+        {/* Tab-Navigation (Premium-Segmented) */}
+        <div style={{ padding: '14px 16px 12px' }}>
+          <SegmentedTabs tabs={tabs} active={activeTab} onSelect={setActiveTab} />
+        </div>
       </div>
 
       {/* ── Main Content ─────────────────────────────────────── */}
@@ -1412,9 +1409,14 @@ export default function CommunityDetail() {
         {/* ── Discord-like Member Sidebar ──────────────────────────────── */}
         {showMembers && (
           <div className="w-[140px] border-l border-warm-3 bg-white overflow-y-auto shrink-0 pt-2 pb-6 px-2 scrollbar-none animate-[slideInRight_0.2s_ease-out]">
-            <p className="font-sans text-[10px] font-bold text-dark-muted uppercase tracking-widest px-2 mb-2 mt-2">
-              Mitglieder &mdash; {members.length}
-          </p>
+            <div className="flex items-center justify-between px-2 mb-2 mt-2">
+              <p className="font-sans text-[10px] font-bold text-dark-muted uppercase tracking-widest m-0">
+                Mitglieder &mdash; {members.length}
+              </p>
+              <button onClick={() => setShowMembers(false)} aria-label="Mitgliederliste schließen" className="p-1 -mr-1 rounded-md text-dark-muted hover:bg-warm-4 transition-colors">
+                <X size={15} />
+              </button>
+            </div>
           <div className="flex flex-col gap-1">
             {members.map(m => {
               const name = m.profile?.full_name || m.profile?.username || 'Unbekannt'

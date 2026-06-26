@@ -16,7 +16,7 @@ export function useCommunities() {
     setLoading(true)
     const { data } = await supabase
       .from('community_members')
-      .select('id, role, joined_at, community_id, communities(id, name, description, invite_code, created_by, created_at)')
+      .select('id, role, joined_at, community_id, communities(id, name, description, is_public, invite_code, created_by, created_at)')
       .eq('user_id', user.id)
 
     if (!data || data.length === 0) { setMyCommunities([]); setLoading(false); return }
