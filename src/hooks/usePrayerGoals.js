@@ -114,8 +114,24 @@ export function usePrayerGoals() {
     return data
   }
 
+  // Löscht ein Ziel (nur eigenes) inkl. verknüpftem persönlichen Anliegen.
+  async function deleteGoal(goalId) {
+    const all = [...publicGoals, ...myGoals, ...communityGoals, ...sharedGoals]
+    const goal = all.find(g => g.id === goalId)
+    const { error } = await supabase.from('prayer_goals').delete().eq('id', goalId).eq('created_by', user.id)
+    if (error) throw error
+    if (goal?.personal_prayer_request_id) {
+      await supabase.from('personal_prayer_requests').delete().eq('id', goal.personal_prayer_request_id).eq('owner_id', user.id)
+    }
+    setPublicGoals(p => p.filter(g => g.id !== goalId))
+    setMyGoals(p => p.filter(g => g.id !== goalId))
+    setCommunityGoals(p => p.filter(g => g.id !== goalId))
+    setSharedGoals(p => p.filter(g => g.id !== goalId))
+    return goal
+  }
+
   // Für die Home-Seite: aktivste öffentlichen Ziele
   const featuredGoals = publicGoals.slice(0, 3)
 
-  return { publicGoals, myGoals, communityGoals, sharedGoals, featuredGoals, loading, createGoal, reload: load }
+  return { publicGoals, myGoals, communityGoals, sharedGoals, featuredGoals, loading, createGoal, deleteGoal, reload: load }
 }

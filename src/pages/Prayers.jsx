@@ -6,6 +6,7 @@ import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 import { usePrayerFeed } from '../hooks/usePrayerFeed'
 import { usePersonalPrayer } from '../hooks/usePersonalPrayer'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
+import { usePrayerLists, LATER_LIST_NAME } from '../hooks/usePrayerLists'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../context/ToastContext'
@@ -149,11 +150,12 @@ function CommentInput({ onSubmit }) {
 
 // ─── Gebets-Karte ─────────────────────────────────────────────
 
-function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete, goal, onOpenGoal }) {
+function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete, onLaterPray, goal, onOpenGoal }) {
   const { user } = useAuth()
   const [showComments, setShowComments] = useState(false)
   const [showCommentInput, setShowCommentInput] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [showPrayMenu, setShowPrayMenu] = useState(false)
 
   const prayCount = (logs || []).length
   const hasPrayed = (logs || []).some(l => l.user_id === user?.id)
@@ -161,14 +163,34 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
   const profile = request.profiles
   const isOwner = request.owner_id === user?.id && request._sourceType !== 'community_message'
 
+  const isCustomGoal = goal?.goal_type === 'custom'
   const goalUnit = goal ? (goal.goal_type === 'hours' ? 'Std' : goal.goal_type === 'days' ? 'Tage' : 'Pers.') : ''
-  const goalTypeLabel = goal ? (goal.goal_type === 'hours' ? 'Stunden-Ziel' : goal.goal_type === 'days' ? 'Tage-Ziel' : 'Personen-Ziel') : ''
+  const goalTypeLabel = goal ? (goal.goal_type === 'hours' ? 'Stunden-Ziel' : goal.goal_type === 'days' ? 'Tage-Ziel' : isCustomGoal ? 'Individuelles Ziel' : 'Personen-Ziel') : ''
+  const [goalCurrent, setGoalCurrent] = useState(Number(goal?.current_value) || 0)
+  const [goalCount, setGoalCount] = useState(goal?.participant_count || 0)
+
+  async function handlePrayed() {
+    setShowPrayMenu(false)
+    if (!hasPrayed) onPray(request.id)
+    // Bei (nicht-individuellen) Zielen zusätzlich zum Ziel beitragen, damit der
+    // Fortschritt direkt in der Ansicht steigt.
+    if (goal && !isCustomGoal) {
+      setGoalCurrent(v => v + 1)
+      setGoalCount(v => v + 1)
+      try {
+        await supabase.rpc('contribute_to_prayer_goal', { p_goal_id: goal.id, p_minutes: 0 })
+      } catch {
+        setGoalCurrent(v => Math.max(0, v - 1))
+        setGoalCount(v => Math.max(0, v - 1))
+      }
+    }
+  }
 
   return (
     <div style={{
       backgroundColor: 'var(--color-bg)',
       border: '1px solid var(--color-border)',
-      borderRadius: 16, overflow: showMenu ? 'visible' : 'hidden',
+      borderRadius: 16, overflow: (showMenu || showPrayMenu) ? 'visible' : 'hidden',
       marginBottom: 12,
     }}>
       {/* Header */}
@@ -206,20 +228,26 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
         </p>
       )}
 
-      {/* Gebetsziel-Fortschritt (nur wenn ein Ziel verknüpft ist) */}
+      {/* Gebetsziel (nur wenn ein Ziel verknüpft ist) */}
       {goal && (
         <div
           onClick={() => onOpenGoal?.(goal)}
           style={{ margin: '0 14px 12px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', cursor: onOpenGoal ? 'pointer' : 'default' }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: isCustomGoal ? 0 : 8 }}>
             <span style={{ fontSize: 15 }}>{goal.icon || '🎯'}</span>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>{goalTypeLabel}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-              🙏 {goal.participant_count || 0} dabei
-            </span>
+            {!isCustomGoal && (
+              <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                🙏 {goalCount} dabei
+              </span>
+            )}
           </div>
-          <ProgressBar value={Number(goal.current_value) || 0} target={Number(goal.target_value)} color={goal.color || 'var(--color-accent)'} unitLabel={goalUnit} />
+          {isCustomGoal ? (
+            <p style={{ margin: '4px 0 0', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{goal.title}</p>
+          ) : (
+            <ProgressBar value={goalCurrent} target={Number(goal.target_value)} color={goal.color || 'var(--color-accent)'} unitLabel={goalUnit} />
+          )}
         </div>
       )}
 
@@ -229,20 +257,44 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
         padding: '10px 14px', borderTop: '1px solid var(--color-border)',
         backgroundColor: 'var(--color-bg-secondary)',
       }}>
-        {/* Ja-Button */}
-        <button
-          onClick={() => !hasPrayed && onPray(request.id)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 14px', borderRadius: 999,
-            border: `1.5px solid ${hasPrayed ? 'var(--color-accent)' : 'var(--color-border)'}`,
-            background: hasPrayed ? 'var(--color-accent)' : 'var(--color-bg)',
-            color: hasPrayed ? '#fff' : 'var(--color-text-secondary)',
-            fontSize: 13, fontWeight: 700, cursor: hasPrayed ? 'default' : 'pointer',
-          }}
-        >
-          🙏 Gebetet{prayCount > 0 ? ` · ${prayCount}` : ''}
-        </button>
+        {/* Gebetet-Dropdown */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowPrayMenu(v => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 999,
+              border: `1.5px solid ${hasPrayed ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              background: hasPrayed ? 'var(--color-accent)' : 'var(--color-bg)',
+              color: hasPrayed ? '#fff' : 'var(--color-text-secondary)',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            🙏 Gebetet{prayCount > 0 ? ` · ${prayCount}` : ''}
+            <ChevronDown size={13} />
+          </button>
+          {showPrayMenu && (
+            <>
+              <div onClick={() => setShowPrayMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+              <div style={{
+                position: 'absolute', left: 0, bottom: '100%', marginBottom: 6,
+                backgroundColor: 'var(--color-bg-secondary)', borderRadius: 12,
+                boxShadow: '0 8px 28px rgba(0,0,0,0.35)', border: '1px solid var(--color-border)',
+                zIndex: 20, minWidth: 210, overflow: 'hidden',
+              }}>
+                <button onClick={handlePrayed} style={menuItemStyle}>
+                  🙏 Gebetet
+                </button>
+                <button onClick={() => { setShowPrayMenu(false); onBookmark?.(request) }} style={{ ...menuItemStyle, borderTop: '1px solid var(--color-border)' }}>
+                  <BookmarkPlus size={15} /> Zur Gebetsliste hinzufügen
+                </button>
+                <button onClick={() => { setShowPrayMenu(false); onLaterPray?.(request) }} style={{ ...menuItemStyle, borderTop: '1px solid var(--color-border)' }}>
+                  ⏰ Später beten
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Kommentare */}
         <button
@@ -350,9 +402,10 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
 // ─── Neues Gebet erstellen ────────────────────────────────────
 
 const GOAL_TYPES = [
-  { val: 'people', label: 'Personen', hint: 'beten mit',  placeholder: '100' },
-  { val: 'hours',  label: 'Stunden',  hint: 'Gebetszeit', placeholder: '1000' },
-  { val: 'days',   label: 'Tage',     hint: 'am Stück',   placeholder: '30' },
+  { val: 'people', label: 'Personen',   hint: 'beten mit',  placeholder: '100' },
+  { val: 'hours',  label: 'Stunden',    hint: 'Gebetszeit', placeholder: '1000' },
+  { val: 'days',   label: 'Tage',       hint: 'am Stück',   placeholder: '30' },
+  { val: 'custom', label: 'Individuell', hint: 'frei',      placeholder: '' },
 ]
 
 // Erstellen-Sheet: alles in EINER Ansicht (Anliegen -> Kategorie -> Gebetsziel
@@ -370,10 +423,12 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
   const [goalEnabled, setGoalEnabled] = useState(false)
   const [goalType, setGoalType] = useState('people')
   const [goalTarget, setGoalTarget] = useState('')
+  const [goalCustom, setGoalCustom] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const isCustomGoalType = goalType === 'custom'
   const goalTargetNum = parseInt(goalTarget, 10)
-  const goalOk = !goalEnabled || goalTargetNum > 0
+  const goalOk = !goalEnabled || (isCustomGoalType ? goalCustom.trim().length > 0 : goalTargetNum > 0)
   const visOk =
     (visibility !== 'community' || selectedCommunity) &&
     (visibility !== 'specific' || selectedSiblings.length > 0)
@@ -396,12 +451,13 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
         visibility_community_id: visibility === 'community' ? selectedCommunity : null,
         visibility_user_ids: visibility === 'specific' ? selectedSiblings : [],
       })
-      if (goalEnabled && goalTargetNum > 0) {
+      if (goalEnabled && goalOk) {
         await onCreateGoal({
-          title: effectiveTitle,
+          // Individuelles Ziel: der frei geschriebene Text ist der Ziel-Titel.
+          title: isCustomGoalType ? goalCustom.trim() : effectiveTitle,
           description: text.trim() || null,
           goalType,
-          targetValue: goalTargetNum,
+          targetValue: isCustomGoalType ? 1 : goalTargetNum,
           visibility,
           communityId: visibility === 'community' ? selectedCommunity : null,
           visibilityUserIds: visibility === 'specific' ? selectedSiblings : [],
@@ -473,21 +529,31 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
             </label>
             {goalEnabled && (
               <div style={{ marginTop: 10 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                   {GOAL_TYPES.map(t => (
-                    <button key={t.val} onClick={() => setGoalType(t.val)} style={{ ...chip(goalType === t.val), flex: 1 }}>
+                    <button key={t.val} onClick={() => setGoalType(t.val)} style={{ ...chip(goalType === t.val) }}>
                       <span style={{ fontSize: 13, fontWeight: 700 }}>{t.label}</span>
                       <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>{t.hint}</span>
                     </button>
                   ))}
                 </div>
-                <input
-                  type="number" inputMode="numeric" min="1"
-                  value={goalTarget}
-                  onChange={e => setGoalTarget(e.target.value)}
-                  placeholder={`Zielwert (z. B. ${goalTypeObj?.placeholder})`}
-                  style={field}
-                />
+                {isCustomGoalType ? (
+                  <input
+                    type="text"
+                    value={goalCustom}
+                    onChange={e => setGoalCustom(e.target.value)}
+                    placeholder={'Dein eigenes Ziel, z. B. Jeden Morgen beten'}
+                    style={field}
+                  />
+                ) : (
+                  <input
+                    type="number" inputMode="numeric" min="1"
+                    value={goalTarget}
+                    onChange={e => setGoalTarget(e.target.value)}
+                    placeholder={`Zielwert (z. B. ${goalTypeObj?.placeholder})`}
+                    style={field}
+                  />
+                )}
               </div>
             )}
 
@@ -537,7 +603,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
               {text.trim() && <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{text.trim()}</p>}
             </div>
             <SummaryRow label="Kategorie" value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
-            <SummaryRow label="Gebetsziel" value={goalEnabled && goalTargetNum > 0 ? `${goalTarget} ${goalTypeObj?.label}` : 'Keins'} />
+            <SummaryRow label="Gebetsziel" value={!goalEnabled || !goalOk ? 'Keins' : isCustomGoalType ? goalCustom.trim() : `${goalTarget} ${goalTypeObj?.label}`} />
             <SummaryRow label="Sichtbarkeit" value={
               visibility === 'community'
                 ? `${visObj?.label} · ${myCommunities.find(c => c.id === selectedCommunity)?.name || ''}`
@@ -603,10 +669,12 @@ function primaryBtn(enabled) {
 
 export default function Prayers() {
   const { showToast } = useToast()
+  const { user } = useAuth()
   const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
   const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote, deleteRequest } = usePrayerFeed('all', statusFilter)
   const { createRequest } = usePersonalPrayer()
-  const { createGoal, publicGoals, myGoals, communityGoals, sharedGoals } = usePrayerGoals()
+  const { createGoal, deleteGoal, publicGoals, myGoals, communityGoals, sharedGoals } = usePrayerGoals()
+  const { lists, createList } = usePrayerLists()
   const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -732,13 +800,41 @@ export default function Prayers() {
     }
   }
 
-  async function handleDelete(request) {
-    if (!window.confirm('Dieses Gebetsanliegen wirklich löschen?')) return
+  // Löschen kennt sowohl reine Anliegen als auch Gebete mit Ziel.
+  async function handleDeleteEntry(entry) {
+    if (!window.confirm('Dieses Gebet wirklich löschen?')) return
     try {
-      await deleteRequest(request.id)
-      showToast('Gebetsanliegen gelöscht')
+      if (entry.goal) {
+        await deleteGoal(entry.goal.id)   // löscht Ziel + verknüpftes Anliegen
+        reload()
+      } else {
+        await deleteRequest(entry.request.id)
+      }
+      showToast('Gebet gelöscht')
     } catch {
       showToast('Fehler beim Löschen', 'error')
+    }
+  }
+
+  // "Später beten": Anliegen in die Standard-Liste legen (legt sie bei Bedarf an).
+  async function handleLaterPray(request) {
+    try {
+      let list = lists.find(l => (l.name || '').toLowerCase() === LATER_LIST_NAME.toLowerCase())
+      if (!list) {
+        // DB prüfen, um Doppel-Anlage der Standard-Liste zu vermeiden.
+        const { data: existingList } = await supabase
+          .from('prayer_lists').select('*').eq('user_id', user.id).ilike('name', LATER_LIST_NAME).maybeSingle()
+        list = existingList || await createList({ name: LATER_LIST_NAME, icon: '⏰' })
+      }
+      const idColumn = request.person_id ? 'prayer_request_id' : 'personal_prayer_request_id'
+      const { data: existing } = await supabase
+        .from('prayer_list_items').select('id').eq('list_id', list.id).eq(idColumn, request.id).maybeSingle()
+      if (existing) { showToast(`Schon in „${LATER_LIST_NAME}"`); return }
+      const { error } = await supabase.from('prayer_list_items').insert({ list_id: list.id, [idColumn]: request.id })
+      if (error) throw error
+      showToast(`Zu „${LATER_LIST_NAME}" hinzugefügt ✓`)
+    } catch {
+      showToast('Fehler beim Hinzufügen', 'error')
     }
   }
 
@@ -957,7 +1053,8 @@ export default function Prayers() {
             onComment={handleComment}
             onBookmark={setBookmarkRequest}
             onForward={setForwardRequest}
-            onDelete={handleDelete}
+            onDelete={() => handleDeleteEntry(entry)}
+            onLaterPray={handleLaterPray}
             goal={entry.goal}
             onOpenGoal={(g) => navigate(`/goals/${g.id}`)}
           />

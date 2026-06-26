@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
+// Verhindert, dass mehrere Hook-Instanzen gleichzeitig die Standard-Liste anlegen.
+let ensuringDefaultList = false
+export const LATER_LIST_NAME = 'Später beten'
+
 export function usePrayerLists() {
   const { user } = useAuth()
   const [lists, setLists] = useState([])
@@ -13,7 +17,7 @@ export function usePrayerLists() {
   }, [user?.id])
 
   async function load() {
-    const { data } = await supabase
+    let { data } = await supabase
       .from('prayer_lists')
       .select('*')
       .eq('user_id', user.id)
@@ -21,6 +25,18 @@ export function usePrayerLists() {
       .order('created_at', { ascending: true })
 
     if (!data) { setLoading(false); return }
+
+    // Standard-Liste "Später beten" für alle sicherstellen (einmalig anlegen).
+    if (!data.some(l => (l.name || '').toLowerCase() === LATER_LIST_NAME.toLowerCase()) && !ensuringDefaultList) {
+      ensuringDefaultList = true
+      const { data: created } = await supabase
+        .from('prayer_lists')
+        .insert({ user_id: user.id, name: LATER_LIST_NAME, icon: '⏰', color: '#7A9E7E', sort_order: 0 })
+        .select()
+        .single()
+      ensuringDefaultList = false
+      if (created) data = [created, ...data]
+    }
 
     // Zähle Anliegen pro Liste
     const listIds = data.map(l => l.id)
