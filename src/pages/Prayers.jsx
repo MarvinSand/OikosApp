@@ -16,7 +16,7 @@ import PrayerModeSetupSheet from '../components/prayer/PrayerModeSetupSheet'
 import AddToListSheet from '../components/prayer/AddToListSheet'
 import ForwardSheet from '../components/prayer/ForwardSheet'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
-import GoalCard from '../components/prayer/GoalCard'
+import ProgressBar from '../components/prayer/ProgressBar'
 import SiblingPicker from '../components/prayer/SiblingPicker'
 
 // ─── Konstanten ───────────────────────────────────────────────
@@ -149,7 +149,7 @@ function CommentInput({ onSubmit }) {
 
 // ─── Gebets-Karte ─────────────────────────────────────────────
 
-function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete }) {
+function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete, goal, onOpenGoal }) {
   const { user } = useAuth()
   const [showComments, setShowComments] = useState(false)
   const [showCommentInput, setShowCommentInput] = useState(false)
@@ -160,6 +160,9 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
   const cat = CATEGORIES.find(c => c.key === request.category)
   const profile = request.profiles
   const isOwner = request.owner_id === user?.id && request._sourceType !== 'community_message'
+
+  const goalUnit = goal ? (goal.goal_type === 'hours' ? 'Std' : goal.goal_type === 'days' ? 'Tage' : 'Pers.') : ''
+  const goalTypeLabel = goal ? (goal.goal_type === 'hours' ? 'Stunden-Ziel' : goal.goal_type === 'days' ? 'Tage-Ziel' : 'Personen-Ziel') : ''
 
   return (
     <div style={{
@@ -201,6 +204,23 @@ function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onFor
         <p style={{ margin: '0 14px 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
           {request.description}
         </p>
+      )}
+
+      {/* Gebetsziel-Fortschritt (nur wenn ein Ziel verknüpft ist) */}
+      {goal && (
+        <div
+          onClick={() => onOpenGoal?.(goal)}
+          style={{ margin: '0 14px 12px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', cursor: onOpenGoal ? 'pointer' : 'default' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 15 }}>{goal.icon || '🎯'}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>{goalTypeLabel}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+              🙏 {goal.participant_count || 0} dabei
+            </span>
+          </div>
+          <ProgressBar value={Number(goal.current_value) || 0} target={Number(goal.target_value)} color={goal.color || 'var(--color-accent)'} unitLabel={goalUnit} />
+        </div>
       )}
 
       {/* Aktionen */}
@@ -586,7 +606,7 @@ export default function Prayers() {
   const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
   const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote, deleteRequest } = usePrayerFeed('all', statusFilter)
   const { createRequest } = usePersonalPrayer()
-  const { createGoal, publicGoals, myGoals, communityGoals, sharedGoals, reload: reloadGoals } = usePrayerGoals()
+  const { createGoal, publicGoals, myGoals, communityGoals, sharedGoals } = usePrayerGoals()
   const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -601,7 +621,6 @@ export default function Prayers() {
   const [prayerModeItems, setPrayerModeItems] = useState(null)
   const [bookmarkRequest, setBookmarkRequest] = useState(null)
   const [forwardRequest, setForwardRequest] = useState(null)
-  const [prayGoal, setPrayGoal] = useState(null)
 
   // Direkt das Erstellen-Sheet öffnen, wenn man vom Profil "+ Gebetsanliegen" kommt
   useEffect(() => {
@@ -639,9 +658,10 @@ export default function Prayers() {
     }
     return [...byId.values()]
   })()
-  // IDs der mit einem Ziel verknüpften persönlichen Anliegen – diese werden als
-  // Ziel-Karte gezeigt, damit nichts doppelt erscheint.
-  const goalLinkedRequestIds = new Set(allGoals.map(g => g.personal_prayer_request_id).filter(Boolean))
+  // Ziel je verknüpftem persönlichen Anliegen – so wird ein Gebet MIT Ziel als
+  // ganz normale Gebets-Karte gezeigt, nur mit zusätzlichem Fortschritt.
+  const goalByReqId = new Map(allGoals.filter(g => g.personal_prayer_request_id).map(g => [g.personal_prayer_request_id, g]))
+  const shownReqIds = new Set(filteredRequests.map(r => r.id))
 
   const filteredGoals = allGoals.filter(g => {
     if (statusFilter === 'answered') return false        // Ziele haben keinen "erhört"-Status
@@ -651,12 +671,29 @@ export default function Prayers() {
     return [g.title || '', g.description || ''].join(' ').toLowerCase().includes(q)
   })
 
-  // Anliegen (ohne die ziel-verknüpften) + Ziele zu einer Liste mergen, nach Datum.
+  // Ziele, deren Anliegen NICHT (oder noch nicht) im Feed steckt, als eigene
+  // Karte synthetisieren – damit jedes Ziel als Gebets-Karte erscheint.
+  const syntheticGoalEntries = filteredGoals
+    .filter(g => !g.personal_prayer_request_id || !shownReqIds.has(g.personal_prayer_request_id))
+    .map(g => ({
+      id: 'g-' + g.id,
+      created_at: g.created_at,
+      goal: g,
+      request: {
+        id: g.personal_prayer_request_id || g.id,
+        title: g.title,
+        description: g.description,
+        category: null,
+        created_at: g.created_at,
+        owner_id: g.created_by,
+        is_public: true,
+        profiles: g.profiles || null,
+      },
+    }))
+
   const feedEntries = [
-    ...filteredRequests
-      .filter(r => !goalLinkedRequestIds.has(r.id))
-      .map(r => ({ kind: 'request', id: 'r-' + r.id, created_at: r.created_at, request: r })),
-    ...filteredGoals.map(g => ({ kind: 'goal', id: 'g-' + g.id, created_at: g.created_at, goal: g })),
+    ...filteredRequests.map(r => ({ id: 'r-' + r.id, created_at: r.created_at, request: r, goal: goalByReqId.get(r.id) || null })),
+    ...syntheticGoalEntries,
   ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 
   // Count of non-default filter facets (status counts when not the default "open")
@@ -911,27 +948,19 @@ export default function Prayers() {
         )}
 
         {!loading && feedEntries.map(entry => (
-          entry.kind === 'goal' ? (
-            <div key={entry.id} style={{ marginBottom: 12 }}>
-              <GoalCard
-                goal={entry.goal}
-                onOpenDetail={() => navigate(`/goals/${entry.goal.id}`)}
-                onPrayHours={setPrayGoal}
-              />
-            </div>
-          ) : (
-            <PrayerCard
-              key={entry.id}
-              request={entry.request}
-              logs={logsMap[entry.request.id]}
-              notes={notesMap[entry.request.id]}
-              onPray={logPrayer}
-              onComment={handleComment}
-              onBookmark={setBookmarkRequest}
-              onForward={setForwardRequest}
-              onDelete={handleDelete}
-            />
-          )
+          <PrayerCard
+            key={entry.id}
+            request={entry.request}
+            logs={logsMap[entry.request.id]}
+            notes={notesMap[entry.request.id]}
+            onPray={logPrayer}
+            onComment={handleComment}
+            onBookmark={setBookmarkRequest}
+            onForward={setForwardRequest}
+            onDelete={handleDelete}
+            goal={entry.goal}
+            onOpenGoal={(g) => navigate(`/goals/${g.id}`)}
+          />
         ))}
 
         {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}
@@ -979,14 +1008,6 @@ export default function Prayers() {
         />
       )}
 
-      {/* Mitbeten bei einem zeitbasierten Gebetsziel */}
-      {prayGoal && (
-        <GuidedPrayerMode
-          items={[{ type: 'topic', request: { id: prayGoal.id, title: prayGoal.title, description: prayGoal.description, icon: prayGoal.icon }, ampel: null }]}
-          goalId={prayGoal.id}
-          onClose={() => { setPrayGoal(null); reloadGoals() }}
-        />
-      )}
 
       {/* Zu Liste hinzufügen */}
       {bookmarkRequest && (
