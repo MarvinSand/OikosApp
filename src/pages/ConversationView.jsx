@@ -1096,17 +1096,62 @@ function ReplyComposerPreview({ msg, onCancel }) {
   )
 }
 
+// ─── Emoji Picker ─────────────────────────────────────────────
+const EMOJI_CATEGORIES = [
+  { label: 'Häufig',      emojis: ['😊','😂','❤️','🙏','👍','😍','🥰','😘','😭','😅','🤣','😁','😎','🥹','😢','😔','😬','🤔','🙈','😇'] },
+  { label: 'Gesichter',   emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫡','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','💀','☠️'] },
+  { label: 'Herzen',      emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💕','💞','💓','💗','💖','💘','💝','💟','❣️','💔','❤️‍🔥','❤️‍🩹'] },
+  { label: 'Hände',       emojis: ['👋','🤚','🖐️','✋','🖖','🫱','🫲','🫳','🫴','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🙏','✍️','💅','🤳','💪'] },
+  { label: 'Natur',       emojis: ['🌸','🌺','🌻','🌹','🌷','🌼','🪷','💐','🍀','🌿','🌱','🌲','🌳','🍃','🍂','🍁','🌾','🌵','☘️','🌴','🌊','🔥','⭐','✨','🌙','☀️','❄️','🌈','⛅','🌤️','🌦️','🌧️','⛈️','🌩️'] },
+  { label: 'Essen',       emojis: ['🍕','🍔','🌮','🌯','🥗','🍜','🍣','🍱','🍦','🎂','🍰','🧁','🍩','🍪','🍫','🍬','🍭','🥂','🍷','☕','🧃','🥤','🧋','🍵','🍺','🍻','🥃'] },
+  { label: 'Aktivitäten', emojis: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🎱','🏓','🏸','🥊','⛷️','🏊','🚴','🎮','🎲','🎯','🎤','🎵','🎶','🎸','🥁','🎹','🎺','🎻'] },
+  { label: 'Orte',        emojis: ['🏠','🏡','🏢','🏥','⛪','🕌','🕍','🛕','⛩️','🗺️','🌍','🌎','🌏','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🌅','🌄','🌠','🎇','🎆'] },
+  { label: 'Symbole',     emojis: ['✅','❌','❓','❗','💯','🔥','⚡','💥','✨','🎉','🎊','🎁','🎀','🏆','🥇','🥈','🥉','🔔','🔕','💬','💭','💤','🔑','🗝️','🔒','🔓','❤️‍🔥','🙏','👑','🌟'] },
+]
+
+function EmojiPicker({ onSelect }) {
+  const [activeTab, setActiveTab] = useState(0)
+  return (
+    <div style={{ borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+      <div style={{ display: 'flex', overflowX: 'auto', padding: '8px 12px 0', gap: 4, borderBottom: '1px solid var(--color-border)' }} className="hide-scrollbar">
+        {EMOJI_CATEGORIES.map((cat, i) => (
+          <button key={cat.label} onClick={() => setActiveTab(i)} style={{
+            padding: '5px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: activeTab === i ? 'var(--color-accent)' : 'transparent',
+            color: activeTab === i ? 'white' : 'var(--color-text-secondary)',
+            fontSize: 11, fontWeight: activeTab === i ? 700 : 500, whiteSpace: 'nowrap', flexShrink: 0,
+          }}>
+            {cat.label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, padding: '10px 12px', maxHeight: 200, overflowY: 'auto' }}>
+        {EMOJI_CATEGORIES[activeTab].emojis.map(emoji => (
+          <button key={emoji} onClick={() => onSelect(emoji)} style={{
+            fontSize: 22, padding: '6px 4px', border: 'none', background: 'transparent',
+            cursor: 'pointer', borderRadius: 8, lineHeight: 1,
+          }}>
+            {emoji}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Input Bar ────────────────────────────────────────────────
 function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyTo, onCancelReply }) {
   const [text, setText] = useState('')
   const [showAttach, setShowAttach] = useState(false)
+  const [showEmoji, setShowEmoji] = useState(false)
   const textareaRef = useRef(null)
+  const cursorPosRef = useRef(null)
 
   function autoResize() {
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
-    const maxH = 5 * 22 + 16 // 5 lines + padding
+    const maxH = 5 * 22 + 16
     el.style.height = Math.min(el.scrollHeight, maxH) + 'px'
   }
 
@@ -1126,10 +1171,28 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
     }
   }
 
+  function insertEmoji(emoji) {
+    const el = textareaRef.current
+    const pos = cursorPosRef.current ?? text.length
+    const newText = text.slice(0, pos) + emoji + text.slice(pos)
+    setText(newText)
+    cursorPosRef.current = pos + emoji.length
+    setTimeout(() => {
+      if (el) {
+        el.focus()
+        el.setSelectionRange(pos + emoji.length, pos + emoji.length)
+      }
+      autoResize()
+    }, 0)
+  }
+
   return (
     <div className="chat-input-bar" style={{ backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)' }}>
       {/* Reply preview */}
       {replyTo && <ReplyComposerPreview msg={replyTo} onCancel={onCancelReply} />}
+
+      {/* Emoji picker */}
+      {showEmoji && <EmojiPicker onSelect={insertEmoji} />}
 
       {/* Attachment menu */}
       {showAttach && (
@@ -1223,6 +1286,8 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
           value={text}
           onChange={e => { setText(e.target.value); autoResize() }}
           onKeyDown={handleKeyDown}
+          onClick={e => { cursorPosRef.current = e.target.selectionStart }}
+          onKeyUp={e => { cursorPosRef.current = e.target.selectionStart }}
           placeholder="Nachricht schreiben..."
           rows={1}
           style={{
@@ -1240,6 +1305,26 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
             overflowY: 'hidden',
           }}
         />
+
+        {/* Emoji button */}
+        <button
+          onClick={() => setShowEmoji(v => !v)}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: 'none',
+            backgroundColor: showEmoji ? 'var(--color-accent-light)' : 'transparent',
+            color: showEmoji ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Smile size={20} />
+        </button>
 
         {/* Send button */}
         <button
