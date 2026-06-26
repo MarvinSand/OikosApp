@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, MapPin, HandHeart, Users, Globe, ChevronRight } from 'lucide-react'
-import { useAuth } from '../../hooks/useAuth'
+import { MapPin, HandHeart, Users, Globe, ChevronRight } from 'lucide-react'
 
 const FEATURES = [
   { icon: MapPin,    title: 'OIKOS Map',    text: 'Begleite Menschen aus deinem Umfeld im Gebet.', target: '/profile' },
@@ -10,29 +8,9 @@ const FEATURES = [
   { icon: Globe,     title: 'Weltkarte',     text: 'Sieh Events und wo deine Geschwister sind.', target: '/worldmap' },
 ]
 
-// Kurzer, wegklickbarer Willkommens-Banner auf der Home-Startseite.
+// Dauerhaft eingeblendeter Willkommens-Banner auf der Home-Startseite.
 export default function WelcomeBanner() {
-  const { user } = useAuth()
   const navigate = useNavigate()
-  const storageKey = user ? `oikos_welcome_dismissed_${user.id}` : null
-  const [dismissed, setDismissed] = useState(() => {
-    if (!storageKey) return false
-    try { return localStorage.getItem(storageKey) === '1' } catch { return false }
-  })
-
-  // user wird oft erst nach dem ersten Render geladen → dismissed-Status neu aus localStorage lesen,
-  // damit der Banner nach dem Wegklicken nicht erneut auftaucht.
-  useEffect(() => {
-    if (!storageKey) return
-    try { setDismissed(localStorage.getItem(storageKey) === '1') } catch { /* ignore */ }
-  }, [storageKey])
-
-  if (dismissed) return null
-
-  function handleDismiss() {
-    setDismissed(true)
-    try { if (storageKey) localStorage.setItem(storageKey, '1') } catch { /* ignore */ }
-  }
 
   return (
     <div
@@ -46,21 +24,7 @@ export default function WelcomeBanner() {
         overflow: 'hidden',
       }}
     >
-      <button
-        onClick={handleDismiss}
-        aria-label="Willkommensnachricht schließen"
-        style={{
-          position: 'absolute', top: 10, right: 10,
-          width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: 'none', cursor: 'pointer',
-          background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)',
-        }}
-      >
-        <X size={16} />
-      </button>
-
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 800, color: 'var(--color-text)', margin: '0 0 4px', paddingRight: 34 }}>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 800, color: 'var(--color-text)', margin: '0 0 4px' }}>
         Willkommen bei OIKOS! 🌱
       </p>
       <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '0 0 14px' }}>

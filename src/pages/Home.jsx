@@ -6,6 +6,7 @@ import { useNotifications } from '../hooks/useNotifications'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
 import TopPrayerToday from '../components/home/TopPrayerToday'
 import WelcomeBanner from '../components/home/WelcomeBanner'
+import WhatsNewSection from '../components/home/WhatsNewSection'
 import HomeCommunityTab from '../components/home/HomeCommunityTab'
 import GoalCard from '../components/prayer/GoalCard'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
@@ -159,8 +160,11 @@ export default function Home() {
       <div className="flex-1 overflow-y-auto hide-scrollbar" style={{ paddingBottom: 32 }}>
         {tab === 'aktuelles' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
-            {/* Willkommensnachricht (wegklickbar) */}
+            {/* Willkommensnachricht (dauerhaft) */}
             <WelcomeBanner />
+
+            {/* Was ist neu / Neueste Updates */}
+            <WhatsNewSection />
 
             {/* Gebet mit den meisten Interaktionen heute */}
             <TopPrayerToday />
