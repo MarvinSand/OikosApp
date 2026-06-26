@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { HandHeart, ListChecks, Target, UserCircle, Globe, Newspaper, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
+import { HandHeart, ListChecks, Target, UserCircle, Globe, Newspaper, Moon, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
 
 // Die wichtigsten Neuerungen seit der letzten Version. Jede Zeile öffnet das Feature.
 const FEATURES = [
@@ -10,6 +10,7 @@ const FEATURES = [
   { icon: UserCircle, title: 'Neue Profilansicht',          text: 'Überarbeitetes Profil mit Oikos Map, Posts & Gebeten.', target: '/profile' },
   { icon: Globe,      title: 'Weltkarte',                   text: 'Events und Geschwister in deiner Nähe entdecken.',     target: '/worldmap' },
   { icon: Newspaper,  title: 'For-You-Feed',                text: 'Anliegen teilen, kommentieren, reagieren & weiterleiten.', target: '/friends?tab=feed' },
+  { icon: Moon,       title: 'Dark Mode',                   text: 'Augenschonendes dunkles Design – jetzt standardmäßig an, umschaltbar in den Einstellungen.', target: '/settings' },
 ]
 
 const INITIAL_COUNT = 4

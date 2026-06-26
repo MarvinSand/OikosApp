@@ -10,11 +10,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
     <title>OIKOS</title>
     <script>
-      // Dark Mode früh setzen, um Flash beim Laden zu vermeiden
+      // Dark Mode ist Standard – früh setzen, um Flash beim Laden zu vermeiden
       (function () {
         try {
-          if (localStorage.getItem('theme') === 'dark') {
+          var t = localStorage.getItem('theme')
+          if (t !== 'light') {
             document.documentElement.setAttribute('data-theme', 'dark')
+            var m = document.querySelector('meta[name="theme-color"]')
+            if (m) m.setAttribute('content', '#000000')
           }
         } catch (e) { /* ignore */ }
       })()
