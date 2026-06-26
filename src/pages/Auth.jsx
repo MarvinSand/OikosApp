@@ -34,6 +34,12 @@ export default function Auth() {
       if (view === 'login') {
         await login(email, password)
       } else {
+        // Benutzername-Verfügbarkeit vor der Registrierung prüfen
+        const { data: available, error: checkErr } = await supabase.rpc('is_username_available', { p_username: username.trim() })
+        if (!checkErr && available === false) {
+          setError('Dieser Benutzername ist bereits vergeben.')
+          return
+        }
         const data = await register(email, password, fullName, gender, username.trim())
         if (!data?.session) {
           setView('email-sent')
@@ -44,6 +50,8 @@ export default function Auth() {
     } catch (err) {
       if (err.message?.toLowerCase().includes('email not confirmed')) {
         setEmailNotConfirmed(true)
+      } else if (err.code === '23505' || err.message?.toLowerCase().includes('duplicate') || err.message?.toLowerCase().includes('unique')) {
+        setError('Dieser Benutzername ist bereits vergeben.')
       } else {
         setError(err.message || 'Ein Fehler ist aufgetreten.')
       }
