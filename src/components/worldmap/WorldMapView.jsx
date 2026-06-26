@@ -32,18 +32,32 @@ function getInitials(name) {
   return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
+// Haptisches Zoom-Verhalten: rauszoomen (kleiner Zoom-Wert) → Pins größer,
+// reinzoomen (großer Zoom-Wert) → Pins kleiner.
+function pinScale(zoom) {
+  const z = Math.max(3, Math.min(16, zoom ?? 10))
+  const t = (z - 3) / (16 - 3)        // 0 (weit raus) … 1 (nah dran)
+  return +(1.55 - t * (1.55 - 0.8)).toFixed(3)  // 1.55 … 0.8
+}
+
 // ─── Pin DOM builders ────────────────────────────────────
-function buildUserPinElement(user, { isOwn = false } = {}) {
-  const size = isOwn ? 50 : 38
+function buildUserPinElement(user, { isOwn = false, zoom } = {}) {
+  const size = isOwn ? 58 : 48
   const borderColor = isOwn ? C.accentDark : C.accent
   const bg = user.avatar_url ? 'transparent' : borderColor
   const initials = getInitials(user.full_name)
 
+  // Äußerer Wrapper = fixe Basisgröße, hält den Anker stabil
   const wrap = document.createElement('div')
   wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translateY(50%);`
 
+  // Innerer Layer wird je nach Zoom skaliert (haptisches Wachsen/Schrumpfen)
+  const scaleLayer = document.createElement('div')
+  scaleLayer.dataset.pinScale = '1'
+  scaleLayer.style.cssText = `position:relative;width:100%;height:100%;transform-origin:50% 50%;transform:scale(${pinScale(zoom)});transition:transform 0.18s ease;`
+
   const circle = document.createElement('div')
-  circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${bg};border:${isOwn ? 3 : 2}px solid ${borderColor};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.18);cursor:pointer;`
+  circle.style.cssText = `width:100%;height:100%;border-radius:50%;background:${bg};border:${isOwn ? 3 : 2.5}px solid ${borderColor};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,0.22);cursor:pointer;`
 
   if (user.avatar_url) {
     const img = document.createElement('img')
@@ -57,37 +71,47 @@ function buildUserPinElement(user, { isOwn = false } = {}) {
     span.textContent = initials
     circle.appendChild(span)
   }
-  wrap.appendChild(circle)
+  scaleLayer.appendChild(circle)
 
   if (isOwn) {
     const pulse = document.createElement('div')
     pulse.style.cssText = 'position:absolute;inset:-5px;border-radius:50%;border:2px solid rgba(90,200,250,0.6);animation:oikosPinPulse 2s ease-in-out infinite;pointer-events:none;'
-    wrap.appendChild(pulse)
+    scaleLayer.appendChild(pulse)
   }
+  wrap.appendChild(scaleLayer)
   return wrap
 }
 
-function buildActivityPinElement(emoji) {
-  // Outer wrapper positions both the pulse ring and the pin circle
-  const wrap = document.createElement('div')
-  wrap.style.cssText = 'position:relative;width:52px;height:52px;transform:translateY(50%);cursor:pointer;'
+function buildActivityPinElement(emoji, { zoom } = {}) {
+  const size = 58
+  const radius = '34%'  // abgerundetes Quadrat (squircle) statt Kreis
 
-  // Pulsing ring behind the circle
+  // Äußerer Wrapper hält den Anker stabil
+  const wrap = document.createElement('div')
+  wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translateY(50%);cursor:pointer;`
+
+  // Skalierungs-Layer fürs haptische Zoom-Verhalten
+  const scaleLayer = document.createElement('div')
+  scaleLayer.dataset.pinScale = '1'
+  scaleLayer.style.cssText = `position:relative;width:100%;height:100%;transform-origin:50% 50%;transform:scale(${pinScale(zoom)});transition:transform 0.18s ease;`
+
+  // Pulsing ring behind the square
   const pulse = document.createElement('div')
-  pulse.style.cssText = `position:absolute;inset:-4px;border-radius:50%;background:rgba(90,200,250,0.25);animation:eventPinPulse 1.8s ease-in-out infinite;pointer-events:none;`
-  wrap.appendChild(pulse)
+  pulse.style.cssText = `position:absolute;inset:-4px;border-radius:${radius};background:rgba(90,200,250,0.25);animation:eventPinPulse 1.8s ease-in-out infinite;pointer-events:none;`
+  scaleLayer.appendChild(pulse)
 
   // Outer glow ring (second, slower)
   const glow = document.createElement('div')
-  glow.style.cssText = `position:absolute;inset:-10px;border-radius:50%;background:rgba(90,200,250,0.10);animation:eventPinPulse 1.8s ease-in-out 0.6s infinite;pointer-events:none;`
-  wrap.appendChild(glow)
+  glow.style.cssText = `position:absolute;inset:-10px;border-radius:${radius};background:rgba(90,200,250,0.10);animation:eventPinPulse 1.8s ease-in-out 0.6s infinite;pointer-events:none;`
+  scaleLayer.appendChild(glow)
 
-  // The pin circle itself
-  const circle = document.createElement('div')
-  circle.style.cssText = `position:absolute;inset:4px;border-radius:50%;background:#fff;border:2.5px solid ${C.accent};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 14px rgba(90,200,250,0.45);font-size:20px;`
-  circle.textContent = emoji || '📍'
-  wrap.appendChild(circle)
+  // The pin square itself (rounded corners)
+  const square = document.createElement('div')
+  square.style.cssText = `position:absolute;inset:4px;border-radius:${radius};background:#fff;border:2.5px solid ${C.accent};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 14px rgba(90,200,250,0.45);font-size:22px;`
+  square.textContent = emoji || '📍'
+  scaleLayer.appendChild(square)
 
+  wrap.appendChild(scaleLayer)
   return wrap
 }
 
@@ -127,9 +151,20 @@ function PrivacyBanner({ onClose }) {
 }
 
 // ─── User-pin clusterer ───────────────────────────────────
-function useUserClusterer({ map, users, onUserClick, enabled }) {
+function useUserClusterer({ map, users, onUserClick, enabled, zoom }) {
   const clustererRef = useRef(null)
   const markersRef = useRef([])
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+
+  // Pins bei Zoom-Änderung live skalieren (ohne Marker neu zu bauen)
+  useEffect(() => {
+    const k = pinScale(zoom)
+    markersRef.current.forEach(m => {
+      const layer = m.content?.querySelector?.('[data-pin-scale]')
+      if (layer) layer.style.transform = `scale(${k})`
+    })
+  }, [zoom])
 
   useEffect(() => {
     if (!map || !enabled || !window.google?.maps?.marker?.AdvancedMarkerElement) {
@@ -143,7 +178,7 @@ function useUserClusterer({ map, users, onUserClick, enabled }) {
     }
 
     const newMarkers = users.map(u => {
-      const content = buildUserPinElement(u, { isOwn: false })
+      const content = buildUserPinElement(u, { isOwn: false, zoom: zoomRef.current })
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
         position: { lat: u.latitude, lng: u.longitude },
         content,
@@ -179,9 +214,20 @@ function useUserClusterer({ map, users, onUserClick, enabled }) {
 }
 
 // ─── Activity-pin clusterer ───────────────────────────────
-function useActivityClusterer({ map, activities, onActivityClick, enabled }) {
+function useActivityClusterer({ map, activities, onActivityClick, enabled, zoom }) {
   const clustererRef = useRef(null)
   const markersRef = useRef([])
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+
+  // Pins bei Zoom-Änderung live skalieren (ohne Marker neu zu bauen)
+  useEffect(() => {
+    const k = pinScale(zoom)
+    markersRef.current.forEach(m => {
+      const layer = m.content?.querySelector?.('[data-pin-scale]')
+      if (layer) layer.style.transform = `scale(${k})`
+    })
+  }, [zoom])
 
   useEffect(() => {
     if (!map || !enabled || !window.google?.maps?.marker?.AdvancedMarkerElement) {
@@ -195,7 +241,7 @@ function useActivityClusterer({ map, activities, onActivityClick, enabled }) {
     }
 
     const newMarkers = activities.map(a => {
-      const content = buildActivityPinElement(a.activity_emoji)
+      const content = buildActivityPinElement(a.activity_emoji, { zoom: zoomRef.current })
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
         position: { lat: a.latitude, lng: a.longitude },
         content,
@@ -365,6 +411,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
     users: usersForMap,
     onUserClick: handleUserClick,
     enabled: showGeschwister && isLoaded,
+    zoom: snapZoom.currentZoom,
   })
 
   useActivityClusterer({
@@ -372,6 +419,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
     activities: activitiesForMap,
     onActivityClick: handleActivityClick,
     enabled: showEvents && isLoaded,
+    zoom: snapZoom.currentZoom,
   })
 
   if (loading || !isLoaded) {
@@ -418,7 +466,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
               position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
               zIndex={9999}
             >
-              <OwnPinContent user={myProfile} />
+              <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} />
             </AdvancedMarker>
           )}
         </GoogleMap>
@@ -550,31 +598,37 @@ function LayerToggle({ active, onClick, icon, label }) {
 }
 
 // ─── Own Pin Content (React-rendered into AdvancedMarker) ─
-function OwnPinContent({ user }) {
-  const size = 50
+function OwnPinContent({ user, zoom }) {
+  const size = 58
   const borderColor = C.accentDark
   const bg = user?.avatar_url ? 'transparent' : borderColor
   return (
     <div style={{ position: 'relative', width: size, height: size, transform: 'translateY(50%)' }}>
       <div style={{
-        width: size, height: size, borderRadius: '50%', background: bg,
-        border: `3px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', cursor: 'pointer',
+        position: 'relative', width: '100%', height: '100%',
+        transformOrigin: '50% 50%', transform: `scale(${pinScale(zoom)})`,
+        transition: 'transform 0.18s ease',
       }}>
-        {user?.avatar_url ? (
-          <img src={user.avatar_url} referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-        ) : (
-          <span style={{ fontSize: Math.floor(size / 3), fontWeight: 700, color: '#fff', userSelect: 'none' }}>
-            {getInitials(user?.full_name)}
-          </span>
-        )}
+        <div style={{
+          width: '100%', height: '100%', borderRadius: '50%', background: bg,
+          border: `3px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden', boxShadow: '0 3px 10px rgba(0,0,0,0.22)', cursor: 'pointer',
+        }}>
+          {user?.avatar_url ? (
+            <img src={user.avatar_url} referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+          ) : (
+            <span style={{ fontSize: Math.floor(size / 3), fontWeight: 700, color: '#fff', userSelect: 'none' }}>
+              {getInitials(user?.full_name)}
+            </span>
+          )}
+        </div>
+        <div style={{
+          position: 'absolute', inset: -5, borderRadius: '50%',
+          border: '2px solid rgba(90,200,250,0.6)',
+          animation: 'oikosPinPulse 2s ease-in-out infinite',
+          pointerEvents: 'none',
+        }} />
       </div>
-      <div style={{
-        position: 'absolute', inset: -5, borderRadius: '50%',
-        border: '2px solid rgba(90,200,250,0.6)',
-        animation: 'oikosPinPulse 2s ease-in-out infinite',
-        pointerEvents: 'none',
-      }} />
     </div>
   )
 }
