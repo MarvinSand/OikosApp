@@ -244,6 +244,8 @@ export function PostsTab({ posts, currentUserId, onReact, onDelete, onCreatePost
 
 // ─── Prayers tab ──────────────────────────────────────────────
 export function PrayersTab({ prayers, onCreatePrayer }) {
+  const navigate = useNavigate()
+  const openPrayer = (p) => navigate(`/prayers?focus=${p.id}`)
   if (prayers.length === 0) {
     return onCreatePrayer ? (
       <TabEmptyState
@@ -266,11 +268,13 @@ export function PrayersTab({ prayers, onCreatePrayer }) {
       {active.map(p => (
         <div
           key={p.id}
+          onClick={() => openPrayer(p)}
           style={{
             padding: '14px 16px',
             border: '1px solid var(--color-border)',
             borderRadius: 12,
             backgroundColor: 'var(--color-bg)',
+            cursor: 'pointer',
           }}
         >
           <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }}>
@@ -286,11 +290,13 @@ export function PrayersTab({ prayers, onCreatePrayer }) {
       {answered.map(p => (
         <div
           key={p.id}
+          onClick={() => openPrayer(p)}
           style={{
             padding: '14px 16px',
             border: '1px solid var(--color-border)',
             borderRadius: 12,
             backgroundColor: 'var(--color-bg)',
+            cursor: 'pointer',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>

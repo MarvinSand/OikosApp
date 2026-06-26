@@ -684,6 +684,8 @@ export default function Prayers() {
   const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
   const loaderRef = useRef(null)
   const [searchParams, setSearchParams] = useSearchParams()
+  const focusId = searchParams.get('focus')
+  const [highlightId, setHighlightId] = useState(null)
 
   // Gebetsmodus / Bookmark / Weiterleiten / Gebetsziel
   const [showPrayerModeSetup, setShowPrayerModeSetup] = useState(false)
@@ -775,6 +777,20 @@ export default function Prayers() {
     obs.observe(loaderRef.current)
     return () => obs.disconnect()
   }, [loadMore])
+
+  // Vom Profil verlinktes Gebet anspringen + kurz hervorheben
+  useEffect(() => {
+    if (!focusId || loading) return
+    const el = document.getElementById('prayer-' + focusId)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightId(focusId)
+    const t = setTimeout(() => setHighlightId(null), 2200)
+    searchParams.delete('focus')
+    setSearchParams(searchParams, { replace: true })
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId, loading, feedEntries.length])
 
   async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids }) {
     // Fehler werden absichtlich NICHT geschluckt – das Sheet zeigt die echte
@@ -1019,20 +1035,30 @@ export default function Prayers() {
         )}
 
         {!loading && feedEntries.map(entry => (
-          <PrayerCard
+          <div
             key={entry.id}
-            request={entry.request}
-            logs={logsMap[entry.request.id]}
-            notes={notesMap[entry.request.id]}
-            onPray={logPrayer}
-            onComment={handleComment}
-            onBookmark={setBookmarkRequest}
-            onForward={setForwardRequest}
-            onDelete={() => handleDeleteEntry(entry)}
-            onLaterPray={handleLaterPray}
-            goal={entry.goal}
-            onOpenGoal={(g) => navigate(`/goals/${g.id}`)}
-          />
+            id={'prayer-' + entry.request.id}
+            style={{
+              borderRadius: 16,
+              scrollMarginTop: 80,
+              transition: 'box-shadow 0.3s ease',
+              boxShadow: String(entry.request.id) === String(highlightId) ? '0 0 0 3px var(--color-accent)' : 'none',
+            }}
+          >
+            <PrayerCard
+              request={entry.request}
+              logs={logsMap[entry.request.id]}
+              notes={notesMap[entry.request.id]}
+              onPray={logPrayer}
+              onComment={handleComment}
+              onBookmark={setBookmarkRequest}
+              onForward={setForwardRequest}
+              onDelete={() => handleDeleteEntry(entry)}
+              onLaterPray={handleLaterPray}
+              goal={entry.goal}
+              onOpenGoal={(g) => navigate(`/goals/${g.id}`)}
+            />
+          </div>
         ))}
 
         {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}
