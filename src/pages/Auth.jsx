@@ -10,6 +10,7 @@ export default function Auth() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
   const [gender, setGender] = useState(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -33,7 +34,7 @@ export default function Auth() {
       if (view === 'login') {
         await login(email, password)
       } else {
-        const data = await register(email, password, fullName, gender)
+        const data = await register(email, password, fullName, gender, username.trim())
         if (!data?.session) {
           setView('email-sent')
         }
@@ -161,7 +162,7 @@ export default function Auth() {
                   onClick={() => { setView(t); setError('') }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                     view === t 
-                      ? 'bg-white text-warm-1 shadow-sm font-semibold' 
+                      ? 'bg-bg text-warm-1 shadow-sm font-semibold' 
                       : 'text-dark-muted hover:text-dark'
                   }`}
                 >
@@ -181,7 +182,21 @@ export default function Auth() {
                       onChange={e => setFullName(e.target.value)} 
                       placeholder="Max Mustermann" 
                       required 
-                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-dark-muted ml-1">Benutzername</label>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      placeholder="z.B. max_mustermann"
+                      required
+                      minLength={3}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -195,7 +210,7 @@ export default function Auth() {
                           className={`flex-1 py-3 px-2 rounded-xl text-sm font-medium transition-all border ${
                             gender === val 
                               ? 'bg-warm-1 text-white border-warm-1 shadow-md shadow-warm-1/20' 
-                              : 'bg-white/50 text-dark-muted border-warm-3 hover:border-warm-2/50'
+                              : 'bg-paper text-dark-muted border-warm-3 hover:border-warm-2/50'
                           }`}
                         >
                           {label}
@@ -214,7 +229,7 @@ export default function Auth() {
                   onChange={e => setEmail(e.target.value)} 
                   placeholder="name@beispiel.de" 
                   required 
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
 
@@ -238,7 +253,7 @@ export default function Auth() {
                     onChange={e => setPassword(e.target.value)} 
                     placeholder="Mindestens 6 Zeichen" 
                     required minLength={6} 
-                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                   />
                   <button 
                     type="button" 
@@ -273,7 +288,7 @@ export default function Auth() {
 
               <button
                 type="submit" 
-                disabled={isLoading || (view === 'register' && !gender)} 
+                disabled={isLoading || (view === 'register' && (!gender || !username.trim()))}
                 className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}
@@ -303,7 +318,7 @@ export default function Auth() {
                   onChange={e => setEmail(e.target.value)} 
                   placeholder="name@beispiel.de" 
                   required 
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
               

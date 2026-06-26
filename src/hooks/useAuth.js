@@ -30,7 +30,7 @@ export function useAuth() {
     return data
   }
 
-  async function register(email, password, fullName, gender = null) {
+  async function register(email, password, fullName, gender = null, username = null) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -40,8 +40,13 @@ export function useAuth() {
       },
     })
     if (error) throw error
-    if (data?.user && gender) {
-      await supabase.from('profiles').update({ gender }).eq('id', data.user.id)
+    if (data?.user) {
+      const profileUpdate = {}
+      if (gender) profileUpdate.gender = gender
+      if (username) profileUpdate.username = username
+      if (Object.keys(profileUpdate).length > 0) {
+        await supabase.from('profiles').update(profileUpdate).eq('id', data.user.id)
+      }
     }
     return data
   }
