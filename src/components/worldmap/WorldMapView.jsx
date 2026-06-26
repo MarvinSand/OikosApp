@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
 import { Plus, Navigation, Users, CalendarDays } from 'lucide-react'
@@ -358,6 +358,7 @@ function useSnapchatZoom({ map, minZoom = 2 }) {
 // ─── Main Component ───────────────────────────────────────
 export default function WorldMapView({ onNavigateToProfile }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { showToast } = useToast()
   const {
     visibleUsers, activities, myProfile,
@@ -518,14 +519,12 @@ export default function WorldMapView({ onNavigateToProfile }) {
                 Kein Standort gesetzt
               </p>
               <p style={{ fontSize: 11, color: C.textTer, margin: '1px 0 0' }}>
-                Füge einen Standort im Profil hinzu.
+                Hinterlege deine Adresse in den Einstellungen.
               </p>
             </div>
-            {onNavigateToProfile && (
-              <button onClick={onNavigateToProfile} style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                Profil
-              </button>
-            )}
+            <button onClick={() => navigate('/settings?section=privacy')} style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+              Standort
+            </button>
           </div>
         )}
 

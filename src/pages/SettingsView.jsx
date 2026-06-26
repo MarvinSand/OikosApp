@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, Play, User, ShieldCheck, ChevronRight,
   Moon, Globe, Navigation,
@@ -162,8 +162,12 @@ export default function SettingsView() {
   const { showToast } = useToast()
   const { theme, toggleTheme } = useTheme()
 
-  // 'hub' | 'profile' | 'privacy'
-  const [section, setSection] = useState('hub')
+  // 'hub' | 'profile' | 'privacy' – Deep-Link via ?section=privacy
+  const [searchParams] = useSearchParams()
+  const initialSection = ['profile', 'privacy'].includes(searchParams.get('section'))
+    ? searchParams.get('section')
+    : 'hub'
+  const [section, setSection] = useState(initialSection)
 
   const [form, setForm] = useState({
     full_name: '', username: '',
