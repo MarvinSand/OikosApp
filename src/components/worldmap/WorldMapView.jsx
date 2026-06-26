@@ -95,19 +95,16 @@ function buildActivityPinElement(emoji, { zoom } = {}) {
   scaleLayer.dataset.pinScale = '1'
   scaleLayer.style.cssText = `position:relative;width:100%;height:100%;transform-origin:50% 50%;transform:scale(${pinScale(zoom)});transition:transform 0.18s ease;`
 
-  // Pulsing ring behind the square
-  const pulse = document.createElement('div')
-  pulse.style.cssText = `position:absolute;inset:-4px;border-radius:${radius};background:rgba(90,200,250,0.25);animation:eventPinPulse 1.8s ease-in-out infinite;pointer-events:none;`
-  scaleLayer.appendChild(pulse)
+  // Drei gestaffelte Radar-Ping-Ringe → starkes, auffälliges Pulsieren
+  ;[0, 0.6, 1.2].forEach(delay => {
+    const ring = document.createElement('div')
+    ring.style.cssText = `position:absolute;inset:0;border-radius:${radius};background:rgba(90,200,250,0.35);border:2px solid rgba(90,200,250,0.55);animation:eventPinPulse 1.8s ease-out ${delay}s infinite;pointer-events:none;`
+    scaleLayer.appendChild(ring)
+  })
 
-  // Outer glow ring (second, slower)
-  const glow = document.createElement('div')
-  glow.style.cssText = `position:absolute;inset:-10px;border-radius:${radius};background:rgba(90,200,250,0.10);animation:eventPinPulse 1.8s ease-in-out 0.6s infinite;pointer-events:none;`
-  scaleLayer.appendChild(glow)
-
-  // The pin square itself (rounded corners)
+  // The pin square itself (rounded corners) – schlägt wie ein Herzschlag
   const square = document.createElement('div')
-  square.style.cssText = `position:absolute;inset:4px;border-radius:${radius};background:#fff;border:2.5px solid ${C.accent};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 14px rgba(90,200,250,0.45);font-size:22px;`
+  square.style.cssText = `position:absolute;inset:4px;border-radius:${radius};background:${C.accent};border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(90,200,250,0.7);font-size:24px;transform-origin:50% 50%;animation:eventPinBeat 1.2s ease-in-out infinite;`
   square.textContent = emoji || '📍'
   scaleLayer.appendChild(square)
 
@@ -435,7 +432,10 @@ export default function WorldMapView({ onNavigateToProfile }) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: C.bgSec, overflow: 'hidden' }}>
       <style>{`
         @keyframes oikosPinPulse  { 0%,100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.15); opacity: 0; } }
-        @keyframes eventPinPulse  { 0%,100% { transform: scale(0.85); opacity: 0.8; } 50% { transform: scale(1.25); opacity: 0; } }
+        /* Radar-Ping: Ring wächst kräftig nach außen und verblasst */
+        @keyframes eventPinPulse  { 0% { transform: scale(0.7); opacity: 0.85; } 100% { transform: scale(2.4); opacity: 0; } }
+        /* Herzschlag des Event-Pins selbst – fällt sofort ins Auge */
+        @keyframes eventPinBeat   { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
       `}</style>
 
       {/* Map area */}
@@ -459,8 +459,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
             },
           }}
         >
-          {/* Own pin (never clustered, always on top) */}
-          {myProfile?.latitude && showGeschwister && (
+          {/* Own pin (never clustered, always on top) – immer sichtbar */}
+          {myProfile?.latitude && (
             <AdvancedMarker
               map={map}
               position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
@@ -679,13 +679,13 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
         {currentIcon.emoji}
       </div>
 
-      {/* Drag track – taller, global mouse/touch listeners handle the drag */}
+      {/* Drag track – schmaler & länger, global mouse/touch listeners handle the drag */}
       <div
         ref={trackRef}
         style={{
-          width: 36,
-          height: 240,
-          borderRadius: 18,
+          width: 22,
+          height: 320,
+          borderRadius: 11,
           background: C.surfaceBlur,
           border: `1px solid ${C.border}`,
           boxShadow: '0 2px 14px rgba(0,0,0,0.13)',
@@ -704,16 +704,16 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
           bottom: 0, left: 0, right: 0,
           height: `${progress * 100}%`,
           background: `linear-gradient(to top, ${C.accentDark}, ${C.accent})`,
-          borderRadius: 18,
+          borderRadius: 11,
         }} />
 
         {/* Thumb knob */}
         <div style={{
           position: 'absolute',
           left: '50%',
-          bottom: `calc(${progress * 100}% - 14px)`,
+          bottom: `calc(${progress * 100}% - 11px)`,
           transform: 'translateX(-50%)',
-          width: 28, height: 28,
+          width: 22, height: 22,
           borderRadius: '50%',
           background: C.bg,
           border: `2.5px solid ${C.accent}`,
