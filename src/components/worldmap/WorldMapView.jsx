@@ -471,7 +471,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
           }}
         >
           {/* Own pin (never clustered, always on top) – immer sichtbar */}
-          {myProfile?.latitude && (
+          {myProfile?.latitude && showGeschwister && (
             <AdvancedMarker
               map={map}
               position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
@@ -617,7 +617,7 @@ function LayerToggle({ active, onClick, icon, label }) {
 
 // ─── Own Pin Content (React-rendered into AdvancedMarker) ─
 function OwnPinContent({ user, zoom }) {
-  const size = 58
+  const size = 44
   const borderColor = C.accentDark
   const bg = user?.avatar_url ? 'transparent' : borderColor
   const scale = pinScale(zoom)
@@ -631,7 +631,7 @@ function OwnPinContent({ user, zoom }) {
         <div style={{
           width: '100%', height: '100%', borderRadius: '50%', background: bg,
           border: `3px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          overflow: 'hidden', boxShadow: '0 3px 10px rgba(0,0,0,0.22)', cursor: 'pointer',
+          overflow: 'hidden', boxShadow: '0 3px 10px rgba(0,0,0,0.25)', cursor: 'pointer',
         }}>
           {user?.avatar_url ? (
             <img src={user.avatar_url} referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
@@ -641,12 +641,15 @@ function OwnPinContent({ user, zoom }) {
             </span>
           )}
         </div>
+        {/* Markierung: eigener Pin */}
         <div style={{
-          position: 'absolute', inset: -5, borderRadius: '50%',
-          border: '2px solid rgba(90,200,250,0.6)',
-          animation: 'oikosPinPulse 2s ease-in-out infinite',
-          pointerEvents: 'none',
-        }} />
+          position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)',
+          background: C.accentDark, color: '#fff', fontSize: 9, fontWeight: 800, lineHeight: 1,
+          padding: '2px 6px', borderRadius: 999, border: '1.5px solid #fff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.25)', whiteSpace: 'nowrap', pointerEvents: 'none',
+        }}>
+          Du
+        </div>
       </div>
     </div>
   )
