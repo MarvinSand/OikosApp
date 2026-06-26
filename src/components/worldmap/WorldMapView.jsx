@@ -477,7 +477,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
               position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
               zIndex={9999}
             >
-              <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} />
+              <OwnPinContent user={myProfile} />
             </AdvancedMarker>
           )}
         </GoogleMap>
@@ -616,17 +616,16 @@ function LayerToggle({ active, onClick, icon, label }) {
 }
 
 // ─── Own Pin Content (React-rendered into AdvancedMarker) ─
-function OwnPinContent({ user, zoom }) {
-  const size = 44
+function OwnPinContent({ user }) {
+  // Gleiche Größe wie Geschwister-Pins; bewusst KEINE Zoom-Skalierung,
+  // damit der eigene Pin beim Rauszoomen nicht größer wird.
+  const size = 48
   const borderColor = C.accentDark
   const bg = user?.avatar_url ? 'transparent' : borderColor
-  const scale = pinScale(zoom)
   return (
     <div style={{ position: 'relative', width: size, height: size, transform: 'translateY(50%)' }}>
       <div style={{
         position: 'relative', width: '100%', height: '100%',
-        transformOrigin: '50% 50%', transform: `scale(${scale})`,
-        transition: 'transform 0.18s ease',
       }}>
         <div style={{
           width: '100%', height: '100%', borderRadius: '50%', background: bg,
