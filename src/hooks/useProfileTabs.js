@@ -144,14 +144,14 @@ export function useProfileTabs(profileUserId) {
       isOwn
         ? supabase
             .from('personal_prayer_requests')
-            .select('id, title, description, category, is_answered, is_public, created_at')
+            .select('id, title, description, category, is_answered, visibility, created_at')
             .eq('owner_id', profileUserId)
             .order('created_at', { ascending: false })
         : supabase
             .from('personal_prayer_requests')
-            .select('id, title, description, category, is_answered, is_public, created_at')
+            .select('id, title, description, category, is_answered, visibility, created_at')
             .eq('owner_id', profileUserId)
-            .eq('is_public', true)
+            .neq('visibility', 'private')
             .order('created_at', { ascending: false }),
       isOwn
         ? supabase
@@ -167,7 +167,7 @@ export function useProfileTabs(profileUserId) {
             .order('created_at', { ascending: false }),
     ])
     const normalised = [
-      ...((personalQ.data || []).map(r => ({ id: r.id, title: r.title, description: r.description, category: r.category, is_answered: r.is_answered, is_public: r.is_public, created_at: r.created_at, source: 'personal' }))),
+      ...((personalQ.data || []).map(r => ({ id: r.id, title: r.title, description: r.description, category: r.category, is_answered: r.is_answered, is_public: r.visibility !== 'private', created_at: r.created_at, source: 'personal' }))),
       ...((perPersonQ.data || []).map(r => ({ id: r.id, title: r.content, description: null, category: null, is_answered: r.is_answered, is_public: r.is_public, created_at: r.created_at, source: 'person' }))),
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     setPrayerRequests(normalised)
