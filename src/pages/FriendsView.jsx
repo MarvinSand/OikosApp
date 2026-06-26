@@ -12,6 +12,7 @@ import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 import DateFilterControl from '../components/ui/DateFilterControl'
+import ExpandableSearch from '../components/common/ExpandableSearch'
 import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
 
 // ─── Avatar ────────────────────────────────────────────────
@@ -1737,34 +1738,8 @@ function FeedTab() {
         padding: '12px 16px 8px',
         borderBottom: '1px solid var(--color-border)',
       }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={15} color="var(--color-text-tertiary)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Post suchen…"
-              style={{
-                width: '100%', padding: '9px 36px 9px 34px', borderRadius: 12,
-                border: '1.5px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)',
-                fontSize: 14, color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box',
-              }}
-            />
-            {q && (
-              <button
-                onClick={() => setSearchQuery('')}
-                style={{
-                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                  width: 22, height: 22, borderRadius: '50%', border: 'none',
-                  background: 'var(--color-border)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <X size={12} color="var(--color-text-secondary)" />
-              </button>
-            )}
-          </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
+          <ExpandableSearch value={searchQuery} onChange={setSearchQuery} placeholder="Post suchen…" />
           <button
             onClick={() => setShowFilters(v => !v)}
             aria-label="Filter"
@@ -1772,7 +1747,7 @@ function FeedTab() {
               position: 'relative',
               width: 40, height: 40, borderRadius: 12, flexShrink: 0,
               border: `1.5px solid ${showFilters || filterFacetCount ? 'var(--color-accent)' : 'var(--color-border)'}`,
-              backgroundColor: showFilters || filterFacetCount ? 'rgba(74,103,65,0.1)' : 'var(--color-bg-secondary)',
+              backgroundColor: showFilters || filterFacetCount ? 'rgba(90,200,250,0.12)' : 'var(--color-bg-secondary)',
               color: showFilters || filterFacetCount ? 'var(--color-accent)' : 'var(--color-text-secondary)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
