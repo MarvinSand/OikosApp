@@ -14,19 +14,19 @@ export default function UserPinSheet({ user, onClose }) {
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(44,36,22,0.4)' }} />
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: '#FBF8F3',
+        background: 'var(--color-bg)',
         borderRadius: '20px 20px 0 0',
         padding: '20px 20px 48px',
         maxHeight: '65%',
         overflowY: 'auto',
         animation: 'worldSheetUp 0.25s ease-out',
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D8D2C5', margin: '0 auto 16px' }} />
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--color-border)', margin: '0 auto 16px' }} />
 
-        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, border: 'none', background: 'none', cursor: 'pointer', color: '#A1927F', padding: 4, display: 'flex' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-tertiary)', padding: 4, display: 'flex' }}>
           <X size={20} />
         </button>
 
@@ -45,21 +45,21 @@ export default function UserPinSheet({ user, onClose }) {
             }
           </div>
           <div style={{ flex: 1 }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: '#2C2416', margin: 0 }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
               {user.full_name || user.username}
             </p>
             {user.username && (
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#A1927F', margin: '2px 0 0' }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)', margin: '2px 0 0' }}>
                 @{user.username}
               </p>
             )}
             {(user.city || user.country) && (
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#706351', margin: '5px 0 0' }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', margin: '5px 0 0' }}>
                 📍 {[user.city, user.country].filter(Boolean).join(', ')}
               </p>
             )}
             {user.church_name && (
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#706351', margin: '2px 0 0' }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
                 ⛪ {user.church_name}
               </p>
             )}
@@ -70,7 +70,7 @@ export default function UserPinSheet({ user, onClose }) {
         </div>
 
         {user.distance != null && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#A1927F', textAlign: 'center', marginBottom: 16 }}>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)', textAlign: 'center', marginBottom: 16 }}>
             {user.distance < 1 ? 'Weniger als 1 km entfernt' : `${Math.round(user.distance)} km entfernt`}
           </p>
         )}

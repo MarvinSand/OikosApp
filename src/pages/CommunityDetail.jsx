@@ -670,7 +670,7 @@ function PrayerCard({ msg, currentUserId, currentUserName, onSelect }) {
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 mb-4 shadow-glass-sm border border-white/60 hover:shadow-glass hover:bg-white/95 transition-all duration-300">
+    <div className="bg-surface backdrop-blur-md rounded-2xl p-5 mb-4 shadow-glass-sm border border-warm-3 hover:shadow-glass hover:bg-surface transition-all duration-300">
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
         <div className="flex gap-3 items-center flex-1 min-w-0">
@@ -702,7 +702,7 @@ function PrayerCard({ msg, currentUserId, currentUserName, onSelect }) {
             {showMenu && (
               <>
                 <div onClick={() => setShowMenu(false)} className="fixed inset-0 z-10" />
-                <div className="absolute right-0 top-full mt-1 bg-white/95 backdrop-blur-md rounded-xl shadow-glass border border-warm-3 z-20 min-w-[180px] overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 bg-surface backdrop-blur-md rounded-xl shadow-glass border border-warm-3 z-20 min-w-[180px] overflow-hidden">
                   <button
                     onClick={() => { setShowMenu(false); onSelect(msg) }}
                     className="w-full px-4 py-3 text-left border-none bg-transparent hover:bg-black/5 font-serif text-[14px] text-dark cursor-pointer flex items-center gap-2"
@@ -850,7 +850,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
   return (
     <>
       <div onClick={onClose} className="fixed inset-0 bg-dark/20 backdrop-blur-[1px] z-50 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white rounded-t-[28px] z-50 p-6 pb-12 shadow-[0_-8px_30px_rgba(44,36,22,0.15)] animate-[sheetSlideUp_0.25s_ease-out]">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[28px] z-50 p-6 pb-12 shadow-[0_-8px_30px_rgba(44,36,22,0.15)] animate-[sheetSlideUp_0.25s_ease-out]">
         <div className="w-10 h-1.5 bg-warm-3 rounded-full mx-auto mb-6" />
         
         <div className="flex items-center gap-4 mb-5">
@@ -875,7 +875,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
           {!isSelf && (
             <button
               onClick={() => { onClose(); navigate(`/user/${member.user_id}`) }}
-              className="w-full py-3.5 flex items-center justify-center gap-2 rounded-xl bg-warm-1 text-white font-serif font-bold text-[15px] shadow-sm hover:bg-warm-2 transition-colors"
+              className="w-full py-3.5 flex items-center justify-center gap-2 rounded-xl bg-accent text-white font-serif font-bold text-[15px] shadow-sm hover:bg-accent-dark transition-colors"
             >
               <MessageSquare size={18} /> Nachricht senden
             </button>
@@ -949,7 +949,7 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
   return (
     <>
       <div onClick={onClose} className="fixed inset-0 bg-dark/40 backdrop-blur-[2px] z-50 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-xl rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface backdrop-blur-xl rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
         <div className="w-9 h-1 bg-warm-3 rounded-full mx-auto mb-5" />
         
         <div className="flex items-center justify-between mb-6">
@@ -973,13 +973,13 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
                 <p className="font-serif text-[14px] font-bold text-dark m-0">Öffentliche Community</p>
                 <p className="font-serif text-[12px] text-dark-muted m-0 leading-tight mt-0.5">Jeder kann beitreten und mitlesen.</p>
               </div>
-              <button onClick={() => setIsPublic(v => !v)} className={`relative w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-warm-1' : 'bg-warm-3'}`}>
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${isPublic ? 'left-[22px]' : 'left-0.5'}`} />
+              <button onClick={() => setIsPublic(v => !v)} className={`relative w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-accent' : 'bg-warm-3'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-surface transition-all shadow-sm ${isPublic ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
             </div>
 
             {!isPublic && community.invite_code && (
-              <div className="bg-white border-1.5 border-warm-3 rounded-xl p-4 mt-2">
+              <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4 mt-2">
                 <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
                   <Shield size={12} /> Einladungscode
                 </p>
@@ -989,7 +989,7 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
                     <button onClick={generateNewCode} className="p-2 border border-warm-3 rounded-lg text-dark-muted hover:bg-black/5" title="Code erneuern">
                       <RefreshCw size={16} />
                     </button>
-                    <button onClick={copyCode} className="flex items-center gap-1.5 px-3 py-2 border-1.5 border-warm-1 rounded-lg text-warm-1 font-semibold text-sm hover:bg-warm-1 hover:text-white transition-colors">
+                    <button onClick={copyCode} className="flex items-center gap-1.5 px-3 py-2 border-1.5 border-warm-1 rounded-lg text-warm-1 font-semibold text-sm hover:bg-accent hover:text-white transition-colors">
                       <Copy size={14} /> Kopieren
                     </button>
                   </div>
@@ -997,7 +997,7 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
               </div>
             )}
 
-            <button onClick={handleSave} disabled={!isChanged || saving} className={`w-full py-3.5 rounded-xl font-serif text-[15px] font-bold mt-2 transition-all ${isChanged ? 'bg-warm-1 text-white shadow-md' : 'bg-warm-3/50 text-dark-muted'}`}>
+            <button onClick={handleSave} disabled={!isChanged || saving} className={`w-full py-3.5 rounded-xl font-serif text-[15px] font-bold mt-2 transition-all ${isChanged ? 'bg-accent text-white shadow-md' : 'bg-warm-3/50 text-dark-muted'}`}>
               {saving ? 'Speichere...' : 'Änderungen speichern'}
             </button>
           </div>
@@ -1016,7 +1016,7 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
             <div className="bg-red-50 rounded-xl p-5 border border-red-200">
               <p className="font-serif text-[15px] text-red-900 text-center mb-4">Wirklich <strong>{community.name}</strong> verlassen?</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 py-3 rounded-xl bg-white border border-red-200 text-dark-muted font-bold font-serif">Abbrechen</button>
+                <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 py-3 rounded-xl bg-surface border border-red-200 text-dark-muted font-bold font-serif">Abbrechen</button>
                 <button onClick={onLeave} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold font-serif shadow-sm">Verlassen</button>
               </div>
             </div>
@@ -1189,14 +1189,14 @@ export default function CommunityDetail() {
           <button onClick={() => navigate(-1)} className="p-1.5 text-dark hover:bg-black/5 rounded-full transition-colors">
             <ArrowLeft size={22} />
           </button>
-          <button onClick={() => setShowSettings(true)} className="p-2 rounded-xl bg-white/60 text-dark-muted hover:bg-white/80 transition-colors shadow-sm backdrop-blur-sm">
+          <button onClick={() => setShowSettings(true)} className="p-2 rounded-xl bg-surface text-dark-muted hover:bg-surface transition-colors shadow-sm backdrop-blur-sm">
             <Settings size={20} />
           </button>
         </div>
 
         {/* Community info */}
         <div className="flex gap-4 items-start relative z-10">
-          <div className="w-14 h-14 rounded-2xl shrink-0 bg-warm-1 flex items-center justify-center font-serif text-xl font-bold text-white shadow-lg shadow-warm-1/30 border border-warm-2/30">
+          <div className="w-14 h-14 rounded-2xl shrink-0 bg-accent flex items-center justify-center font-serif text-xl font-bold text-white shadow-lg shadow-warm-1/30 border border-warm-2/30">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -1209,10 +1209,10 @@ export default function CommunityDetail() {
               </p>
             )}
             <div className="flex gap-2 flex-wrap">
-              <span className="font-serif text-[11px] font-medium text-dark-muted bg-white/70 backdrop-blur-sm px-2.5 py-1 rounded-full border border-warm-3/80 shadow-sm flex items-center gap-1.5">
+              <span className="font-serif text-[11px] font-medium text-dark-muted bg-surface backdrop-blur-sm px-2.5 py-1 rounded-full border border-warm-3/80 shadow-sm flex items-center gap-1.5">
                 <Users size={12}/> {members.length} Mitglieder
               </span>
-              <span className="font-serif text-[11px] font-medium text-dark-muted bg-white/70 backdrop-blur-sm px-2.5 py-1 rounded-full border border-warm-3/80 shadow-sm flex items-center gap-1.5">
+              <span className="font-serif text-[11px] font-medium text-dark-muted bg-surface backdrop-blur-sm px-2.5 py-1 rounded-full border border-warm-3/80 shadow-sm flex items-center gap-1.5">
                 {community.is_public ? <><Globe size={11} /> Öffentlich</> : <><Lock size={11} /> Privat</>}
               </span>
               {myMembership?.role === 'admin' && (
@@ -1226,7 +1226,7 @@ export default function CommunityDetail() {
       </div>
 
       {/* ── Stats Strip ─────────────────────────────────────── */}
-      <div className="flex bg-white/60 backdrop-blur-md border border-warm-3/60 mx-4 mt-[-4px] mb-2 rounded-xl shadow-glass-sm relative z-20">
+      <div className="flex bg-surface backdrop-blur-md border border-warm-3/60 mx-4 mt-[-4px] mb-2 rounded-xl shadow-glass-sm relative z-20">
         {[
           { value: members.length, label: 'Mitglieder' },
           { value: prayerMessages.length, label: 'Gebete' },
@@ -1261,7 +1261,7 @@ export default function CommunityDetail() {
         <div className="border-l border-warm-3 my-2 mx-1" />
         <button
           onClick={() => setShowMembers(v => !v)}
-          className={`px-3 flex items-center gap-1.5 font-sans text-[11px] font-bold tracking-wide transition-colors rounded-lg my-1.5 ${showMembers ? 'bg-warm-1 text-white' : 'bg-warm-4 text-dark-muted hover:bg-warm-3'}`}
+          className={`px-3 flex items-center gap-1.5 font-sans text-[11px] font-bold tracking-wide transition-colors rounded-lg my-1.5 ${showMembers ? 'bg-accent text-white' : 'bg-warm-4 text-dark-muted hover:bg-warm-3'}`}
         >
           <Users size={14} /> 
           <span className="hidden sm:inline">Mitglieder</span>
@@ -1411,7 +1411,7 @@ export default function CommunityDetail() {
 
         {/* ── Discord-like Member Sidebar ──────────────────────────────── */}
         {showMembers && (
-          <div className="w-[140px] border-l border-warm-3 bg-white overflow-y-auto shrink-0 pt-2 pb-6 px-2 scrollbar-none animate-[slideInRight_0.2s_ease-out]">
+          <div className="w-[140px] border-l border-warm-3 bg-surface overflow-y-auto shrink-0 pt-2 pb-6 px-2 scrollbar-none animate-[slideInRight_0.2s_ease-out]">
             <p className="font-sans text-[10px] font-bold text-dark-muted uppercase tracking-widest px-2 mb-2 mt-2">
               Mitglieder &mdash; {members.length}
           </p>

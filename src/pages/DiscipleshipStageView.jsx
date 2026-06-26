@@ -88,7 +88,7 @@ function MiniChat({ conversationId, memberCount }) {
   }
 
   return (
-    <div className="bg-white/70 rounded-2xl border border-warm-3/30 overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-warm-3/30 overflow-hidden">
       {/* Chat header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-warm-3/20">
         <MessageSquare size={15} className="text-warm-1" />
@@ -118,7 +118,7 @@ function MiniChat({ conversationId, memberCount }) {
                   <span className="text-[10px] text-dark-light mb-0.5 ml-1">{name}</span>
                 )}
                 <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-snug ${
-                  isOwn ? 'bg-warm-1 text-white rounded-tr-sm' : 'bg-warm-3/30 text-dark rounded-tl-sm'
+                  isOwn ? 'bg-accent text-white rounded-tr-sm' : 'bg-warm-3/30 text-dark rounded-tl-sm'
                 }`}>
                   {msg.text}
                 </div>
@@ -138,12 +138,12 @@ function MiniChat({ conversationId, memberCount }) {
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
           placeholder="Nachricht schreiben…"
-          className="flex-1 px-3 py-2 rounded-xl bg-warm-3/20 text-sm text-dark placeholder:text-dark-light border border-transparent focus:outline-none focus:border-warm-1/30 focus:bg-white/80 transition-all"
+          className="flex-1 px-3 py-2 rounded-xl bg-warm-3/20 text-sm text-dark placeholder:text-dark-light border border-transparent focus:outline-none focus:border-warm-1/30 focus:bg-surface transition-all"
         />
         <button
           onClick={handleSend}
           disabled={!draft.trim()}
-          className="w-9 h-9 rounded-xl bg-warm-1 flex items-center justify-center flex-shrink-0 disabled:opacity-40 transition-opacity"
+          className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center flex-shrink-0 disabled:opacity-40 transition-opacity"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -174,7 +174,7 @@ function MentorNoteField({ menteeId, menteeName }) {
         onChange={e => handleChange(e.target.value)}
         placeholder="Private Notizen (nur du siehst diese)…"
         rows={3}
-        className="w-full px-3 py-2.5 rounded-xl border border-warm-3/30 bg-white/70 text-sm text-dark placeholder:text-dark-light resize-none focus:outline-none focus:border-warm-1/40 focus:ring-2 focus:ring-warm-1/10 transition-all"
+        className="w-full px-3 py-2.5 rounded-xl border border-warm-3/30 bg-surface text-sm text-dark placeholder:text-dark-light resize-none focus:outline-none focus:border-warm-1/40 focus:ring-2 focus:ring-warm-1/10 transition-all"
       />
     </div>
   )
@@ -197,7 +197,7 @@ function AddTestimonySheet({ onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end">
-      <div className="bg-white rounded-t-3xl w-full max-w-md mx-auto p-6 pb-10 shadow-2xl space-y-4">
+      <div className="bg-surface rounded-t-3xl w-full max-w-md mx-auto p-6 pb-10 shadow-2xl space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-serif text-lg font-bold text-dark">Mein Zeugnis teilen</h3>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-warm-3/30 flex items-center justify-center">
@@ -221,16 +221,16 @@ function AddTestimonySheet({ onClose, onSubmit }) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setPublic(p => !p)}
-            className={`w-10 h-6 rounded-full transition-all flex-shrink-0 ${isPublic ? 'bg-warm-1' : 'bg-warm-3'}`}
+            className={`w-10 h-6 rounded-full transition-all flex-shrink-0 ${isPublic ? 'bg-accent' : 'bg-warm-3'}`}
           >
-            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-all mx-1 ${isPublic ? 'translate-x-4' : 'translate-x-0'}`} />
+            <div className={`w-4 h-4 rounded-full bg-surface shadow-sm transition-all mx-1 ${isPublic ? 'translate-x-4' : 'translate-x-0'}`} />
           </button>
           <span className="text-sm text-dark-muted">{isPublic ? 'Öffentlich sichtbar' : 'Nur für mich'}</span>
         </div>
         <button
           onClick={handleSubmit}
           disabled={!title.trim() || !body.trim() || saving}
-          className="w-full py-3.5 rounded-2xl bg-warm-1 text-white font-semibold text-sm disabled:opacity-50 transition-opacity"
+          className="w-full py-3.5 rounded-2xl bg-accent text-white font-semibold text-sm disabled:opacity-50 transition-opacity"
         >
           {saving ? '…' : 'Zeugnis teilen'}
         </button>
@@ -289,7 +289,7 @@ export default function DiscipleshipStageView() {
           <div className="h-4 bg-warm-3/30 rounded w-1/2" />
         </div>
         <div className="px-4 space-y-3">
-          {[0, 1, 2, 3].map(i => <div key={i} className="h-20 bg-white/60 rounded-2xl" />)}
+          {[0, 1, 2, 3].map(i => <div key={i} className="h-20 bg-surface rounded-2xl" />)}
         </div>
       </div>
     )
@@ -304,7 +304,7 @@ export default function DiscipleshipStageView() {
       {/* Certificate modal */}
       {showCertModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+          <div className="bg-surface rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
             <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
               <Trophy size={28} className="text-accent" />
             </div>
@@ -324,7 +324,7 @@ export default function DiscipleshipStageView() {
               {stage < 3 && (
                 <button
                   onClick={() => { setShowCertModal(false); navigate(`/discipleship/stage/${stage + 1}`) }}
-                  className="w-full py-3 rounded-xl bg-warm-1 text-white font-semibold text-sm"
+                  className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm"
                 >
                   Weiter zu Stufe {String(stage + 1).padStart(2, '0')} →
                 </button>
@@ -346,12 +346,12 @@ export default function DiscipleshipStageView() {
       <div className={`px-4 pt-12 pb-6 ${config.bgClass}`}>
         <button
           onClick={() => navigate('/discipleship')}
-          className="w-9 h-9 rounded-xl bg-white/70 border border-white/50 flex items-center justify-center mb-4"
+          className="w-9 h-9 rounded-xl bg-surface border border-warm-3 flex items-center justify-center mb-4"
         >
           <ArrowLeft size={18} className="text-dark" />
         </button>
         <div className="flex items-start gap-3">
-          <div className={`w-12 h-12 rounded-2xl ${config.bgClass} border border-white/50 flex items-center justify-center flex-shrink-0`}>
+          <div className={`w-12 h-12 rounded-2xl ${config.bgClass} border border-warm-3 flex items-center justify-center flex-shrink-0`}>
             <Icon size={22} className={config.colorClass} />
           </div>
           <div className="flex-1 min-w-0">
@@ -369,7 +369,7 @@ export default function DiscipleshipStageView() {
               <span className="text-xs text-dark-muted">Kursfortschritt</span>
               <span className="text-xs font-bold" style={{ color: config.accentColor }}>{stageProgress}%</span>
             </div>
-            <div className="h-2 bg-white/40 rounded-full overflow-hidden">
+            <div className="h-2 bg-surface/40 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${stageProgress}%`, backgroundColor: config.accentColor }}
@@ -400,7 +400,7 @@ export default function DiscipleshipStageView() {
             <button
               onClick={joinStageCommunity}
               disabled={joiningCommunity}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-warm-1 text-white text-xs font-semibold flex-shrink-0 disabled:opacity-60 transition-opacity"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent text-white text-xs font-semibold flex-shrink-0 disabled:opacity-60 transition-opacity"
             >
               <UserPlus size={13} />
               {joiningCommunity ? '…' : 'Beitreten'}
@@ -468,7 +468,7 @@ export default function DiscipleshipStageView() {
                 const isExpanded = expandedModules[mod.id] !== false && (expandedModules[mod.id] === true || pct < 100)
 
                 return (
-                  <div key={mod.id} className="bg-white/70 rounded-2xl border border-warm-3/30 overflow-hidden">
+                  <div key={mod.id} className="bg-surface rounded-2xl border border-warm-3/30 overflow-hidden">
                     <button
                       onClick={() => setExpandedModules(p => ({ ...p, [mod.id]: !isExpanded }))}
                       className="w-full flex items-center gap-3 p-4 text-left"
@@ -515,7 +515,7 @@ export default function DiscipleshipStageView() {
                                   }`}
                                 >
                                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                                    done ? 'bg-warm-1 border-warm-1' : 'border-warm-3'
+                                    done ? 'bg-accent border-accent' : 'border-warm-3'
                                   }`}>
                                     {done
                                       ? <Check size={12} strokeWidth={3} className="text-white" />
@@ -565,7 +565,7 @@ export default function DiscipleshipStageView() {
           </div>
 
           {testimonies.length === 0 ? (
-            <div className="text-center py-8 bg-white/50 rounded-2xl border border-warm-3/20">
+            <div className="text-center py-8 bg-surface rounded-2xl border border-warm-3/20">
               <p className="text-sm text-dark-muted leading-relaxed">
                 Noch keine Zeugnisse. Sei der Erste der teilt was Gott in dieser Stufe gewirkt hat.
               </p>
@@ -579,7 +579,7 @@ export default function DiscipleshipStageView() {
                 const myHeart     = (t.reactions || []).some(r => r.user_id === user?.id && r.type === 'heart')
 
                 return (
-                  <div key={t.id} className="bg-white/70 rounded-2xl border border-warm-3/30 p-4">
+                  <div key={t.id} className="bg-surface rounded-2xl border border-warm-3/30 p-4">
                     <div className="flex items-center gap-2.5 mb-3">
                       <AvatarCircle profile={t.profiles} size={36} />
                       <div className="min-w-0">
@@ -595,7 +595,7 @@ export default function DiscipleshipStageView() {
                       <button
                         onClick={() => !t._optimistic && reactToTestimony(t.id, 'prayer')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                          myPrayer ? 'bg-warm-1 text-white' : 'bg-warm-3/20 text-dark-muted hover:bg-warm-3/30'
+                          myPrayer ? 'bg-accent text-white' : 'bg-warm-3/20 text-dark-muted hover:bg-warm-3/30'
                         }`}
                       >
                         🙏 {prayerCount > 0 ? prayerCount : ''} Beten
@@ -624,7 +624,7 @@ export default function DiscipleshipStageView() {
           </p>
 
           {stagePrayers.length === 0 ? (
-            <div className="text-center py-6 bg-white/50 rounded-2xl border border-warm-3/20">
+            <div className="text-center py-6 bg-surface rounded-2xl border border-warm-3/20">
               <p className="text-sm text-dark-muted italic">
                 Noch keine öffentlichen Anliegen auf dieser Stufe.
               </p>
@@ -632,7 +632,7 @@ export default function DiscipleshipStageView() {
           ) : (
             <div className="space-y-2">
               {stagePrayers.map(prayer => (
-                <div key={prayer.id} className="bg-white/70 rounded-2xl border border-warm-3/30 p-3.5">
+                <div key={prayer.id} className="bg-surface rounded-2xl border border-warm-3/30 p-3.5">
                   <div className="flex items-center gap-2 mb-1.5">
                     <AvatarCircle profile={prayer.profiles} size={28} />
                     <span className="text-xs font-semibold text-dark-muted">
@@ -656,7 +656,7 @@ export default function DiscipleshipStageView() {
 
             {/* Mentee view: show my mentor */}
             {pairs.mentor && (
-              <div className="bg-white/70 rounded-2xl border border-warm-3/30 p-4 mb-3">
+              <div className="bg-surface rounded-2xl border border-warm-3/30 p-4 mb-3">
                 <p className="text-[11px] font-bold text-dark-light uppercase tracking-wide mb-3">Mein Begleiter</p>
                 <div className="flex items-center gap-3">
                   <AvatarCircle profile={pairs.mentor} size={44} />
@@ -684,7 +684,7 @@ export default function DiscipleshipStageView() {
 
             {/* Mentor view: show mentees + notes */}
             {pairs.mentees.length > 0 && (
-              <div className="bg-white/70 rounded-2xl border border-warm-3/30 p-4">
+              <div className="bg-surface rounded-2xl border border-warm-3/30 p-4">
                 <p className="text-[11px] font-bold text-dark-light uppercase tracking-wide mb-3">Meine Begleitungen</p>
                 {pairs.mentees.map(m => (
                   <div key={m.id} className="mb-5 last:mb-0">

@@ -36,7 +36,7 @@ function VideoPlaceholder({ videoUrl }) {
   }
   return (
     <div className="aspect-video bg-warm-3/30 rounded-2xl flex flex-col items-center justify-center gap-3 border border-warm-3/40">
-      <div className="w-14 h-14 rounded-full bg-white/70 flex items-center justify-center shadow-md">
+      <div className="w-14 h-14 rounded-full bg-surface flex items-center justify-center shadow-md">
         <Play size={22} className="text-dark-light ml-1" />
       </div>
       <p className="text-dark-light text-sm font-medium">Video folgt in Kürze</p>
@@ -58,7 +58,7 @@ function QuestionItem({ question, answer, onChange }) {
               className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-all ${
                 answer?.selectedOption === idx
                   ? 'bg-warm-1/10 border-warm-1/40 text-warm-1 font-semibold'
-                  : 'bg-white/70 border-warm-3/30 text-dark hover:border-warm-3/60'
+                  : 'bg-surface border-warm-3/30 text-dark hover:border-warm-3/60'
               }`}
             >
               {opt}
@@ -76,7 +76,7 @@ function QuestionItem({ question, answer, onChange }) {
         onChange={e => onChange({ answerText: e.target.value })}
         placeholder="Deine Antwort…"
         rows={4}
-        className="w-full px-4 py-3 rounded-xl border border-warm-3/40 bg-white/70 text-sm text-dark placeholder:text-dark-light resize-none focus:outline-none focus:border-warm-1/50 focus:ring-2 focus:ring-warm-1/10 transition-all"
+        className="w-full px-4 py-3 rounded-xl border border-warm-3/40 bg-surface text-sm text-dark placeholder:text-dark-light resize-none focus:outline-none focus:border-warm-1/50 focus:ring-2 focus:ring-warm-1/10 transition-all"
       />
     </div>
   )
@@ -225,7 +225,7 @@ export default function DiscipleshipLessonView() {
       <div className="flex items-center gap-3 px-4 pt-12 pb-4 bg-gradient-to-b from-warm-4/70 to-transparent">
         <button
           onClick={() => navigate(`/discipleship/stage/${stageNum}`)}
-          className="w-9 h-9 rounded-xl bg-white/70 border border-warm-3/30 flex items-center justify-center flex-shrink-0"
+          className="w-9 h-9 rounded-xl bg-surface border border-warm-3/30 flex items-center justify-center flex-shrink-0"
         >
           <ArrowLeft size={18} className="text-dark" />
         </button>
@@ -268,7 +268,7 @@ export default function DiscipleshipLessonView() {
 
         {/* Questions */}
         {questions.length > 0 && (
-          <div className="bg-white/70 rounded-2xl p-5 border border-warm-3/30 space-y-5">
+          <div className="bg-surface rounded-2xl p-5 border border-warm-3/30 space-y-5">
             <div className="flex items-center gap-2 mb-1">
               <BookOpen size={16} className="text-warm-1" />
               <h3 className="font-semibold text-dark text-sm">Abschlussfragen</h3>
@@ -299,7 +299,7 @@ export default function DiscipleshipLessonView() {
             isDone
               ? 'bg-warm-1/10 text-warm-1 cursor-default'
               : canComplete
-              ? 'bg-warm-1 text-white shadow-lg active:scale-[0.99]'
+              ? 'bg-accent text-white shadow-lg active:scale-[0.99]'
               : 'bg-warm-3/40 text-dark-light cursor-not-allowed'
           }`}
         >
