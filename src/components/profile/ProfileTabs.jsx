@@ -245,7 +245,7 @@ export function PostsTab({ posts, currentUserId, onReact, onDelete, onCreatePost
 // ─── Prayers tab ──────────────────────────────────────────────
 export function PrayersTab({ prayers, onCreatePrayer }) {
   const navigate = useNavigate()
-  const openPrayer = (p) => navigate(`/prayers?focus=${p.id}`)
+  const openPrayer = (p) => navigate(`/prayer/${p.id}`)
   if (prayers.length === 0) {
     return onCreatePrayer ? (
       <TabEmptyState

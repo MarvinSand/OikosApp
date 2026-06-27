@@ -21,6 +21,7 @@ import PrayerGoalDetail from './pages/PrayerGoalDetail'
 import AnsweredPrayersView from './pages/AnsweredPrayersView'
 import PrayerStatsView from './pages/PrayerStatsView'
 import FeedPostView from './pages/FeedPostView'
+import PrayerDetailView from './pages/PrayerDetailView'
 import PublicMapView from './pages/PublicMapView'
 import Prayers from './pages/Prayers'
 import MapView from './pages/MapView'
@@ -73,6 +74,7 @@ function AppShellInner() {
           <Route path="/goals/:id" element={<PrayerGoalDetail />} />
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
+          <Route path="/prayer/:id" element={<PrayerDetailView />} />
           <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/chat" element={<Navigate to="/friends?tab=chats" replace />} />

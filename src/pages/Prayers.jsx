@@ -151,7 +151,7 @@ function CommentInput({ onSubmit }) {
 
 // ─── Gebets-Karte ─────────────────────────────────────────────
 
-function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete, onLaterPray, goal, onOpenGoal }) {
+export function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete, onLaterPray, goal, onOpenGoal }) {
   const { user } = useAuth()
   const [showComments, setShowComments] = useState(false)
   const [showCommentInput, setShowCommentInput] = useState(false)
