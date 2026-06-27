@@ -1062,6 +1062,8 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onFo
   const [showMenu, setShowMenu] = useState(false)
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
   const TypeIcon = cfg.icon
+  // Klares Kategorie-Badge aus dem echten category-Feld (Frage, Bibelstelle, …)
+  const catCfg = FEED_CATEGORIES.find(c => c.key === post.category)
   const isOwn = post.author_id === currentUserId
   const author = post.profiles
 
@@ -1107,9 +1109,15 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onFo
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'Lora, serif', color: 'var(--color-text-muted)', padding: '2px 7px', borderRadius: 20, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
-            <TypeIcon size={10} /> {cfg.label}
-          </span>
+          {catCfg ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'Lora, serif', fontWeight: 700, color: 'var(--color-accent-dark)', padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-accent-light)', border: '1px solid var(--color-accent)', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 13 }}>{catCfg.emoji}</span> {catCfg.label}
+            </span>
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'Lora, serif', fontWeight: 700, color: 'var(--color-text-secondary)', padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)', whiteSpace: 'nowrap' }}>
+              <TypeIcon size={11} /> {cfg.label}
+            </span>
+          )}
           {isOwn && (
             <div style={{ position: 'relative' }}>
               <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
