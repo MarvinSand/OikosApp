@@ -1437,11 +1437,47 @@ function SiblingPickerFeed({ selected, onChange }) {
   )
 }
 
+// Style-Helfer – analog zum Gebete-Erstellen-Flow (CreatePrayerSheet)
+const fSecTitle = { margin: '20px 0 10px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.4px' }
+const fField = { width: '100%', padding: '11px 12px', borderRadius: 10, fontSize: 14, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box', display: 'block' }
+function fChip(active) {
+  return {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+    padding: '12px 6px', borderRadius: 12, cursor: 'pointer',
+    border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+    background: active ? 'var(--color-bg-secondary)' : 'var(--color-bg)',
+    color: active ? 'var(--color-accent)' : 'var(--color-text)',
+  }
+}
+function fRow(active) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14,
+    border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+    background: active ? 'var(--color-bg-secondary)' : 'var(--color-bg)',
+    cursor: 'pointer', textAlign: 'left', width: '100%',
+  }
+}
+function fPrimaryBtn(enabled) {
+  return {
+    width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+    background: enabled ? 'var(--color-accent)' : 'var(--color-border)',
+    color: '#fff', fontSize: 15, fontWeight: 700,
+    cursor: enabled ? 'pointer' : 'default',
+  }
+}
+function FeedSummaryRow({ label, value }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 2px', borderBottom: '1px solid var(--color-border)' }}>
+      <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', textAlign: 'right' }}>{value}</span>
+    </div>
+  )
+}
+
 function FeedPostSheet({ onClose, onSubmit }) {
   const { myCommunities } = useCommunities()
-  // steps: 1=visibility, 2=sub-select (community/siblings), 3=category, 4=content
-  const [step, setStep] = useState(1)
-  const [visibility, setVisibility] = useState(null)
+  const [phase, setPhase] = useState('form') // 'form' | 'review'
+  const [visibility, setVisibility] = useState('public')
   const [communityIds, setCommunityIds] = useState([])
   const [visibilityUserIds, setVisibilityUserIds] = useState([])
   const [category, setCategory] = useState(null)
@@ -1451,7 +1487,6 @@ function FeedPostSheet({ onClose, onSubmit }) {
   const [photoPreview, setPhotoPreview] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const fileRef = useRef(null)
-  const textareaRef = useRef(null)
 
   useEffect(() => {
     if (!photoFile) { setPhotoPreview(null); return }
@@ -1460,24 +1495,15 @@ function FeedPostSheet({ onClose, onSubmit }) {
     return () => URL.revokeObjectURL(url)
   }, [photoFile])
 
-  useEffect(() => {
-    if (!textareaRef.current) return
-    textareaRef.current.style.height = 'auto'
-    textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
-  }, [body])
-
-  const hasSubStep = visibility === 'communities' || visibility === 'specific_include'
-  const totalSteps = hasSubStep ? 4 : 3
-  const stepBar = step === 1 ? 1 : hasSubStep ? step : step - 1
-
-  function selectVisibility(key) {
-    setVisibility(key)
-    const opt = FEED_VISIBILITY.find(o => o.key === key)
-    setStep(opt?.sub ? 2 : 3)
-  }
+  const catObj = FEED_CATEGORIES.find(c => c.key === category)
+  const visObj = FEED_VISIBILITY.find(o => o.key === visibility)
+  const visOk =
+    (visibility !== 'communities' || communityIds.length > 0) &&
+    (visibility !== 'specific_include' || visibilityUserIds.length > 0)
+  const formValid = body.trim().length > 0 && !!category && visOk
 
   async function handleSubmit() {
-    if (!body.trim() || !category || submitting) return
+    if (!formValid || submitting) return
     setSubmitting(true)
     try {
       await onSubmit({
@@ -1495,149 +1521,52 @@ function FeedPostSheet({ onClose, onSubmit }) {
     }
   }
 
-  const canPost = body.trim().length > 0 && !!category && !submitting &&
-    (visibility !== 'communities' || communityIds.length > 0) &&
-    (visibility !== 'specific_include' || visibilityUserIds.length > 0)
-
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div style={{ width: '100%', maxWidth: 448, margin: '0 auto', backgroundColor: 'var(--color-bg)', borderRadius: '20px 20px 0 0', maxHeight: '92dvh', overflowY: 'auto' }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px' }}>
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-text)' }}>Neuer Beitrag</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px', position: 'sticky', top: 0, backgroundColor: 'var(--color-bg)', zIndex: 1 }}>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-text)' }}>
+            {phase === 'review' ? 'Übersicht' : 'Neuer Beitrag'}
+          </p>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>
             <X size={16} />
           </button>
         </div>
 
-        {/* Fortschrittsbalken */}
-        <div style={{ display: 'flex', gap: 4, padding: '0 16px 16px' }}>
-          {Array.from({ length: totalSteps }).map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: stepBar > i ? 'var(--color-accent)' : 'var(--color-border)' }} />
-          ))}
-        </div>
-
-        {/* Schritt 1: Sichtbarkeit */}
-        {step === 1 && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Wer soll den Beitrag sehen?</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {FEED_VISIBILITY.map(o => {
-                const Icon = o.icon
-                return (
-                  <button key={o.key} onClick={() => selectVisibility(o.key)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${visibility === o.key ? 'var(--color-accent)' : 'var(--color-border)'}`, background: visibility === o.key ? 'var(--color-accent)10' : 'var(--color-bg)', cursor: 'pointer', textAlign: 'left' }}
-                  >
-                    <Icon size={18} color={visibility === o.key ? 'var(--color-accent)' : 'var(--color-text-secondary)'} />
-                    <span style={{ fontSize: 14, fontWeight: 600, color: visibility === o.key ? 'var(--color-accent)' : 'var(--color-text)' }}>{o.label}</span>
-                    {o.sub && <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--color-text-tertiary)' }}>›</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Schritt 2a: Community auswählen */}
-        {step === 2 && visibility === 'communities' && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Welche Community?</p>
-            {myCommunities.length === 0
-              ? <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '24px 0' }}>Du bist noch in keiner Community.</p>
-              : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {myCommunities.map(c => {
-                    const checked = communityIds.includes(c.id)
-                    return (
-                      <button key={c.id} onClick={() => setCommunityIds(checked ? communityIds.filter(x => x !== c.id) : [...communityIds, c.id])}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)10' : 'var(--color-bg)', cursor: 'pointer', textAlign: 'left' }}
-                      >
-                        <span style={{ fontSize: 22 }}>{c.icon || '🏠'}</span>
-                        <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{c.name}</span>
-                        <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {checked && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-            }
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button onClick={() => { setStep(1); setCommunityIds([]) }} style={{ fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Zurück</button>
-              <button onClick={() => setStep(3)} disabled={communityIds.length === 0}
-                style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: communityIds.length > 0 ? 'var(--color-accent)' : 'var(--color-border)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: communityIds.length > 0 ? 'pointer' : 'default' }}>
-                Weiter ({communityIds.length} ausgewählt)
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Schritt 2b: Geschwister auswählen */}
-        {step === 2 && visibility === 'specific_include' && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Welche Geschwister?</p>
-            <SiblingPickerFeed selected={visibilityUserIds} onChange={setVisibilityUserIds} />
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <button onClick={() => { setStep(1); setVisibilityUserIds([]) }} style={{ fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Zurück</button>
-              <button onClick={() => setStep(3)} disabled={visibilityUserIds.length === 0}
-                style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: visibilityUserIds.length > 0 ? 'var(--color-accent)' : 'var(--color-border)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: visibilityUserIds.length > 0 ? 'pointer' : 'default' }}>
-                Weiter ({visibilityUserIds.length} ausgewählt)
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Schritt 3: Kategorie */}
-        {step === 3 && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Worum geht es?</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {FEED_CATEGORIES.map(c => (
-                <button key={c.key} onClick={() => { setCategory(c.key); setStep(4) }}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '16px 12px', borderRadius: 14, border: `1.5px solid ${category === c.key ? 'var(--color-accent)' : 'var(--color-border)'}`, background: category === c.key ? 'var(--color-accent)10' : 'var(--color-bg)', cursor: 'pointer' }}
-                >
-                  <span style={{ fontSize: 24 }}>{c.emoji}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: category === c.key ? 'var(--color-accent)' : 'var(--color-text)' }}>{c.label}</span>
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setStep(hasSubStep ? 2 : 1)} style={{ marginTop: 16, fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Zurück</button>
-          </div>
-        )}
-
-        {/* Schritt 4: Inhalt */}
-        {step === 4 && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Dein Beitrag</p>
-
-            {/* Überschrift */}
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)}
+        {phase === 'form' ? (
+          <div style={{ padding: '0 16px 28px' }}>
+            {/* 1) Dein Beitrag */}
+            <p style={fSecTitle}>1 · Dein Beitrag</p>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
               placeholder="Überschrift (optional)"
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, fontWeight: 600, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
+              style={{ ...fField, fontWeight: 600, marginBottom: 8 }}
             />
-
-            {/* Freitext */}
-            <textarea ref={textareaRef} value={body} onChange={e => setBody(e.target.value.slice(0, 1000))}
+            <textarea
+              value={body}
+              onChange={e => setBody(e.target.value.slice(0, 1000))}
               placeholder="Was möchtest du teilen?"
               rows={4}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', lineHeight: 1.5, resize: 'none', boxSizing: 'border-box' }}
+              style={{ ...fField, lineHeight: 1.6, resize: 'vertical' }}
             />
-            <p style={{ margin: '4px 0 10px', fontSize: 11, color: body.length > 900 ? 'var(--color-error)' : 'var(--color-text-tertiary)', textAlign: 'right' }}>{body.length}/1000</p>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: body.length > 900 ? 'var(--color-error)' : 'var(--color-text-tertiary)', textAlign: 'right' }}>{body.length}/1000</p>
 
             {/* Bild-Vorschau */}
             {photoPreview && (
-              <div style={{ position: 'relative', marginBottom: 10 }}>
+              <div style={{ position: 'relative', marginTop: 10 }}>
                 <img src={photoPreview} alt="" style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 12, display: 'block' }} />
                 <button onClick={() => setPhotoFile(null)} style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <X size={14} />
                 </button>
               </div>
             )}
-
-            {/* Bild/Video hochladen */}
             <button onClick={() => fileRef.current?.click()}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginBottom: 14, width: '100%' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginTop: 10, width: '100%' }}
             >
               <Image size={16} color="var(--color-text-secondary)" />
               <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
@@ -1646,11 +1575,91 @@ function FeedPostSheet({ onClose, onSubmit }) {
             </button>
             <input ref={fileRef} type="file" accept="image/*,video/*" onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = '' }} style={{ display: 'none' }} />
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setStep(3)} style={{ fontSize: 13, color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Zurück</button>
-              <button onClick={handleSubmit} disabled={!canPost}
-                style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: canPost ? 'var(--color-accent)' : 'var(--color-border)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: canPost ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-              >
+            {/* 2) Kategorie */}
+            <p style={fSecTitle}>2 · Kategorie</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {FEED_CATEGORIES.map(c => (
+                <button key={c.key} onClick={() => setCategory(category === c.key ? null : c.key)} style={fChip(category === c.key)}>
+                  <span style={{ fontSize: 20 }}>{c.emoji}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{c.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* 3) Sichtbarkeit */}
+            <p style={fSecTitle}>3 · Wer soll es sehen?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {FEED_VISIBILITY.map(o => {
+                const Icon = o.icon
+                const active = visibility === o.key
+                return (
+                  <button key={o.key} onClick={() => setVisibility(o.key)} style={fRow(active)}>
+                    <Icon size={18} color={active ? 'var(--color-accent)' : 'var(--color-text-secondary)'} />
+                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: active ? 'var(--color-accent)' : 'var(--color-text)' }}>{o.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Community-Auswahl (inline) */}
+            {visibility === 'communities' && (
+              myCommunities.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '8px 0 0' }}>Du bist noch in keiner Community.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                  {myCommunities.map(c => {
+                    const checked = communityIds.includes(c.id)
+                    return (
+                      <button key={c.id} onClick={() => setCommunityIds(checked ? communityIds.filter(x => x !== c.id) : [...communityIds, c.id])} style={fRow(checked)}>
+                        <span style={{ fontSize: 20 }}>{c.icon || '🏠'}</span>
+                        <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{c.name}</span>
+                        <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {checked && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            )}
+
+            {/* Geschwister-Auswahl (inline) */}
+            {visibility === 'specific_include' && (
+              <div style={{ marginTop: 8 }}>
+                <SiblingPickerFeed selected={visibilityUserIds} onChange={setVisibilityUserIds} />
+              </div>
+            )}
+
+            <button
+              onClick={() => setPhase('review')}
+              disabled={!formValid}
+              style={{ ...fPrimaryBtn(formValid), marginTop: 22 }}
+            >
+              Weiter zur Übersicht
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: '0 16px 28px' }}>
+            {/* Übersicht */}
+            <div style={{ background: 'var(--color-bg-secondary)', borderRadius: 14, padding: '14px 16px', marginBottom: 14 }}>
+              {title.trim() && <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: 'var(--color-text)' }}>{title.trim()}</p>}
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{body.trim()}</p>
+              {photoPreview && <img src={photoPreview} alt="" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 10, marginTop: 10, display: 'block' }} />}
+            </div>
+            <FeedSummaryRow label="Kategorie" value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
+            <FeedSummaryRow label="Sichtbarkeit" value={
+              visibility === 'communities'
+                ? `${visObj?.label} · ${communityIds.length} ausgewählt`
+                : visibility === 'specific_include'
+                ? `${visObj?.label} · ${visibilityUserIds.length} ausgewählt`
+                : (visObj?.label || '')
+            } />
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
+              <button onClick={() => setPhase('form')} disabled={submitting} style={{ padding: '13px 18px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 600, cursor: submitting ? 'default' : 'pointer' }}>
+                ← Zurück
+              </button>
+              <button onClick={handleSubmit} disabled={submitting} style={{ ...fPrimaryBtn(!submitting), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 {submitting && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
                 {submitting ? 'Wird geteilt…' : 'Beitrag teilen'}
               </button>
