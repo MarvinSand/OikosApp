@@ -1694,6 +1694,31 @@ function FeedTab() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [forwardPost, setForwardPost] = useState(null)
 
+  // Kollabierender Header beim Scrollen
+  const rootRef = useRef(null)
+  const lastStRef = useRef(0)
+  const [headerOpen, setHeaderOpen] = useState(true)   // Feed/Gebete-Switcher
+  const [searchOpen, setSearchOpen] = useState(true)   // Suche + Filter
+
+  useEffect(() => {
+    const scroller = rootRef.current?.closest('.overflow-y-auto')
+    if (!scroller) return
+    function onScroll() {
+      const st = scroller.scrollTop
+      const last = lastStRef.current
+      if (st <= 4) {
+        setHeaderOpen(true); setSearchOpen(true)
+      } else if (st > last + 4) {        // runter scrollen → alles einklappen
+        setHeaderOpen(false); setSearchOpen(false)
+      } else if (st < last - 4) {        // hoch scrollen → Switcher zeigen (Suche nur ganz oben)
+        setHeaderOpen(true)
+      }
+      lastStRef.current = st
+    }
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [])
+
   // Direkt den Composer öffnen, wenn man vom Profil "+ Beitrag" kommt
   useEffect(() => {
     if (searchParams.get('compose') === '1') {
@@ -1748,7 +1773,34 @@ function FeedTab() {
   const hasActiveFilter = filterFacetCount > 0 || q.length > 0
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={rootRef} style={{ position: 'relative' }}>
+      {/* Kollabierender Sticky-Header: Switcher + Suche/Filter */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 30, backgroundColor: 'var(--color-bg)' }}>
+        {/* Feed/Gebete-Switcher – klappt beim Runterscrollen zu schmalem Streifen */}
+        <div
+          onClick={() => { if (!headerOpen) setHeaderOpen(true) }}
+          style={{
+            maxHeight: headerOpen ? 64 : 9,
+            opacity: headerOpen ? 1 : 0.4,
+            overflow: 'hidden',
+            transition: 'max-height 0.28s ease, opacity 0.28s ease',
+            cursor: headerOpen ? 'default' : 'pointer',
+          }}
+        >
+          <PrayerFeedSwitcher active="feed" />
+        </div>
+
+        {/* Suche + Filter – nur ganz oben (oder per Tippen) sichtbar */}
+        <div
+          onClick={() => { if (!searchOpen) setSearchOpen(true) }}
+          style={{
+            maxHeight: searchOpen ? (showFilters ? 520 : 64) : 7,
+            opacity: searchOpen ? 1 : 0.3,
+            overflow: 'hidden',
+            transition: 'max-height 0.3s ease, opacity 0.28s ease',
+            cursor: searchOpen ? 'default' : 'pointer',
+          }}
+        >
       {/* Search + filter */}
       <div style={{
         backgroundColor: 'var(--color-bg)',
@@ -1849,6 +1901,8 @@ function FeedTab() {
           </div>
         )}
       </div>
+        </div>{/* /Suche+Filter Wrapper */}
+      </div>{/* /Sticky-Header */}
 
       <div style={{ padding: '14px 16px 0' }}>
       {/* Loading skeleton */}
@@ -1972,7 +2026,6 @@ export default function FriendsView() {
 
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
-      {activeTab === 'feed' && <PrayerFeedSwitcher active="feed" />}
       {activeTab !== 'feed' && (
         <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10" style={{ paddingTop: 16, paddingBottom: 14 }}>
           <h2 className="text-[22px] font-bold text-dark m-0">
