@@ -5,6 +5,9 @@ import ForwardSheet from '../components/prayer/ForwardSheet'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
+import { useCommunityMembersPreview } from '../hooks/useCommunityMembersPreview'
+import CommunityCard from '../components/community/CommunityCard'
+import { Compass } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { useConversations } from '../hooks/useConversations'
 import { useToast } from '../context/ToastContext'
@@ -534,6 +537,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
   const { showToast } = useToast()
   const [publicCommunities, setPublicCommunities] = useState([])
   const [loadingPublic, setLoadingPublic] = useState(false)
+  const previews = useCommunityMembersPreview([...myCommunities.map(c => c.id), ...publicCommunities.map(c => c.id)])
 
   useEffect(() => {
     loadPublic()
@@ -544,7 +548,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
     const myIds = myCommunities.map(c => c.id)
     const { data } = await supabase
       .from('communities')
-      .select('id, name, description')
+      .select('id, name, description, is_public')
       .eq('is_public', true)
       .limit(20)
     const filtered = (data || []).filter(c => !myIds.includes(c.id))
@@ -583,30 +587,25 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
           Du bist noch in keiner Community.
         </p>
       )}
-      {myCommunities.map(c => {
-        const initials = (c.name || 'Unbekannt').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-        return (
-          <button key={c.id} onClick={() => navigate(`/community/${c.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)' }}>
-            <div style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-warm-1)', flexShrink: 0 }}>
-              {initials}
-            </div>
-            <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-              <p style={{ ...nameText, marginBottom: 2 }}>{c.name}</p>
-              <p style={usernameText}>👥 {c.memberCount} Mitglieder</p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {c.role === 'admin' && <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: 'var(--color-gold-text)' }}>Admin</span>}
-              <ChevronRight size={16} color="var(--color-text-light)" />
-            </div>
-          </button>
-        )
-      })}
+      {!loading && myCommunities.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+          {myCommunities.map(c => (
+            <CommunityCard
+              key={c.id}
+              community={c}
+              members={previews[c.id] || []}
+              variant="member"
+              onOpen={() => navigate(`/community/${c.id}`)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Öffentliche Communities entdecken */}
-      <div style={{ marginTop: 24 }}>
+      <div style={{ marginTop: 28 }}>
         <p style={sectionLabel}>
-          <Globe size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-          Öffentliche Communities
+          <Compass size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+          Entdecken
         </p>
         {loadingPublic && <div style={skeleton} />}
         {!loadingPublic && publicCommunities.length === 0 && (
@@ -614,26 +613,19 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
             Keine öffentlichen Communities verfügbar.
           </p>
         )}
-        {publicCommunities.map(c => {
-            const initials = (c.name || 'Unbekannt').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-            return (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
-                <div style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-warm-1)', flexShrink: 0 }}>
-                  {initials}
-                </div>
-                <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                  <p style={{ ...nameText, marginBottom: 2 }}>{c.name}</p>
-                  {c.description && <p style={{ ...usernameText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.description}</p>}
-                </div>
-                <button
-                  onClick={() => handleJoinPublic(c.id, c.name)}
-                  style={{ padding: '7px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer', flexShrink: 0, fontWeight: 500 }}
-                >
-                  Beitreten
-                </button>
-              </div>
-            )
-          })}
+        {publicCommunities.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+            {publicCommunities.map(c => (
+              <CommunityCard
+                key={c.id}
+                community={c}
+                members={previews[c.id] || []}
+                variant="discover"
+                onJoin={(comm) => handleJoinPublic(comm.id, comm.name)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
