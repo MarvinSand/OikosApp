@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
 import { useSwipeNav } from './hooks/useSwipeNav'
 import { ToastProvider } from './context/ToastContext'
@@ -218,6 +219,7 @@ export default function App() {
             </BrowserRouter>
           </div>
         </div>
+        <Analytics />
       </ToastProvider>
     </ErrorBoundary>
   )
