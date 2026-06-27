@@ -249,8 +249,10 @@ function ReplyQuote({ repliedMsg, isOwn, onJump }) {
       style={{
         display: 'block', width: '100%', textAlign: 'left',
         padding: '6px 8px',
-        borderLeft: `3px solid ${isOwn ? 'rgba(255,255,255,0.85)' : 'var(--color-accent)'}`,
-        backgroundColor: isOwn ? 'rgba(255,255,255,0.12)' : 'var(--color-bg-secondary)',
+        borderLeft: `3px solid ${isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-accent)'}`,
+        backgroundColor: isOwn
+          ? 'color-mix(in srgb, var(--color-bubble-own-text) 10%, transparent)'
+          : 'var(--color-bg-secondary)',
         borderRadius: 6,
         marginBottom: 6,
         border: 'none',
@@ -259,13 +261,13 @@ function ReplyQuote({ repliedMsg, isOwn, onJump }) {
     >
       <p style={{
         fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, margin: 0,
-        color: isOwn ? 'rgba(255,255,255,0.95)' : 'var(--color-accent)',
+        color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-accent)',
       }}>
         {senderName}
       </p>
       <p style={{
         fontFamily: 'Lora, serif', fontSize: 12, margin: '2px 0 0',
-        color: isOwn ? 'rgba(255,255,255,0.85)' : 'var(--color-text-muted)',
+        color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-muted)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {previewText(repliedMsg)}
@@ -432,7 +434,7 @@ function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJump
           <p style={{
             fontFamily: 'Lora, serif', fontSize: 11, fontStyle: 'italic',
             margin: '0 0 4px',
-            color: isOwn ? 'rgba(255,255,255,0.8)' : 'var(--color-text-muted)',
+            color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-muted)',
             display: 'flex', alignItems: 'center', gap: 4,
           }}>
             <Forward size={11} /> Weitergeleitet
