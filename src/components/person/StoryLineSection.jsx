@@ -185,18 +185,6 @@ export default function StoryLineSection({ personId, isOwner }) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [showAll, setShowAll] = useState(false)
 
-  // Tutorial: close the add form + reload entries after direct Supabase insert
-  useEffect(() => {
-    const closeHandler = () => setShowAddForm(false)
-    const reloadHandler = () => reload()
-    window.addEventListener('tour-close-storyline-form', closeHandler)
-    window.addEventListener('tour-reload-storyline', reloadHandler)
-    return () => {
-      window.removeEventListener('tour-close-storyline-form', closeHandler)
-      window.removeEventListener('tour-reload-storyline', reloadHandler)
-    }
-  }, [reload])
-
   const visible = showAll ? entries : entries.slice(0, 3)
   const hasMore = entries.length > 3
 

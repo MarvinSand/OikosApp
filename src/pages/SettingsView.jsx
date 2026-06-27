@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, MailWarning, Play, User, ShieldCheck, ChevronRight,
+  ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
   Moon, Globe, Navigation,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -379,9 +379,6 @@ export default function SettingsView() {
             </h3>
             <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
               Ausloggen
-            </button>
-            <button onClick={() => window.dispatchEvent(new Event('show-tutorial'))} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <Play size={16} /> Tutorial erneut ansehen
             </button>
             <button onClick={() => setShowDelete(true)} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: 'none', fontSize: 14, color: 'var(--color-error)', cursor: 'pointer' }}>
               Account löschen

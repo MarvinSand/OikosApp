@@ -157,7 +157,7 @@ export default function Home() {
       </div>
 
       {/* Scrollbarer Inhalt */}
-      <div className="flex-1 overflow-y-auto hide-scrollbar" style={{ paddingBottom: 32 }}>
+      <div className="flex-1 overflow-y-auto hide-scrollbar mobile-nav-padding">
         {tab === 'aktuelles' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
             {/* Willkommensnachricht (dauerhaft) */}
