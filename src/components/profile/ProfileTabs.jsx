@@ -3,6 +3,9 @@ import {
   Settings, Lock, Globe, Users as UsersIcon, Home as HomeIcon, Loader2,
 } from 'lucide-react'
 import { PostCard } from '../../pages/FriendsView'
+import { PrayerCard } from '../../pages/Prayers'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
 
 // ─── Helpers ──────────────────────────────────────────────────
 export function getInitials(name) {
@@ -243,9 +246,9 @@ export function PostsTab({ posts, currentUserId, onReact, onDelete, onCreatePost
 }
 
 // ─── Prayers tab ──────────────────────────────────────────────
-export function PrayersTab({ prayers, onCreatePrayer }) {
-  const navigate = useNavigate()
-  const openPrayer = (p) => navigate(`/prayer/${p.id}`)
+export function PrayersTab({ prayers, profile, onChanged, onCreatePrayer }) {
+  const { user } = useAuth()
+
   if (prayers.length === 0) {
     return onCreatePrayer ? (
       <TabEmptyState
@@ -261,69 +264,38 @@ export function PrayersTab({ prayers, onCreatePrayer }) {
       </p>
     )
   }
-  const active = prayers.filter(p => !p.is_answered)
-  const answered = prayers.filter(p => p.is_answered)
+
+  async function handlePray(requestId, source) {
+    if (source === 'person') {
+      await supabase.from('prayer_logs').insert({ prayer_request_id: requestId, user_id: user.id })
+    } else {
+      await supabase.from('personal_prayer_logs').insert({ request_id: requestId, user_id: user.id })
+    }
+  }
+
+  async function handleComment(requestId, text, isPublic) {
+    await supabase.from('prayer_notes').insert({ request_id: requestId, author_id: user.id, text, is_public: isPublic })
+  }
+
+  async function handleDelete(req) {
+    if (!window.confirm('Dieses Gebet wirklich löschen?')) return
+    const table = req.source === 'person' ? 'prayer_requests' : 'personal_prayer_requests'
+    await supabase.from(table).delete().eq('id', req.id)
+    onChanged?.()
+  }
+
   return (
-    <div className="flex flex-col gap-3 px-3 py-3">
-      {active.map(p => (
-        <div
+    <div className="flex flex-col px-3 py-3">
+      {prayers.map(p => (
+        <PrayerCard
           key={p.id}
-          onClick={() => openPrayer(p)}
-          style={{
-            padding: '14px 16px',
-            border: '1px solid var(--color-border)',
-            borderRadius: 12,
-            backgroundColor: 'var(--color-bg)',
-            cursor: 'pointer',
-          }}
-        >
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }}>
-            {p.category ? `${p.category} ` : ''}{p.title}
-          </p>
-          {p.description && (
-            <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-              {p.description}
-            </p>
-          )}
-        </div>
-      ))}
-      {answered.map(p => (
-        <div
-          key={p.id}
-          onClick={() => openPrayer(p)}
-          style={{
-            padding: '14px 16px',
-            border: '1px solid var(--color-border)',
-            borderRadius: 12,
-            backgroundColor: 'var(--color-bg)',
-            cursor: 'pointer',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text-secondary)', textDecoration: 'line-through' }}>
-              {p.category ? `${p.category} ` : ''}{p.title}
-            </p>
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: 20,
-                backgroundColor: 'var(--color-gold-light)',
-                color: '#7C5A00',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              ✓ Erhört
-            </span>
-          </div>
-          {p.description && (
-            <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-tertiary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-              {p.description}
-            </p>
-          )}
-        </div>
+          request={{ ...p, owner_id: profile?.id, profiles: profile }}
+          logs={[]}
+          notes={[]}
+          onPray={(id) => handlePray(id, p.source)}
+          onComment={handleComment}
+          onDelete={handleDelete}
+        />
       ))}
     </div>
   )
