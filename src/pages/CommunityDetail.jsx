@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
 import MemberAvatarStack from '../components/community/MemberAvatarStack'
+import MembersSheet from '../components/community/MembersSheet'
 import { communityCover, getInitials as getCommunityInitials } from '../lib/communityTheme'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunityDetail } from '../hooks/useCommunityDetail'
@@ -1197,7 +1198,7 @@ export default function CommunityDetail() {
   const isAdminRole = myMembership?.role === 'admin'
 
   return (
-    <div className="h-full flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full">
+    <div className="flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full chat-nav-clearance" style={{ height: '100dvh' }}>
 
       {/* ── Header mit Cover-Banner ──────────────────────────── */}
       <div style={{ flexShrink: 0, backgroundColor: 'var(--color-bg)' }}>
@@ -1216,7 +1217,7 @@ export default function CommunityDetail() {
 
         {/* Info */}
         <div style={{ padding: '0 16px 4px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: -32 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginTop: -32 }}>
             <div style={{
               width: 72, height: 72, borderRadius: 20, flexShrink: 0,
               background: cover.gradient, border: '4px solid var(--color-bg)',
@@ -1226,14 +1227,6 @@ export default function CommunityDetail() {
             }}>
               {initials}
             </div>
-            <button
-              onClick={() => setShowMembers(v => !v)}
-              aria-label="Mitglieder anzeigen"
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px 7px 10px', borderRadius: 999, border: `1px solid ${showMembers ? 'var(--color-accent)' : 'var(--color-border)'}`, backgroundColor: 'var(--color-white)', cursor: 'pointer', boxShadow: '0 2px 8px rgba(58,46,36,0.06)' }}
-            >
-              <MemberAvatarStack members={memberPreview} count={members.length} size={24} max={3} />
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 700, color: 'var(--color-text)' }}>{members.length}</span>
-            </button>
           </div>
 
           <h2 style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 800, color: 'var(--color-text)', margin: '12px 0 2px', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
@@ -1245,9 +1238,16 @@ export default function CommunityDetail() {
             </p>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: community.description ? 0 : 10 }}>
-            <span style={metaChip}>
-              <Users size={12} /> {members.length} Mitglieder
-            </span>
+            {/* Mitglieder-Pille: Label + Avatare + Anzahl, öffnet das Sheet */}
+            <button
+              onClick={() => setShowMembers(true)}
+              aria-label="Mitglieder anzeigen"
+              style={{ ...metaChip, gap: 7, cursor: 'pointer', borderColor: showMembers ? 'var(--color-accent)' : 'var(--color-border)' }}
+            >
+              Mitglieder
+              <MemberAvatarStack members={memberPreview} count={members.length} size={20} max={3} />
+              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{members.length}</span>
+            </button>
             <span style={metaChip}>
               {community.is_public ? <><Globe size={12} /> Öffentlich</> : <><Lock size={12} /> Privat</>}
             </span>
@@ -1406,51 +1406,16 @@ export default function CommunityDetail() {
           )}
         </div>
 
-        {/* ── Discord-like Member Sidebar ──────────────────────────────── */}
-        {showMembers && (
-          <div className="w-[140px] border-l border-warm-3 bg-white overflow-y-auto shrink-0 pt-2 pb-6 px-2 scrollbar-none animate-[slideInRight_0.2s_ease-out]">
-            <div className="flex items-center justify-between px-2 mb-2 mt-2">
-              <p className="font-sans text-[10px] font-bold text-dark-muted uppercase tracking-widest m-0">
-                Mitglieder &mdash; {members.length}
-              </p>
-              <button onClick={() => setShowMembers(false)} aria-label="Mitgliederliste schließen" className="p-1 -mr-1 rounded-md text-dark-muted hover:bg-warm-4 transition-colors">
-                <X size={15} />
-              </button>
-            </div>
-          <div className="flex flex-col gap-1">
-            {members.map(m => {
-              const name = m.profile?.full_name || m.profile?.username || 'Unbekannt'
-              const shortName = name.length > 14 ? name.substring(0, 12) + '...' : name
-              const isSelf = m.user_id === user?.id
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => setSelectedMember(m)}
-                  className={`flex items-center gap-2.5 px-2 py-1.5 w-full border-none bg-transparent rounded-lg cursor-pointer transition-colors hover:bg-warm-4 ${isSelf ? 'bg-warm-4/50' : ''}`}
-                >
-                  <div className="relative shrink-0">
-                    <Avatar name={name} size={30} isChristian={m.profile?.is_christian} />
-                    <div className="absolute bottom-[-2px] right-[-2px] w-[11px] h-[11px] rounded-full bg-green-500 border-2 border-white shadow-sm" />
-                  </div>
-                  <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
-                    <div className="flex items-center gap-1.5 w-full">
-                      <p className={`font-serif text-[13px] m-0 truncate ${isSelf ? 'font-bold text-warm-1' : 'font-medium text-dark'}`}>
-                        {shortName}
-                      </p>
-                    </div>
-                    {m.role === 'admin' ? (
-                      <span className="font-sans text-[9px] font-bold text-gold tracking-wide">ADMIN</span>
-                    ) : (
-                      <span className="font-sans text-[9px] text-dark-muted truncate">@{m.profile?.username || 'user'}</span>
-                    )}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        )}
       </div>
+
+      {showMembers && (
+        <MembersSheet
+          members={members}
+          currentUserId={user?.id}
+          onClose={() => setShowMembers(false)}
+          onSelectMember={(m) => setSelectedMember(m)}
+        />
+      )}
 
       {showSettings && (
         <SettingsSheet 

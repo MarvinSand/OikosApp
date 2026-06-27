@@ -53,7 +53,8 @@ function AppShellInner() {
     location.pathname === '/' ||
     location.pathname === '/worldmap' ||
     location.pathname.startsWith('/map/') ||
-    location.pathname.startsWith('/chat/')
+    location.pathname.startsWith('/chat/') ||
+    location.pathname.startsWith('/community/')
 
   return (
     <div className="h-[100dvh] flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
