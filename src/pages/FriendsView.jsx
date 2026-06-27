@@ -1694,26 +1694,36 @@ function FeedTab() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [forwardPost, setForwardPost] = useState(null)
 
-  // Kollabierender Header beim Scrollen
+  // Kollabierender Header beim Scrollen (rAF + Sperre gegen Flackern)
   const rootRef = useRef(null)
-  const lastStRef = useRef(0)
-  const [headerOpen, setHeaderOpen] = useState(true)   // Feed/Gebete-Switcher
-  const [searchOpen, setSearchOpen] = useState(true)   // Suche + Filter
+  const [collapsed, setCollapsed] = useState(false)
+  const collapsedRef = useRef(false)
+  const lockUntilRef = useRef(0)
+  const tickingRef = useRef(false)
+
+  function setCollapsedSafe(v) {
+    if (collapsedRef.current === v) return
+    collapsedRef.current = v
+    setCollapsed(v)
+    lockUntilRef.current = Date.now() + 360   // kurz sperren, damit das Layout-Springen keine Rückkopplung auslöst
+  }
 
   useEffect(() => {
     const scroller = rootRef.current?.closest('.overflow-y-auto')
     if (!scroller) return
-    function onScroll() {
+    let lastY = scroller.scrollTop
+    function update() {
+      tickingRef.current = false
       const st = scroller.scrollTop
-      const last = lastStRef.current
-      if (st <= 4) {
-        setHeaderOpen(true); setSearchOpen(true)
-      } else if (st > last + 4) {        // runter scrollen → alles einklappen
-        setHeaderOpen(false); setSearchOpen(false)
-      } else if (st < last - 4) {        // hoch scrollen → Switcher zeigen (Suche nur ganz oben)
-        setHeaderOpen(true)
-      }
-      lastStRef.current = st
+      const dy = st - lastY
+      lastY = st
+      if (Date.now() < lockUntilRef.current) return
+      if (st <= 8) { setCollapsedSafe(false); return }       // ganz oben → immer offen
+      if (dy > 8 && st > 90) setCollapsedSafe(true)           // deutlich runter → einklappen
+      else if (dy < -8) setCollapsedSafe(false)              // hoch → ausklappen
+    }
+    function onScroll() {
+      if (!tickingRef.current) { tickingRef.current = true; requestAnimationFrame(update) }
     }
     scroller.addEventListener('scroll', onScroll, { passive: true })
     return () => scroller.removeEventListener('scroll', onScroll)
@@ -1776,31 +1786,28 @@ function FeedTab() {
     <div ref={rootRef} style={{ position: 'relative' }}>
       {/* Kollabierender Sticky-Header: Switcher + Suche/Filter */}
       <div style={{ position: 'sticky', top: 0, zIndex: 30, backgroundColor: 'var(--color-bg)' }}>
-        {/* Feed/Gebete-Switcher – klappt beim Runterscrollen zu schmalem Streifen */}
-        <div
-          onClick={() => { if (!headerOpen) setHeaderOpen(true) }}
-          style={{
-            maxHeight: headerOpen ? 64 : 9,
-            opacity: headerOpen ? 1 : 0.4,
-            overflow: 'hidden',
-            transition: 'max-height 0.28s ease, opacity 0.28s ease',
-            cursor: headerOpen ? 'default' : 'pointer',
-          }}
-        >
-          <PrayerFeedSwitcher active="feed" />
-        </div>
+        {/* Eingeklappt: kaum sichtbarer Streifen – antippen zum Ausklappen */}
+        {collapsed && (
+          <div
+            onClick={() => setCollapsedSafe(false)}
+            style={{
+              height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', backgroundColor: 'var(--color-bg)',
+              borderBottom: '1px solid var(--color-border)',
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-border)' }} />
+          </div>
+        )}
 
-        {/* Suche + Filter – nur ganz oben (oder per Tippen) sichtbar */}
-        <div
-          onClick={() => { if (!searchOpen) setSearchOpen(true) }}
-          style={{
-            maxHeight: searchOpen ? (showFilters ? 520 : 64) : 7,
-            opacity: searchOpen ? 1 : 0.3,
-            overflow: 'hidden',
-            transition: 'max-height 0.3s ease, opacity 0.28s ease',
-            cursor: searchOpen ? 'default' : 'pointer',
-          }}
-        >
+        {/* Ausgeklappt: Switcher + Suche/Filter */}
+        <div style={{
+          maxHeight: collapsed ? 0 : (showFilters ? 640 : 140),
+          opacity: collapsed ? 0 : 1,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease, opacity 0.25s ease',
+        }}>
+          <PrayerFeedSwitcher active="feed" />
       {/* Search + filter */}
       <div style={{
         backgroundColor: 'var(--color-bg)',
