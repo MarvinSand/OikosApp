@@ -104,7 +104,7 @@ export default function Home() {
 
         <div className="flex items-center gap-1">
           <button
-            onClick={() => navigate('/friends?tab=chats')}
+            onClick={() => navigate('/chats')}
             aria-label="Chats"
             style={{
               position: 'relative', width: 36, height: 36, borderRadius: 8,

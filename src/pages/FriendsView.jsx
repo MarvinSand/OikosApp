@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Forward } from 'lucide-react'
 import ForwardSheet from '../components/prayer/ForwardSheet'
 import { useAuth } from '../hooks/useAuth'
@@ -2050,9 +2050,9 @@ function FeedTab() {
 // ─── FriendsView (Main) ──────────────────────────────────────
 export default function FriendsView() {
   const [searchParams] = useSearchParams()
-  const tabParam = searchParams.get('tab')
-  // Eigenständige Ansichten – kein Tab-Wechsler mehr. Chat, Communities und
-  // Geschwister sind jeweils separate Seiten mit eigenem Einstieg.
+  const location = useLocation()
+  // Eigene Route /chats → Chats als eigenständige Seite (nicht unter „For You").
+  const tabParam = location.pathname === '/chats' ? 'chats' : searchParams.get('tab')
   const activeTab = ['chats', 'friends', 'communities'].includes(tabParam) ? tabParam : 'feed'
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)

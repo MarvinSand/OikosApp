@@ -76,7 +76,8 @@ function AppShellInner() {
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
           <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
-          <Route path="/chat" element={<Navigate to="/friends?tab=chats" replace />} />
+          <Route path="/chat" element={<Navigate to="/chats" replace />} />
+          <Route path="/chats" element={<FriendsView />} />
           <Route path="/chat/:conversationId" element={<ConversationView />} />
           <Route path="/friends" element={<FriendsView />} />
           <Route path="/notifications" element={<NotificationsPage />} />

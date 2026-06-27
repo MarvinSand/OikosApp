@@ -1576,7 +1576,7 @@ export default function ConversationView() {
 
         <div className="flex items-center gap-2 relative z-10">
           <button
-            onClick={() => navigate('/chat')}
+            onClick={() => navigate('/chats')}
             className="p-1.5 text-dark hover:bg-black/5 rounded-full transition-colors flex shrink-0"
           >
             <ArrowLeft size={22} />
