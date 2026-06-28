@@ -48,3 +48,18 @@ git push -u origin temp-fix:main
 2. Inhalt der `.sql`-Datei einfügen
 3. "Run" klicken
 4. Alle Phase-Migrations sind idempotent (können mehrfach ausgeführt werden)
+
+---
+
+## Eingabeleisten/Chat: fix unten an der Bottom-Nav verankern
+
+**Problem:** Eine Chat-Eingabeleiste als normales Flex-Kind (Seite `h-full`/`100dvh` + `flex flex-col`, Leiste als letztes Kind) hängt von der Höhen-Mathematik des Containers ab. Folge: eine **schwarze Lücke** über der Bottom-Nav und die Leiste **verschiebt sich** (z. B. wenn das Textfeld mehrzeilig wird oder die Tastatur aufgeht). Trat zuerst im Chat (`ConversationView`) auf, später erneut auf der Community-Detailseite (`CommunityDetail`).
+
+**Lösung (bewährt, in `ConversationView` + `CommunityDetail`):**
+1. Seite muss eine **full-screen route** sein → in `src/App.jsx` zu `isFullScreenRoute` hinzufügen (sonst greift `.mobile-nav-padding` zusätzlich und erzeugt die Lücke).
+2. Root-Container: `style={{ height: '100dvh' }}` + `flex flex-col` — **nicht** `h-full`, und **kein** Nav-Padding am Root.
+3. Eingabeleiste bekommt `className="chat-input-bar"` → `position: fixed; bottom: calc(68px + safe-area)` (genau über der Nav), zentriert, `max-width: 42rem`, `z-index: 35`. Definiert in `src/index.css` (`.chat-input-bar`). Dadurch klebt sie unten und bewegt sich nie.
+4. Scrollbare Nachrichtenliste: `paddingBottom: calc(132px + env(safe-area-inset-bottom, 0px))`, damit die letzte Nachricht nicht hinter Leiste + Nav verschwindet.
+5. Weitere scrollbare Tabs derselben Seite (ohne fixe Leiste): `paddingBottom: calc(~84px + env(safe-area-inset-bottom, 0px))` für Nav-Freiraum.
+
+**Wiederverwendbare CSS:** `.chat-input-bar` und `.chat-nav-clearance` in `src/index.css`. Referenz-Implementierung: `src/pages/ConversationView.jsx`.

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, ChevronRight, Plus, Compass, Hash, ArrowRight } from 'lucide-react'
+import { Users, Plus, Compass, Hash, ArrowRight } from 'lucide-react'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useCommunityMembersPreview } from '../../hooks/useCommunityMembersPreview'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import CommunityCard from '../community/CommunityCard'
+import { CreateCommunitySheet, JoinCommunityModal } from '../../pages/FriendsView'
 
 const sectionLabel = {
   fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)',
@@ -23,9 +24,11 @@ export default function HomeCommunityTab() {
   const [publicCommunities, setPublicCommunities] = useState([])
   const [loadingPublic, setLoadingPublic] = useState(true)
   const [joining, setJoining] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [showJoin, setShowJoin] = useState(false)
 
   const previews = useCommunityMembersPreview([
-    ...myCommunities.slice(0, 4).map(c => c.id),
+    ...myCommunities.map(c => c.id),
     ...publicCommunities.map(c => c.id),
   ])
 
@@ -85,39 +88,39 @@ export default function HomeCommunityTab() {
         <ArrowRight size={18} color="var(--color-accent)" style={{ flexShrink: 0 }} />
       </button>
 
+      {/* Erstellen / Beitreten */}
+      <div style={{ display: 'flex', gap: 10, marginTop: -16 }}>
+        <button
+          onClick={() => setShowCreate(true)}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
+        >
+          <Plus size={15} /> Erstellen
+        </button>
+        <button
+          onClick={() => setShowJoin(true)}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
+        >
+          <Hash size={15} /> Beitreten
+        </button>
+      </div>
+
       {/* Meine Communities */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <p style={sectionLabel}>Meine Communities</p>
-          <button onClick={() => navigate('/friends?tab=communities')} style={{ display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-accent)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700 }}>
-            Alle ansehen <ChevronRight size={14} />
-          </button>
-        </div>
+        <p style={{ ...sectionLabel, marginBottom: 12 }}>Meine Communities</p>
 
         {loading && (
           <div style={{ height: 150, borderRadius: 18, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
         )}
 
         {!loading && myCommunities.length === 0 && (
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              onClick={() => navigate('/friends?tab=communities')}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >
-              <Plus size={15} /> Erstellen
-            </button>
-            <button
-              onClick={() => navigate('/friends?tab=communities')}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'none', color: 'var(--color-text)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >
-              <Hash size={15} /> Per Code
-            </button>
-          </div>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '8px 0 4px', margin: 0 }}>
+            Du bist noch in keiner Community – erstelle eine oder tritt per Code bei.
+          </p>
         )}
 
         {!loading && myCommunities.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {myCommunities.slice(0, 4).map(c => (
+            {myCommunities.map(c => (
               <CommunityCard
                 key={c.id}
                 community={c}
@@ -161,6 +164,9 @@ export default function HomeCommunityTab() {
           </div>
         )}
       </div>
+
+      {showCreate && <CreateCommunitySheet onClose={() => setShowCreate(false)} />}
+      {showJoin && <JoinCommunityModal onClose={() => setShowJoin(false)} />}
     </div>
   )
 }

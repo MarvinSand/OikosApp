@@ -172,15 +172,13 @@ function InputBar({ onSend }) {
   }
 
   return (
-    <div style={{
+    <div className="chat-input-bar" style={{
       backgroundColor: 'var(--color-white)',
       borderTop: '1px solid var(--color-warm-3)',
       padding: '10px 14px',
       display: 'flex',
       alignItems: 'flex-end',
       gap: 10,
-      flexShrink: 0,
-      width: '100%',
     }}>
       <textarea
         ref={textareaRef}
@@ -1198,7 +1196,7 @@ export default function CommunityDetail() {
   const isAdminRole = myMembership?.role === 'admin'
 
   return (
-    <div className="flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full chat-nav-clearance" style={{ height: '100dvh' }}>
+    <div className="flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full" style={{ height: '100dvh' }}>
 
       {/* ── Header mit Cover-Banner ──────────────────────────── */}
       <div style={{ flexShrink: 0, backgroundColor: 'var(--color-bg)' }}>
@@ -1274,7 +1272,7 @@ export default function CommunityDetail() {
           {/* CHAT tab */}
           {activeTab === 'chat' && (
             <>
-              <div ref={messagesContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 4px' }}>
+              <div ref={messagesContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px calc(132px + env(safe-area-inset-bottom, 0px))' }}>
                 {chatLoading && messages.length === 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {[false, true, false, true, false].map((right, i) => (
@@ -1310,7 +1308,7 @@ export default function CommunityDetail() {
 
           {/* PINNWAND tab */}
           {activeTab === 'board' && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px calc(84px + env(safe-area-inset-bottom, 0px))' }}>
               {isAdmin && (
                 <button
                   onClick={() => setShowCreatePost(true)}
@@ -1340,7 +1338,7 @@ export default function CommunityDetail() {
 
           {/* EVENTS tab */}
           {activeTab === 'events' && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px calc(84px + env(safe-area-inset-bottom, 0px))' }}>
               {isAdmin && (
                 <button
                   onClick={() => setShowCreateEvent(true)}
@@ -1378,7 +1376,7 @@ export default function CommunityDetail() {
 
           {/* GEBETE tab */}
           {activeTab === 'prayers' && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px calc(84px + env(safe-area-inset-bottom, 0px))' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <h4 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
                   Gebetsanliegen
