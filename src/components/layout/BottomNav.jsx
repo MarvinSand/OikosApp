@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, BookOpen, Globe, BookMarked, User } from 'lucide-react'
 
@@ -20,9 +21,24 @@ function isPathActive(currentPath, match) {
 export default function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
+  const navRef = useRef(null)
+
+  // Echte Nav-Höhe (inkl. Safe-Area) als CSS-Variable bereitstellen, damit
+  // Seiten exakt den Bottom-Nav-Platz reservieren können (keine Lücke/Overlap).
+  useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    const setVar = () => document.documentElement.style.setProperty('--bottom-nav-h', el.offsetHeight + 'px')
+    setVar()
+    const ro = new ResizeObserver(setVar)
+    ro.observe(el)
+    window.addEventListener('resize', setVar)
+    return () => { ro.disconnect(); window.removeEventListener('resize', setVar) }
+  }, [])
 
   return (
     <nav
+      ref={navRef}
       className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md flex justify-around items-stretch px-1 z-40"
       style={{
         backgroundColor: 'var(--color-bg)',

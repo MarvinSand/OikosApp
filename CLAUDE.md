@@ -63,3 +63,7 @@ git push -u origin temp-fix:main
 5. Weitere scrollbare Tabs derselben Seite (ohne fixe Leiste): `paddingBottom: calc(~84px + env(safe-area-inset-bottom, 0px))` für Nav-Freiraum.
 
 **Wiederverwendbare CSS:** `.chat-input-bar` und `.chat-nav-clearance` in `src/index.css`. Referenz-Implementierung: `src/pages/ConversationView.jsx`.
+
+**⚠️ iOS-Safari-Caveat (wichtig!):** `position: fixed`-Leisten können auf iOS Safari beim **Unmount einer SPA-Route** eine schwarze Compositing-Geister-Fläche unten hinterlassen, die **auch auf anderen Seiten bleibt, bis man neu lädt**. Das tritt v. a. auf, wenn die Leiste **bedingt** (in einem Tab) gemountet wird – wie auf der Community-Detailseite (`CommunityDetail`). **Lösung dort:** KEINE fixed-Leiste, sondern Eingabeleiste **im Fluss** (Flex-Kind) + Root-Container `style={{ height: '100dvh', paddingBottom: 'var(--bottom-nav-h, 64px)' }}`.
+
+**Exakte Nav-Höhe:** `BottomNav.jsx` misst die echte Nav-Höhe (inkl. Safe-Area) per `ResizeObserver` und schreibt sie als CSS-Variable **`--bottom-nav-h`** auf `document.documentElement`. Für Bottom-Insets (z. B. Chat-Seiten ohne fixe Leiste) `var(--bottom-nav-h, 64px)` nutzen – so bleibt in Dark Mode keine schwarze Rest-Lücke. (Die fixe `.chat-input-bar` ist weiterhin okay für **dedizierte Vollbild-Chatseiten** wie `ConversationView`, die selten unmounten.)
