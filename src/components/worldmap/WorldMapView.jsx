@@ -2,15 +2,16 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
-import { Plus, Navigation, Users, CalendarDays } from 'lucide-react'
+import { Plus, Navigation } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { useWorldMap } from '../../hooks/useWorldMap'
+import { useWorldMap, haversine } from '../../hooks/useWorldMap'
 import { useToast } from '../../context/ToastContext'
 import { GOOGLE_MAPS_LOADER_OPTIONS, DEFAULT_MAP_ID } from '../../lib/googleMaps'
 import AdvancedMarker from './AdvancedMarker'
 import UserPinSheet from './UserPinSheet'
 import ActivitySheet from './ActivitySheet'
 import CreateActivitySheet from './CreateActivitySheet'
+import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
 
 // ─── Palette (Phase 27: schwarz/weiß + babyblauer Akzent) ──
 const C = {
@@ -330,6 +331,10 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const siblingsOnly = searchParams.get('layer') === 'siblings'
   const [showGeschwister, setShowGeschwister] = useState(true)
   const [showEvents, setShowEvents] = useState(!siblingsOnly)
+  // Drawer: welcher Inhalt (Geschwister/Events) unten im hochziehbaren Menü angezeigt wird
+  const [drawerTab, setDrawerTab] = useState('siblings')
+  // Umkreis in km (null = weltweit) – filtert Liste UND Karten-Pins
+  const [radiusKm, setRadiusKm] = useState(null)
 
   useEffect(() => {
     if (!localStorage.getItem(PRIVACY_KEY)) setShowPrivacyBanner(true)
@@ -340,8 +345,55 @@ export default function WorldMapView({ onNavigateToProfile }) {
     setShowPrivacyBanner(false)
   }
 
-  const usersForMap = useMemo(() => (showGeschwister ? visibleUsers : []), [showGeschwister, visibleUsers])
-  const activitiesForMap = useMemo(() => (showEvents ? activities : []), [showEvents, activities])
+  const hasOwnLocation = !!(myProfile?.latitude && myProfile?.longitude)
+
+  const usersWithDistance = useMemo(() => {
+    if (!hasOwnLocation) return visibleUsers
+    return visibleUsers.map(u => ({
+      ...u,
+      distance: haversine(myProfile.latitude, myProfile.longitude, u.latitude, u.longitude),
+    }))
+  }, [visibleUsers, hasOwnLocation, myProfile?.latitude, myProfile?.longitude]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activitiesWithDistance = useMemo(() => {
+    if (!hasOwnLocation) return activities
+    return activities.map(a => ({
+      ...a,
+      distance: haversine(myProfile.latitude, myProfile.longitude, a.latitude, a.longitude),
+    }))
+  }, [activities, hasOwnLocation, myProfile?.latitude, myProfile?.longitude]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const usersInRadius = useMemo(
+    () => usersWithDistance.filter(u => radiusKm == null || u.distance == null || u.distance <= radiusKm),
+    [usersWithDistance, radiusKm]
+  )
+  const activitiesInRadius = useMemo(
+    () => activitiesWithDistance.filter(a => radiusKm == null || a.distance == null || a.distance <= radiusKm),
+    [activitiesWithDistance, radiusKm]
+  )
+
+  const usersForMap = useMemo(() => (showGeschwister ? usersInRadius : []), [showGeschwister, usersInRadius])
+  const activitiesForMap = useMemo(() => (showEvents ? activitiesInRadius : []), [showEvents, activitiesInRadius])
+
+  // Erster Tap wählt die Ebene (und den Drawer-Tab), zweiter Tap auf die
+  // bereits ausgewählte Ebene blendet sie aus.
+  function handlePillTap(tabKey) {
+    if (tabKey === 'siblings') {
+      if (!showGeschwister) { setShowGeschwister(true); setDrawerTab('siblings') }
+      else if (drawerTab !== 'siblings') setDrawerTab('siblings')
+      else { setShowGeschwister(false); if (showEvents) setDrawerTab('events') }
+    } else {
+      if (!showEvents) { setShowEvents(true); setDrawerTab('events') }
+      else if (drawerTab !== 'events') setDrawerTab('events')
+      else { setShowEvents(false); if (showGeschwister) setDrawerTab('siblings') }
+    }
+  }
+
+  function focusOn(lat, lng) {
+    if (!map || lat == null || lng == null) return
+    map.panTo({ lat, lng })
+    if (map.getZoom() < 11) map.setZoom(11)
+  }
 
   const defaultCenter = myProfile?.latitude
     ? { lat: myProfile.latitude, lng: myProfile.longitude }
@@ -433,18 +485,6 @@ export default function WorldMapView({ onNavigateToProfile }) {
           )}
         </GoogleMap>
 
-        {/* Two-layer toggle pills – top center */}
-        <div style={{
-          position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 501, display: 'flex', gap: 8,
-          background: C.surfaceBlur, padding: 5, borderRadius: 999,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.10)', backdropFilter: 'blur(8px)',
-          border: `1px solid ${C.border}`,
-        }}>
-          <LayerToggle active={showGeschwister} onClick={() => setShowGeschwister(v => !v)} icon={<Users size={15} />} label="Geschwister" />
-          <LayerToggle active={showEvents} onClick={() => setShowEvents(v => !v)} icon={<CalendarDays size={15} />} label="Events" />
-        </div>
-
         {/* Snapchat-style zoom sidebar – right edge, drag up = zoom in */}
         <ZoomSidebar
           snapZoom={snapZoom}
@@ -459,7 +499,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
         {/* No location hint */}
         {!myProfile?.latitude && (
           <div style={{
-            position: 'absolute', bottom: 100, left: 12, right: 72, zIndex: 500,
+            position: 'absolute', bottom: `calc(var(--bottom-nav-h, 64px) + ${DRAWER_PEEK}px + 12px)`, left: 12, right: 80, zIndex: 500,
             background: C.surfaceBlur, borderRadius: 12,
             padding: '10px 12px', boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
             border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10,
@@ -485,7 +525,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
         <button
           onClick={() => setShowCreateSheet(true)}
           style={{
-            position: 'absolute', bottom: 90, right: 12, zIndex: 500,
+            position: 'absolute', bottom: `calc(var(--bottom-nav-h, 64px) + ${DRAWER_PEEK}px + 14px)`, right: 12, zIndex: 500,
             width: 56, height: 56, borderRadius: '50%',
             background: C.accent, border: 'none', color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -495,6 +535,22 @@ export default function WorldMapView({ onNavigateToProfile }) {
         >
           <Plus size={26} />
         </button>
+
+        {/* Hochziehbares Menü (Google-Maps-Stil) mit Ebenen-Buttons, Suche, Filter & Umkreis */}
+        <MapDrawer
+          tab={drawerTab}
+          showGeschwister={showGeschwister}
+          showEvents={showEvents}
+          onPillTap={handlePillTap}
+          users={usersInRadius}
+          activities={activitiesInRadius}
+          myProfile={myProfile}
+          hasOwnLocation={hasOwnLocation}
+          radiusKm={radiusKm}
+          onRadiusChange={setRadiusKm}
+          onSelectUser={(u) => { focusOn(u.latitude, u.longitude); setSelectedUser(u) }}
+          onSelectActivity={(a) => { focusOn(a.latitude, a.longitude); setSelectedActivity(a) }}
+        />
 
         {/* Privacy banner */}
         {showPrivacyBanner && <PrivacyBanner onClose={closePrivacyBanner} />}
@@ -544,27 +600,6 @@ export default function WorldMapView({ onNavigateToProfile }) {
         />
       )}
     </div>
-  )
-}
-
-// ─── Layer toggle pill ───────────────────────────────────
-function LayerToggle({ active, onClick, icon, label }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        padding: '7px 15px', borderRadius: 999, border: 'none',
-        background: active ? C.accent : 'transparent',
-        color: active ? '#fff' : C.textSec,
-        fontSize: 13, fontWeight: active ? 700 : 500,
-        cursor: 'pointer', whiteSpace: 'nowrap',
-        transition: 'all 0.15s',
-      }}
-    >
-      {icon}
-      {label}
-    </button>
   )
 }
 
