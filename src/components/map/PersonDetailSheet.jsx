@@ -1122,7 +1122,7 @@ const sheet = {
   WebkitBackdropFilter: 'blur(20px)',
   border: '1px solid var(--color-border)',
   borderRadius: 32,
-  zIndex: 50, maxHeight: 'calc(90vh - 24px)', overflowY: 'auto',
+  zIndex: 50, maxHeight: 'calc(90dvh - 24px - env(safe-area-inset-top, 0px))', overflowY: 'auto',
   padding: '20px 24px calc(80px + env(safe-area-inset-bottom, 0px))',
   boxShadow: '0 24px 48px -12px rgba(58,46,36,0.25), 0 0 0 1px rgba(232, 213, 183, 0.3)',
   animation: 'sheetSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',

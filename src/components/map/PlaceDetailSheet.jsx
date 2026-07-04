@@ -104,7 +104,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)',
         borderRadius: '24px 24px 0 0', zIndex: 50,
-        maxHeight: '88vh', overflowY: 'auto',
+        maxHeight: 'calc(88dvh - env(safe-area-inset-top, 0px))', overflowY: 'auto',
         paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
         animation: 'sheetSlideUp 0.3s ease-out',
       }}>
