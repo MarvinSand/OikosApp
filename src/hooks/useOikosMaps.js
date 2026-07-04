@@ -137,14 +137,14 @@ export function useOikosMaps() {
     return data
   }
 
-  async function addPerson(name, isSecondary = false) {
+  async function addPerson(name, isSecondary = false, extra = {}) {
     const { data, error } = await supabase
       .from('oikos_people')
-      .insert({ map_id: activeMapId, user_id: user.id, name, impact_stage: 1 })
+      .insert({ map_id: activeMapId, user_id: user.id, name, impact_stage: 1, ...extra })
       .select()
       .single()
     if (error) throw error
-    const personData = { ...data, is_secondary: isSecondary || data.is_secondary || false }
+    const personData = { ...data, ...extra, is_secondary: isSecondary || data.is_secondary || false }
     setPeople(prev => [...prev, personData])
     if (isSecondary) {
       saveSecondaryId(data.id, true)

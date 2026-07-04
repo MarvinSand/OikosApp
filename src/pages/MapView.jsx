@@ -523,8 +523,8 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               </button>
               {showAddMenu && (
                 <>
-                  <div onClick={() => setShowAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div className="absolute right-0 top-full mt-1 bg-paper rounded-xl shadow-glass border border-warm-3 overflow-hidden z-20 min-w-[160px]">
+                  <div onClick={() => setShowAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
+                  <div className="absolute right-0 top-full mt-1 bg-paper rounded-xl shadow-glass border border-warm-3 overflow-hidden z-40 min-w-[160px]">
                     <button
                       onClick={() => { setShowAddMenu(false); setShowAddPerson(true) }}
                       className="flex items-center gap-2.5 w-full px-4 py-3 border-none bg-transparent hover:bg-warm-4 font-serif text-[13px] text-dark font-medium cursor-pointer text-left transition-colors"
@@ -686,7 +686,18 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         <MapSettingsSheet map={activeMap} updateMap={updateMap} deleteMap={deleteMap} onClose={() => setShowSettings(false)} />
       )}
       {showAddPerson && (
-        <AddPersonModal onClose={() => setShowAddPerson(false)} onAdd={addPerson} />
+        <AddPersonModal
+          onClose={() => setShowAddPerson(false)}
+          people={people}
+          places={places}
+          onAdd={async (name, target) => {
+            if (!target || target.type === 'me') return addPerson(name)
+            const p = await addPerson(name, true, { owner_disconnected: true })
+            if (target.type === 'place') await connectPlacePerson(target.id, p.id)
+            if (target.type === 'person') await createConnection(p.id, target.id)
+            return p
+          }}
+        />
       )}
       {selectedOverlayPerson && (
         <OverlayPersonSheet
@@ -747,6 +758,11 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           onDelete={(id) => { deletePlace(id); setSelectedPlace(null) }}
           onConnectPerson={connectPlacePerson}
           onDisconnectPerson={disconnectPlacePerson}
+          onAddPersonToPlace={async (placeId, name) => {
+            const p = await addPerson(name, true, { owner_disconnected: true })
+            await connectPlacePerson(placeId, p.id)
+            return p
+          }}
         />
       )}
       {showAddPlace && (
