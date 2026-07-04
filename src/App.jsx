@@ -28,7 +28,6 @@ import NotificationsPage from './pages/NotificationsPage'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import OnboardingTutorial from './components/tutorial/OnboardingTutorial'
 
 function LoadingSpinner() {
   return (
@@ -92,7 +91,6 @@ function AppShellInner() {
       </div>
 
       <BottomNav />
-      <OnboardingTutorial />
     </div>
   )
 }

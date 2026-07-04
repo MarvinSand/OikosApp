@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
@@ -299,7 +299,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
 
   async function startMapPrayerMode() {
     if (loadingPrayerMode) return
-    const ids = people.map(p => p.id).filter(id => id && id !== 'dummy-tutorial')
+    const ids = people.map(p => p.id).filter(Boolean)
     if (ids.length === 0) { showToast('Diese Map hat noch keine Personen'); return }
     setLoadingPrayerMode(true)
     try {
@@ -374,68 +374,9 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   // Keep selectedPerson in sync with people state (e.g. after updates)
   useEffect(() => {
     if (!selectedPerson) return
-    if (selectedPerson.id === 'dummy-tutorial') return
     const updated = people.find(p => p.id === selectedPerson.id)
     if (updated) setSelectedPerson(updated)
   }, [people])
-
-  // Tutorial listener for opening the modal programmatically
-  useEffect(() => {
-    const handleOpen = (e) => {
-      if (e.detail?.person) {
-        setSelectedPerson(e.detail.person)
-      } else if (people && people.length > 0) {
-        setSelectedPerson(people[0])
-      } else {
-        setSelectedPerson({
-          id: 'dummy-tutorial',
-          name: 'Maria (Beispiel)',
-          relationship_type: 'Freund/in',
-          is_christian: false,
-          impact_stage: 2,
-          notes: 'Dies ist ein Beispiel für das Tutorial.',
-          user_id: user?.id,
-        })
-      }
-    }
-    const handleClose = () => setSelectedPerson(null)
-
-    window.addEventListener('tour-open-person', handleOpen)
-    window.addEventListener('tour-close-person', handleClose)
-    return () => {
-      window.removeEventListener('tour-open-person', handleOpen)
-      window.removeEventListener('tour-close-person', handleClose)
-    }
-  }, [people, user])
-
-  // Tutorial: reload map canvas when a person was created outside of normal flow
-  const reloadMapRef = useRef(reloadMap)
-  useEffect(() => { reloadMapRef.current = reloadMap }, [reloadMap])
-  useEffect(() => {
-    const handler = () => reloadMapRef.current?.()
-    window.addEventListener('tour-reload-map', handler)
-    return () => window.removeEventListener('tour-reload-map', handler)
-  }, [])
-
-  // Tutorial: open/close NewMapModal + inject a newly created map into state
-  useEffect(() => {
-    const openHandler = () => setShowNewMap(true)
-    const closeHandler = () => setShowNewMap(false)
-    const mapCreatedHandler = (e) => {
-      const m = e.detail?.map
-      if (!m) return
-      setMaps(prev => [...prev, m])
-      setActiveMapId(m.id)
-    }
-    window.addEventListener('tour-open-new-map', openHandler)
-    window.addEventListener('tour-close-new-map', closeHandler)
-    window.addEventListener('tour-map-created', mapCreatedHandler)
-    return () => {
-      window.removeEventListener('tour-open-new-map', openHandler)
-      window.removeEventListener('tour-close-new-map', closeHandler)
-      window.removeEventListener('tour-map-created', mapCreatedHandler)
-    }
-  }, [])
 
   const selectedLinkedProfile = selectedPerson?.linked_user_id
     ? linkedProfiles[selectedPerson.linked_user_id] || null
