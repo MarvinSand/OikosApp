@@ -46,6 +46,7 @@ export function usePrayerStats() {
   const [monthPrayerTime, setMonthPrayerTime] = useState(0)
   const [peopleCount, setPeopleCount] = useState(0)
   const [answeredCount, setAnsweredCount] = useState(0)
+  const [monthPrayerCount, setMonthPrayerCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -58,6 +59,8 @@ export function usePrayerStats() {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString()
     const monday = getLastMonday()
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+    // Logs must cover both the weekly chart and the month total
+    const logsSince = monthStart < sevenDaysAgo ? monthStart : sevenDaysAgo
 
     const [
       { data: rawStats },
@@ -69,10 +72,10 @@ export function usePrayerStats() {
       { count: peopleCnt },
     ] = await Promise.all([
       supabase.from('user_prayer_stats').select('*').eq('user_id', user.id).single(),
-      supabase.from('personal_prayer_logs').select('created_at').eq('user_id', user.id).gte('created_at', sevenDaysAgo),
+      supabase.from('personal_prayer_logs').select('created_at').eq('user_id', user.id).gte('created_at', logsSince),
       supabase.from('prayer_sessions').select('duration_seconds, started_at').eq('user_id', user.id),
-      supabase.from('personal_prayer_requests').select('answered_at, id').eq('owner_id', user.id).eq('is_answered', true),
-      supabase.from('prayer_requests').select('answered_at, id').eq('owner_id', user.id).eq('is_answered', true),
+      supabase.from('personal_prayer_requests').select('answered_at, created_at, id').eq('owner_id', user.id).eq('is_answered', true),
+      supabase.from('prayer_requests').select('answered_at, created_at, id').eq('owner_id', user.id).eq('is_answered', true),
       supabase.from('personal_prayer_requests').select('category_id, prayer_categories(name, emoji, color)').eq('owner_id', user.id).not('category_id', 'is', null),
       supabase.from('oikos_people').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
     ])
@@ -137,6 +140,7 @@ export function usePrayerStats() {
       days.push({ date: key, day: dayNames[d.getDay()], count, isToday })
     }
     setWeeklyActivity(days)
+    setMonthPrayerCount((myLogs || []).filter(l => l.created_at >= monthStart).length)
 
     // ── Prayer time ──────────────────────────────────────────────
     const allSessions = sessions || []
@@ -189,13 +193,12 @@ export function usePrayerStats() {
 
   // Derived values for encouragement card
   const today = getToday()
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
   const statsCtx = {
     longestStreak: stats?.longest_streak || 0,
     answeredCount,
     totalPrayers: stats?.total_prayers || 0,
     peopleCount,
-    thisMonthPrayers: weeklyActivity.filter(d => d.date >= monthStart).reduce((s, d) => s + d.count, 0),
+    thisMonthPrayers: monthPrayerCount,
   }
   const encouragementIndex = getDayOfYear() % ENCOURAGEMENTS.length
   const encouragement = ENCOURAGEMENTS[encouragementIndex](statsCtx)

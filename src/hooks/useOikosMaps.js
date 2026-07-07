@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { useToast } from '../context/ToastContext'
 
 // LocalStorage helpers for is_secondary persistence (fallback if DB column missing)
 function getSecondaryIds() {
@@ -15,6 +16,7 @@ function saveSecondaryId(id, isSecondary) {
 
 export function useOikosMaps() {
   const { user } = useAuth()
+  const { showToast } = useToast() ?? {}
   const [maps, setMaps] = useState([])
   const [activeMapId, setActiveMapId] = useState(null)
   const [people, setPeople] = useState([])
@@ -22,10 +24,15 @@ export function useOikosMaps() {
   const [overlayData, setOverlayData] = useState([])
   const [loading, setLoading] = useState(true)
 
+  function reportError(err, msg = 'Speichern fehlgeschlagen') {
+    console.error(msg, err)
+    showToast?.(msg, 'error')
+  }
+
   useEffect(() => {
     if (!user) return
     loadMaps()
-  }, [user])
+  }, [user?.id])
 
   useEffect(() => {
     if (!activeMapId) { setPeople([]); setConnections([]); setOverlayData([]); return }
@@ -82,8 +89,12 @@ export function useOikosMaps() {
         )
       ),
     ])
+    const secondaryIds = getSecondaryIds()
     setOverlayData(withOverlay.map((p, i) => {
-      const persons = results[i].data || []
+      const persons = (results[i].data || []).map(op => ({
+        ...op,
+        is_secondary: op.is_secondary || secondaryIds.has(op.id),
+      }))
       return {
         parentPersonId: p.id,
         persons,
@@ -148,7 +159,8 @@ export function useOikosMaps() {
     setPeople(prev => [...prev, personData])
     if (isSecondary) {
       saveSecondaryId(data.id, true)
-      supabase.from('oikos_people').update({ is_secondary: true }).eq('id', data.id).then(() => {})
+      supabase.from('oikos_people').update({ is_secondary: true }).eq('id', data.id)
+        .then(({ error: err }) => { if (err) console.error('is_secondary save failed', err) })
     }
     return personData
   }
@@ -156,7 +168,8 @@ export function useOikosMaps() {
   async function setPersonSecondary(id, isSecondary) {
     saveSecondaryId(id, isSecondary)
     setPeople(prev => prev.map(p => p.id === id ? { ...p, is_secondary: isSecondary } : p))
-    supabase.from('oikos_people').update({ is_secondary: isSecondary }).eq('id', id).then(() => {})
+    supabase.from('oikos_people').update({ is_secondary: isSecondary }).eq('id', id)
+      .then(({ error: err }) => { if (err) console.error('is_secondary save failed', err) })
   }
 
   async function updatePerson(id, updates) {
@@ -180,14 +193,20 @@ export function useOikosMaps() {
   }
 
   async function deletePerson(id) {
-    await supabase.from('oikos_people').delete().eq('id', id)
+    const { error } = await supabase.from('oikos_people').delete().eq('id', id)
+    if (error) {
+      reportError(error, 'Löschen fehlgeschlagen')
+      loadPeople(activeMapId)
+      return
+    }
     setPeople(prev => prev.filter(p => p.id !== id))
     setConnections(prev => prev.filter(c => c.source_person_id !== id && c.target_person_id !== id))
     setOverlayData(prev => prev.filter(od => od.parentPersonId !== id))
   }
 
   async function movePersonPosition(personId, posX, posY) {
-    await supabase.from('oikos_people').update({ pos_x: posX, pos_y: posY }).eq('id', personId)
+    const { error } = await supabase.from('oikos_people').update({ pos_x: posX, pos_y: posY }).eq('id', personId)
+    if (error) { reportError(error, 'Position konnte nicht gespeichert werden'); return }
     setPeople(prev => prev.map(p => p.id === personId ? { ...p, pos_x: posX, pos_y: posY } : p))
   }
 
@@ -210,7 +229,11 @@ export function useOikosMaps() {
 
   async function deleteConnection(connectionId) {
     setConnections(prev => prev.filter(c => c.id !== connectionId))
-    await supabase.from('oikos_connections').delete().eq('id', connectionId)
+    const { error } = await supabase.from('oikos_connections').delete().eq('id', connectionId)
+    if (error) {
+      reportError(error, 'Verbindung konnte nicht gelöscht werden')
+      loadConnections(activeMapId)
+    }
   }
 
   async function updateConnectionColor(connectionId, color) {
@@ -221,12 +244,14 @@ export function useOikosMaps() {
   }
 
   async function linkAccount(personId, linkedUserId) {
-    await supabase.from('oikos_people').update({ linked_user_id: linkedUserId }).eq('id', personId)
+    const { error } = await supabase.from('oikos_people').update({ linked_user_id: linkedUserId }).eq('id', personId)
+    if (error) { reportError(error, 'Verknüpfung fehlgeschlagen'); return }
     setPeople(prev => prev.map(p => p.id === personId ? { ...p, linked_user_id: linkedUserId } : p))
   }
 
   async function unlinkAccount(personId) {
-    await supabase.from('oikos_people').update({ linked_user_id: null, overlay_map_ids: [] }).eq('id', personId)
+    const { error } = await supabase.from('oikos_people').update({ linked_user_id: null, overlay_map_ids: [] }).eq('id', personId)
+    if (error) { reportError(error, 'Verknüpfung konnte nicht entfernt werden'); return }
     setPeople(prev => prev.map(p => p.id === personId ? { ...p, linked_user_id: null, overlay_map_ids: [] } : p))
     setOverlayData(prev => prev.filter(od => od.parentPersonId !== personId))
   }
@@ -238,7 +263,8 @@ export function useOikosMaps() {
       overlay_show_christian: overlay_show_christian !== false,
       overlay_show_non_christian: overlay_show_non_christian !== false,
     }
-    await supabase.from('oikos_people').update(updates).eq('id', personId)
+    const { error } = await supabase.from('oikos_people').update(updates).eq('id', personId)
+    if (error) { reportError(error, 'Einstellung konnte nicht gespeichert werden'); return }
     setPeople(prev => prev.map(p => p.id === personId ? { ...p, ...updates } : p))
 
     if (ids.length > 0) {
@@ -255,7 +281,11 @@ export function useOikosMaps() {
       ])
       setOverlayData(prev => {
         const rest = prev.filter(od => od.parentPersonId !== personId)
-        const persons = data || []
+        const secondaryIds = getSecondaryIds()
+        const persons = (data || []).map(op => ({
+          ...op,
+          is_secondary: op.is_secondary || secondaryIds.has(op.id),
+        }))
         return [...rest, {
           parentPersonId: personId,
           persons,
