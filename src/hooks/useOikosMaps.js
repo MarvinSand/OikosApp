@@ -264,7 +264,11 @@ export function useOikosMaps() {
       overlay_show_non_christian: overlay_show_non_christian !== false,
     }
     const { error } = await supabase.from('oikos_people').update(updates).eq('id', personId)
-    if (error) { reportError(error, 'Einstellung konnte nicht gespeichert werden'); return }
+    if (error) {
+      // Spalten fehlen evtl. noch in der DB (siehe supabase/phase44_oikos_people_columns.sql).
+      // Overlay trotzdem für diese Session anzeigen, damit der User nicht blockiert ist.
+      reportError(error, 'Einstellung nur für diese Sitzung übernommen – Migration phase44 in Supabase ausführen')
+    }
     setPeople(prev => prev.map(p => p.id === personId ? { ...p, ...updates } : p))
 
     if (ids.length > 0) {
