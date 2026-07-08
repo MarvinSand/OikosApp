@@ -40,7 +40,6 @@ function EntryForm({ initial, onSave, onCancel }) {
       marginLeft: 24,
     }}>
       <input
-        className="tour-storyline-date"
         type="date"
         value={date}
         max={today()}
@@ -48,7 +47,6 @@ function EntryForm({ initial, onSave, onCancel }) {
         style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', display: 'block', marginBottom: 8 }}
       />
       <textarea
-        className="tour-storyline-text"
         autoFocus
         value={text}
         onChange={e => setText(e.target.value.slice(0, 5000))}
@@ -58,7 +56,6 @@ function EntryForm({ initial, onSave, onCancel }) {
       />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
         <button
-          className="tour-storyline-visibility"
           onClick={() => setIsPublic(v => !v)}
           style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: 0 }}
         >
@@ -213,7 +210,6 @@ export default function StoryLineSection({ personId, isOwner }) {
         </h4>
         {isOwner && !showAddForm && (
           <button
-            className="tour-storyline-add"
             onClick={() => setShowAddForm(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer' }}
           >

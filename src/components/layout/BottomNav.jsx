@@ -33,13 +33,12 @@ export default function BottomNav() {
     >
       {tabs.map(({ path, icon: Icon, label, featured, match }) => {
         const isActive = isPathActive(location.pathname, match)
-        const tourKey = match[0] === '/' ? 'map' : match[0].replace('/', '')
 
         return (
           <button
             key={path}
             onClick={() => navigate(path)}
-            className={`tour-nav-${tourKey} flex flex-col items-center justify-center gap-1 flex-1 py-1.5`}
+            className="flex flex-col items-center justify-center gap-1 flex-1 py-1.5"
             style={{
               color: isActive ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
               background: 'none',

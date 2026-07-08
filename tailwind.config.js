@@ -26,8 +26,9 @@ export default {
           dark: 'var(--color-accent-dark)',
         },
         gold: {
-          DEFAULT: '#FFD60A',     // kept for Impact Map / Erhörte Gebete
-          light: '#FFF4B8',
+          DEFAULT: 'var(--color-gold)',     // kept for Impact Map / Erhörte Gebete
+          light: 'var(--color-gold-light)',
+          text: 'var(--color-gold-text)',
         },
         dark: {
           DEFAULT: 'var(--color-text)',
@@ -35,8 +36,11 @@ export default {
           light: 'var(--color-text-tertiary)',
         },
         primary: 'var(--color-accent)',
-        success: '#34C759',
-        error: '#FF3B30',
+        success: 'var(--color-success)',
+        error: {
+          DEFAULT: 'var(--color-error)',
+          bg: 'var(--color-error-bg)',
+        },
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Helvetica Neue', 'sans-serif'],

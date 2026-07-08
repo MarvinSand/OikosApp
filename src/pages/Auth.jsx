@@ -97,8 +97,8 @@ export default function Auth() {
   return (
     <div className={`bg-bg flex flex-col items-center relative ${view === 'welcome' ? 'h-[100dvh] overflow-hidden justify-center px-5 py-4' : 'min-h-screen justify-start p-6 pt-10 pb-10 overflow-y-auto'}`}>
       {/* Decorative circles */}
-      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
-      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-warm-2/20 pointer-events-none blur-3xl animate-pulse" />
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-accent/10 pointer-events-none blur-2xl" />
+      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/5 pointer-events-none blur-3xl animate-pulse" />
 
       {/* Logo Section */}
       <div className={`text-center relative z-10 animate-fade-in ${view === 'welcome' ? 'mb-4' : 'mb-10'}`}>
@@ -137,7 +137,7 @@ export default function Auth() {
             </div>
             <button
               onClick={goToRegister}
-              className="w-full py-3 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+              className="w-full py-3 rounded-xl font-semibold text-bg bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
             >
               Jetzt starten →
             </button>
@@ -161,7 +161,7 @@ export default function Auth() {
                   onClick={() => { setView(t); setError('') }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                     view === t 
-                      ? 'bg-white text-warm-1 shadow-sm font-semibold' 
+                      ? 'bg-bg text-warm-1 shadow-sm font-semibold' 
                       : 'text-dark-muted hover:text-dark'
                   }`}
                 >
@@ -181,7 +181,7 @@ export default function Auth() {
                       onChange={e => setFullName(e.target.value)} 
                       placeholder="Max Mustermann" 
                       required 
-                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-bg/60 focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -194,8 +194,8 @@ export default function Auth() {
                           onClick={() => setGender(val)}
                           className={`flex-1 py-3 px-2 rounded-xl text-sm font-medium transition-all border ${
                             gender === val 
-                              ? 'bg-warm-1 text-white border-warm-1 shadow-md shadow-warm-1/20' 
-                              : 'bg-white/50 text-dark-muted border-warm-3 hover:border-warm-2/50'
+                              ? 'bg-warm-1 text-bg border-warm-1 shadow-md shadow-warm-1/20' 
+                              : 'bg-bg/60 text-dark-muted border-warm-3 hover:border-warm-2/50'
                           }`}
                         >
                           {label}
@@ -214,7 +214,7 @@ export default function Auth() {
                   onChange={e => setEmail(e.target.value)} 
                   placeholder="name@beispiel.de" 
                   required 
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-bg/60 focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
 
@@ -238,7 +238,7 @@ export default function Auth() {
                     onChange={e => setPassword(e.target.value)} 
                     placeholder="Mindestens 6 Zeichen" 
                     required minLength={6} 
-                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-bg/60 focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                   />
                   <button 
                     type="button" 
@@ -251,15 +251,15 @@ export default function Auth() {
               </div>
 
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-red-100">
+                <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20">
                   {error}
                 </div>
               )}
 
               {emailNotConfirmed && (
-                <div className="bg-amber-50 text-amber-800 text-sm p-3 rounded-xl animate-fade-in border border-amber-200">
+                <div className="bg-gold-light text-gold-text text-sm p-3 rounded-xl animate-fade-in border border-gold/30">
                   <p className="font-medium mb-1">E-Mail noch nicht bestätigt.</p>
-                  <p className="text-xs text-amber-700 mb-2">Bitte bestätige deine E-Mail-Adresse, um dich anzumelden.</p>
+                  <p className="text-xs text-gold-text mb-2">Bitte bestätige deine E-Mail-Adresse, um dich anzumelden.</p>
                   <button
                     type="button"
                     onClick={handleResendConfirmation}
@@ -274,7 +274,7 @@ export default function Auth() {
               <button
                 type="submit" 
                 disabled={isLoading || (view === 'register' && !gender)} 
-                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-bg bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}
               </button>
@@ -303,12 +303,12 @@ export default function Auth() {
                   onChange={e => setEmail(e.target.value)} 
                   placeholder="name@beispiel.de" 
                   required 
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-bg/60 focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
               
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-red-100">
+                <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20">
                   {error}
                 </div>
               )}
@@ -316,7 +316,7 @@ export default function Auth() {
               <button 
                 type="submit" 
                 disabled={isLoading || !email.trim()} 
-                className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="w-full py-3.5 rounded-xl font-semibold text-bg bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Sende…' : 'Link senden'}
               </button>
@@ -337,7 +337,7 @@ export default function Auth() {
             </p>
             <button
               onClick={goToLogin}
-              className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+              className="w-full py-3.5 rounded-xl font-semibold text-bg bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
             >
               Zum Login
             </button>

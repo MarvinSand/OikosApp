@@ -44,8 +44,8 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Decorative circles */}
-      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
-      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-warm-2/20 pointer-events-none blur-3xl animate-pulse" />
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-accent/10 pointer-events-none blur-2xl" />
+      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/5 pointer-events-none blur-3xl animate-pulse" />
 
       {/* Logo */}
       <div className="text-center mb-10 relative z-10 animate-fade-in">
@@ -89,7 +89,7 @@ export default function ResetPassword() {
                     placeholder="Mindestens 8 Zeichen"
                     required
                     minLength={8}
-                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-bg/60 focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
                   />
                   <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-warm-1 transition-colors rounded-lg">
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -106,7 +106,7 @@ export default function ResetPassword() {
                     onChange={e => { setConfirm(e.target.value); setError('') }}
                     placeholder="Passwort wiederholen"
                     required
-                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-bg/60 focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
                   />
                   <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-warm-1 transition-colors rounded-lg">
                     {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -115,7 +115,7 @@ export default function ResetPassword() {
               </div>
 
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-red-100 flex flex-col gap-2">
+                <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20 flex flex-col gap-2">
                   <p>{error}</p>
                   {(error.toLowerCase().includes('expired') || error.toLowerCase().includes('invalid')) && (
                     <a href="/auth" className="text-warm-1 hover:text-warm-2 font-bold underline transition-colors">
@@ -128,7 +128,7 @@ export default function ResetPassword() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-bg bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Speichere…' : 'Speichern'}
               </button>

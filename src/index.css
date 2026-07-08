@@ -19,6 +19,7 @@
 
     --color-success:        #34C759;
     --color-error:          #FF3B30;
+    --color-error-bg:       #FEECEB;
     --color-gold:           #FFD60A;
     --color-gold-light:     #FFF4B8;
     --color-gold-text:      #8A6020;
@@ -72,6 +73,7 @@
 
     --color-success:        #30D158;
     --color-error:          #FF453A;
+    --color-error-bg:       #3A1512;
     --color-gold:           #FFD60A;
     --color-gold-light:     #3A3306;
     --color-gold-text:      #E8C56A;

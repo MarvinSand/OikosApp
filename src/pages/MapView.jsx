@@ -421,7 +421,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       )}
 
       {/* Header Island (OIKOS mode only) */}
-      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-paper/90 backdrop-blur-md border border-warm-3 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
+      <div className="absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-paper/90 backdrop-blur-md border border-warm-3 px-4 py-2.5 flex items-center justify-between z-20 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
           className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[65%] hover:opacity-80 transition-opacity"
@@ -458,7 +458,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             <div className="relative">
               <button
                 onClick={() => setShowAddMenu(v => !v)}
-                className="tour-map-add flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
               >
                 <Plus size={15} /> Hinzufügen
               </button>
@@ -555,7 +555,6 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             </p>
             <button
               onClick={() => setShowNewMap(true)}
-              className="tour-map-add"
               style={{
                 backgroundColor: 'var(--color-warm-1)', color: 'var(--color-white)',
                 border: 'none', borderRadius: 14, padding: '14px 32px',

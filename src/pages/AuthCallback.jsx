@@ -53,8 +53,8 @@ export default function AuthCallback() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 relative">
-      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
-      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-warm-2/20 pointer-events-none blur-3xl" />
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-accent/10 pointer-events-none blur-2xl" />
+      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/5 pointer-events-none blur-3xl" />
 
       <div className="text-center mb-8 relative z-10">
         <h1 className="font-serif text-5xl font-bold text-warm-1 tracking-tight leading-none mb-2">OIKOS</h1>
@@ -86,8 +86,8 @@ export default function AuthCallback() {
 
         {status === 'error' && (
           <>
-            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <AlertCircle size={40} className="text-red-400" strokeWidth={2} />
+            <div className="w-20 h-20 bg-error-bg rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={40} className="text-error" strokeWidth={2} />
             </div>
             <h3 className="text-2xl font-bold text-dark mb-3">Link ungültig</h3>
             <p className="text-sm text-dark-muted leading-relaxed mb-6">
