@@ -485,16 +485,39 @@ export default function WorldMapView({ onNavigateToProfile }) {
           )}
         </GoogleMap>
 
-        {/* Snapchat-style zoom sidebar – right edge, drag up = zoom in */}
-        <ZoomSidebar
-          snapZoom={snapZoom}
-          minZoom={minZoomRef.current}
-          onCenterSelf={myProfile?.latitude ? () => {
-            if (!map) return
-            map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
-            map.setZoom(13)
-          } : null}
-        />
+        {/* Rechter Bedien-Stapel: Zoom-Leiste + "Event hosten"-Button fest
+            untereinander mit festem Abstand – überlappen dadurch nie, egal
+            wie klein der sichtbare Kartenbereich ist. Bottom-verankert über
+            der schwebenden Ebenen-Kapsel statt vertikal zentriert. */}
+        <div style={{
+          position: 'absolute', right: 12,
+          bottom: `calc(var(--bottom-nav-h, 64px) + ${DRAWER_PEEK}px + 14px)`,
+          zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+        }}>
+          <ZoomSidebar
+            snapZoom={snapZoom}
+            minZoom={minZoomRef.current}
+            onCenterSelf={myProfile?.latitude ? () => {
+              if (!map) return
+              map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
+              map.setZoom(13)
+            } : null}
+          />
+
+          {/* Create Event FAB */}
+          <button
+            onClick={() => setShowCreateSheet(true)}
+            style={{
+              width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+              background: C.accent, border: 'none', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(90,200,250,0.5)', cursor: 'pointer',
+            }}
+            title="Event hosten"
+          >
+            <Plus size={26} />
+          </button>
+        </div>
 
         {/* No location hint */}
         {!myProfile?.latitude && (
@@ -520,21 +543,6 @@ export default function WorldMapView({ onNavigateToProfile }) {
             )}
           </div>
         )}
-
-        {/* Create Event FAB */}
-        <button
-          onClick={() => setShowCreateSheet(true)}
-          style={{
-            position: 'absolute', bottom: `calc(var(--bottom-nav-h, 64px) + ${DRAWER_PEEK}px + 14px)`, right: 12, zIndex: 500,
-            width: 56, height: 56, borderRadius: '50%',
-            background: C.accent, border: 'none', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(90,200,250,0.5)', cursor: 'pointer',
-          }}
-          title="Event hosten"
-        >
-          <Plus size={26} />
-        </button>
 
         {/* Hochziehbares Menü (Google-Maps-Stil) mit Ebenen-Buttons, Suche, Filter & Umkreis */}
         <MapDrawer
@@ -643,11 +651,6 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
 
   return (
     <div style={{
-      position: 'absolute',
-      right: 10,
-      top: '50%',
-      transform: 'translateY(-50%)',
-      zIndex: 500,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -684,7 +687,7 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
         ref={trackRef}
         style={{
           width: 36,
-          height: 240,
+          height: 190,
           borderRadius: 18,
           background: C.surfaceBlur,
           border: `1px solid ${C.border}`,

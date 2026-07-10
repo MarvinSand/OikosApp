@@ -10,10 +10,13 @@ const C = {
   border: 'var(--color-border)',
   bg: 'var(--color-bg)',
   bgSec: 'var(--color-bg-secondary)',
+  surfaceBlur: 'var(--color-surface-blur)',
 }
 
-// Sichtbare Höhe des eingeklappten Drawers (Griff + Ebenen-Buttons)
-export const DRAWER_PEEK = 92
+// Höhe der schwebenden Ebenen-Kapsel (Griff + Geschwister/Events-Buttons).
+// Diese Kapsel schwebt IMMER sichtbar über dem Sheet – auch wenn das Sheet
+// komplett eingeklappt/verschwunden ist, bleiben nur noch die Buttons stehen.
+export const DRAWER_PEEK = 74
 
 // Umkreis-Stufen in km – null = Weltweit (kein Filter)
 const RADIUS_STEPS = [5, 10, 25, 50, 100, 250, 500, 1000, null]
@@ -66,9 +69,13 @@ export default function MapDrawer({
   const [showFilters, setShowFilters] = useState(false)
   const dragRef = useRef({ active: false, moved: false, startY: 0, startTranslate: 0, lastT: 0, max: 0 })
 
-  // Sheet-Geometrie: feste Gesamthöhe, Peek/Voll über translateY
+  // Sheet-Geometrie: feste Eigenhöhe. Bei Kollaps wird das Sheet um seine
+  // gesamte Höhe PLUS die Kapsel-Höhe nach unten verschoben, damit es
+  // komplett unter die sichtbare Fläche rutscht (sonst würde sein eigener
+  // oberer Rand – Griff + Suchleiste – neben der Kapsel hervorschauen).
+  // Übrig bleiben dadurch nur die schwebenden Geschwister/Events-Buttons.
   const expandedH = Math.min(Math.round(window.innerHeight * 0.72), 620)
-  const collapsedTranslate = expandedH - DRAWER_PEEK
+  const collapsedTranslate = expandedH + DRAWER_PEEK
   const currentTranslate = dragY != null ? dragY : (expanded ? 0 : collapsedTranslate)
 
   // Beim Tab-Wechsel Suche/Filter zurücksetzen
@@ -174,60 +181,31 @@ export default function MapDrawer({
       bottom: 'var(--bottom-nav-h, 64px)',
       overflow: 'hidden', pointerEvents: 'none', zIndex: 520,
     }}>
-    <div style={{
-      position: 'absolute',
-      left: 0, right: 0, bottom: 0,
-      height: expandedH,
-      pointerEvents: 'auto',
-      transform: `translateY(${currentTranslate}px)`,
-      transition: dragY != null ? 'none' : 'transform 0.28s cubic-bezier(0.32, 0.72, 0.25, 1)',
-      background: C.bg,
-      borderRadius: '20px 20px 0 0',
-      border: `1px solid ${C.border}`,
-      borderBottom: 'none',
-      boxShadow: '0 -6px 24px rgba(0,0,0,0.16)',
-      display: 'flex',
-      flexDirection: 'column',
-      maxWidth: '42rem',
-      margin: '0 auto',
-    }}>
-      {/* Kopfbereich: Griff + Ebenen-Buttons (immer sichtbar, ziehbar) */}
+      {/* Sheet: Suche/Filter/Liste. Rutscht bei Kollaps um die eigene Höhe
+          nach unten und verschwindet dadurch komplett hinter der Kapsel. */}
+      <div style={{
+        position: 'absolute',
+        left: 0, right: 0, bottom: DRAWER_PEEK - 1,
+        height: expandedH,
+        pointerEvents: 'auto',
+        transform: `translateY(${currentTranslate}px)`,
+        transition: dragY != null ? 'none' : 'transform 0.28s cubic-bezier(0.32, 0.72, 0.25, 1)',
+        background: C.bg,
+        borderRadius: '20px 20px 0 0',
+        border: `1px solid ${C.border}`,
+        borderBottom: 'none',
+        boxShadow: '0 -6px 24px rgba(0,0,0,0.16)',
+        display: 'flex',
+        flexDirection: 'column',
+        maxWidth: '42rem',
+        margin: '0 auto',
+      }}>
+      {/* Griff zum Ausklappen, oben im Sheet – nur sichtbar wenn ausgeklappt */}
       <div
-        onMouseDown={onDragStart}
-        onTouchStart={onDragStart}
-        style={{
-          height: DRAWER_PEEK, flexShrink: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          paddingTop: 8, cursor: 'grab', touchAction: 'none',
-          userSelect: 'none', WebkitUserSelect: 'none',
-        }}
+        onClick={onHandleClick}
+        style={{ padding: '10px 30px 6px', cursor: 'pointer', flexShrink: 0, alignSelf: 'center' }}
       >
-        <div
-          onClick={onHandleClick}
-          style={{ padding: '2px 30px', cursor: 'pointer' }}
-        >
-          <div style={{ width: 38, height: 4.5, borderRadius: 3, background: C.border }} />
-        </div>
-        <div style={{
-          display: 'flex', gap: 8, marginTop: 8,
-          background: C.bgSec, padding: 5, borderRadius: 999,
-          border: `1px solid ${C.border}`,
-        }}>
-          <LayerPill
-            active={showGeschwister}
-            selected={tab === 'siblings'}
-            onClick={() => onPillTap('siblings')}
-            icon={<Users size={15} />}
-            label="Geschwister"
-          />
-          <LayerPill
-            active={showEvents}
-            selected={tab === 'events'}
-            onClick={() => onPillTap('events')}
-            icon={<CalendarDays size={15} />}
-            label="Events"
-          />
-        </div>
+        <div style={{ width: 38, height: 4.5, borderRadius: 3, background: C.border }} />
       </div>
 
       {/* Suchfeld + Filter-Button */}
@@ -353,7 +331,47 @@ export default function MapDrawer({
               <EventRow key={a.id} activity={a} onClick={() => { setExpanded(false); onSelectActivity(a) }} />
             ))}
       </div>
-    </div>
+      </div>
+
+      {/* Schwebende Ebenen-Kapsel – IMMER sichtbar, liegt über dem Sheet und
+          dient gleichzeitig als Ziehgriff. Zieht man das Sheet ganz runter,
+          bleibt nur noch diese Kapsel mit den beiden Buttons stehen. */}
+      <div
+        onMouseDown={onDragStart}
+        onTouchStart={onDragStart}
+        style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0,
+          height: DRAWER_PEEK, pointerEvents: 'auto',
+          display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 4,
+          cursor: 'grab', touchAction: 'none',
+          userSelect: 'none', WebkitUserSelect: 'none',
+        }}
+      >
+        <div style={{ width: 30, height: 4, borderRadius: 3, background: C.surfaceBlur, boxShadow: '0 1px 4px rgba(0,0,0,0.15)', opacity: 0.9 }} />
+        <div
+          onClick={() => { if (!dragRef.current.moved) setExpanded(true) }}
+          style={{
+            display: 'flex', gap: 8,
+            background: C.surfaceBlur, padding: 5, borderRadius: 999,
+            border: `1px solid ${C.border}`, backdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.16)',
+          }}>
+          <LayerPill
+            active={showGeschwister}
+            selected={tab === 'siblings'}
+            onClick={() => onPillTap('siblings')}
+            icon={<Users size={15} />}
+            label="Geschwister"
+          />
+          <LayerPill
+            active={showEvents}
+            selected={tab === 'events'}
+            onClick={() => onPillTap('events')}
+            icon={<CalendarDays size={15} />}
+            label="Events"
+          />
+        </div>
+      </div>
     </div>
   )
 }
