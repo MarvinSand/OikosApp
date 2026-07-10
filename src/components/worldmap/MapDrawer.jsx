@@ -189,9 +189,13 @@ export default function MapDrawer({
         />
       )}
 
-      {/* Sheet: Kopf (Griff+Buttons) + Suche/Filter/Liste. Der Kopf ist Teil
-          des Sheets – beim Hochziehen wandert er mit an die Oberkante und
-          bleibt dort stehen; eingeklappt bleibt nur er sichtbar. */}
+      {/* Sheet: Kopf (Griff+Buttons, transparent) + Panel (Suche/Filter/
+          Liste, eigener schwarzer/weißer Hintergrund). Beide wandern
+          zusammen – der Kopf bleibt dabei immer OHNE eigenen Hintergrund,
+          sodass die Buttons frei über der Karte schweben statt in einem
+          durchgehenden Feld zu stecken. Beim Hochziehen wandert der Kopf mit
+          an die Oberkante und bleibt dort stehen; eingeklappt bleibt nur er
+          sichtbar (das Panel rutscht komplett dahinter weg). */}
       <div style={{
         position: 'absolute',
         left: 0, right: 0, bottom: 0,
@@ -199,17 +203,12 @@ export default function MapDrawer({
         pointerEvents: 'auto',
         transform: `translateY(${currentTranslate}px)`,
         transition: dragY != null ? 'none' : 'transform 0.28s cubic-bezier(0.32, 0.72, 0.25, 1)',
-        background: C.bg,
-        borderRadius: '20px 20px 0 0',
-        border: `1px solid ${C.border}`,
-        borderBottom: 'none',
-        boxShadow: '0 -6px 24px rgba(0,0,0,0.16)',
         display: 'flex',
         flexDirection: 'column',
         maxWidth: '42rem',
         margin: '0 auto',
       }}>
-      {/* Kopf: Griff + Geschwister/Events-Kapsel (immer sichtbar, ziehbar) */}
+      {/* Kopf: Griff + Geschwister/Events-Kapsel (immer sichtbar, ziehbar, transparent) */}
       <div
         onMouseDown={onDragStart}
         onTouchStart={onDragStart}
@@ -224,7 +223,7 @@ export default function MapDrawer({
           onClick={onHandleClick}
           style={{ padding: '2px 30px', cursor: 'pointer' }}
         >
-          <div style={{ width: 36, height: 4.5, borderRadius: 3, background: C.border }} />
+          <div style={{ width: 34, height: 4.5, borderRadius: 3, background: C.surfaceBlur, boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }} />
         </div>
         <div
           onClick={() => { if (!dragRef.current.moved) setExpanded(true) }}
@@ -232,7 +231,7 @@ export default function MapDrawer({
             display: 'flex', gap: 8,
             background: C.surfaceBlur, padding: 5, borderRadius: 999,
             border: `1px solid ${C.border}`, backdropFilter: 'blur(10px)',
-            boxShadow: '0 3px 14px rgba(0,0,0,0.14)',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
           }}>
           <LayerPill
             active={showGeschwister}
@@ -251,8 +250,18 @@ export default function MapDrawer({
         </div>
       </div>
 
+      {/* Panel: eigener Hintergrund, nur unter Suche/Filter/Liste */}
+      <div style={{
+        flex: 1, minHeight: 0,
+        display: 'flex', flexDirection: 'column',
+        background: C.bg,
+        borderRadius: '20px 20px 0 0',
+        border: `1px solid ${C.border}`,
+        borderBottom: 'none',
+        boxShadow: '0 -6px 24px rgba(0,0,0,0.16)',
+      }}>
       {/* Suchfeld + Filter-Button */}
-      <div style={{ display: 'flex', gap: 8, padding: '2px 16px 10px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 8, padding: '12px 16px 10px', flexShrink: 0 }}>
         <div style={{
           flex: 1, display: 'flex', alignItems: 'center', gap: 8,
           background: C.bgSec, borderRadius: 12, padding: '9px 12px',
@@ -373,6 +382,7 @@ export default function MapDrawer({
           : list.map(a => (
               <EventRow key={a.id} activity={a} onClick={() => { setExpanded(false); onSelectActivity(a) }} />
             ))}
+      </div>
       </div>
       </div>
     </div>
