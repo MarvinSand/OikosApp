@@ -18,6 +18,7 @@ export default function PathScreen() {
   const scrolledRef = useRef(false)
 
   useEffect(() => {
+    if (!user) return
     let cancelled = false
     async function load() {
       const [stages, progress] = await Promise.all([
@@ -29,7 +30,7 @@ export default function PathScreen() {
     }
     load()
     return () => { cancelled = true }
-  }, [user.id])
+  }, [user?.id])
 
   useEffect(() => {
     if (!stations || scrolledRef.current) return

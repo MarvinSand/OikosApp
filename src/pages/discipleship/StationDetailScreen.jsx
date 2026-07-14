@@ -17,6 +17,7 @@ export default function StationDetailScreen() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!user) return
     let cancelled = false
     async function load() {
       const [{ data: st, error }, progress] = await Promise.all([
@@ -35,7 +36,7 @@ export default function StationDetailScreen() {
     }
     load()
     return () => { cancelled = true }
-  }, [stationId, user.id])
+  }, [stationId, user?.id])
 
   async function handleMarkDone() {
     try {

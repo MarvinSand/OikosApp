@@ -12,12 +12,13 @@ export default function DiscipleshipEntry() {
   const [profile, setProfile] = useState(undefined)
 
   useEffect(() => {
+    if (!user) return
     let cancelled = false
     fetchDiscipleshipProfile(user.id).then(p => { if (!cancelled) setProfile(p) })
     return () => { cancelled = true }
-  }, [user.id])
+  }, [user?.id])
 
-  if (profile === undefined) return null
+  if (!user || profile === undefined) return null
 
   if (profile?.path_choice === 'schmaler_weg') return <PathScreen />
 

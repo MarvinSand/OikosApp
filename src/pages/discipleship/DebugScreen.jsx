@@ -43,6 +43,7 @@ export default function DebugScreen() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!user) return
     let cancelled = false
     fetchDiscipleshipProfile(user.id).then(p => {
       if (cancelled) return
@@ -50,7 +51,7 @@ export default function DebugScreen() {
       setLoading(false)
     })
     return () => { cancelled = true }
-  }, [user.id])
+  }, [user?.id])
 
   async function update(key, value) {
     setProfile(prev => ({ ...prev, [key]: value }))
