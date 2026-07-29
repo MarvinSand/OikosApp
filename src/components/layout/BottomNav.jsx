@@ -1,16 +1,18 @@
 import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, BookOpen, Globe, BookMarked, User } from 'lucide-react'
+import { Home, BookOpen, Globe, BookMarked, Footprints, User } from 'lucide-react'
 
 const tabs = [
-  { path: '/',                   icon: Home,       label: 'Home',         match: ['/']                          },
-  { path: '/friends?tab=feed',   icon: BookOpen,   label: 'For You',      match: ['/friends', '/prayer', '/prayers'] },
-  { path: '/worldmap',           icon: Globe,      label: 'Weltkarte',    match: ['/worldmap'], featured: true  },
-  { path: '/discipleship',       icon: BookMarked, label: 'Jüngerschaft Paul', match: ['/discipleship']              },
-  { path: '/profile',            icon: User,       label: 'Profil',       match: ['/profile']                   },
+  { path: '/',                   icon: Home,       label: 'Home',              match: ['/']                          },
+  { path: '/friends?tab=feed',   icon: BookOpen,   label: 'For You',           match: ['/friends', '/prayer', '/prayers'] },
+  { path: '/worldmap',           icon: Globe,      label: 'Weltkarte',         match: ['/worldmap'], featured: true  },
+  { path: '/discipleship',       icon: BookMarked, label: 'Jüngerschaft',      match: ['/discipleship'], exclude: ['/discipleship/paul'] },
+  { path: '/discipleship/paul',  icon: Footprints, label: 'Jüngerschaft Paul', match: ['/discipleship/paul']         },
+  { path: '/profile',            icon: User,       label: 'Profil',            match: ['/profile']                   },
 ]
 
-function isPathActive(currentPath, match) {
+function isPathActive(currentPath, match, exclude = []) {
+  if (exclude.some(m => currentPath === m || currentPath.startsWith(m + '/'))) return false
   return match.some(m =>
     m === '/'
       ? currentPath === '/'
@@ -47,8 +49,8 @@ export default function BottomNav() {
         paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
       }}
     >
-      {tabs.map(({ path, icon: Icon, label, featured, match }) => {
-        const isActive = isPathActive(location.pathname, match)
+      {tabs.map(({ path, icon: Icon, label, featured, match, exclude }) => {
+        const isActive = isPathActive(location.pathname, match, exclude)
         const tourKey = match[0] === '/' ? 'map' : match[0].replace('/', '')
 
         return (

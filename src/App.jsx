@@ -80,8 +80,8 @@ function AppShellInner() {
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
-          <Route path="/discipleship" element={<PaulPathScreen />} />
-          <Route path="/discipleship/pilgerweg" element={<DiscipleshipEntry />} />
+          <Route path="/discipleship" element={<DiscipleshipEntry />} />
+          <Route path="/discipleship/paul" element={<PaulPathScreen />} />
           <Route path="/discipleship/station/:stationId" element={<StationDetailScreen />} />
           <Route path="/discipleship/debug" element={<DebugScreen />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
