@@ -150,19 +150,24 @@ function PathScene({ totalH, d }) {
     >
       <defs>
         <linearGradient id="paulSurf" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#8AD8FB" />
-          <stop offset="55%" stopColor="#5AC8FA" />
-          <stop offset="100%" stopColor="#37B0EE" />
+          <stop offset="0%" stopColor="#83D4FB" />
+          <stop offset="52%" stopColor="#5AC8FA" />
+          <stop offset="100%" stopColor="#40B4EF" />
         </linearGradient>
+        <filter id="paulSoft" x="-20%" y="-10%" width="140%" height="120%">
+          <feDropShadow dx="0" dy="7" stdDeviation="7" floodColor="#0A3B70" floodOpacity="0.24" />
+        </filter>
       </defs>
-      {/* Extrudierte Unterkante (Tiefe, Blick von schräg oben) */}
-      <path d={d} transform="translate(0 16)" fill="none" stroke="#0A84FF" strokeWidth="50" strokeLinecap="round" />
-      {/* Wegoberfläche in App-Babyblau */}
-      <path d={d} fill="none" stroke="url(#paulSurf)" strokeWidth="50" strokeLinecap="round" />
+      <g filter="url(#paulSoft)">
+        {/* Extrudierte Unterkante (sanfte Tiefe, Blick von schräg oben) */}
+        <path d={d} transform="translate(0 8)" fill="none" stroke="#2F9FE0" strokeWidth="46" strokeLinecap="round" />
+        {/* Wegoberfläche in App-Babyblau */}
+        <path d={d} fill="none" stroke="url(#paulSurf)" strokeWidth="46" strokeLinecap="round" />
+      </g>
       {/* Licht-Glanz auf der Oberkante */}
-      <path d={d} transform="translate(0 -10)" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="18" strokeLinecap="round" />
+      <path d={d} transform="translate(0 -9)" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="12" strokeLinecap="round" />
       {/* Mittel-Markierung */}
-      <path d={d} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="4" strokeLinecap="round" strokeDasharray="2 26" />
+      <path d={d} fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray="1.5 24" />
     </svg>
   )
 }
@@ -230,19 +235,32 @@ export default function PaulPathScreen() {
       <div style={{ position: 'relative', zIndex: 1, width: '100%', height: totalH }}>
         <PathScene totalH={totalH} d={d} />
 
-        {/* Kapitel-Bänder */}
-        {points.map(({ y, station }) => (
+        {/* Level-Übergänge: Kreuz-Medaillon + Kapitelname */}
+        {points.map(({ x, y, station }) => (
           station.chapter ? (
             <div key={`ch-${station.id}`} style={{
-              position: 'absolute', left: 0, right: 0, top: y + STEP / 2 - 4,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              position: 'absolute', left: `${(x / VIEW_W) * 100}%`, top: y + STEP / 2,
+              transform: 'translate(-50%, -50%)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
               pointerEvents: 'none',
             }}>
+              <div style={{
+                width: 60, height: 60, borderRadius: '50%',
+                background: 'linear-gradient(160deg, #5AC8FA, #0A84FF)',
+                boxShadow: '0 8px 20px rgba(10,132,255,0.4), inset 0 0 0 1.5px rgba(255,255,255,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+                  <rect x="10.5" y="2" width="5" height="22" rx="2.2" fill="#fff" />
+                  <rect x="5" y="8.5" width="16" height="5" rx="2.2" fill="#fff" />
+                </svg>
+              </div>
               <span style={{
-                padding: '5px 14px', borderRadius: 999,
-                backgroundColor: 'var(--color-accent)', color: '#fff',
-                fontSize: 11.5, fontWeight: 700, letterSpacing: '0.02em',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.18)', whiteSpace: 'nowrap',
+                padding: '4px 12px', borderRadius: 999,
+                backgroundColor: 'var(--color-bg)', color: 'var(--color-accent-dark)',
+                fontSize: 11.5, fontWeight: 700, letterSpacing: '0.01em',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap',
+                border: '1px solid var(--color-border)',
               }}>
                 {station.chapter}
               </span>
@@ -271,7 +289,7 @@ export default function PaulPathScreen() {
                   width: 58, height: 58, borderRadius: '50%', cursor: 'pointer',
                   backgroundColor: isDone ? meta.color : 'var(--color-bg)',
                   border: `3px solid ${meta.color}`,
-                  boxShadow: `0 6px 0 ${meta.color}, 0 10px 16px rgba(0,0,0,0.28)`,
+                  boxShadow: `0 7px 14px rgba(10,60,120,0.26), 0 2px 4px rgba(10,60,120,0.12)`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: isDone ? '#fff' : meta.color,
                 }}
