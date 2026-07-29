@@ -27,6 +27,9 @@ import Prayers from './pages/Prayers'
 import MapView from './pages/MapView'
 import ConversationView from './pages/ConversationView'
 import NotificationsPage from './pages/NotificationsPage'
+import DiscipleshipEntry from './pages/discipleship/DiscipleshipEntry'
+import StationDetailScreen from './pages/discipleship/StationDetailScreen'
+import DebugScreen from './pages/discipleship/DebugScreen'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -53,6 +56,7 @@ function AppShellInner() {
   const isFullScreenRoute =
     location.pathname === '/' ||
     location.pathname === '/worldmap' ||
+    location.pathname === '/discipleship' ||
     location.pathname.startsWith('/map/') ||
     location.pathname.startsWith('/chat/') ||
     location.pathname.startsWith('/community/')
@@ -75,7 +79,9 @@ function AppShellInner() {
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
-          <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
+          <Route path="/discipleship" element={<DiscipleshipEntry />} />
+          <Route path="/discipleship/station/:stationId" element={<StationDetailScreen />} />
+          <Route path="/discipleship/debug" element={<DebugScreen />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/chat" element={<Navigate to="/chats" replace />} />
           <Route path="/chats" element={<FriendsView />} />
@@ -118,25 +124,6 @@ function AppShell() {
 function OwnMapPage() {
   const { mapId } = useParams()
   return <MapView initialMapId={mapId} hideWorldMapToggle />
-}
-
-function DiscipleshipComingSoon() {
-  return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center px-6 text-center">
-      <div
-        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
-        style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-      >
-        <span className="text-4xl">📖</span>
-      </div>
-      <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
-        Jüngerschaft
-      </h1>
-      <p style={{ color: 'var(--color-text-secondary)', maxWidth: 360 }}>
-        Coming soon – dieser Bereich ist gerade in Arbeit. Bald kannst du hier deinen Weg im Glauben begleiten lassen.
-      </p>
-    </div>
-  )
 }
 
 async function checkBirthdays(userId) {
