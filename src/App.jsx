@@ -54,6 +54,7 @@ function AppShellInner() {
   const isFullScreenRoute =
     location.pathname === '/' ||
     location.pathname === '/worldmap' ||
+    location.pathname === '/discipleship' ||
     location.pathname.startsWith('/map/') ||
     location.pathname.startsWith('/chat/')
 

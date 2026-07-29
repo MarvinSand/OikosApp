@@ -1,6 +1,8 @@
-// Eine Pflanze im gemeinsamen Garten. Wachstumsstufe entspricht 1:1 der
-// bestehenden Impact-Map-Stufe (1 Freisetzung … 6 Kontinuität). Ist Stufe 6
-// abgeschlossen, wird zusätzlich der Ernte-Zustand (goldener Glanz) gezeigt.
+// Reine SVG-Darstellung einer Pflanze (ohne Wrapper), damit sie sowohl in der
+// Dorf-Karte als auch einzeln verwendet werden kann.
+// Wachstumsstufe entspricht 1:1 der bestehenden Impact-Map-Stufe
+// (1 Freisetzung … 6 Kontinuität). Ist Stufe 6 abgeschlossen, wird zusätzlich
+// der Ernte-Zustand (goldene Blüte + Glanz) gezeigt.
 const STEM_COLOR = '#3F7E30'
 const LEAF_COLORS = ['#8FBF6B', '#79B159', '#5FA047']
 const BLOOM_COLOR = '#E8879B'
@@ -82,38 +84,22 @@ function Stage6() {
 
 const STAGE_RENDERERS = { 1: Stage1, 2: Stage2, 3: Stage3, 4: Stage4, 5: Stage5, 6: Stage6 }
 
-export default function PlantNode({ growthStage = 1, isHarvested = false, isOwn = false, label, onClick }) {
+// Zeichnet die Pflanze im lokalen Koordinatenraum 40×52 (Boden bei y≈47).
+export default function PlantShape({ growthStage = 1, isHarvested = false }) {
   const stage = Math.min(6, Math.max(1, growthStage))
   const StageShape = STAGE_RENDERERS[stage]
-  const tappable = !!onClick
-
   return (
-    <button
-      onClick={tappable ? onClick : undefined}
-      disabled={!tappable}
-      aria-label={label ? `${label}, Stufe ${stage}` : `Pflanze, Stufe ${stage}`}
-      className={tappable ? 'press-scale' : ''}
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-        background: 'none', border: 'none', padding: 0,
-        cursor: tappable ? 'pointer' : 'default', pointerEvents: 'auto',
-      }}
-    >
-      <svg width="40" height="52" viewBox="0 0 40 52" aria-hidden="true">
-        {isHarvested && <circle cx="20" cy="20" r="19" fill="#F4D27A" opacity="0.3" />}
-        <ellipse cx="20" cy="47" rx="10" ry="3" fill="rgba(0,0,0,0.15)" />
-        <StageShape />
-      </svg>
-      {label && (
-        <span
-          style={{
-            fontSize: 10.5, fontWeight: 600, maxWidth: 60, textAlign: 'center', lineHeight: 1.2,
-            color: isOwn ? 'var(--color-text)' : 'var(--color-text-secondary)',
-          }}
-        >
-          {label}
-        </span>
+    <g>
+      <ellipse cx="20" cy="47" rx="9" ry="2.8" fill="rgba(0,0,0,0.16)" />
+      <StageShape />
+      {/* Ernte: kleine Funken um die Blüte statt einer flächigen Aufhellung */}
+      {isHarvested && (
+        <g fill="#FFE9A8" stroke="#E8B33C" strokeWidth="0.8">
+          <circle cx="31" cy="6" r="2.2" />
+          <circle cx="9" cy="9" r="1.7" />
+          <circle cx="26" cy="20" r="1.4" />
+        </g>
       )}
-    </button>
+    </g>
   )
 }
