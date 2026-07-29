@@ -4,7 +4,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { fetchDiscipleshipProfile } from '../../lib/pilgerweg'
 import ForkScreen from './ForkScreen'
-import PathScreen from './PathScreen'
+import GardenScreen from './GardenScreen'
 
 export default function DiscipleshipEntry() {
   const { user } = useAuth()
@@ -20,7 +20,7 @@ export default function DiscipleshipEntry() {
 
   if (!user || profile === undefined) return null
 
-  if (profile?.path_choice === 'schmaler_weg') return <PathScreen />
+  if (profile?.path_choice === 'schmaler_weg') return <GardenScreen />
 
   if (!profile || profile.glaubensstand === 'noch_nicht_glaeubig') {
     return (
