@@ -1,12 +1,15 @@
+import { useState } from 'react'
 import { Loader2, SlidersHorizontal, Sprout } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useGarden } from '../../hooks/useGarden'
 import GardenBackground from '../../components/discipleship/GardenBackground'
 import PlantNode from '../../components/discipleship/PlantNode'
+import OverlayPersonSheet from '../../components/map/OverlayPersonSheet'
 
 export default function GardenScreen() {
   const navigate = useNavigate()
   const { plots, loading } = useGarden()
+  const [selectedFriendPerson, setSelectedFriendPerson] = useState(null)
 
   return (
     <div style={{ position: 'relative', minHeight: '100dvh', backgroundColor: '#E7EFCB', overflow: 'hidden' }}>
@@ -76,7 +79,9 @@ export default function GardenScreen() {
                     isHarvested={plant.isHarvested}
                     isOwn={plant.isOwn}
                     label={plant.name}
-                    onClick={plant.isOwn ? () => navigate(`/map/${plant.mapId}`) : undefined}
+                    onClick={plant.isOwn
+                      ? () => navigate(`/map/${plant.mapId}`)
+                      : () => setSelectedFriendPerson({ id: plant.id })}
                   />
                 ))}
               </div>
@@ -84,6 +89,13 @@ export default function GardenScreen() {
           </div>
         ))}
       </div>
+
+      {selectedFriendPerson && (
+        <OverlayPersonSheet
+          person={selectedFriendPerson}
+          onClose={() => setSelectedFriendPerson(null)}
+        />
+      )}
     </div>
   )
 }
