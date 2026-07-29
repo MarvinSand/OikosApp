@@ -51,7 +51,20 @@ export function useAuth() {
     return data
   }
 
+  // Demo-Modus: anonymer Wegwerf-Nutzer zum Durchklicken. Es bleibt nichts
+  // dauerhaft erhalten – die anonyme Sitzung ist temporär.
+  async function loginAsDemo() {
+    try { localStorage.setItem('oikos_demo', '1') } catch { /* ignore */ }
+    const { data, error } = await supabase.auth.signInAnonymously()
+    if (error) {
+      try { localStorage.removeItem('oikos_demo') } catch { /* ignore */ }
+      throw error
+    }
+    return data
+  }
+
   async function logout() {
+    try { localStorage.removeItem('oikos_demo') } catch { /* ignore */ }
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
@@ -64,7 +77,7 @@ export function useAuth() {
     if (error) throw error
   }
 
-  return { user, session, loading, login, register, logout, resendVerificationEmail }
+  return { user, session, loading, login, loginAsDemo, register, logout, resendVerificationEmail }
 }
 
 let _lastActiveTime = 0

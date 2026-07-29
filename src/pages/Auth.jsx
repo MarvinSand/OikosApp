@@ -17,8 +17,25 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false)
   const [emailNotConfirmed, setEmailNotConfirmed] = useState(false)
 
-  const { login, register } = useAuth()
+  const { login, loginAsDemo, register } = useAuth()
   const { showToast } = useToast()
+
+  async function handleDemo() {
+    setError('')
+    setIsLoading(true)
+    try {
+      localStorage.setItem('oikos_welcome_seen', 'true')
+      await loginAsDemo()
+      // App.jsx leitet nach erfolgreicher (anonymer) Anmeldung automatisch weiter
+    } catch (err) {
+      setError(
+        err?.message?.toLowerCase().includes('anonymous')
+          ? 'Demo-Modus ist noch nicht aktiviert (Anonyme Anmeldung im Supabase-Projekt einschalten).'
+          : (err?.message || 'Demo konnte nicht gestartet werden.')
+      )
+      setIsLoading(false)
+    }
+  }
 
   function goToReset() { setError(''); setView('reset') }
   function goToLogin() { setError(''); setView('login') }
@@ -156,6 +173,22 @@ export default function Auth() {
             >
               Bereits registriert? Anmelden
             </button>
+
+            <div className="flex items-center gap-3 my-1">
+              <div className="flex-1 h-px bg-warm-3" />
+              <span className="text-[11px] text-dark-light">oder</span>
+              <div className="flex-1 h-px bg-warm-3" />
+            </div>
+            <button
+              onClick={handleDemo}
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl font-semibold border-1.5 border-warm-3 text-dark hover:border-accent hover:text-accent disabled:opacity-50 transition-all duration-300"
+            >
+              {isLoading ? 'Einen Moment…' : '👀 Demoversion ansehen'}
+            </button>
+            <p className="text-[11px] text-dark-light text-center leading-relaxed">
+              Ohne Account reinschauen und alles durchprobieren. Es wird nichts gespeichert.
+            </p>
           </div>
         )}
 
@@ -302,6 +335,16 @@ export default function Auth() {
                 {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}
               </button>
             </form>
+
+            {view === 'login' && (
+              <button
+                onClick={handleDemo}
+                disabled={isLoading}
+                className="w-full py-2.5 mt-3 rounded-xl text-sm font-semibold border-1.5 border-warm-3 text-dark-muted hover:border-accent hover:text-accent disabled:opacity-50 transition-all duration-300"
+              >
+                👀 Ohne Account: Demoversion ansehen
+              </button>
+            )}
           </>
         )}
 

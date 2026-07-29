@@ -30,6 +30,7 @@ import NotificationsPage from './pages/NotificationsPage'
 import DiscipleshipEntry from './pages/discipleship/DiscipleshipEntry'
 import StationDetailScreen from './pages/discipleship/StationDetailScreen'
 import DebugScreen from './pages/discipleship/DebugScreen'
+import PaulPathScreen from './pages/discipleship/PaulPathScreen'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -79,7 +80,8 @@ function AppShellInner() {
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
-          <Route path="/discipleship" element={<DiscipleshipEntry />} />
+          <Route path="/discipleship" element={<PaulPathScreen />} />
+          <Route path="/discipleship/pilgerweg" element={<DiscipleshipEntry />} />
           <Route path="/discipleship/station/:stationId" element={<StationDetailScreen />} />
           <Route path="/discipleship/debug" element={<DebugScreen />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
