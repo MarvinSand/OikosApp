@@ -148,12 +148,21 @@ function PathScene({ totalH, d }) {
       preserveAspectRatio="none" aria-hidden="true"
       style={{ position: 'absolute', inset: 0, zIndex: 0 }}
     >
-      {/* Extrudierte Unterkante (Tiefe) */}
-      <path d={d} transform="translate(0 9)" fill="none" stroke="#9c7d46" strokeWidth="48" strokeLinecap="round" />
-      {/* Wegoberfläche */}
-      <path d={d} fill="none" stroke="#c9a86a" strokeWidth="48" strokeLinecap="round" />
+      <defs>
+        <linearGradient id="paulSurf" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#8AD8FB" />
+          <stop offset="55%" stopColor="#5AC8FA" />
+          <stop offset="100%" stopColor="#37B0EE" />
+        </linearGradient>
+      </defs>
+      {/* Extrudierte Unterkante (Tiefe, Blick von schräg oben) */}
+      <path d={d} transform="translate(0 16)" fill="none" stroke="#0A84FF" strokeWidth="50" strokeLinecap="round" />
+      {/* Wegoberfläche in App-Babyblau */}
+      <path d={d} fill="none" stroke="url(#paulSurf)" strokeWidth="50" strokeLinecap="round" />
+      {/* Licht-Glanz auf der Oberkante */}
+      <path d={d} transform="translate(0 -10)" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="18" strokeLinecap="round" />
       {/* Mittel-Markierung */}
-      <path d={d} fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="4" strokeLinecap="round" strokeDasharray="2 26" />
+      <path d={d} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="4" strokeLinecap="round" strokeDasharray="2 26" />
     </svg>
   )
 }
@@ -262,7 +271,7 @@ export default function PaulPathScreen() {
                   width: 58, height: 58, borderRadius: '50%', cursor: 'pointer',
                   backgroundColor: isDone ? meta.color : 'var(--color-bg)',
                   border: `3px solid ${meta.color}`,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.16)',
+                  boxShadow: `0 6px 0 ${meta.color}, 0 10px 16px rgba(0,0,0,0.28)`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: isDone ? '#fff' : meta.color,
                 }}
