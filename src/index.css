@@ -273,26 +273,12 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Jüngerschaft Paul – 3D "Drohnen-Straße"
-   Perspektivische Fahrbahn, die von unten (nah) zum Horizont (fern)
-   läuft. Mittellinien fließen auf den Betrachter zu (Vorwärtsflug).
+   Jüngerschaft Paul – Drohnen-Aufsicht auf den Weg
+   Schmaler steiniger Pfad (wir) vs. breiter Weg (alle), Matthäus 7,13-14.
+   Aufsicht von oben, scrollt nach oben = wir fliegen den Weg entlang.
    Stationen wachsen beim Näherkommen (scroll-getriebene Animation).
    ───────────────────────────────────────────────────────────── */
-.paul-road-stage {
-  position: sticky;
-  top: 0;
-  height: 100dvh;
-  z-index: 0;
-  overflow: hidden;
-}
-.paul-road-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-/* Mittellinie fließt auf den Betrachter zu (Vorwärtsflug) */
+/* Mittellinie des breiten Wegs fließt sanft (Vorwärtsbewegung) */
 .paul-lane-dash {
   animation: paulLaneFlow 0.9s linear infinite;
 }

@@ -131,79 +131,82 @@ const TYPE_META = {
   bekenntnis: { icon: HandHeart, label: 'Bekenntnis',  color: '#AF52DE', tint: 'rgba(175,82,222,0.14)' },
 }
 
-// ── 3D "Drohnen-Straße": perspektivische Fahrbahn zum Horizont ──
-const RD = { W: 420, H: 760, HORIZON: 250, VP: 210,
-  BL: 58, BR: 362,      // Fahrbahn unten (nah, breit)
-  TL: 197, TR: 223 }    // Fahrbahn am Horizont (fern, schmal)
-
-// x-Wert der Fahrbahnkante bei gegebener Höhe y (lineare Interpolation)
-function edgeX(y, bottomX, topX) {
-  const t = (RD.H - y) / (RD.H - RD.HORIZON)
-  return bottomX + (topX - bottomX) * t
-}
-
-function RoadScene() {
-  // Quer-"Sprossen" für Tiefenwirkung – dichter Richtung Horizont
-  const rungs = []
-  const N = 11
-  for (let i = 1; i <= N; i++) {
-    const frac = i / (N + 1)
-    const y = RD.HORIZON + (RD.H - RD.HORIZON) * Math.pow(frac, 1.9)
-    rungs.push({ y, lx: edgeX(y, RD.BL, RD.TL), rx: edgeX(y, RD.BR, RD.TR) })
-  }
-  return (
-    <svg className="paul-road-svg" viewBox={`0 0 ${RD.W} ${RD.H}`} preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="paulSky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0a1024" />
-          <stop offset="70%" stopColor="#12203f" />
-          <stop offset="100%" stopColor="#1b2c52" />
-        </linearGradient>
-        <radialGradient id="paulGlow" cx="50%" cy="100%" r="70%">
-          <stop offset="0%" stopColor="rgba(120,175,255,0.55)" />
-          <stop offset="60%" stopColor="rgba(90,140,240,0.12)" />
-          <stop offset="100%" stopColor="rgba(90,140,240,0)" />
-        </radialGradient>
-        <linearGradient id="paulGround" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0a1330" />
-          <stop offset="100%" stopColor="#070c1c" />
-        </linearGradient>
-        <linearGradient id="paulAsphalt" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2a3350" />
-          <stop offset="100%" stopColor="#161d33" />
-        </linearGradient>
-      </defs>
-
-      {/* Himmel + Ferne-Glühen */}
-      <rect x="0" y="0" width={RD.W} height={RD.HORIZON} fill="url(#paulSky)" />
-      <rect x="0" y={RD.HORIZON - 120} width={RD.W} height="180" fill="url(#paulGlow)" />
-      {/* Boden */}
-      <rect x="0" y={RD.HORIZON} width={RD.W} height={RD.H - RD.HORIZON} fill="url(#paulGround)" />
-      {/* Horizontlinie */}
-      <rect x="0" y={RD.HORIZON - 1} width={RD.W} height="2.5" fill="rgba(160,200,255,0.9)" />
-
-      {/* Fahrbahn */}
-      <polygon points={`${RD.BL},${RD.H} ${RD.BR},${RD.H} ${RD.TR},${RD.HORIZON} ${RD.TL},${RD.HORIZON}`} fill="url(#paulAsphalt)" />
-      {/* Tiefen-Sprossen */}
-      {rungs.map((r, i) => (
-        <line key={i} x1={r.lx} y1={r.y} x2={r.rx} y2={r.y} stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
-      ))}
-      {/* Seitenlinien */}
-      <line x1={RD.BL} y1={RD.H} x2={RD.TL} y2={RD.HORIZON} stroke="rgba(255,214,110,0.7)" strokeWidth="4" strokeLinecap="round" />
-      <line x1={RD.BR} y1={RD.H} x2={RD.TR} y2={RD.HORIZON} stroke="rgba(255,214,110,0.7)" strokeWidth="4" strokeLinecap="round" />
-      {/* Mittellinie (fließt auf Betrachter zu) */}
-      <line className="paul-lane-dash" x1={RD.VP} y1={RD.HORIZON} x2={RD.VP} y2={RD.H}
-        stroke="rgba(255,255,255,0.92)" strokeWidth="5" strokeLinecap="round" strokeDasharray="30 30" />
-    </svg>
-  )
-}
-
 const VIEW_W = 400
 const STEP = 172        // vertikaler Abstand zwischen Stationen
 const TOP_PAD = 96
 const BOTTOM_PAD = 120
-const LEFT_X = 128
-const RIGHT_X = 272
+const LEFT_X = 214      // schmaler Pfad windet sich auf der rechten Seite
+const RIGHT_X = 314
+
+// Glatten Bézier-Pfad durch eine Punktliste (unten → oben) bauen
+function smoothPath(pts, startY) {
+  let d = `M ${pts[0].x} ${startY} L ${pts[0].x} ${pts[0].y}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1], m = (a.y + b.y) / 2
+    d += ` C ${a.x} ${m}, ${b.x} ${m}, ${b.x} ${b.y}`
+  }
+  return d
+}
+
+// ── Drohnen-Aufsicht: schmaler steiniger Pfad (wir) vs. breiter Weg (alle) ──
+// Angelehnt an Matthäus 7,13-14: der breite Weg, den viele gehen, und der
+// schmale, mühsame Pfad, den wenige finden. Aufsicht von oben, scrollt nach
+// oben = wir fliegen den Weg entlang.
+function AerialScene({ totalH, narrowD }) {
+  // Breiter Weg: sanfte, große Kurve auf der linken Seite
+  const bpts = []
+  const segs = Math.ceil(totalH / 120) + 2
+  for (let i = 0; i < segs; i++) {
+    bpts.push({ x: 96 + 24 * Math.sin(i * 0.6), y: totalH - i * 120 })
+  }
+  const broadD = smoothPath(bpts, totalH)
+  return (
+    <svg
+      viewBox={`0 0 ${VIEW_W} ${totalH}`} width="100%" height={totalH}
+      preserveAspectRatio="none" aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, zIndex: 0 }}
+    >
+      <defs>
+        <linearGradient id="paulTerr" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1c2417" />
+          <stop offset="50%" stopColor="#232c1c" />
+          <stop offset="100%" stopColor="#1a2016" />
+        </linearGradient>
+        <pattern id="paulGrass" width="18" height="18" patternUnits="userSpaceOnUse">
+          <circle cx="4" cy="5" r="0.9" fill="rgba(255,255,255,0.04)" />
+          <circle cx="13" cy="11" r="0.8" fill="rgba(0,0,0,0.10)" />
+          <circle cx="9" cy="15" r="0.7" fill="rgba(255,255,255,0.03)" />
+        </pattern>
+        <pattern id="paulStones" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(8)">
+          <rect width="20" height="20" fill="#a99878" />
+          <rect x="1" y="1" width="8" height="7" rx="2.5" fill="#8f7d5c" />
+          <rect x="11" y="2" width="7" height="8" rx="2.5" fill="#c3b492" />
+          <rect x="2" y="10" width="7" height="8" rx="2.5" fill="#bcaa86" />
+          <rect x="11" y="12" width="7" height="6" rx="2.5" fill="#87754f" />
+        </pattern>
+        <pattern id="paulCrowd" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="7" cy="8" r="2.1" fill="rgba(190,196,210,0.5)" />
+          <circle cx="17" cy="16" r="2.1" fill="rgba(170,176,192,0.45)" />
+        </pattern>
+      </defs>
+
+      {/* Gelände */}
+      <rect width={VIEW_W} height={totalH} fill="url(#paulTerr)" />
+      <rect width={VIEW_W} height={totalH} fill="url(#paulGrass)" />
+
+      {/* Breiter Weg (den alle gehen) */}
+      <path d={broadD} fill="none" stroke="#2e333d" strokeWidth="150" strokeLinecap="round" />
+      <path d={broadD} fill="none" stroke="#474d59" strokeWidth="140" strokeLinecap="round" />
+      <path d={broadD} fill="none" stroke="url(#paulCrowd)" strokeWidth="140" strokeLinecap="round" />
+      <path className="paul-lane-dash" d={broadD} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="5" strokeLinecap="round" strokeDasharray="26 30" />
+
+      {/* Schmaler, steiniger Pfad (den wenige finden) */}
+      <path d={narrowD} fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth="36" strokeLinecap="round" />
+      <path d={narrowD} fill="none" stroke="#4a4030" strokeWidth="32" strokeLinecap="round" />
+      <path d={narrowD} fill="none" stroke="url(#paulStones)" strokeWidth="24" strokeLinecap="round" />
+    </svg>
+  )
+}
 
 export default function PaulPathScreen() {
   const navigate = useNavigate()
@@ -264,24 +267,9 @@ export default function PaulPathScreen() {
         </p>
       </div>
 
-      {/* 3D "Drohnen-Straße": perspektivische Fahrbahn zum Horizont */}
-      <div className="paul-road-stage" aria-hidden="true">
-        <RoadScene />
-      </div>
-
-      {/* Weg / Stationen – über der Straße, scrollt nach oben */}
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: totalH, marginTop: '-100dvh' }}>
-        <svg
-          viewBox={`0 0 ${VIEW_W} ${totalH}`}
-          width="100%" height={totalH}
-          preserveAspectRatio="none"
-          style={{ position: 'absolute', inset: 0 }}
-          aria-hidden="true"
-        >
-          {/* Fußweg auf der Straße */}
-          <path d={d} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="9" strokeLinecap="round" />
-          <path d={d} fill="none" stroke="var(--color-accent)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray="2 13" opacity="0.85" />
-        </svg>
+      {/* Drohnen-Aufsicht: schmaler steiniger Pfad vs. breiter Weg; Stationen darauf */}
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: totalH }}>
+        <AerialScene totalH={totalH} narrowD={d} />
 
         {/* Kapitel-Bänder */}
         {points.map(({ y, station }) => (
