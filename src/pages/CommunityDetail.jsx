@@ -1198,7 +1198,7 @@ export default function CommunityDetail() {
   const isAdminRole = myMembership?.role === 'admin'
 
   return (
-    <div className="flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full chat-nav-clearance" style={{ height: '100dvh' }}>
+    <div className="flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full" style={{ height: '100dvh', paddingBottom: 'var(--bottom-nav-h, 64px)' }}>
 
       {/* ── Header mit Cover-Banner ──────────────────────────── */}
       <div style={{ flexShrink: 0, backgroundColor: 'var(--color-bg)' }}>
@@ -1274,7 +1274,7 @@ export default function CommunityDetail() {
           {/* CHAT tab */}
           {activeTab === 'chat' && (
             <>
-              <div ref={messagesContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 4px' }}>
+              <div ref={messagesContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 8px' }}>
                 {chatLoading && messages.length === 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {[false, true, false, true, false].map((right, i) => (

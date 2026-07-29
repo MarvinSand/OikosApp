@@ -24,7 +24,7 @@ function debounce(fn, ms) {
   let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) }
 }
 
-export default function PlaceDetailSheet({ place, people, placeConnections, onClose, onUpdate, onDelete, onConnectPerson, onDisconnectPerson }) {
+export default function PlaceDetailSheet({ place, people, placeConnections, onClose, onUpdate, onDelete, onConnectPerson, onDisconnectPerson, onAddPersonToPlace }) {
   const [editing, setEditing]         = useState(false)
   const [name, setName]               = useState(place.name)
   const [type, setType]               = useState(place.type || 'place')
@@ -38,7 +38,22 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
   const [showConnectPanel, setShowConnectPanel] = useState(false)
   const [connectContext, setConnectContext] = useState('')
   const [connectTarget, setConnectTarget] = useState(null)
+  const [showNewPerson, setShowNewPerson] = useState(false)
+  const [newPersonName, setNewPersonName] = useState('')
+  const [addingNewPerson, setAddingNewPerson] = useState(false)
   const saveDebounced = useRef(null)
+
+  async function handleAddNewPerson() {
+    if (!newPersonName.trim() || addingNewPerson) return
+    setAddingNewPerson(true)
+    try {
+      await onAddPersonToPlace?.(place.id, newPersonName.trim())
+      setNewPersonName('')
+      setShowNewPerson(false)
+    } finally {
+      setAddingNewPerson(false)
+    }
+  }
 
   const connectedPersonIds = placeConnections
     .filter(c => c.place_id === place.id)
@@ -89,7 +104,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)',
         borderRadius: '24px 24px 0 0', zIndex: 50,
-        maxHeight: '88vh', overflowY: 'auto',
+        maxHeight: 'calc(88dvh - env(safe-area-inset-top, 0px))', overflowY: 'auto',
         paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
         animation: 'sheetSlideUp 0.3s ease-out',
       }}>
@@ -207,6 +222,34 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
             {/* Connect panel */}
             {showConnectPanel && (
               <div style={{ marginTop: 10, padding: '12px', borderRadius: 14, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-warm-4)' }}>
+                {/* Neue Person hinzufügen (nur mit dem Ort verbunden) */}
+                {!showNewPerson ? (
+                  <button
+                    onClick={() => { setShowNewPerson(true); setNewPersonName('') }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '10px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-1)', background: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 10 }}
+                  >
+                    <Plus size={14} /> Neue Person hinzufügen
+                  </button>
+                ) : (
+                  <div style={{ marginBottom: 10, padding: 10, borderRadius: 10, backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-warm-3)' }}>
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 8px', lineHeight: 1.5 }}>
+                      Neue Person wird nur mit <strong>{place.name}</strong> verbunden.
+                    </p>
+                    <input
+                      autoFocus
+                      value={newPersonName}
+                      onChange={e => setNewPersonName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleAddNewPerson() }}
+                      placeholder="Name der Person…"
+                      style={{ ...inp, fontSize: 13, marginBottom: 8 }}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => { setShowNewPerson(false); setNewPersonName('') }} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
+                      <button onClick={handleAddNewPerson} disabled={!newPersonName.trim() || addingNewPerson} style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: newPersonName.trim() && !addingNewPerson ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{addingNewPerson ? 'Wird hinzugefügt…' : 'Hinzufügen'}</button>
+                    </div>
+                  </div>
+                )}
+
                 <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 8px' }}>Person suchen</p>
                 <div style={{ position: 'relative', marginBottom: 8 }}>
                   <Search size={13} color="var(--color-text-light)" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />

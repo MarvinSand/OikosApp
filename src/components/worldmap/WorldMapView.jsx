@@ -2,15 +2,16 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
-import { Plus, Navigation, Users, CalendarDays } from 'lucide-react'
+import { Plus, Navigation } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { useWorldMap } from '../../hooks/useWorldMap'
+import { useWorldMap, haversine } from '../../hooks/useWorldMap'
 import { useToast } from '../../context/ToastContext'
 import { GOOGLE_MAPS_LOADER_OPTIONS, DEFAULT_MAP_ID } from '../../lib/googleMaps'
 import AdvancedMarker from './AdvancedMarker'
 import UserPinSheet from './UserPinSheet'
 import ActivitySheet from './ActivitySheet'
 import CreateActivitySheet from './CreateActivitySheet'
+import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
 
 // ─── Palette (Phase 27: schwarz/weiß + babyblauer Akzent) ──
 const C = {
@@ -381,6 +382,10 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const siblingsOnly = searchParams.get('layer') === 'siblings'
   const [showGeschwister, setShowGeschwister] = useState(true)
   const [showEvents, setShowEvents] = useState(!siblingsOnly)
+  // Drawer: welcher Inhalt (Geschwister/Events) unten im hochziehbaren Menü angezeigt wird
+  const [drawerTab, setDrawerTab] = useState('siblings')
+  // Umkreis in km (null = weltweit) – filtert Liste UND Karten-Pins
+  const [radiusKm, setRadiusKm] = useState(null)
 
   useEffect(() => {
     if (!localStorage.getItem(PRIVACY_KEY)) setShowPrivacyBanner(true)
@@ -391,6 +396,55 @@ export default function WorldMapView({ onNavigateToProfile }) {
     setShowPrivacyBanner(false)
   }
 
+  const hasOwnLocation = !!(myProfile?.latitude && myProfile?.longitude)
+
+  const usersWithDistance = useMemo(() => {
+    if (!hasOwnLocation) return visibleUsers
+    return visibleUsers.map(u => ({
+      ...u,
+      distance: haversine(myProfile.latitude, myProfile.longitude, u.latitude, u.longitude),
+    }))
+  }, [visibleUsers, hasOwnLocation, myProfile?.latitude, myProfile?.longitude]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activitiesWithDistance = useMemo(() => {
+    if (!hasOwnLocation) return activities
+    return activities.map(a => ({
+      ...a,
+      distance: haversine(myProfile.latitude, myProfile.longitude, a.latitude, a.longitude),
+    }))
+  }, [activities, hasOwnLocation, myProfile?.latitude, myProfile?.longitude]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const usersInRadius = useMemo(
+    () => usersWithDistance.filter(u => radiusKm == null || u.distance == null || u.distance <= radiusKm),
+    [usersWithDistance, radiusKm]
+  )
+  const activitiesInRadius = useMemo(
+    () => activitiesWithDistance.filter(a => radiusKm == null || a.distance == null || a.distance <= radiusKm),
+    [activitiesWithDistance, radiusKm]
+  )
+
+  const usersForMap = useMemo(() => (showGeschwister ? usersInRadius : []), [showGeschwister, usersInRadius])
+  const activitiesForMap = useMemo(() => (showEvents ? activitiesInRadius : []), [showEvents, activitiesInRadius])
+
+  // Erster Tap wählt die Ebene (und den Drawer-Tab), zweiter Tap auf die
+  // bereits ausgewählte Ebene blendet sie aus.
+  function handlePillTap(tabKey) {
+    if (tabKey === 'siblings') {
+      if (!showGeschwister) { setShowGeschwister(true); setDrawerTab('siblings') }
+      else if (drawerTab !== 'siblings') setDrawerTab('siblings')
+      else { setShowGeschwister(false); if (showEvents) setDrawerTab('events') }
+    } else {
+      if (!showEvents) { setShowEvents(true); setDrawerTab('events') }
+      else if (drawerTab !== 'events') setDrawerTab('events')
+      else { setShowEvents(false); if (showGeschwister) setDrawerTab('siblings') }
+    }
+  }
+
+  function focusOn(lat, lng) {
+    if (!map || lat == null || lng == null) return
+    map.panTo({ lat, lng })
+    if (map.getZoom() < 11) map.setZoom(11)
+  }
 
   const defaultCenter = myProfile?.latitude
     ? { lat: myProfile.latitude, lng: myProfile.longitude }
@@ -421,14 +475,16 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
   const handleActivityClick = useMemo(() => (a) => setSelectedActivity(a), [])
 
+  // usersForMap/activitiesForMap sind bereits nach Ebene (Geschwister/Events)
+  // UND Umkreis (radiusKm) gefiltert – so wirkt der Drawer-Regler auf die Karte.
   useCombinedClusterer({
     map,
-    users: visibleUsers,
-    activities,
+    users: usersForMap,
+    activities: activitiesForMap,
     onUserClick: handleUserClick,
     onActivityClick: handleActivityClick,
-    showUsers: showGeschwister && isLoaded,
-    showEvents: showEvents && isLoaded,
+    showUsers: isLoaded,
+    showEvents: isLoaded,
     zoom: snapZoom.currentZoom,
   })
 
@@ -482,33 +538,44 @@ export default function WorldMapView({ onNavigateToProfile }) {
           )}
         </GoogleMap>
 
-        {/* Two-layer toggle pills – top center */}
+        {/* Rechter Bedien-Stapel: Zoom-Leiste + "Event hosten"-Button fest
+            untereinander mit festem Abstand – überlappen dadurch nie, egal
+            wie klein der sichtbare Kartenbereich ist. Bottom-verankert über
+            der schwebenden Ebenen-Kapsel statt vertikal zentriert. */}
         <div style={{
-          position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 501, display: 'flex', gap: 8,
-          background: C.surfaceBlur, padding: 5, borderRadius: 999,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.10)', backdropFilter: 'blur(8px)',
-          border: `1px solid ${C.border}`,
+          position: 'absolute', right: 12,
+          bottom: `calc(var(--bottom-nav-h, 64px) + ${DRAWER_PEEK}px + 14px)`,
+          zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         }}>
-          <LayerToggle active={showGeschwister} onClick={() => setShowGeschwister(v => !v)} icon={<Users size={15} />} label="Geschwister" />
-          <LayerToggle active={showEvents} onClick={() => setShowEvents(v => !v)} icon={<CalendarDays size={15} />} label="Events" />
-        </div>
+          <ZoomSidebar
+            snapZoom={snapZoom}
+            minZoom={minZoomRef.current}
+            onCenterSelf={myProfile?.latitude ? () => {
+              if (!map) return
+              map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
+              map.setZoom(13)
+            } : null}
+          />
 
-        {/* Snapchat-style zoom sidebar – right edge, drag up = zoom in */}
-        <ZoomSidebar
-          snapZoom={snapZoom}
-          minZoom={minZoomRef.current}
-          onCenterSelf={myProfile?.latitude ? () => {
-            if (!map) return
-            map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
-            map.setZoom(13)
-          } : null}
-        />
+          {/* Create Event FAB */}
+          <button
+            onClick={() => setShowCreateSheet(true)}
+            style={{
+              width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+              background: C.accent, border: 'none', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(90,200,250,0.5)', cursor: 'pointer',
+            }}
+            title="Event hosten"
+          >
+            <Plus size={26} />
+          </button>
+        </div>
 
         {/* No location hint */}
         {!myProfile?.latitude && (
           <div style={{
-            position: 'absolute', bottom: 100, left: 12, right: 72, zIndex: 500,
+            position: 'absolute', bottom: `calc(var(--bottom-nav-h, 64px) + ${DRAWER_PEEK}px + 12px)`, left: 12, right: 80, zIndex: 500,
             background: C.surfaceBlur, borderRadius: 12,
             padding: '10px 12px', boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
             border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10,
@@ -528,20 +595,21 @@ export default function WorldMapView({ onNavigateToProfile }) {
           </div>
         )}
 
-        {/* Create Event FAB */}
-        <button
-          onClick={() => setShowCreateSheet(true)}
-          style={{
-            position: 'absolute', bottom: 90, right: 12, zIndex: 500,
-            width: 56, height: 56, borderRadius: '50%',
-            background: C.accent, border: 'none', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(90,200,250,0.5)', cursor: 'pointer',
-          }}
-          title="Event hosten"
-        >
-          <Plus size={26} />
-        </button>
+        {/* Hochziehbares Menü (Google-Maps-Stil) mit Ebenen-Buttons, Suche, Filter & Umkreis */}
+        <MapDrawer
+          tab={drawerTab}
+          showGeschwister={showGeschwister}
+          showEvents={showEvents}
+          onPillTap={handlePillTap}
+          users={usersInRadius}
+          activities={activitiesInRadius}
+          myProfile={myProfile}
+          hasOwnLocation={hasOwnLocation}
+          radiusKm={radiusKm}
+          onRadiusChange={setRadiusKm}
+          onSelectUser={(u) => { focusOn(u.latitude, u.longitude); setSelectedUser(u) }}
+          onSelectActivity={(a) => { focusOn(a.latitude, a.longitude); setSelectedActivity(a) }}
+        />
 
         {/* Privacy banner */}
         {showPrivacyBanner && <PrivacyBanner onClose={closePrivacyBanner} />}
@@ -594,27 +662,6 @@ export default function WorldMapView({ onNavigateToProfile }) {
   )
 }
 
-// ─── Layer toggle pill ───────────────────────────────────
-function LayerToggle({ active, onClick, icon, label }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        padding: '7px 15px', borderRadius: 999, border: 'none',
-        background: active ? C.accent : 'transparent',
-        color: active ? '#fff' : C.textSec,
-        fontSize: 13, fontWeight: active ? 700 : 500,
-        cursor: 'pointer', whiteSpace: 'nowrap',
-        transition: 'all 0.15s',
-      }}
-    >
-      {icon}
-      {label}
-    </button>
-  )
-}
-
 // ─── Own Pin Content (React-rendered into AdvancedMarker) ─
 function OwnPinContent({ user }) {
   // Gleiche Größe wie Geschwister-Pins; bewusst KEINE Zoom-Skalierung,
@@ -664,11 +711,6 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
 
   return (
     <div style={{
-      position: 'absolute',
-      right: 10,
-      top: '50%',
-      transform: 'translateY(-50%)',
-      zIndex: 500,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -705,7 +747,7 @@ function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
         ref={trackRef}
         style={{
           width: 22,
-          height: 320,
+          height: 240,
           borderRadius: 11,
           background: C.surfaceBlur,
           border: `1px solid ${C.border}`,

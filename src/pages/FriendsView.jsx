@@ -632,7 +632,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
 }
 
 // ─── CreateCommunitySheet ────────────────────────────────────
-function CreateCommunitySheet({ onClose }) {
+export function CreateCommunitySheet({ onClose }) {
   const navigate = useNavigate()
   const { createCommunity } = useCommunities()
   const { showToast } = useToast()
@@ -697,7 +697,7 @@ function CreateCommunitySheet({ onClose }) {
 }
 
 // ─── JoinCommunityModal ──────────────────────────────────────
-function JoinCommunityModal({ onClose }) {
+export function JoinCommunityModal({ onClose }) {
   const { joinByCode } = useCommunities()
   const { showToast } = useToast()
   const navigate = useNavigate()

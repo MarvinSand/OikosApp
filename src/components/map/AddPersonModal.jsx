@@ -1,18 +1,29 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { X, MapPin, ChevronDown, Check } from 'lucide-react'
 
-export default function AddPersonModal({ onClose, onAdd }) {
+function initials(name) {
+  return (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+export default function AddPersonModal({ onClose, onAdd, people = [], places = [] }) {
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [addedCount, setAddedCount] = useState(0)
+  const [target, setTarget] = useState({ type: 'me' })
+  const [showTargets, setShowTargets] = useState(false)
+
+  const targetLabel =
+    target.type === 'me' ? 'Direkt mit mir'
+    : target.type === 'place' ? (places.find(p => p.id === target.id)?.name || 'Ort')
+    : (people.find(p => p.id === target.id)?.name || 'Person')
 
   async function handleAdd(keepOpen) {
     if (!name.trim()) return
     setLoading(true)
     setError('')
     try {
-      await onAdd(name.trim())
+      await onAdd(name.trim(), target)
       if (keepOpen) {
         setName('')
         setAddedCount(c => c + 1)
@@ -38,6 +49,38 @@ export default function AddPersonModal({ onClose, onAdd }) {
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-accent)', fontStyle: 'italic', marginBottom: 12 }}>
             ✓ {addedCount} {addedCount === 1 ? 'Person' : 'Personen'} hinzugefügt
           </p>
+        )}
+
+        {/* Verbinden mit */}
+        <label style={label}>Verbinden mit</label>
+        <button type="button" onClick={() => setShowTargets(v => !v)} style={{ ...input, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left', marginBottom: 8 }}>
+          {target.type === 'me'
+            ? <span style={{ fontSize: 16 }}>🏠</span>
+            : target.type === 'place'
+            ? <MapPin size={15} color="var(--color-warm-1)" />
+            : <span style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{initials(targetLabel)}</span>}
+          <span style={{ flex: 1, color: 'var(--color-text)', fontWeight: 600 }}>{targetLabel}</span>
+          <ChevronDown size={16} color="var(--color-text-muted)" />
+        </button>
+
+        {showTargets && (
+          <div style={{ maxHeight: 220, overflowY: 'auto', border: '1.5px solid var(--color-warm-3)', borderRadius: 12, marginBottom: 8 }}>
+            <TargetRow active={target.type === 'me'} onClick={() => { setTarget({ type: 'me' }); setShowTargets(false) }}
+              icon={<span style={{ fontSize: 16 }}>🏠</span>} labelText="Direkt mit mir" />
+            {places.length > 0 && <SectionLabel text="Orte" />}
+            {places.map(pl => (
+              <TargetRow key={'pl-' + pl.id} active={target.type === 'place' && target.id === pl.id}
+                onClick={() => { setTarget({ type: 'place', id: pl.id }); setShowTargets(false) }}
+                icon={<MapPin size={15} color="var(--color-warm-1)" />} labelText={pl.name} />
+            ))}
+            {people.length > 0 && <SectionLabel text="Personen" />}
+            {people.map(pe => (
+              <TargetRow key={'pe-' + pe.id} active={target.type === 'person' && target.id === pe.id}
+                onClick={() => { setTarget({ type: 'person', id: pe.id }); setShowTargets(false) }}
+                icon={<span style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{initials(pe.name)}</span>}
+                labelText={pe.name} />
+            ))}
+          </div>
         )}
 
         <label style={label}>Name</label>
@@ -71,6 +114,26 @@ export default function AddPersonModal({ onClose, onAdd }) {
         </div>
       </div>
     </div>
+  )
+}
+
+function SectionLabel({ text }) {
+  return (
+    <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, padding: '8px 12px 4px', backgroundColor: 'var(--color-bg-secondary)' }}>{text}</p>
+  )
+}
+
+function TargetRow({ active, onClick, icon, labelText }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px', border: 'none', background: active ? 'var(--color-warm-4)' : 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}
+    >
+      {icon}
+      <span style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 13.5, color: 'var(--color-text)', fontWeight: active ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelText}</span>
+      {active && <Check size={15} color="var(--color-warm-1)" />}
+    </button>
   )
 }
 
