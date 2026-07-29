@@ -131,6 +131,73 @@ const TYPE_META = {
   bekenntnis: { icon: HandHeart, label: 'Bekenntnis',  color: '#AF52DE', tint: 'rgba(175,82,222,0.14)' },
 }
 
+// ── 3D "Drohnen-Straße": perspektivische Fahrbahn zum Horizont ──
+const RD = { W: 420, H: 760, HORIZON: 250, VP: 210,
+  BL: 58, BR: 362,      // Fahrbahn unten (nah, breit)
+  TL: 197, TR: 223 }    // Fahrbahn am Horizont (fern, schmal)
+
+// x-Wert der Fahrbahnkante bei gegebener Höhe y (lineare Interpolation)
+function edgeX(y, bottomX, topX) {
+  const t = (RD.H - y) / (RD.H - RD.HORIZON)
+  return bottomX + (topX - bottomX) * t
+}
+
+function RoadScene() {
+  // Quer-"Sprossen" für Tiefenwirkung – dichter Richtung Horizont
+  const rungs = []
+  const N = 11
+  for (let i = 1; i <= N; i++) {
+    const frac = i / (N + 1)
+    const y = RD.HORIZON + (RD.H - RD.HORIZON) * Math.pow(frac, 1.9)
+    rungs.push({ y, lx: edgeX(y, RD.BL, RD.TL), rx: edgeX(y, RD.BR, RD.TR) })
+  }
+  return (
+    <svg className="paul-road-svg" viewBox={`0 0 ${RD.W} ${RD.H}`} preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="paulSky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0a1024" />
+          <stop offset="70%" stopColor="#12203f" />
+          <stop offset="100%" stopColor="#1b2c52" />
+        </linearGradient>
+        <radialGradient id="paulGlow" cx="50%" cy="100%" r="70%">
+          <stop offset="0%" stopColor="rgba(120,175,255,0.55)" />
+          <stop offset="60%" stopColor="rgba(90,140,240,0.12)" />
+          <stop offset="100%" stopColor="rgba(90,140,240,0)" />
+        </radialGradient>
+        <linearGradient id="paulGround" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0a1330" />
+          <stop offset="100%" stopColor="#070c1c" />
+        </linearGradient>
+        <linearGradient id="paulAsphalt" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#2a3350" />
+          <stop offset="100%" stopColor="#161d33" />
+        </linearGradient>
+      </defs>
+
+      {/* Himmel + Ferne-Glühen */}
+      <rect x="0" y="0" width={RD.W} height={RD.HORIZON} fill="url(#paulSky)" />
+      <rect x="0" y={RD.HORIZON - 120} width={RD.W} height="180" fill="url(#paulGlow)" />
+      {/* Boden */}
+      <rect x="0" y={RD.HORIZON} width={RD.W} height={RD.H - RD.HORIZON} fill="url(#paulGround)" />
+      {/* Horizontlinie */}
+      <rect x="0" y={RD.HORIZON - 1} width={RD.W} height="2.5" fill="rgba(160,200,255,0.9)" />
+
+      {/* Fahrbahn */}
+      <polygon points={`${RD.BL},${RD.H} ${RD.BR},${RD.H} ${RD.TR},${RD.HORIZON} ${RD.TL},${RD.HORIZON}`} fill="url(#paulAsphalt)" />
+      {/* Tiefen-Sprossen */}
+      {rungs.map((r, i) => (
+        <line key={i} x1={r.lx} y1={r.y} x2={r.rx} y2={r.y} stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
+      ))}
+      {/* Seitenlinien */}
+      <line x1={RD.BL} y1={RD.H} x2={RD.TL} y2={RD.HORIZON} stroke="rgba(255,214,110,0.7)" strokeWidth="4" strokeLinecap="round" />
+      <line x1={RD.BR} y1={RD.H} x2={RD.TR} y2={RD.HORIZON} stroke="rgba(255,214,110,0.7)" strokeWidth="4" strokeLinecap="round" />
+      {/* Mittellinie (fließt auf Betrachter zu) */}
+      <line className="paul-lane-dash" x1={RD.VP} y1={RD.HORIZON} x2={RD.VP} y2={RD.H}
+        stroke="rgba(255,255,255,0.92)" strokeWidth="5" strokeLinecap="round" strokeDasharray="30 30" />
+    </svg>
+  )
+}
+
 const VIEW_W = 400
 const STEP = 172        // vertikaler Abstand zwischen Stationen
 const TOP_PAD = 96
@@ -197,8 +264,13 @@ export default function PaulPathScreen() {
         </p>
       </div>
 
-      {/* Weg */}
-      <div style={{ position: 'relative', width: '100%', height: totalH }}>
+      {/* 3D "Drohnen-Straße": perspektivische Fahrbahn zum Horizont */}
+      <div className="paul-road-stage" aria-hidden="true">
+        <RoadScene />
+      </div>
+
+      {/* Weg / Stationen – über der Straße, scrollt nach oben */}
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: totalH, marginTop: '-100dvh' }}>
         <svg
           viewBox={`0 0 ${VIEW_W} ${totalH}`}
           width="100%" height={totalH}
@@ -206,10 +278,9 @@ export default function PaulPathScreen() {
           style={{ position: 'absolute', inset: 0 }}
           aria-hidden="true"
         >
-          {/* Untergrund-Linie */}
-          <path d={d} fill="none" stroke="var(--color-border)" strokeWidth="10" strokeLinecap="round" />
-          {/* Akzent-Linie */}
-          <path d={d} fill="none" stroke="var(--color-accent)" strokeWidth="4" strokeLinecap="round" strokeDasharray="2 14" opacity="0.9" />
+          {/* Fußweg auf der Straße */}
+          <path d={d} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="9" strokeLinecap="round" />
+          <path d={d} fill="none" stroke="var(--color-accent)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray="2 13" opacity="0.85" />
         </svg>
 
         {/* Kapitel-Bänder */}
@@ -239,9 +310,11 @@ export default function PaulPathScreen() {
           return (
             <div key={station.id} style={{
               position: 'absolute', left: `${(x / VIEW_W) * 100}%`, top: y,
-              transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: 7, width: 150,
+              transform: 'translate(-50%, -50%)', width: 150,
             }}>
+             <div className="paul-node-scale" style={{
+               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
+             }}>
               <button
                 onClick={() => setActive(station)}
                 className="press-scale"
@@ -276,6 +349,7 @@ export default function PaulPathScreen() {
               }}>
                 {station.title}
               </div>
+             </div>
             </div>
           )
         })}

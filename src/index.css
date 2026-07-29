@@ -271,3 +271,50 @@
   0%, 100% { transform: scale(1); opacity: 0.7; }
   50%       { transform: scale(1.3); opacity: 0; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Jüngerschaft Paul – 3D "Drohnen-Straße"
+   Perspektivische Fahrbahn, die von unten (nah) zum Horizont (fern)
+   läuft. Mittellinien fließen auf den Betrachter zu (Vorwärtsflug).
+   Stationen wachsen beim Näherkommen (scroll-getriebene Animation).
+   ───────────────────────────────────────────────────────────── */
+.paul-road-stage {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  z-index: 0;
+  overflow: hidden;
+}
+.paul-road-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Mittellinie fließt auf den Betrachter zu (Vorwärtsflug) */
+.paul-lane-dash {
+  animation: paulLaneFlow 0.9s linear infinite;
+}
+@keyframes paulLaneFlow {
+  to { stroke-dashoffset: -120; }
+}
+
+/* Stationen kommen beim Scrollen näher: nah (unten) groß, fern (oben) klein */
+.paul-node-scale { transform-origin: center; }
+@supports (animation-timeline: view()) {
+  .paul-node-scale {
+    animation: paulNodeApproach linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 100%;
+    will-change: transform, opacity;
+  }
+  @keyframes paulNodeApproach {
+    from { transform: scale(1.16); opacity: 1; }
+    to   { transform: scale(0.66); opacity: 0.55; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .paul-lane-dash { animation: none; }
+  .paul-node-scale { animation: none; }
+}
