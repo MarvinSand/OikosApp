@@ -10,7 +10,7 @@ export function usePrayerLogs(prayerRequestId) {
   useEffect(() => {
     if (!prayerRequestId || !user) return
     load()
-  }, [prayerRequestId])
+  }, [prayerRequestId, user?.id])
 
   async function load() {
     setLoading(true)
@@ -41,15 +41,20 @@ export function usePrayerLogs(prayerRequestId) {
   const hasPrayedToday = todayLogs.some(l => l.user_id === user?.id)
   const countToday = todayLogs.length
 
-  // Unique users who have ever prayed for this request (deduplicated, most recent first)
+  // Unique users who have ever prayed for this request (deduplicated, most
+  // recent first), each with how many times they personally prayed for it
   const prayersByUser = []
   const seenIds = new Set()
   for (const log of logs) {
     if (!seenIds.has(log.user_id)) {
       seenIds.add(log.user_id)
-      prayersByUser.push({ userId: log.user_id, profile: log.profiles || null })
+      prayersByUser.push({ userId: log.user_id, profile: log.profiles || null, count: 1 })
+    } else {
+      prayersByUser.find(p => p.userId === log.user_id).count++
     }
   }
+  // Total number of prayer actions logged for this request, across all users
+  const totalCount = logs.length
 
   async function logPrayer() {
     if (hasPrayedToday) return
@@ -103,7 +108,7 @@ export function usePrayerLogs(prayerRequestId) {
     } catch { /* non-critical */ }
   }
 
-  return { logs, loading, hasPrayedToday, countToday, prayersByUser, logPrayer }
+  return { logs, loading, hasPrayedToday, countToday, prayersByUser, totalCount, logPrayer }
 }
 
 // Hook für alle Gebets-Logs einer Person (für die Timeline)
@@ -116,7 +121,7 @@ export function usePersonPrayerTimeline(personId) {
   useEffect(() => {
     if (!personId || !user) return
     load()
-  }, [personId])
+  }, [personId, user?.id])
 
   async function load() {
     setLoading(true)
