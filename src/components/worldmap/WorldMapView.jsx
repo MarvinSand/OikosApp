@@ -446,9 +446,14 @@ export default function WorldMapView({ onNavigateToProfile }) {
     if (map.getZoom() < 11) map.setZoom(11)
   }
 
-  const defaultCenter = myProfile?.latitude
-    ? { lat: myProfile.latitude, lng: myProfile.longitude }
-    : { lat: 51.1657, lng: 10.4515 }
+  // Stabile Identität: nur neu berechnet, wenn sich der eigene Standort ändert –
+  // sonst würde der Map-`center`-Prop bei jedem Render (z.B. Zoom) zurückspringen.
+  const defaultCenter = useMemo(
+    () => (myProfile?.latitude
+      ? { lat: myProfile.latitude, lng: myProfile.longitude }
+      : { lat: 51.1657, lng: 10.4515 }),
+    [myProfile?.latitude, myProfile?.longitude]
+  )
   const defaultZoom = myProfile?.latitude ? 10 : 6
 
   function handleMapLoad(mapInstance) {
@@ -531,7 +536,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
               position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
               zIndex={9999}
             >
-              <OwnPinContent user={myProfile} />
+              <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} />
             </AdvancedMarker>
           )}
         </GoogleMap>
