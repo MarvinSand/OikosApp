@@ -6,3 +6,7 @@ dist
 # Build/debug artifacts
 build_error*.log
 tmp_query.js
+
+# Python caches (skill tooling)
+__pycache__/
+*.pyc

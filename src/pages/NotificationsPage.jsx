@@ -57,7 +57,7 @@ function NotificationItem({ n, onClick }) {
     <div
       onClick={onClick}
       className={`group flex items-start gap-3.5 p-4 border-b border-warm-3 transition-all duration-200 cursor-pointer active:scale-[0.99] ${
-        n.is_read ? 'bg-transparent hover:bg-white/50' : 'bg-warm-1/10 hover:bg-warm-1/15'
+        n.is_read ? 'bg-transparent hover:bg-surface' : 'bg-warm-1/10 hover:bg-warm-1/15'
       }`}
     >
       {/* Icon bubble */}
@@ -82,7 +82,7 @@ function NotificationItem({ n, onClick }) {
 
       {/* Unread dot */}
       {!n.is_read && (
-        <div className="w-2.5 h-2.5 shrink-0 rounded-full bg-warm-1 shadow-sm mt-2 ring-4 ring-bg" />
+        <div className="w-2.5 h-2.5 shrink-0 rounded-full bg-accent shadow-sm mt-2 ring-4 ring-bg" />
       )}
     </div>
   )

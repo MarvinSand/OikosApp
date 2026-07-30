@@ -11,6 +11,9 @@ export default {
         // Tokens point at CSS variables so the whole app (Tailwind utilities
         // AND inline var() styles) re-themes via a single [data-theme] switch.
         bg: 'var(--color-bg)',
+        // Theme-aware card/sheet surface (white in light, dark grey in dark).
+        // Use instead of the hardcoded Tailwind `white` for elevated surfaces.
+        surface: 'var(--color-surface)',
         paper: 'var(--color-bg-secondary)',
         // Legacy "warm" tokens retargeted to the new neutral palette so
         // existing components automatically adopt the new look.

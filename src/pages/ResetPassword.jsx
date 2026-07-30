@@ -89,7 +89,7 @@ export default function ResetPassword() {
                     placeholder="Mindestens 8 Zeichen"
                     required
                     minLength={8}
-                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-surface focus:bg-surface focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
                   />
                   <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-warm-1 transition-colors rounded-lg">
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -106,7 +106,7 @@ export default function ResetPassword() {
                     onChange={e => { setConfirm(e.target.value); setError('') }}
                     placeholder="Passwort wiederholen"
                     required
-                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-surface focus:bg-surface focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light box-border"
                   />
                   <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-warm-1 transition-colors rounded-lg">
                     {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -128,7 +128,7 @@ export default function ResetPassword() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Speichere…' : 'Speichern'}
               </button>

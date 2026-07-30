@@ -396,6 +396,8 @@ export default function ProfileView() {
           {activeTab === 'prayers' && (
             <PrayersTab
               prayers={prayerRequests}
+              profile={profile}
+              onChanged={reload}
               onCreatePrayer={() => navigate('/prayers?create=1')}
             />
           )}

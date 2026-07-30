@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
 import { useSwipeNav } from './hooks/useSwipeNav'
 import { ToastProvider } from './context/ToastContext'
@@ -20,6 +21,7 @@ import PrayerGoalDetail from './pages/PrayerGoalDetail'
 import AnsweredPrayersView from './pages/AnsweredPrayersView'
 import PrayerStatsView from './pages/PrayerStatsView'
 import FeedPostView from './pages/FeedPostView'
+import PrayerDetailView from './pages/PrayerDetailView'
 import PublicMapView from './pages/PublicMapView'
 import Prayers from './pages/Prayers'
 import MapView from './pages/MapView'
@@ -72,9 +74,11 @@ function AppShellInner() {
           <Route path="/goals/:id" element={<PrayerGoalDetail />} />
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
+          <Route path="/prayer/:id" element={<PrayerDetailView />} />
           <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
-          <Route path="/chat" element={<Navigate to="/friends?tab=chats" replace />} />
+          <Route path="/chat" element={<Navigate to="/chats" replace />} />
+          <Route path="/chats" element={<FriendsView />} />
           <Route path="/chat/:conversationId" element={<ConversationView />} />
           <Route path="/friends" element={<FriendsView />} />
           <Route path="/notifications" element={<NotificationsPage />} />
@@ -217,6 +221,7 @@ export default function App() {
             </BrowserRouter>
           </div>
         </div>
+        <Analytics />
       </ToastProvider>
     </ErrorBoundary>
   )

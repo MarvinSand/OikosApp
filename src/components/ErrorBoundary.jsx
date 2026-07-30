@@ -34,7 +34,7 @@ export class ErrorBoundary extends React.Component {
             </div>
             <button
               onClick={() => window.location.href = '/'}
-              className="w-full flex items-center justify-center gap-2 bg-warm-1 text-white py-3 px-6 rounded-xl font-semibold hover:bg-warm-2 transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-accent text-white py-3 px-6 rounded-xl font-semibold hover:bg-accent-dark transition-colors"
             >
               <RefreshCw size={18} /> App neu laden
             </button>

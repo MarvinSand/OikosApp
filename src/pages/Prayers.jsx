@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../context/ToastContext'
 import DateFilterControl from '../components/ui/DateFilterControl'
+import ExpandableSearch from '../components/common/ExpandableSearch'
 import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
 import PrayerListsSection from '../components/prayer/PrayerListsSection'
 import PrayerModeSetupSheet from '../components/prayer/PrayerModeSetupSheet'
@@ -150,7 +151,7 @@ function CommentInput({ onSubmit }) {
 
 // ─── Gebets-Karte ─────────────────────────────────────────────
 
-function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete, onLaterPray, goal, onOpenGoal }) {
+export function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete, onLaterPray, goal, onOpenGoal }) {
   const { user } = useAuth()
   const [showComments, setShowComments] = useState(false)
   const [showCommentInput, setShowCommentInput] = useState(false)
@@ -683,6 +684,64 @@ export default function Prayers() {
   const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
   const loaderRef = useRef(null)
   const [searchParams, setSearchParams] = useSearchParams()
+  const focusId = searchParams.get('focus')
+  const [highlightId, setHighlightId] = useState(null)
+
+  // Kollabierender Header (wie im Feed-Tab)
+  const rootRef = useRef(null)
+  const [collapsed, setCollapsed] = useState(false)
+  const [searchRevealed, setSearchRevealed] = useState(false)
+  const collapsedRef = useRef(false)
+  const lockUntilRef = useRef(0)
+  const tickingRef = useRef(false)
+
+  function setCollapsedSafe(v) {
+    if (collapsedRef.current === v) return
+    collapsedRef.current = v
+    setCollapsed(v)
+    lockUntilRef.current = Date.now() + 360
+  }
+
+  useEffect(() => {
+    const scroller = rootRef.current?.closest('.overflow-y-auto')
+    if (!scroller) return
+    let lastY = scroller.scrollTop
+    function update() {
+      tickingRef.current = false
+      const st = scroller.scrollTop
+      const dy = st - lastY
+      lastY = st
+      if (st > 8) setSearchRevealed(false)
+      if (Date.now() < lockUntilRef.current) return
+      if (st <= 8) { setCollapsedSafe(false); return }
+      if (dy > 8 && st > 90) setCollapsedSafe(true)
+      else if (dy < -8) setCollapsedSafe(false)
+    }
+    function onScroll() {
+      if (!tickingRef.current) { tickingRef.current = true; requestAnimationFrame(update) }
+    }
+    function onWheel(e) {
+      if (scroller.scrollTop <= 2 && e.deltaY < -6) setSearchRevealed(true)
+      else if (e.deltaY > 6) setSearchRevealed(false)
+    }
+    let touchStartY = 0
+    function onTouchStart(e) { touchStartY = e.touches[0].clientY }
+    function onTouchMove(e) {
+      const dy = e.touches[0].clientY - touchStartY
+      if (scroller.scrollTop <= 2 && dy > 40) setSearchRevealed(true)
+      else if (dy < -40) setSearchRevealed(false)
+    }
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    scroller.addEventListener('wheel', onWheel, { passive: true })
+    scroller.addEventListener('touchstart', onTouchStart, { passive: true })
+    scroller.addEventListener('touchmove', onTouchMove, { passive: true })
+    return () => {
+      scroller.removeEventListener('scroll', onScroll)
+      scroller.removeEventListener('wheel', onWheel)
+      scroller.removeEventListener('touchstart', onTouchStart)
+      scroller.removeEventListener('touchmove', onTouchMove)
+    }
+  }, [])
 
   // Gebetsmodus / Bookmark / Weiterleiten / Gebetsziel
   const [showPrayerModeSetup, setShowPrayerModeSetup] = useState(false)
@@ -775,6 +834,20 @@ export default function Prayers() {
     return () => obs.disconnect()
   }, [loadMore])
 
+  // Vom Profil verlinktes Gebet anspringen + kurz hervorheben
+  useEffect(() => {
+    if (!focusId || loading) return
+    const el = document.getElementById('prayer-' + focusId)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightId(focusId)
+    const t = setTimeout(() => setHighlightId(null), 2200)
+    searchParams.delete('focus')
+    setSearchParams(searchParams, { replace: true })
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId, loading, feedEntries.length])
+
   async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids }) {
     // Fehler werden absichtlich NICHT geschluckt – das Sheet zeigt die echte
     // Ursache an, damit ein nicht gepostetes Gebet sichtbar/diagnostizierbar wird.
@@ -839,62 +912,24 @@ export default function Prayers() {
   }
 
   return (
-    <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full" style={{ position: 'relative' }}>
-      <PrayerFeedSwitcher active="prayers" />
-
-      {/* Gebetslisten (kompakt) + Gebetsmodus */}
-      <div style={{ padding: '14px 0 4px', borderBottom: '1px solid var(--color-border)' }}>
-        <PrayerListsSection variant="compact" />
-        <div style={{ padding: '4px 16px 12px' }}>
-          <button
-            onClick={() => setShowPrayerModeSetup(true)}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '13px', borderRadius: 14, border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))',
-              color: '#fff', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700,
-              boxShadow: '0 4px 14px rgba(90,200,250,0.30)',
-            }}
-          >
-            <Play size={17} fill="#fff" /> Gebetsmodus starten
-          </button>
-        </div>
-      </div>
-
+    <div ref={rootRef} className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full" style={{ position: 'relative' }}>
+      {/* Sticky-Header: Suche/Filter (oben, Overscroll) + Switcher */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 30, backgroundColor: 'var(--color-bg)' }}>
+        {/* Suche + Filter – ÜBER der Bar, nur per Overscroll am oberen Rand sichtbar */}
+        <div style={{
+          maxHeight: searchRevealed ? (showFilters ? 640 : 64) : 0,
+          opacity: searchRevealed ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease, opacity 0.25s ease',
+        }}>
       {/* Search + filter */}
       <div style={{
         backgroundColor: 'var(--color-bg)',
         padding: '12px 16px 8px',
         borderBottom: '1px solid var(--color-border)',
       }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={15} color="var(--color-text-tertiary)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Gebet suchen…"
-              style={{
-                width: '100%', padding: '9px 36px 9px 34px', borderRadius: 12,
-                border: '1.5px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)',
-                fontSize: 14, color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box',
-              }}
-            />
-            {q && (
-              <button
-                onClick={() => setSearchQuery('')}
-                style={{
-                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                  width: 22, height: 22, borderRadius: '50%', border: 'none',
-                  background: 'var(--color-border)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <X size={12} color="var(--color-text-secondary)" />
-              </button>
-            )}
-          </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
+          <ExpandableSearch value={searchQuery} onChange={setSearchQuery} placeholder="Gebet suchen…" />
           <button
             onClick={() => setShowFilters(v => !v)}
             aria-label="Filter"
@@ -902,7 +937,7 @@ export default function Prayers() {
               position: 'relative',
               width: 40, height: 40, borderRadius: 12, flexShrink: 0,
               border: `1.5px solid ${showFilters || filterFacetCount ? 'var(--color-accent)' : 'var(--color-border)'}`,
-              backgroundColor: showFilters || filterFacetCount ? 'rgba(74,103,65,0.1)' : 'var(--color-bg-secondary)',
+              backgroundColor: showFilters || filterFacetCount ? 'rgba(90,200,250,0.12)' : 'var(--color-bg-secondary)',
               color: showFilters || filterFacetCount ? 'var(--color-accent)' : 'var(--color-text-secondary)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1012,6 +1047,49 @@ export default function Prayers() {
           </div>
         )}
       </div>
+        </div>{/* /Suche-Reveal */}
+
+        {/* Feed/Gebete-Switcher – darunter; kollabiert beim Runterscrollen */}
+        {collapsed && (
+          <div
+            onClick={() => setCollapsedSafe(false)}
+            style={{
+              height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', backgroundColor: 'var(--color-bg)',
+              borderBottom: '1px solid var(--color-border)',
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-border)' }} />
+          </div>
+        )}
+        <div style={{
+          maxHeight: collapsed ? 0 : 64,
+          opacity: collapsed ? 0 : 1,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease, opacity 0.25s ease',
+        }}>
+          <PrayerFeedSwitcher active="prayers" />
+        </div>
+      </div>{/* /Sticky-Header */}
+
+      {/* Gebetslisten (kompakt) + Gebetsmodus */}
+      <div style={{ padding: '14px 0 4px', borderBottom: '1px solid var(--color-border)' }}>
+        <PrayerListsSection variant="compact" />
+        <div style={{ padding: '4px 16px 12px' }}>
+          <button
+            onClick={() => setShowPrayerModeSetup(true)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '13px', borderRadius: 14, border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))',
+              color: '#fff', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700,
+              boxShadow: '0 4px 14px rgba(90,200,250,0.30)',
+            }}
+          >
+            <Play size={17} fill="#fff" /> Gebetsmodus starten
+          </button>
+        </div>
+      </div>
 
       <div style={{ padding: '14px 16px 0' }}>
         {loading && (
@@ -1044,20 +1122,30 @@ export default function Prayers() {
         )}
 
         {!loading && feedEntries.map(entry => (
-          <PrayerCard
+          <div
             key={entry.id}
-            request={entry.request}
-            logs={logsMap[entry.request.id]}
-            notes={notesMap[entry.request.id]}
-            onPray={logPrayer}
-            onComment={handleComment}
-            onBookmark={setBookmarkRequest}
-            onForward={setForwardRequest}
-            onDelete={() => handleDeleteEntry(entry)}
-            onLaterPray={handleLaterPray}
-            goal={entry.goal}
-            onOpenGoal={(g) => navigate(`/goals/${g.id}`)}
-          />
+            id={'prayer-' + entry.request.id}
+            style={{
+              borderRadius: 16,
+              scrollMarginTop: 80,
+              transition: 'box-shadow 0.3s ease',
+              boxShadow: String(entry.request.id) === String(highlightId) ? '0 0 0 3px var(--color-accent)' : 'none',
+            }}
+          >
+            <PrayerCard
+              request={entry.request}
+              logs={logsMap[entry.request.id]}
+              notes={notesMap[entry.request.id]}
+              onPray={logPrayer}
+              onComment={handleComment}
+              onBookmark={setBookmarkRequest}
+              onForward={setForwardRequest}
+              onDelete={() => handleDeleteEntry(entry)}
+              onLaterPray={handleLaterPray}
+              goal={entry.goal}
+              onOpenGoal={(g) => navigate(`/goals/${g.id}`)}
+            />
+          </div>
         ))}
 
         {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}

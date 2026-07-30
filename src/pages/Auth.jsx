@@ -10,6 +10,7 @@ export default function Auth() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
   const [gender, setGender] = useState(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -33,7 +34,13 @@ export default function Auth() {
       if (view === 'login') {
         await login(email, password)
       } else {
-        const data = await register(email, password, fullName, gender)
+        // Benutzername-Verfügbarkeit vor der Registrierung prüfen
+        const { data: available, error: checkErr } = await supabase.rpc('is_username_available', { p_username: username.trim() })
+        if (!checkErr && available === false) {
+          setError('Dieser Benutzername ist bereits vergeben.')
+          return
+        }
+        const data = await register(email, password, fullName, gender, username.trim())
         if (!data?.session) {
           setView('email-sent')
         }
@@ -43,6 +50,8 @@ export default function Auth() {
     } catch (err) {
       if (err.message?.toLowerCase().includes('email not confirmed')) {
         setEmailNotConfirmed(true)
+      } else if (err.code === '23505' || err.message?.toLowerCase().includes('duplicate') || err.message?.toLowerCase().includes('unique')) {
+        setError('Dieser Benutzername ist bereits vergeben.')
       } else {
         setError(err.message || 'Ein Fehler ist aufgetreten.')
       }
@@ -137,13 +146,13 @@ export default function Auth() {
             </div>
             <button
               onClick={goToRegister}
-              className="w-full py-3 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+              className="w-full py-3 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 transition-all duration-300"
             >
               Jetzt starten →
             </button>
             <button
               onClick={goFromWelcomeToLogin}
-              className="w-full py-2 rounded-xl text-sm font-medium text-dark-muted hover:text-warm-1 transition-colors"
+              className="w-full py-2 rounded-xl text-sm font-medium text-dark-muted hover:text-accent transition-colors"
             >
               Bereits registriert? Anmelden
             </button>
@@ -161,7 +170,7 @@ export default function Auth() {
                   onClick={() => { setView(t); setError('') }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                     view === t 
-                      ? 'bg-white text-warm-1 shadow-sm font-semibold' 
+                      ? 'bg-bg text-warm-1 shadow-sm font-semibold' 
                       : 'text-dark-muted hover:text-dark'
                   }`}
                 >
@@ -181,7 +190,21 @@ export default function Auth() {
                       onChange={e => setFullName(e.target.value)} 
                       placeholder="Max Mustermann" 
                       required 
-                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-dark-muted ml-1">Benutzername</label>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      placeholder="z.B. max_mustermann"
+                      required
+                      minLength={3}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -194,8 +217,8 @@ export default function Auth() {
                           onClick={() => setGender(val)}
                           className={`flex-1 py-3 px-2 rounded-xl text-sm font-medium transition-all border ${
                             gender === val 
-                              ? 'bg-warm-1 text-white border-warm-1 shadow-md shadow-warm-1/20' 
-                              : 'bg-white/50 text-dark-muted border-warm-3 hover:border-warm-2/50'
+                              ? 'bg-accent text-white border-accent shadow-md shadow-accent/20' 
+                              : 'bg-paper text-dark-muted border-warm-3 hover:border-warm-2/50'
                           }`}
                         >
                           {label}
@@ -214,7 +237,7 @@ export default function Auth() {
                   onChange={e => setEmail(e.target.value)} 
                   placeholder="name@beispiel.de" 
                   required 
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
 
@@ -225,7 +248,7 @@ export default function Auth() {
                     <button 
                       type="button" 
                       onClick={goToReset} 
-                      className="text-xs font-medium text-warm-1 hover:text-warm-2 transition-colors"
+                      className="text-xs font-medium text-accent hover:text-accent-dark transition-colors"
                     >
                       Passwort vergessen?
                     </button>
@@ -238,12 +261,12 @@ export default function Auth() {
                     onChange={e => setPassword(e.target.value)} 
                     placeholder="Mindestens 6 Zeichen" 
                     required minLength={6} 
-                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(v => !v)} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-warm-1 transition-colors rounded-lg"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-accent transition-colors rounded-lg"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -264,7 +287,7 @@ export default function Auth() {
                     type="button"
                     onClick={handleResendConfirmation}
                     disabled={isLoading}
-                    className="text-xs font-bold text-warm-1 hover:text-warm-2 transition-colors disabled:opacity-50"
+                    className="text-xs font-bold text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
                   >
                     Bestätigungs-E-Mail erneut senden →
                   </button>
@@ -273,8 +296,8 @@ export default function Auth() {
 
               <button
                 type="submit" 
-                disabled={isLoading || (view === 'register' && !gender)} 
-                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                disabled={isLoading || (view === 'register' && (!gender || !username.trim()))}
+                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}
               </button>
@@ -285,7 +308,7 @@ export default function Auth() {
         {/* Password Reset Logic */}
         {view === 'reset' && (
           <div className="animate-fade-in">
-            <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-warm-1 transition-colors mb-6">
+            <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-accent transition-colors mb-6">
               ← Zurück
             </button>
             <h3 className="text-2xl font-bold text-dark mb-2">Passwort zurücksetzen</h3>
@@ -303,7 +326,7 @@ export default function Auth() {
                   onChange={e => setEmail(e.target.value)} 
                   placeholder="name@beispiel.de" 
                   required 
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-white/50 focus:bg-white focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
               
@@ -316,7 +339,7 @@ export default function Auth() {
               <button 
                 type="submit" 
                 disabled={isLoading || !email.trim()} 
-                className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Sende…' : 'Link senden'}
               </button>
@@ -337,7 +360,7 @@ export default function Auth() {
             </p>
             <button
               onClick={goToLogin}
-              className="w-full py-3.5 rounded-xl font-semibold text-white bg-warm-1 hover:bg-warm-2 hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+              className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 transition-all duration-300"
             >
               Zum Login
             </button>
@@ -360,7 +383,7 @@ export default function Auth() {
               <button 
                 onClick={handleResend} 
                 disabled={isLoading} 
-                className="text-sm font-bold text-warm-1 hover:text-warm-2 transition-colors disabled:opacity-50"
+                className="text-sm font-bold text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
               >
                 Erneut senden
               </button>

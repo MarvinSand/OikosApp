@@ -83,7 +83,7 @@ function SkeletonLoader() {
       <div className="flex justify-between py-4">
         {[0, 1, 2, 3].map(i => <div key={i} className="w-11 h-11 rounded-full bg-warm-3/40" />)}
       </div>
-      {[0, 1, 2, 3].map(i => <div key={i} className="h-20 bg-white/60 rounded-2xl border border-warm-3/30" />)}
+      {[0, 1, 2, 3].map(i => <div key={i} className="h-20 bg-surface rounded-2xl border border-warm-3/30" />)}
     </div>
   )
 }
@@ -158,7 +158,7 @@ export default function DiscipleshipView() {
               >
                 <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all duration-300 ${
                   status === 'completed' ? 'bg-accent border-accent text-white shadow-md' :
-                  status === 'active'    ? 'bg-white border-warm-1 text-warm-1 shadow-lg ring-4 ring-warm-1/20 animate-pulse' :
+                  status === 'active'    ? 'bg-surface border-warm-1 text-warm-1 shadow-lg ring-4 ring-warm-1/20 animate-pulse' :
                                           'bg-warm-3/30 border-warm-3 text-dark-light'
                 }`}>
                   {status === 'completed' ? <Check size={16} strokeWidth={3} /> : String(num).padStart(2, '0')}
@@ -178,7 +178,7 @@ export default function DiscipleshipView() {
         {/* Stage 00 – always completed, inline toggle */}
         <div
           ref={stageRefs[0]}
-          className="rounded-2xl border border-warm-1/30 bg-white/70 overflow-hidden"
+          className="rounded-2xl border border-warm-1/30 bg-surface overflow-hidden"
         >
           <button
             onClick={() => setStage00Open(p => !p)}
@@ -227,7 +227,7 @@ export default function DiscipleshipView() {
             <div
               key={num}
               ref={stageRefs[num]}
-              className={`rounded-2xl border overflow-hidden transition-all duration-200 ${borderClass} bg-white/70 ${
+              className={`rounded-2xl border overflow-hidden transition-all duration-200 ${borderClass} bg-surface ${
                 status === 'future' ? 'opacity-55' : ''
               }`}
             >
@@ -271,7 +271,7 @@ export default function DiscipleshipView() {
 
         {/* ── My Pairings ── */}
         {(pairs.mentor || pairs.mentees.length > 0) ? (
-          <div className="bg-white/70 rounded-2xl p-5 border border-warm-3/30 mt-2">
+          <div className="bg-surface rounded-2xl p-5 border border-warm-3/30 mt-2">
             <h3 className="font-semibold text-dark mb-4">Meine Begleitungen</h3>
 
             {pairs.mentor && (
@@ -312,7 +312,7 @@ export default function DiscipleshipView() {
             )}
           </div>
         ) : (
-          <div className="bg-white/70 rounded-2xl p-5 border border-warm-3/30 text-center mt-2">
+          <div className="bg-surface rounded-2xl p-5 border border-warm-3/30 text-center mt-2">
             <h3 className="font-semibold text-dark mb-2">Meine Begleitungen</h3>
             <p className="text-sm text-dark-muted mb-3 leading-relaxed">
               Jüngerschaft lebt in Beziehung. Finde jemanden der dich begleitet oder beginne selbst jemanden zu begleiten.
