@@ -1216,10 +1216,28 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
     cursorPosRef.current = e.target.selectionStart
   }
 
+  function insertEmoji(emoji) {
+    const el = textareaRef.current
+    const pos = cursorPosRef.current ?? text.length
+    const newText = text.slice(0, pos) + emoji + text.slice(pos)
+    setText(newText)
+    cursorPosRef.current = pos + emoji.length
+    setTimeout(() => {
+      if (el) {
+        el.focus()
+        el.setSelectionRange(pos + emoji.length, pos + emoji.length)
+      }
+      autoResize()
+    }, 0)
+  }
+
   return (
     <div className="chat-input-bar" style={{ position: 'sticky', bottom: 0, backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)', zIndex: 20 }}>
       {/* Reply preview */}
       {replyTo && <ReplyComposerPreview msg={replyTo} onCancel={onCancelReply} />}
+
+      {/* Emoji picker */}
+      {showEmoji && <EmojiPicker onSelect={insertEmoji} />}
 
       {/* Attachment menu */}
       {showAttach && (
