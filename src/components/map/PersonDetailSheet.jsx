@@ -1037,21 +1037,21 @@ export default function PersonDetailSheet({
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* Gebetsanliegen */}
-        <div className="tour-person-prayer">
+        <div>
           <PrayerRequestsSection personId={person.id} isOwner={isOwner} />
         </div>
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* Story-Line */}
-        <div className="tour-person-storyline">
+        <div>
           <StoryLineSection personId={person.id} isOwner={isOwner} />
         </div>
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* Impact Map */}
-        <div className="tour-person-impact">
+        <div>
           <ImpactMapSection
             personId={person.id} isOwner={isOwner} personName={person.name}
             onStageCompleted={(nextStage) => {
@@ -1085,7 +1085,7 @@ export default function PersonDetailSheet({
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* OIKOS Account Verknüpfung */}
-        <div className="tour-person-link">
+        <div>
           <AccountLinkingSection
             person={person}
             linkedProfile={linkedProfile}

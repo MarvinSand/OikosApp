@@ -423,7 +423,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
       <div style={sectionHeader}>
         <h4 style={sectionTitle}>Gebetsanliegen</h4>
         {isOwner && !showAddForm && (
-          <button className="tour-prayer-add" onClick={() => setShowAddForm(true)} style={addBtn}>
+          <button onClick={() => setShowAddForm(true)} style={addBtn}>
             <Plus size={13} /> Hinzufügen
           </button>
         )}
@@ -445,7 +445,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
           ))}
 
           {showAddForm && (
-            <div className="tour-prayer-form">
+            <div>
               <AddRequestForm onSave={handleAdd} onCancel={() => setShowAddForm(false)} />
             </div>
           )}

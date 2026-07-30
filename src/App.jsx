@@ -1,35 +1,39 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
 import { useSwipeNav } from './hooks/useSwipeNav'
 import { ToastProvider } from './context/ToastContext'
 import { supabase } from './lib/supabase'
+// Public pages stay eager so the login screen renders without a second fetch
 import Auth from './pages/Auth'
 import ResetPassword from './pages/ResetPassword'
 import AuthCallback from './pages/AuthCallback'
-import Home from './pages/Home'
-import WorldMap from './pages/WorldMap'
-import ProfileView from './pages/ProfileView'
-import SettingsView from './pages/SettingsView'
-import ConnectionsView from './pages/ConnectionsView'
-import FriendsView from './pages/FriendsView'
-import CommunityDetail from './pages/CommunityDetail'
-import UserProfile from './pages/UserProfile'
-import PrayerListDetailView from './pages/PrayerListDetailView'
-import PrayerGoalDetail from './pages/PrayerGoalDetail'
-import AnsweredPrayersView from './pages/AnsweredPrayersView'
-import PrayerStatsView from './pages/PrayerStatsView'
-import FeedPostView from './pages/FeedPostView'
-import PrayerDetailView from './pages/PrayerDetailView'
-import PublicMapView from './pages/PublicMapView'
-import Prayers from './pages/Prayers'
-import MapView from './pages/MapView'
-import ConversationView from './pages/ConversationView'
-import NotificationsPage from './pages/NotificationsPage'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
+// All authenticated pages load lazily: each route becomes its own chunk and
+// shared heavy deps (Google Maps SDK bindings) end up in async chunks instead
+// of the entry bundle
+const Home = lazy(() => import('./pages/Home'))
+const WorldMap = lazy(() => import('./pages/WorldMap'))
+const ProfileView = lazy(() => import('./pages/ProfileView'))
+const SettingsView = lazy(() => import('./pages/SettingsView'))
+const ConnectionsView = lazy(() => import('./pages/ConnectionsView'))
+const FriendsView = lazy(() => import('./pages/FriendsView'))
+const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
+const UserProfile = lazy(() => import('./pages/UserProfile'))
+const PrayerListDetailView = lazy(() => import('./pages/PrayerListDetailView'))
+const PrayerGoalDetail = lazy(() => import('./pages/PrayerGoalDetail'))
+const AnsweredPrayersView = lazy(() => import('./pages/AnsweredPrayersView'))
+const PrayerStatsView = lazy(() => import('./pages/PrayerStatsView'))
+const FeedPostView = lazy(() => import('./pages/FeedPostView'))
+const PrayerDetailView = lazy(() => import('./pages/PrayerDetailView'))
+const PublicMapView = lazy(() => import('./pages/PublicMapView'))
+const Prayers = lazy(() => import('./pages/Prayers'))
+const MapView = lazy(() => import('./pages/MapView'))
+const ConversationView = lazy(() => import('./pages/ConversationView'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 
 function LoadingSpinner() {
   return (
@@ -66,6 +70,7 @@ function AppShellInner() {
           isFullScreenRoute ? 'overflow-hidden' : 'overflow-y-auto mobile-nav-padding'
         }`}
       >
+        <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/worldmap" element={<WorldMap />} />
@@ -92,6 +97,7 @@ function AppShellInner() {
           <Route path="/settings" element={<SettingsView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </div>
 
       <BottomNav />

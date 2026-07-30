@@ -93,7 +93,7 @@ export default function NewMapModal({ onClose, onCreate }) {
         />
 
         <label style={{ ...label, marginTop: 18 }}>Wer kann diese Map sehen?</label>
-        <div className="tour-map-visibility" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {VISIBILITY_OPTIONS.map(opt => (
             <button
               key={opt.value}

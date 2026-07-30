@@ -44,8 +44,8 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Decorative circles */}
-      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
-      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-warm-2/20 pointer-events-none blur-3xl animate-pulse" />
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-accent/10 pointer-events-none blur-2xl" />
+      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/5 pointer-events-none blur-3xl animate-pulse" />
 
       {/* Logo */}
       <div className="text-center mb-10 relative z-10 animate-fade-in">
@@ -115,7 +115,7 @@ export default function ResetPassword() {
               </div>
 
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-red-100 flex flex-col gap-2">
+                <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20 flex flex-col gap-2">
                   <p>{error}</p>
                   {(error.toLowerCase().includes('expired') || error.toLowerCase().includes('invalid')) && (
                     <a href="/auth" className="text-warm-1 hover:text-warm-2 font-bold underline transition-colors">

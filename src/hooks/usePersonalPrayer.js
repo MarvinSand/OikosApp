@@ -59,19 +59,23 @@ export function usePersonalPrayer() {
 
         if (friendsRaw && friendsRaw.length > 0) {
           const friendIds = friendsRaw.map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
-          const { data: prefs } = await supabase
-            .from('profiles')
-            .select('id, full_name, username, notify_prayer_requests')
-            .in('id', friendIds)
+          // Per-friend opt-outs live in notification_preferences (user_id wants
+          // notifications about target_user_id); no row = default true
+          const { data: prefRows } = await supabase
+            .from('notification_preferences')
+            .select('user_id, notify_prayer_requests')
+            .in('user_id', friendIds)
+            .eq('target_user_id', user.id)
 
-          const toNotify = (prefs || []).filter(p => p.notify_prayer_requests !== false) // Default true if null/undefined
-          
+          const optedOut = new Set((prefRows || []).filter(r => r.notify_prayer_requests === false).map(r => r.user_id))
+          const toNotify = friendIds.filter(id => !optedOut.has(id))
+
           if (toNotify.length > 0) {
             const { data: userProfile } = await supabase.from('profiles').select('full_name, username').eq('id', user.id).single()
             const myName = userProfile?.full_name || userProfile?.username || 'Jemand'
-            
-            const notifs = toNotify.map(p => ({
-              user_id: p.id,
+
+            const notifs = toNotify.map(friendId => ({
+              user_id: friendId,
               type: 'prayer_shared',
               title: `${myName} hat ein Anliegen geteilt`,
               body: title,

@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { relaxLayout, findFreeSpot, fanOutSecondary, overlayDiscRadius } from './mapLayout'
 
 const CONN_COLORS = [
   { label: 'Standard', hex: '#C8BFB0' },
@@ -22,13 +23,17 @@ function debounce(fn, delay) {
   }
 }
 
+// Stable default for array props — a fresh [] default would get a new
+// identity on every render and re-trigger every effect that depends on it
+const EMPTY_ARR = []
+
 export default function MapCanvas({
   userName,
   people,
-  connections = [],
-  overlayData = [],
-  places = [],
-  placeConnections = [],
+  connections = EMPTY_ARR,
+  overlayData = EMPTY_ARR,
+  places = EMPTY_ARR,
+  placeConnections = EMPTY_ARR,
   onPersonClick,
   onPersonMoved,
   onCreateConnection,
@@ -98,13 +103,17 @@ export default function MapCanvas({
   useEffect(() => {
     setPlacePositions(prev => {
       const next = { ...prev }
+      let changed = false
       places.forEach(pl => {
         if (!(pl.id in next)) {
           next[pl.id] = { x: pl.pos_x ?? cx, y: pl.pos_y ?? cy }
+          changed = true
         }
       })
-      Object.keys(next).forEach(id => { if (!places.find(pl => pl.id === id)) delete next[id] })
-      return next
+      Object.keys(next).forEach(id => {
+        if (!places.find(pl => pl.id === id)) { delete next[id]; changed = true }
+      })
+      return changed ? next : prev
     })
   }, [places, cx, cy])
 
@@ -122,59 +131,93 @@ export default function MapCanvas({
 
   const svgRef = useRef(null)
   const debouncedMoveRef = useRef(null)
+  // Guards against persisting a freshly computed spot twice (effect re-runs,
+  // StrictMode double-invoke) before the people prop reflects the new pos_x
+  const persistedIdsRef = useRef(new Set())
 
   // Sync positions from people prop for newly added people
   useEffect(() => {
-    setPositions(prev => {
-      const next = { ...prev }
+    const newlyPlaced = []
+    const next = { ...positions }
+    let changed = false
 
-      // First pass: 1st generation people (normal ring positions)
-      people.forEach((p, i) => {
-        if (p.is_secondary) return
-        if (!(p.id in next)) {
-          if (p.pos_x != null && p.pos_y != null) {
-            next[p.id] = { x: p.pos_x, y: p.pos_y }
-          } else {
-            next[p.id] = getDefaultPos(i, people.length, cx, cy, ringRadius)
-          }
-        }
-      })
-
-      // Second pass: 2nd generation people — place in line behind their parent
-      people.forEach((p) => {
-        if (!p.is_secondary) return
-        if (p.id in next) return
-        // Respect manually dragged position
+    // First pass: 1st generation people — stored position or a free ring spot
+    people.forEach((p) => {
+      if (p.is_secondary) return
+      if (!(p.id in next)) {
         if (p.pos_x != null && p.pos_y != null) {
           next[p.id] = { x: p.pos_x, y: p.pos_y }
-          return
+        } else {
+          const existing = people.filter(q => q.id !== p.id && next[q.id]).map(q => next[q.id])
+          next[p.id] = findFreeSpot(existing, cx, cy, ringRadius, personR)
+          newlyPlaced.push({ id: p.id, ...next[p.id] })
         }
-        // Find connected parent — skip if connection not yet loaded (re-runs when connections change)
-        const conn = connections.find(c =>
-          c.source_person_id === p.id || c.target_person_id === p.id
-        )
-        if (!conn) return
-        const parentId = conn.source_person_id === p.id ? conn.target_person_id : conn.source_person_id
-        const parentPos = next[parentId]
-        if (!parentPos) return
-        // Direction vector from center through parent
-        const dx = parentPos.x - cx
-        const dy = parentPos.y - cy
-        const len = Math.sqrt(dx * dx + dy * dy) || 1
-        // Place 110px directly behind the parent (same line as center → parent)
-        next[p.id] = {
-          x: parentPos.x + (dx / len) * 110,
-          y: parentPos.y + (dy / len) * 110,
-        }
-      })
-
-      // Remove positions for deleted people
-      Object.keys(next).forEach(id => {
-        if (!people.find(p => p.id === id)) delete next[id]
-      })
-      return next
+        changed = true
+      }
     })
+
+    // Second pass: 2nd generation people — fan out behind their parent
+    people.forEach((p) => {
+      if (!p.is_secondary) return
+      if (p.id in next) return
+      // Respect manually dragged position
+      if (p.pos_x != null && p.pos_y != null) {
+        next[p.id] = { x: p.pos_x, y: p.pos_y }
+        changed = true
+        return
+      }
+      // Find connected parent — skip if connection not yet loaded (re-runs when connections change)
+      const conn = connections.find(c =>
+        c.source_person_id === p.id || c.target_person_id === p.id
+      )
+      if (!conn) return
+      const parentId = conn.source_person_id === p.id ? conn.target_person_id : conn.source_person_id
+      const parentPos = next[parentId]
+      if (!parentPos) return
+      // Count secondary siblings of the same parent already placed, so
+      // multiple children fan out instead of stacking on the same point
+      const siblingCount = people.filter(q => {
+        if (q.id === p.id || !q.is_secondary || !(q.id in next)) return false
+        return connections.some(c =>
+          (c.source_person_id === q.id && c.target_person_id === parentId) ||
+          (c.target_person_id === q.id && c.source_person_id === parentId)
+        )
+      }).length
+      next[p.id] = fanOutSecondary(parentPos, cx, cy, siblingCount)
+      newlyPlaced.push({ id: p.id, ...next[p.id] })
+      changed = true
+    })
+
+    // Remove positions for deleted people
+    Object.keys(next).forEach(id => {
+      if (!people.find(p => p.id === id)) { delete next[id]; changed = true }
+    })
+
+    if (changed) setPositions(next)
+
+    // Persist computed spots right away so reloads show the same layout.
+    // Direct call, NOT via debouncedMoveRef — the debounce holds a single
+    // shared timer, so multiple calls within 800ms would cancel each other.
+    if (!readOnly && onPersonMoved) {
+      newlyPlaced.forEach(({ id, x, y }) => {
+        if (persistedIdsRef.current.has(id)) return
+        persistedIdsRef.current.add(id)
+        onPersonMoved(id, x, y)
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [people, connections, cx, cy, ringRadius])
+
+  // Drop stale overlay drag offsets when an overlay is toggled off
+  useEffect(() => {
+    setOverlayPositions(prev => {
+      const active = new Set(overlayData.map(od => od.parentPersonId))
+      const keys = Object.keys(prev)
+      const keep = keys.filter(k => active.has(k.split('__')[0]))
+      if (keep.length === keys.length) return prev
+      return Object.fromEntries(keep.map(k => [k, prev[k]]))
+    })
+  }, [overlayData])
 
   // Reset selection when connection mode turns off; show banner when it turns on
   const [showActiveBanner, setShowActiveBanner] = useState(false)
@@ -208,10 +251,94 @@ export default function MapCanvas({
     }
   }
 
+  // Derived display layout: raw positions + overlay push-out + collision
+  // relaxation. Purely visual — `positions` stays the persisted source of
+  // truth, so hiding an overlay returns nodes to their original spots.
+  const layout = useMemo(() => {
+    const base = {}
+    people.forEach((p, i) => {
+      base[p.id] = positions[p.id] || getDefaultPos(i, people.length, cx, cy, ringRadius)
+    })
+
+    // Effective radius per node — a parent with an active overlay occupies
+    // its whole overlay disc, so other nodes keep clear of the group
+    const radii = {}
+    people.forEach(p => { radii[p.id] = personR })
+
+    overlayData.forEach(od => {
+      const parent = people.find(p => p.id === od.parentPersonId)
+      if (!parent) return
+      const visible = od.persons.filter(op =>
+        (op.is_christian && od.showChristian) || (!op.is_christian && od.showNonChristian)
+      )
+      if (visible.length === 0) return
+      const bCount = od.personCount ?? od.persons.length
+      const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+      const bVbSize = bRingRadius * 2 + 140
+      const discR = overlayDiscRadius(visible, bVbSize / 2, bVbSize / 2, bRingRadius, personR)
+      radii[parent.id] = discR
+
+      // Push the parent outward (keeping its angle) so the overlay disc
+      // clears the center node — unless the user is dragging that parent
+      const isDraggingParent = dragging?.id === parent.id && !dragging?.overlayKey && !dragging?.isPlace
+      if (!isDraggingParent) {
+        const pos = base[parent.id]
+        let dx = pos.x - cx
+        let dy = pos.y - cy
+        let d = Math.sqrt(dx * dx + dy * dy)
+        if (d < 1) { dx = 0; dy = -1; d = 1 }
+        const required = userR + discR + 24
+        if (d < required) {
+          base[parent.id] = { x: cx + (dx / d) * required, y: cy + (dy / d) * required }
+        }
+      }
+    })
+
+    const nodes = people.map(p => ({
+      id: p.id,
+      r: radii[p.id],
+      fixed: dragging?.id === p.id && !dragging?.overlayKey && !dragging?.isPlace,
+    }))
+    return relaxLayout(base, nodes, { cx, cy, centerR: userR })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions, people, overlayData, dragging, cx, cy, ringRadius])
+
   function getPos(person, index) {
-    if (positions[person.id]) return positions[person.id]
+    if (layout[person.id]) return layout[person.id]
     return getDefaultPos(index, people.length, cx, cy, ringRadius)
   }
+
+  // Auto-fit the view when overlays are toggled: a pushed-out overlay group
+  // can lie outside the initial viewBox, so zoom out to keep everything visible
+  const contentRadiusRef = useRef(vbSize / 2)
+  {
+    let maxExtent = ringRadius + personR
+    people.forEach(p => {
+      const pos = layout[p.id]
+      if (pos) maxExtent = Math.max(maxExtent, Math.hypot(pos.x - cx, pos.y - cy) + personR)
+    })
+    overlayData.forEach(od => {
+      const parentPos = layout[od.parentPersonId]
+      if (!parentPos) return
+      const bCount = od.personCount ?? od.persons.length
+      const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+      maxExtent = Math.max(maxExtent, Math.hypot(parentPos.x - cx, parentPos.y - cy) + bRingRadius + personR)
+    })
+    contentRadiusRef.current = maxExtent + pad / 2
+  }
+  const overlayCount = overlayData.length
+  useEffect(() => {
+    if (overlayCount > 0) {
+      const r = contentRadiusRef.current
+      const newZoom = Math.min(1, vbSize / (2 * r))
+      setZoom(newZoom)
+      setViewOrigin({ x: cx - r, y: cy - r })
+    } else {
+      setZoom(1)
+      setViewOrigin({ x: 0, y: 0 })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayCount])
 
   // Overlay helpers
   function overlayKey(parentId, personId) {
@@ -220,7 +347,11 @@ export default function MapCanvas({
 
   function getOverlayPos(parentId, person, parentPos, brotherCx, brotherCy, bRingRadius, allOverlayPersons) {
     const key = overlayKey(parentId, person.id)
-    if (overlayPositions[key]) return overlayPositions[key]
+    // Stored drag offsets are relative to the parent, so overlay children
+    // follow when the parent gets pushed or dragged
+    if (overlayPositions[key]) {
+      return { x: parentPos.x + overlayPositions[key].x, y: parentPos.y + overlayPositions[key].y }
+    }
     // Use saved position from brother's map, translated so brother's center → parentPos
     if (person.pos_x != null && person.pos_y != null) {
       return {
@@ -335,7 +466,7 @@ export default function MapCanvas({
     if (connectionMode) return
     e.stopPropagation()
     e.preventDefault()
-    const pos = positions[person.id] || getDefaultPos(people.findIndex(p => p.id === person.id), people.length, cx, cy, ringRadius)
+    const pos = layout[person.id] || getDefaultPos(people.findIndex(p => p.id === person.id), people.length, cx, cy, ringRadius)
     const svgPos = clientToSVG(e.clientX, e.clientY)
     setDragging({
       id: person.id,
@@ -354,7 +485,7 @@ export default function MapCanvas({
     if (connectionMode) return
     e.stopPropagation()
     const touch = e.touches[0]
-    const pos = positions[person.id] || getDefaultPos(people.findIndex(p => p.id === person.id), people.length, cx, cy, ringRadius)
+    const pos = layout[person.id] || getDefaultPos(people.findIndex(p => p.id === person.id), people.length, cx, cy, ringRadius)
     const svgPos = clientToSVG(touch.clientX, touch.clientY)
     setDragging({
       id: person.id,
@@ -378,6 +509,7 @@ export default function MapCanvas({
       id: op.id,
       overlayKey: overlayKey(parentPersonId, op.id),
       overlayPersonObj: op,
+      parentPersonId,
       startSVGX: svgPos.x,
       startSVGY: svgPos.y,
       startPersonX: pos.x,
@@ -396,6 +528,7 @@ export default function MapCanvas({
       id: op.id,
       overlayKey: overlayKey(parentPersonId, op.id),
       overlayPersonObj: op,
+      parentPersonId,
       startSVGX: svgPos.x,
       startSVGY: svgPos.y,
       startPersonX: pos.x,
@@ -416,7 +549,11 @@ export default function MapCanvas({
       if (dragging.isPlace) {
         setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
       } else if (dragging.overlayKey) {
-        setOverlayPositions(prev => ({ ...prev, [dragging.overlayKey]: newPos }))
+        const parentPos = layout[dragging.parentPersonId] || { x: cx, y: cy }
+        setOverlayPositions(prev => ({
+          ...prev,
+          [dragging.overlayKey]: { x: newPos.x - parentPos.x, y: newPos.y - parentPos.y },
+        }))
       } else {
         setPositions(prev => ({ ...prev, [dragging.id]: newPos }))
       }
@@ -500,7 +637,11 @@ export default function MapCanvas({
     if (dragging.isPlace) {
       setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
     } else if (dragging.overlayKey) {
-      setOverlayPositions(prev => ({ ...prev, [dragging.overlayKey]: newPos }))
+      const parentPos = layout[dragging.parentPersonId] || { x: cx, y: cy }
+      setOverlayPositions(prev => ({
+        ...prev,
+        [dragging.overlayKey]: { x: newPos.x - parentPos.x, y: newPos.y - parentPos.y },
+      }))
     } else {
       setPositions(prev => ({ ...prev, [dragging.id]: newPos }))
     }

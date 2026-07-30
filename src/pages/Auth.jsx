@@ -106,8 +106,8 @@ export default function Auth() {
   return (
     <div className={`bg-bg flex flex-col items-center relative ${view === 'welcome' ? 'h-[100dvh] overflow-hidden justify-center px-5 py-4' : 'min-h-screen justify-start p-6 pt-10 pb-10 overflow-y-auto'}`}>
       {/* Decorative circles */}
-      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-warm-3/30 pointer-events-none blur-2xl" />
-      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-warm-2/20 pointer-events-none blur-3xl animate-pulse" />
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-accent/10 pointer-events-none blur-2xl" />
+      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/5 pointer-events-none blur-3xl animate-pulse" />
 
       {/* Logo Section */}
       <div className={`text-center relative z-10 animate-fade-in ${view === 'welcome' ? 'mb-4' : 'mb-10'}`}>
@@ -274,15 +274,15 @@ export default function Auth() {
               </div>
 
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-red-100">
+                <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20">
                   {error}
                 </div>
               )}
 
               {emailNotConfirmed && (
-                <div className="bg-amber-50 text-amber-800 text-sm p-3 rounded-xl animate-fade-in border border-amber-200">
+                <div className="bg-gold-light text-gold-text text-sm p-3 rounded-xl animate-fade-in border border-gold/30">
                   <p className="font-medium mb-1">E-Mail noch nicht bestätigt.</p>
-                  <p className="text-xs text-amber-700 mb-2">Bitte bestätige deine E-Mail-Adresse, um dich anzumelden.</p>
+                  <p className="text-xs text-gold-text mb-2">Bitte bestätige deine E-Mail-Adresse, um dich anzumelden.</p>
                   <button
                     type="button"
                     onClick={handleResendConfirmation}
@@ -331,7 +331,7 @@ export default function Auth() {
               </div>
               
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-red-100">
+                <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20">
                   {error}
                 </div>
               )}

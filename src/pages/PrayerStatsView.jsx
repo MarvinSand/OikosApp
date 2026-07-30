@@ -61,13 +61,13 @@ function WeeklyBarChart({ data }) {
           <div style={{
             width: '100%',
             height: Math.max((count / max) * 68, count > 0 ? 5 : 2),
-            backgroundColor: isToday ? '#D4A853' : count > 0 ? '#C8956A' : 'var(--color-warm-3)',
+            backgroundColor: isToday ? 'var(--color-accent-dark)' : count > 0 ? 'var(--color-accent)' : 'var(--color-warm-3)',
             borderRadius: '4px 4px 0 0',
             transition: 'height 0.4s ease',
           }} />
           <span style={{
             fontFamily: 'Lora, serif', fontSize: 10,
-            color: isToday ? '#C8956A' : 'var(--color-text-muted)',
+            color: isToday ? 'var(--color-accent-dark)' : 'var(--color-text-muted)',
             fontWeight: isToday ? 700 : 400,
           }}>
             {day}
@@ -164,7 +164,7 @@ function MonthlyAnsweredChart({ data }) {
             <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>
               {label}
             </span>
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: '#2ECC71' }}>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-success)' }}>
               {count} erhört
             </span>
           </div>
@@ -172,7 +172,7 @@ function MonthlyAnsweredChart({ data }) {
             <div style={{
               height: '100%', borderRadius: 4,
               width: `${(count / max) * 100}%`,
-              backgroundColor: '#2ECC71',
+              backgroundColor: 'var(--color-success)',
               transition: 'width 0.4s ease',
             }} />
           </div>
@@ -344,15 +344,15 @@ export default function PrayerStatsView() {
 
             {/* Abschnitt 6: Ermutigungs-Karte */}
             <div style={{
-              backgroundColor: '#FEF3C7',
-              border: '1px solid #FDE68A',
+              backgroundColor: 'var(--color-gold-light)',
+              border: '1px solid var(--color-gold)',
               borderRadius: 16, padding: '18px 16px',
               marginBottom: 12,
             }}>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, color: '#92400E', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, color: 'var(--color-gold-text)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 💛 Für dich
               </p>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: '#78350F', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-gold-text)', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
                 „{encouragement}"
               </p>
             </div>

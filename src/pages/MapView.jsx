@@ -458,7 +458,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             <div className="relative">
               <button
                 onClick={() => setShowAddMenu(v => !v)}
-                className="tour-map-add flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
               >
                 <Plus size={15} /> Hinzufügen
               </button>
@@ -555,7 +555,6 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             </p>
             <button
               onClick={() => setShowNewMap(true)}
-              className="tour-map-add"
               style={{
                 backgroundColor: 'var(--color-warm-1)', color: 'var(--color-white)',
                 border: 'none', borderRadius: 14, padding: '14px 32px',
