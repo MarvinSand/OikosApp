@@ -73,7 +73,7 @@ function formatLastPrayed(iso) {
 }
 
 // ─── PrayedBySheet ────────────────────────────────────────────
-function PrayedBySheet({ prayersByUser, onClose }) {
+function PrayedBySheet({ prayersByUser, totalCount, onClose }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
@@ -84,10 +84,13 @@ function PrayedBySheet({ prayersByUser, onClose }) {
         maxHeight: '65vh', overflowY: 'auto', animation: 'sheetSlideUp 0.25s ease-out',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
-        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', marginBottom: 14 }}>
+        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', marginBottom: 2 }}>
           🙏 Haben gebetet ({prayersByUser.length})
         </h3>
-        {prayersByUser.map(({ userId, profile }) => {
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 12.5, color: 'var(--color-text-muted)', marginBottom: 14 }}>
+          {totalCount} {totalCount === 1 ? 'Gebet' : 'Gebete'} insgesamt
+        </p>
+        {prayersByUser.map(({ userId, profile, count }) => {
           const name = profile?.full_name || profile?.username || 'Unbekannt'
           const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
           return (
@@ -95,7 +98,10 @@ function PrayedBySheet({ prayersByUser, onClose }) {
               <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, backgroundColor: profile?.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700 }}>
                 {initials}
               </div>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{name}</p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: 0, flex: 1 }}>{name}</p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12.5, color: 'var(--color-text-muted)', margin: 0, flexShrink: 0 }}>
+                {count}× gebetet
+              </p>
             </div>
           )
         })}
@@ -167,7 +173,7 @@ function EditRequestSheet({ req, onSave, onClose }) {
 
 // ─── PrayerRequestCard ────────────────────────────────────────
 function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete, onPrayed, currentUserId }) {
-  const { hasPrayedToday, prayersByUser, logPrayer } = usePrayerLogs(req.id)
+  const { hasPrayedToday, prayersByUser, totalCount, logPrayer } = usePrayerLogs(req.id)
   const { showToast } = useToast()
   const [showPrayedBy, setShowPrayedBy] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -180,7 +186,7 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
   const authorName = author?.full_name || author?.username || 'Unbekannt'
   const desc = req.description || ''
   const shortDesc = desc.length > 120 ? desc.slice(0, 120) + '…' : desc
-  const prayCount = prayersByUser.length
+  const peopleCount = prayersByUser.length
 
   async function handlePray() {
     try {
@@ -282,14 +288,14 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--color-border)' }}>
           {/* Linke Seite: Wer hat gebetet */}
           <button
-            onClick={() => prayCount > 0 && setShowPrayedBy(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', padding: 0, cursor: prayCount > 0 ? 'pointer' : 'default' }}
+            onClick={() => peopleCount > 0 && setShowPrayedBy(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', padding: 0, cursor: peopleCount > 0 ? 'pointer' : 'default' }}
           >
-            {prayCount > 0 ? (
+            {peopleCount > 0 ? (
               <>
                 <OverlappingPrayerAvatars prayersByUser={prayersByUser} currentUserId={currentUserId} />
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 500, color: 'var(--color-text-muted)' }}>
-                  {prayCount} {prayCount === 1 ? 'Gebet' : 'Gebete'}
+                  {peopleCount} {peopleCount === 1 ? 'Person' : 'Personen'} · {totalCount} {totalCount === 1 ? 'Gebet' : 'Gebete'}
                 </span>
               </>
             ) : (
@@ -320,7 +326,7 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
       </div>
 
       {showPrayedBy && (
-        <PrayedBySheet prayersByUser={prayersByUser} onClose={() => setShowPrayedBy(false)} />
+        <PrayedBySheet prayersByUser={prayersByUser} totalCount={totalCount} onClose={() => setShowPrayedBy(false)} />
       )}
       {showEdit && (
         <EditRequestSheet req={req} onSave={onUpdate} onClose={() => setShowEdit(false)} />
@@ -368,11 +374,13 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
   const { showToast } = useToast()
   const [showAddForm, setShowAddForm] = useState(false)
   const [lastPrayedMap, setLastPrayedMap] = useState({})
+  const [personStats, setPersonStats] = useState({ people: 0, prayers: 0 })
 
   const reqIds = requests.map(r => r.id).join(',')
   useEffect(() => {
     if (!requests.length || !user) return
     loadLastPrayed()
+    loadPersonPrayerStats()
   }, [reqIds, user?.id])
 
   async function loadLastPrayed() {
@@ -388,6 +396,20 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
       if (!map[row.prayer_request_id]) map[row.prayer_request_id] = row.created_at
     }
     setLastPrayedMap(map)
+  }
+
+  // Gesamtstatistik über alle Anliegen dieser Person hinweg (alle Beter, nicht nur der aktuelle User)
+  async function loadPersonPrayerStats() {
+    const ids = requests.map(r => r.id)
+    const { data } = await supabase
+      .from('prayer_logs')
+      .select('user_id')
+      .in('prayer_request_id', ids)
+    const rows = data || []
+    setPersonStats({
+      people: new Set(rows.map(r => r.user_id)).size,
+      prayers: rows.length,
+    })
   }
 
   async function handleAdd(data) {
@@ -429,6 +451,17 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
         )}
       </div>
 
+      {!loading && requests.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={statChip}>
+            🙏 <strong>{personStats.people}</strong> {personStats.people === 1 ? 'Person hat' : 'Personen haben'} gebetet
+          </div>
+          <div style={statChip}>
+            📿 <strong>{personStats.prayers}</strong> {personStats.prayers === 1 ? 'Gebet' : 'Gebete'} insgesamt
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div style={skeleton} />
       ) : (
@@ -440,7 +473,10 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
               onUpdate={updateRequest}
               onToggleAnswered={toggleAnswered}
               onDelete={handleDelete}
-              onPrayed={(id) => setLastPrayedMap(prev => ({ ...prev, [id]: new Date().toISOString() }))}
+              onPrayed={(id) => {
+                setLastPrayedMap(prev => ({ ...prev, [id]: new Date().toISOString() }))
+                loadPersonPrayerStats()
+              }}
             />
           ))}
 
@@ -481,6 +517,7 @@ const smallBtn = { padding: '6px 12px', borderRadius: 8, cursor: 'pointer', font
 const sectionHeader = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }
 const sectionTitle = { fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }
 const addBtn = { display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer' }
+const statChip = { flex: 1, display: 'flex', alignItems: 'center', gap: 5, padding: '7px 10px', borderRadius: 10, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }
 const skeleton = { height: 60, borderRadius: 12, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }
 const inp = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }
