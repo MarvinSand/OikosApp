@@ -1,4 +1,4 @@
--- Phase 46: Pin-Funktion für Gebetsanliegen
+-- Phase 50: Pin-Funktion für Gebetsanliegen
 --
 -- Ergänzt is_pinned auf prayer_requests, damit Anliegen oben angepinnt
 -- werden können (gleiche Konvention wie is_pinned bei Chat-Nachrichten
