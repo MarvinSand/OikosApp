@@ -324,6 +324,11 @@ export default function MapCanvas({
       const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
       maxExtent = Math.max(maxExtent, Math.hypot(parentPos.x - cx, parentPos.y - cy) + bRingRadius + personR)
     })
+    // Places can be dragged freely too — include them so panning/zoom limits
+    // account for the actual visible content, not just the person ring
+    Object.values(placePositions).forEach(pos => {
+      maxExtent = Math.max(maxExtent, Math.hypot(pos.x - cx, pos.y - cy) + 60)
+    })
     contentRadiusRef.current = maxExtent + pad / 2
   }
   const overlayCount = overlayData.length
@@ -426,13 +431,32 @@ export default function MapCanvas({
     }
   }
 
+  // Smallest zoom (largest zoom-out) that still fits all content — grows
+  // as far out as needed instead of a fixed floor that cuts off far-away people
+  function getMinZoom() {
+    const r = contentRadiusRef.current
+    return Math.max(0.01, Math.min(0.1, vbSize / (2 * (r + 150))))
+  }
+
   function clampOrigin(ox, oy, z) {
     const viewW = vbSize / z
     const viewH = vbSize / z
-    const minX = -(vbSize * 3)
-    const minY = -(vbSize * 3)
-    const maxX = vbSize - viewW + vbSize * 3
-    const maxY = vbSize - viewH + vbSize * 3
+    // Pan range follows the actual content extent (people, overlays, places)
+    // instead of a fixed vbSize multiple, so it never falls short for
+    // far-dragged nodes or a pushed-out generations overlay
+    const r = Math.max(contentRadiusRef.current, vbSize / 2)
+    const boundMin = cx - r * 2
+    const boundMax = cx + r * 2
+    // Once the viewport is wider than the whole padded content area,
+    // clamping to a corner would just jam the view into a fixed point —
+    // center on the content instead
+    if (viewW >= boundMax - boundMin) {
+      return { x: cx - viewW / 2, y: cy - viewH / 2 }
+    }
+    const minX = boundMin
+    const minY = boundMin
+    const maxX = boundMax - viewW
+    const maxY = boundMax - viewH
     return {
       x: Math.max(minX, Math.min(maxX, ox)),
       y: Math.max(minY, Math.min(maxY, oy)),
@@ -442,7 +466,7 @@ export default function MapCanvas({
   function handleWheel(e) {
     e.preventDefault()
     const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
-    const newZoom = Math.min(10, Math.max(0.1, zoom * factor))
+    const newZoom = Math.min(10, Math.max(getMinZoom(), zoom * factor))
     const rect = svgRef.current.getBoundingClientRect()
     const viewW = vbSize / zoom
     const viewH = vbSize / zoom
@@ -584,7 +608,7 @@ export default function MapCanvas({
 
       if (pinchRef.current) {
         const { dist: prevDist, zoom: prevZoom, originX, originY } = pinchRef.current
-        const newZoom = Math.min(10, Math.max(0.1, prevZoom * (dist / prevDist)))
+        const newZoom = Math.min(10, Math.max(getMinZoom(), prevZoom * (dist / prevDist)))
         const rect = svgRef.current?.getBoundingClientRect()
         if (rect) {
           const prevViewW = vbSize / prevZoom
@@ -734,7 +758,7 @@ export default function MapCanvas({
   }
 
   function changeZoom(factor) {
-    const newZoom = Math.min(10, Math.max(0.1, zoom * factor))
+    const newZoom = Math.min(10, Math.max(getMinZoom(), zoom * factor))
     const newViewW = vbSize / newZoom
     const newViewH = vbSize / newZoom
     // Zoom toward center
