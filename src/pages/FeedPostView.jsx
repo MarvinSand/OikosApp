@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare, Trash2 } from 'lucide-react'
+import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare, Trash2, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import ShareSheet from '../components/feed/ShareSheet'
+import PostEngagementBar from '../components/feed/PostEngagementBar'
 
 // ─── Helpers ─────────────────────────────────────────────────
 const TYPE_CONFIG = {
@@ -12,12 +14,6 @@ const TYPE_CONFIG = {
   question:  { icon: HelpCircle,    label: 'Frage',      color: '#3B82F6' },
   photo:     { icon: MessageSquare, label: 'Foto',       color: 'var(--color-warm-1)' },
 }
-
-const REACTION_CONFIG = [
-  { type: 'prayer', emoji: '🙏', label: 'Gebet' },
-  { type: 'heart',  emoji: '❤️', label: 'Herz' },
-  { type: 'amen',   emoji: '🙌', label: 'Amen' },
-]
 
 function timeAgo(iso) {
   const d = new Date(iso)
@@ -50,10 +46,19 @@ function UserAvatar({ profile, size = 36 }) {
 }
 
 const POST_SELECT = `
-  id, author_id, type, title, body, photo_url,
-  bible_reference, bible_verse, is_public, created_at,
+  id, author_id, type, category, title, body, photo_url,
+  bible_reference, bible_verse, is_public, view_count, created_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
+
+const FEED_CATEGORIES = [
+  { key: 'bibelstelle', label: 'Bibelstelle', emoji: '📖' },
+  { key: 'zeugnis',     label: 'Zeugnis',     emoji: '🙌' },
+  { key: 'frage',       label: 'Frage',       emoji: '❓' },
+  { key: 'meilenstein', label: 'Meilenstein', emoji: '🏔' },
+  { key: 'ermutigung',  label: 'Ermutigung',  emoji: '💛' },
+  { key: 'sonstiges',   label: 'Sonstiges',   emoji: '💬' },
+]
 
 export default function FeedPostView() {
   const { id: postId } = useParams()
@@ -62,29 +67,38 @@ export default function FeedPostView() {
 
   const [post, setPost] = useState(null)
   const [reactions, setReactions] = useState([])
+  const [reposts, setReposts] = useState([])
+  const [bookmarked, setBookmarked] = useState(false)
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
   const [replyTo, setReplyTo] = useState(null) // { id, author: name }
   const [sending, setSending] = useState(false)
+  const [sharePost, setSharePost] = useState(null)
   const bottomRef = useRef(null)
+  const draftRef = useRef(null)
 
   useEffect(() => { load() }, [postId])
 
   async function load() {
     setLoading(true)
-    const [{ data: postData }, { data: reactData }, { data: commentData }] = await Promise.all([
+    const [{ data: postData }, { data: reactData }, { data: commentData }, { data: repostData }, { data: bookmarkData }] = await Promise.all([
       supabase.from('feed_posts').select(POST_SELECT).eq('id', postId).single(),
       supabase.from('feed_reactions').select('id, user_id, type').eq('post_id', postId),
       supabase.from('feed_comments')
         .select('id, post_id, parent_id, author_id, body, created_at, profiles:author_id(id, full_name, username, avatar_url, is_christian)')
         .eq('post_id', postId)
         .order('created_at'),
+      supabase.from('feed_reposts').select('id, user_id').eq('post_id', postId),
+      supabase.from('feed_bookmarks').select('id').eq('post_id', postId).eq('user_id', user.id),
     ])
     setPost(postData || null)
     setReactions(reactData || [])
     setComments(commentData || [])
+    setReposts(repostData || [])
+    setBookmarked((bookmarkData || []).length > 0)
     setLoading(false)
+    if (postData) supabase.rpc('increment_feed_post_view', { p_post_id: postId })
   }
 
   async function toggleReaction(type) {
@@ -99,6 +113,30 @@ export default function FeedPostView() {
         .select('id, user_id, type')
         .single()
       if (data) setReactions(prev => [...prev, data])
+    }
+  }
+
+  async function toggleRepost() {
+    const mine = reposts.find(r => r.user_id === user.id)
+    if (mine) {
+      setReposts(prev => prev.filter(r => r.id !== mine.id))
+      await supabase.from('feed_reposts').delete().eq('id', mine.id)
+    } else {
+      const { data } = await supabase
+        .from('feed_reposts')
+        .insert({ post_id: postId, user_id: user.id })
+        .select('id, user_id')
+        .single()
+      if (data) setReposts(prev => [...prev, data])
+    }
+  }
+
+  async function toggleBookmark() {
+    setBookmarked(v => !v)
+    if (bookmarked) {
+      await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
+    } else {
+      await supabase.from('feed_bookmarks').insert({ post_id: postId, user_id: user.id })
     }
   }
 
@@ -147,11 +185,9 @@ export default function FeedPostView() {
   }
 
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
-  const reactionCounts = REACTION_CONFIG.map(r => ({
-    ...r,
-    count: reactions.filter(x => x.type === r.type).length,
-    mine:  reactions.some(x => x.type === r.type && x.user_id === user?.id),
-  }))
+  const liked = reactions.some(x => x.type === 'heart' && x.user_id === user?.id)
+  const likeCount = reactions.filter(x => x.type === 'heart').length
+  const reposted = reposts.some(r => r.user_id === user?.id)
 
   const topComments  = comments.filter(c => !c.parent_id)
   const getReplies   = (parentId) => comments.filter(c => c.parent_id === parentId)
@@ -180,9 +216,18 @@ export default function FeedPostView() {
               </p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', margin: 0 }}>{timeAgo(post.created_at)}</p>
             </div>
-            <span style={{ fontSize: 10, fontFamily: 'Lora, serif', color: cfg.color, padding: '2px 8px', borderRadius: 20, border: `1px solid ${cfg.color}20`, backgroundColor: `${cfg.color}10`, fontWeight: 600 }}>
-              {cfg.label}
-            </span>
+            {(() => {
+              const catCfg = FEED_CATEGORIES.find(c => c.key === post.category)
+              return catCfg ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'Lora, serif', fontWeight: 700, color: 'var(--color-accent-dark)', padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-accent-light)', border: '1px solid var(--color-accent)', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 13 }}>{catCfg.emoji}</span> {catCfg.label}
+                </span>
+              ) : (
+                <span style={{ fontSize: 10, fontFamily: 'Lora, serif', color: cfg.color, padding: '2px 8px', borderRadius: 20, border: `1px solid ${cfg.color}20`, backgroundColor: `${cfg.color}10`, fontWeight: 600 }}>
+                  {cfg.label}
+                </span>
+              )
+            })()}
           </div>
 
           {/* Content */}
@@ -204,28 +249,21 @@ export default function FeedPostView() {
             <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text)', margin: 0, lineHeight: 1.7 }}>{post.body}</p>
           </div>
 
-          {/* Reactions */}
-          <div style={{ display: 'flex', gap: 8, padding: '10px 16px 14px', borderTop: '1px solid var(--color-warm-3)', flexWrap: 'wrap' }}>
-            {reactionCounts.map(r => (
-              <button
-                key={r.type}
-                onClick={() => toggleReaction(r.type)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '5px 12px', borderRadius: 20,
-                  border: `1.5px solid ${r.mine ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
-                  backgroundColor: r.mine ? 'rgba(74,103,65,0.1)' : 'transparent',
-                  fontFamily: 'Lora, serif', fontSize: 13,
-                  color: r.mine ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
-                  cursor: 'pointer', fontWeight: r.mine ? 700 : 400,
-                }}
-              >
-                <span style={{ fontSize: 16 }}>{r.emoji}</span>
-                <span>{r.label}</span>
-                {r.count > 0 && <span style={{ fontWeight: 700 }}>{r.count}</span>}
-              </button>
-            ))}
-          </div>
+          {/* Engagement */}
+          <PostEngagementBar
+            commentCount={comments.length}
+            onComment={() => draftRef.current?.focus()}
+            reposted={reposted}
+            repostCount={reposts.length}
+            onRepost={toggleRepost}
+            liked={liked}
+            likeCount={likeCount}
+            onLike={() => toggleReaction('heart')}
+            viewCount={post.view_count}
+            bookmarked={bookmarked}
+            onBookmark={toggleBookmark}
+            onShare={() => setSharePost(post)}
+          />
         </div>
 
         {/* ── Divider ── */}
@@ -322,6 +360,7 @@ export default function FeedPostView() {
         )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <textarea
+            ref={draftRef}
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendComment() } }}
@@ -338,6 +377,10 @@ export default function FeedPostView() {
           </button>
         </div>
       </div>
+
+      {sharePost && (
+        <ShareSheet post={sharePost} onClose={() => setSharePost(null)} />
+      )}
     </div>
   )
 }

@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Settings, Lock, Globe, Users as UsersIcon, Home as HomeIcon, Loader2,
 } from 'lucide-react'
 import { PostCard } from '../../pages/FriendsView'
 import { PrayerCard } from '../../pages/Prayers'
+import ShareSheet from '../feed/ShareSheet'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -214,6 +216,7 @@ export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
 // ─── Posts tab ────────────────────────────────────────────────
 export function PostsTab({ posts, currentUserId, onReact, onDelete, onCreatePost }) {
   const navigate = useNavigate()
+  const [sharePost, setSharePost] = useState(null)
   if (posts.length === 0) {
     return onCreatePost ? (
       <TabEmptyState
@@ -239,8 +242,12 @@ export function PostsTab({ posts, currentUserId, onReact, onDelete, onCreatePost
           onReact={onReact}
           onDelete={onDelete}
           onClick={post => navigate(`/feed/post/${post.id}`)}
+          onShare={setSharePost}
         />
       ))}
+      {sharePost && (
+        <ShareSheet post={sharePost} onClose={() => setSharePost(null)} />
+      )}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { Flame, ChevronRight } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useViralPosts } from '../../hooks/useViralPosts'
 import { PostCard } from '../../pages/FriendsView'
+import ShareSheet from '../feed/ShareSheet'
 
 const noop = () => {}
 
@@ -13,6 +14,7 @@ export default function ViralPostsCarousel() {
   const { user } = useAuth()
   const { posts, loading } = useViralPosts(3)
   const [active, setActive] = useState(0)
+  const [sharePost, setSharePost] = useState(null)
   const trackRef = useRef(null)
 
   if (loading) {
@@ -54,6 +56,7 @@ export default function ViralPostsCarousel() {
               onReact={noop}
               onDelete={noop}
               onClick={p => navigate(`/feed/post/${p.id}`)}
+              onShare={setSharePost}
             />
           </div>
         ))}
@@ -87,6 +90,10 @@ export default function ViralPostsCarousel() {
       >
         Feed öffnen <ChevronRight size={13} />
       </button>
+
+      {sharePost && (
+        <ShareSheet post={sharePost} onClose={() => setSharePost(null)} />
+      )}
     </div>
   )
 }

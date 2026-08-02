@@ -7,7 +7,7 @@ const PAGE_SIZE = 20
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
   bible_reference, bible_verse, is_public, visibility_mode,
-  visibility_user_ids, excluded_user_ids, created_at, updated_at,
+  visibility_user_ids, excluded_user_ids, view_count, created_at, updated_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 
@@ -52,14 +52,12 @@ export function useFeed(filter = 'all') {
   async function attachReactions(rawPosts) {
     if (!rawPosts.length) return rawPosts
     const ids = rawPosts.map(p => p.id)
-    const { data: reactions } = await supabase
-      .from('feed_reactions')
-      .select('post_id, user_id, type')
-      .in('post_id', ids)
-    const { data: comments } = await supabase
-      .from('feed_comments')
-      .select('post_id')
-      .in('post_id', ids)
+    const [{ data: reactions }, { data: comments }, { data: reposts }, { data: bookmarks }] = await Promise.all([
+      supabase.from('feed_reactions').select('post_id, user_id, type').in('post_id', ids),
+      supabase.from('feed_comments').select('post_id').in('post_id', ids),
+      supabase.from('feed_reposts').select('post_id, user_id').in('post_id', ids),
+      user ? supabase.from('feed_bookmarks').select('post_id').in('post_id', ids).eq('user_id', user.id) : Promise.resolve({ data: [] }),
+    ])
 
     const reactMap = {}
     ;(reactions || []).forEach(r => {
@@ -70,11 +68,19 @@ export function useFeed(filter = 'all') {
     ;(comments || []).forEach(c => {
       commentCount[c.post_id] = (commentCount[c.post_id] || 0) + 1
     })
+    const repostMap = {}
+    ;(reposts || []).forEach(r => {
+      if (!repostMap[r.post_id]) repostMap[r.post_id] = []
+      repostMap[r.post_id].push(r)
+    })
+    const bookmarkedSet = new Set((bookmarks || []).map(b => b.post_id))
 
     return rawPosts.map(p => ({
       ...p,
       reactions: reactMap[p.id] || [],
       commentCount: commentCount[p.id] || 0,
+      reposts: repostMap[p.id] || [],
+      bookmarked: bookmarkedSet.has(p.id),
     }))
   }
 
@@ -197,6 +203,42 @@ export function useFeed(filter = 'all') {
     }
   }
 
+  async function toggleRepost(postId) {
+    const post = posts.find(p => p.id === postId)
+    const mine = post?.reposts?.find(r => r.user_id === user.id)
+
+    setPosts(prev => prev.map(p => {
+      if (p.id !== postId) return p
+      const reposts = mine
+        ? p.reposts.filter(r => r.user_id !== user.id)
+        : [...(p.reposts || []), { post_id: postId, user_id: user.id }]
+      return { ...p, reposts }
+    }))
+
+    if (mine) {
+      await supabase.from('feed_reposts').delete().eq('post_id', postId).eq('user_id', user.id)
+    } else {
+      await supabase.from('feed_reposts').insert({ post_id: postId, user_id: user.id })
+    }
+  }
+
+  async function toggleBookmark(postId) {
+    const post = posts.find(p => p.id === postId)
+    const wasBookmarked = !!post?.bookmarked
+
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, bookmarked: !wasBookmarked } : p))
+
+    if (wasBookmarked) {
+      await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
+    } else {
+      await supabase.from('feed_bookmarks').insert({ post_id: postId, user_id: user.id })
+    }
+  }
+
+  async function incrementView(postId) {
+    await supabase.rpc('increment_feed_post_view', { p_post_id: postId })
+  }
+
   async function commentOnPost(postId, body, parentId = null) {
     const { data, error } = await supabase
       .from('feed_comments')
@@ -219,6 +261,9 @@ export function useFeed(filter = 'all') {
     createPost,
     deletePost,
     reactToPost,
+    toggleRepost,
+    toggleBookmark,
+    incrementView,
     commentOnPost,
     reload: loadPosts,
   }

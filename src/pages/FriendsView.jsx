@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Forward } from 'lucide-react'
-import ForwardSheet from '../components/prayer/ForwardSheet'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal } from 'lucide-react'
+import ShareSheet from '../components/feed/ShareSheet'
+import PostEngagementBar from '../components/feed/PostEngagementBar'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
@@ -1010,12 +1011,6 @@ const FILTER_OPTIONS = [
   { key: 'question',  label: '❓ Fragen' },
 ]
 
-const REACTION_CONFIG = [
-  { type: 'prayer', emoji: '🙏', label: 'Gebet' },
-  { type: 'heart',  emoji: '❤️', label: 'Herz' },
-  { type: 'amen',   emoji: '🙌', label: 'Amen' },
-]
-
 function timeAgoFeed(iso) {
   const d = new Date(iso)
   const now = new Date()
@@ -1049,7 +1044,7 @@ function FeedAvatar({ profile, size = 36 }) {
 }
 
 // ─── Post Card ───────────────────────────────────────────────
-export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onForward }) {
+export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onShare }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
@@ -1059,11 +1054,10 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onFo
   const isOwn = post.author_id === currentUserId
   const author = post.profiles
 
-  const reactionCounts = REACTION_CONFIG.map(r => ({
-    ...r,
-    count: (post.reactions || []).filter(x => x.type === r.type).length,
-    mine:  (post.reactions || []).some(x => x.type === r.type && x.user_id === currentUserId),
-  }))
+  const liked = (post.reactions || []).some(r => r.type === 'heart' && r.user_id === currentUserId)
+  const likeCount = (post.reactions || []).filter(r => r.type === 'heart').length
+  const reposted = (post.reposts || []).some(r => r.user_id === currentUserId)
+  const repostCount = (post.reposts || []).length
 
   const [expanded, setExpanded] = useState(false)
   const bodyLong = post.body && post.body.length > 240
@@ -1074,10 +1068,9 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onFo
       style={{
         backgroundColor: 'var(--color-white)',
         borderRadius: 16,
-        border: `1.5px solid ${cfg.border}`,
+        border: '1.5px solid var(--color-warm-3)',
         marginBottom: 12,
         overflow: 'hidden',
-        background: cfg.bg,
       }}
     >
       {/* Header */}
@@ -1165,42 +1158,21 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onFo
         )}
       </div>
 
-      {/* Reactions + comments */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px 12px', borderTop: '1px solid var(--color-warm-3)', flexWrap: 'wrap' }}>
-        {reactionCounts.map(r => (
-          <button
-            key={r.type}
-            onClick={() => onReact(post.id, r.type)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '4px 10px', borderRadius: 20,
-              border: r.mine ? '1.5px solid var(--color-warm-1)' : '1.5px solid var(--color-warm-3)',
-              backgroundColor: r.mine ? 'rgba(74,103,65,0.1)' : 'transparent',
-              fontFamily: 'Lora, serif', fontSize: 12,
-              color: r.mine ? 'var(--color-warm-1)' : 'var(--color-text-muted)',
-              cursor: 'pointer', fontWeight: r.mine ? 700 : 400,
-              transition: 'all 0.15s',
-            }}
-          >
-            <span style={{ fontSize: 14 }}>{r.emoji}</span>
-            {r.count > 0 && <span>{r.count}</span>}
-          </button>
-        ))}
-        <button
-          onClick={e => { e.stopPropagation(); onForward?.(post) }}
-          aria-label="Beitrag weiterleiten"
-          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: 4 }}
-        >
-          <Forward size={14} />
-        </button>
-        <button
-          onClick={() => onClick(post)}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: 4 }}
-        >
-          <MessageSquare size={13} />
-          {post.commentCount > 0 ? `${post.commentCount} Antworten` : 'Antworten'}
-        </button>
-      </div>
+      {/* Engagement */}
+      <PostEngagementBar
+        commentCount={post.commentCount}
+        onComment={() => onClick(post)}
+        reposted={reposted}
+        repostCount={repostCount}
+        onRepost={() => onRepost?.(post.id)}
+        liked={liked}
+        likeCount={likeCount}
+        onLike={() => onReact(post.id, 'heart')}
+        viewCount={post.view_count}
+        bookmarked={post.bookmarked}
+        onBookmark={() => onBookmark?.(post.id)}
+        onShare={() => onShare?.(post)}
+      />
     </div>
   )
 }
@@ -1676,7 +1648,7 @@ function FeedTab() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost } = useFeed('all')
+  const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost, toggleRepost, toggleBookmark } = useFeed('all')
   const loaderRef = useRef(null)
   const [showComposer, setShowComposer] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -1684,7 +1656,7 @@ function FeedTab() {
   const [activeCategories, setActiveCategories] = useState([])
   const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
   const [searchParams, setSearchParams] = useSearchParams()
-  const [forwardPost, setForwardPost] = useState(null)
+  const [sharePost, setSharePost] = useState(null)
 
   // Kollabierender Header beim Scrollen (rAF + Sperre gegen Flackern)
   const rootRef = useRef(null)
@@ -1969,7 +1941,9 @@ function FeedTab() {
           onReact={reactToPost}
           onDelete={handleDelete}
           onClick={p => navigate(`/feed/post/${p.id}`)}
-          onForward={setForwardPost}
+          onRepost={toggleRepost}
+          onBookmark={toggleBookmark}
+          onShare={setSharePost}
         />
       ))}
 
@@ -2019,21 +1993,8 @@ function FeedTab() {
         />
       )}
 
-      {forwardPost && (
-        <ForwardSheet
-          previewTitle={forwardPost.title || forwardPost.body || 'Beitrag'}
-          buildMessage={() => {
-            const parts = []
-            if (forwardPost.title) parts.push(forwardPost.title)
-            if (forwardPost.type === 'bible') {
-              if (forwardPost.bible_reference) parts.push(`📖 ${forwardPost.bible_reference}`)
-              if (forwardPost.bible_verse) parts.push(`„${forwardPost.bible_verse}“`)
-            }
-            if (forwardPost.body) parts.push(forwardPost.body)
-            return { type: 'text', text: parts.join('\n\n') || 'Beitrag' }
-          }}
-          onClose={() => setForwardPost(null)}
-        />
+      {sharePost && (
+        <ShareSheet post={sharePost} onClose={() => setSharePost(null)} />
       )}
     </div>
   )
