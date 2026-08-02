@@ -1,4 +1,4 @@
--- Phase 45: RLS für prayer_logs nachziehen
+-- Phase 46: RLS für prayer_logs nachziehen
 --
 -- Problem: prayer_logs (Gebets-Log für Anliegen einer Oikos-Person) hat in
 -- keiner eingecheckten Migration eine RLS-Policy erhalten. Ohne eine
