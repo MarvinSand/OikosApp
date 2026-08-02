@@ -89,5 +89,11 @@ export function usePrayerRequests(personId) {
     await updateRequest(id, { is_public: !req.is_public })
   }
 
-  return { requests, loading, addRequest, updateRequest, deleteRequest, toggleAnswered, togglePublic, reload: load }
+  async function togglePinned(id) {
+    const req = requests.find(r => r.id === id)
+    if (!req) return
+    await updateRequest(id, { is_pinned: !req.is_pinned })
+  }
+
+  return { requests, loading, addRequest, updateRequest, deleteRequest, toggleAnswered, togglePublic, togglePinned, reload: load }
 }

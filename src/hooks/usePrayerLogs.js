@@ -36,10 +36,9 @@ export function usePrayerLogs(prayerRequestId) {
     setLoading(false)
   }
 
-  const todayStr = new Date().toISOString().split('T')[0]
-  const todayLogs = logs.filter(l => l.created_at.split('T')[0] === todayStr)
-  const hasPrayedToday = todayLogs.some(l => l.user_id === user?.id)
-  const countToday = todayLogs.length
+  // logs is sorted created_at desc, so the first match per side is the most recent
+  const myLastPrayedAt = logs.find(l => l.user_id === user?.id)?.created_at ?? null
+  const othersLastPrayedAt = logs.find(l => l.user_id !== user?.id)?.created_at ?? null
 
   // Unique users who have ever prayed for this request (deduplicated, most
   // recent first), each with how many times they personally prayed for it
@@ -57,7 +56,6 @@ export function usePrayerLogs(prayerRequestId) {
   const totalCount = logs.length
 
   async function logPrayer() {
-    if (hasPrayedToday) return
     const tempId = 'temp-' + Date.now()
     const optimistic = {
       id: tempId, prayer_request_id: prayerRequestId,
@@ -108,7 +106,7 @@ export function usePrayerLogs(prayerRequestId) {
     } catch { /* non-critical */ }
   }
 
-  return { logs, loading, hasPrayedToday, countToday, prayersByUser, totalCount, logPrayer }
+  return { logs, loading, prayersByUser, totalCount, myLastPrayedAt, othersLastPrayedAt, logPrayer }
 }
 
 // Hook für alle Gebets-Logs einer Person (für die Timeline)
