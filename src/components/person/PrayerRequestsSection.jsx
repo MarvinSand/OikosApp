@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Lock, Globe, MoreVertical, Pencil, Check, Trash2, X } from 'lucide-react'
+import { Plus, Lock, Globe, MoreVertical, Pencil, Check, Trash2, X, Pin } from 'lucide-react'
 import { usePrayerRequests } from '../../hooks/usePrayerRequests'
 import { usePrayerLogs } from '../../hooks/usePrayerLogs'
 import { useToast } from '../../context/ToastContext'
@@ -58,18 +58,18 @@ function OverlappingPrayerAvatars({ prayersByUser, currentUserId }) {
 }
 
 function formatLastPrayed(iso) {
-  if (!iso) return '🙏 Noch nie gebetet'
+  if (!iso) return 'noch nie'
   const d = new Date(iso)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - 86400000)
   const dDay = new Date(d.getFullYear(), d.getMonth(), d.getDate())
   if (dDay.getTime() === today.getTime())
-    return `🙏 Heute um ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
-  if (dDay.getTime() === yesterday.getTime()) return '🙏 Gestern'
+    return `heute um ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
+  if (dDay.getTime() === yesterday.getTime()) return 'gestern'
   const diffDays = Math.round((today - dDay) / 86400000)
-  if (diffDays < 30) return `🙏 Vor ${diffDays} Tagen`
-  return `🙏 ${d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })}`
+  if (diffDays < 30) return `vor ${diffDays} Tagen`
+  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })
 }
 
 // ─── PrayedBySheet ────────────────────────────────────────────
@@ -173,7 +173,7 @@ function EditRequestSheet({ req, onSave, onClose }) {
 
 // ─── PrayerRequestCard ────────────────────────────────────────
 function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete, onPrayed, currentUserId }) {
-  const { hasPrayedToday, prayersByUser, totalCount, logPrayer } = usePrayerLogs(req.id)
+  const { prayersByUser, totalCount, myLastPrayedAt, othersLastPrayedAt, logPrayer } = usePrayerLogs(req.id)
   const { showToast } = useToast()
   const [showPrayedBy, setShowPrayedBy] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -236,9 +236,17 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
               {!isOwner && author?.username ? `@${author.username} · ` : ''}{timeAgo(req.created_at)}
             </p>
           </div>
-          {/* ··· Owner Menu */}
+          {/* Pin + ··· Owner Menu */}
           {isOwner && (
-            <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              <button
+                onClick={() => onUpdate(req.id, { is_pinned: !req.is_pinned })}
+                title={req.is_pinned ? 'Nicht mehr anpinnen' : 'Oben anpinnen'}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: '50%', color: req.is_pinned ? 'var(--color-accent)' : 'var(--color-text-muted)', display: 'flex' }}
+              >
+                <Pin size={16} fill={req.is_pinned ? 'var(--color-accent)' : 'none'} />
+              </button>
+              <div style={{ position: 'relative' }}>
               <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: '50%', color: 'var(--color-text-muted)', display: 'flex' }}>
                 <MoreVertical size={18} />
               </button>
@@ -261,6 +269,7 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
                   </div>
                 </>
               )}
+              </div>
             </div>
           )}
         </div>
@@ -305,23 +314,32 @@ function PrayerRequestCard({ req, isOwner, onUpdate, onToggleAnswered, onDelete,
             )}
           </button>
 
-          {/* Rechte Seite: Beten-Button */}
+          {/* Rechte Seite: Beten-Button — beliebig oft klickbar */}
           <button
             onClick={handlePray}
-            disabled={hasPrayedToday}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 16px', borderRadius: 20,
-              border: hasPrayedToday ? 'none' : '1.5px solid var(--color-warm-1)',
-              backgroundColor: hasPrayedToday ? 'var(--color-gold-light)' : 'transparent',
-              color: hasPrayedToday ? 'var(--color-gold-text)' : 'var(--color-warm-1)',
-              fontFamily: 'Lora, serif', fontSize: 13, fontWeight: hasPrayedToday ? 700 : 500,
-              cursor: hasPrayedToday ? 'default' : 'pointer',
+              border: '1.5px solid var(--color-warm-1)',
+              backgroundColor: 'transparent',
+              color: 'var(--color-warm-1)',
+              fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 500,
+              cursor: 'pointer',
               transition: 'all 0.2s', flexShrink: 0,
             }}
           >
-            🙏 {hasPrayedToday ? 'Gebetet ✓' : 'Beten'}
+            🙏 Beten
           </button>
+        </div>
+
+        {/* Zeitstempel: eigenes letztes Gebet & letztes Gebet von anderen */}
+        <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)' }}>
+            Du: {formatLastPrayed(myLastPrayedAt)}
+          </span>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)' }}>
+            Andere: {formatLastPrayed(othersLastPrayedAt)}
+          </span>
         </div>
       </div>
 
@@ -367,45 +385,52 @@ function AddRequestForm({ onSave, onCancel }) {
   )
 }
 
+const FILTER_OPTIONS = [
+  { value: 'alle', label: 'Alle' },
+  { value: 'offen', label: 'Offen' },
+  { value: 'erhoert', label: 'Erhört' },
+  { value: 'privat', label: 'Privat' },
+  { value: 'oeffentlich', label: 'Öffentlich' },
+]
+
 // ─── PrayerRequestsSection ────────────────────────────────────
 export default function PrayerRequestsSection({ personId, isOwner }) {
   const { user } = useAuth()
   const { requests, loading, addRequest, updateRequest, deleteRequest, toggleAnswered, reload } = usePrayerRequests(personId)
   const { showToast } = useToast()
   const [showAddForm, setShowAddForm] = useState(false)
-  const [lastPrayedMap, setLastPrayedMap] = useState({})
+  const [ownLastPrayedMap, setOwnLastPrayedMap] = useState({})
+  const [globalLastPrayedMap, setGlobalLastPrayedMap] = useState({})
   const [personStats, setPersonStats] = useState({ people: 0, prayers: 0 })
+  const [filterMode, setFilterMode] = useState('alle')
+  const [sortMode, setSortMode] = useState('standard')
 
   const reqIds = requests.map(r => r.id).join(',')
   useEffect(() => {
     if (!requests.length || !user) return
-    loadLastPrayed()
-    loadPersonPrayerStats()
+    loadPrayerData()
   }, [reqIds, user?.id])
 
-  async function loadLastPrayed() {
+  // Ein Rutsch für alle Gebets-Logs dieser Person: eigenes letztes Gebet pro
+  // Anliegen, letztes Gebet von irgendjemandem pro Anliegen (für die
+  // "am längsten nicht gebetet"-Sortierung) und die Gesamtstatistik.
+  async function loadPrayerData() {
     const ids = requests.map(r => r.id)
     const { data } = await supabase
       .from('prayer_logs')
-      .select('prayer_request_id, created_at')
-      .eq('user_id', user.id)
+      .select('prayer_request_id, user_id, created_at')
       .in('prayer_request_id', ids)
       .order('created_at', { ascending: false })
-    const map = {}
-    for (const row of (data || [])) {
-      if (!map[row.prayer_request_id]) map[row.prayer_request_id] = row.created_at
-    }
-    setLastPrayedMap(map)
-  }
-
-  // Gesamtstatistik über alle Anliegen dieser Person hinweg (alle Beter, nicht nur der aktuelle User)
-  async function loadPersonPrayerStats() {
-    const ids = requests.map(r => r.id)
-    const { data } = await supabase
-      .from('prayer_logs')
-      .select('user_id')
-      .in('prayer_request_id', ids)
     const rows = data || []
+
+    const ownMap = {}
+    const globalMap = {}
+    for (const row of rows) {
+      if (!globalMap[row.prayer_request_id]) globalMap[row.prayer_request_id] = row.created_at
+      if (row.user_id === user.id && !ownMap[row.prayer_request_id]) ownMap[row.prayer_request_id] = row.created_at
+    }
+    setOwnLastPrayedMap(ownMap)
+    setGlobalLastPrayedMap(globalMap)
     setPersonStats({
       people: new Set(rows.map(r => r.user_id)).size,
       prayers: rows.length,
@@ -433,12 +458,26 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
     showToast('Anliegen gelöscht')
   }
 
-  const activeRaw = requests.filter(r => !r.is_answered)
-  const active = [
-    ...activeRaw.filter(r => !lastPrayedMap[r.id]),
-    ...activeRaw.filter(r => !!lastPrayedMap[r.id]).sort((a, b) => new Date(lastPrayedMap[a.id]) - new Date(lastPrayedMap[b.id])),
-  ]
-  const answered = requests.filter(r => r.is_answered)
+  function matchesFilter(r) {
+    if (filterMode === 'offen') return !r.is_answered
+    if (filterMode === 'erhoert') return r.is_answered
+    if (filterMode === 'privat') return r.is_public === false
+    if (filterMode === 'oeffentlich') return r.is_public === true
+    return true
+  }
+  function compareBySort(a, b) {
+    if (sortMode === 'aeltestes') return new Date(a.created_at) - new Date(b.created_at)
+    const map = sortMode === 'laengste_pause' ? globalLastPrayedMap : ownLastPrayedMap
+    const la = map[a.id], lb = map[b.id]
+    if (!la && !lb) return 0
+    if (!la) return -1
+    if (!lb) return 1
+    return new Date(la) - new Date(lb)
+  }
+  const pinnedFirst = arr => [...arr.filter(r => r.is_pinned), ...arr.filter(r => !r.is_pinned)]
+  const sorted = requests.filter(matchesFilter).sort(compareBySort)
+  const active = pinnedFirst(sorted.filter(r => !r.is_answered))
+  const answered = pinnedFirst(sorted.filter(r => r.is_answered))
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -462,6 +501,32 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
         </div>
       )}
 
+      {!loading && requests.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {FILTER_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setFilterMode(opt.value)}
+                style={{
+                  ...filterChip,
+                  backgroundColor: filterMode === opt.value ? 'var(--color-warm-1)' : 'transparent',
+                  color: filterMode === opt.value ? 'var(--color-bg)' : 'var(--color-text-muted)',
+                  borderColor: filterMode === opt.value ? 'var(--color-warm-1)' : 'var(--color-border)',
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <select value={sortMode} onChange={e => setSortMode(e.target.value)} style={sortSelect}>
+            <option value="standard">Sortierung: Standard</option>
+            <option value="laengste_pause">Am längsten nicht gebetet</option>
+            <option value="aeltestes">Ältestes Anliegen zuerst</option>
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <div style={skeleton} />
       ) : (
@@ -473,10 +538,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
               onUpdate={updateRequest}
               onToggleAnswered={toggleAnswered}
               onDelete={handleDelete}
-              onPrayed={(id) => {
-                setLastPrayedMap(prev => ({ ...prev, [id]: new Date().toISOString() }))
-                loadPersonPrayerStats()
-              }}
+              onPrayed={() => loadPrayerData()}
             />
           ))}
 
@@ -518,6 +580,8 @@ const sectionHeader = { display: 'flex', alignItems: 'center', justifyContent: '
 const sectionTitle = { fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }
 const addBtn = { display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer' }
 const statChip = { flex: 1, display: 'flex', alignItems: 'center', gap: 5, padding: '7px 10px', borderRadius: 10, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }
+const filterChip = { padding: '4px 10px', borderRadius: 20, border: '1px solid var(--color-border)', fontFamily: 'Lora, serif', fontSize: 11.5, cursor: 'pointer', transition: 'all 0.15s' }
+const sortSelect = { marginLeft: 'auto', padding: '5px 8px', borderRadius: 8, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 11.5, color: 'var(--color-text-muted)' }
 const skeleton = { height: 60, borderRadius: 12, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }
 const inp = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }
