@@ -263,20 +263,17 @@ export function useProfileTabs(profileUserId) {
     }
   }
 
-  async function toggleBookmark(postId) {
-    const post = findPost(postId)
-    const wasBookmarked = !!post?.bookmarked
-    patchPostEverywhere(postId, p => ({ ...p, bookmarked: !wasBookmarked }))
+  async function removeBookmark(postId) {
+    patchPostEverywhere(postId, p => ({ ...p, bookmarked: false }))
+    await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
+  }
 
-    if (wasBookmarked) {
-      await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
-    } else {
-      await supabase.from('feed_bookmarks').insert({ post_id: postId, user_id: user.id })
-    }
+  function markBookmarked(postId) {
+    patchPostEverywhere(postId, p => ({ ...p, bookmarked: true }))
   }
 
   return {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
-    loading, isOwn, reload: load, reactToPost, deletePost, toggleRepost, toggleBookmark,
+    loading, isOwn, reload: load, reactToPost, deletePost, toggleRepost, removeBookmark, markBookmarked,
   }
 }

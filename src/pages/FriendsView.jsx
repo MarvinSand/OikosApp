@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark } from 'lucide-react'
 import ShareSheet from '../components/feed/ShareSheet'
+import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
@@ -1044,9 +1045,10 @@ function FeedAvatar({ profile, size = 36 }) {
 }
 
 // ─── Post Card ───────────────────────────────────────────────
-export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onShare }) {
+export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
+  const [showSaveSheet, setShowSaveSheet] = useState(false)
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
   const TypeIcon = cfg.icon
   // Klares Kategorie-Badge aus dem echten category-Feld (Frage, Bibelstelle, …)
@@ -1169,9 +1171,20 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         likeCount={likeCount}
         onLike={() => onReact(post.id, 'heart')}
         bookmarked={post.bookmarked}
-        onBookmark={() => onBookmark?.(post.id)}
+        onBookmark={() => {
+          if (post.bookmarked) onBookmark?.(post.id)
+          else setShowSaveSheet(true)
+        }}
         onShare={() => onShare?.(post)}
       />
+
+      {showSaveSheet && (
+        <SavePostSheet
+          postId={post.id}
+          onClose={() => setShowSaveSheet(false)}
+          onSaved={() => onBookmarkSaved?.(post.id)}
+        />
+      )}
     </div>
   )
 }
@@ -1647,7 +1660,7 @@ function FeedTab() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost, toggleRepost, toggleBookmark } = useFeed('all')
+  const { posts, loading, loadMore, hasMore, createPost, deletePost, reactToPost, toggleRepost, removeBookmark, markBookmarked } = useFeed('all')
   const loaderRef = useRef(null)
   const [showComposer, setShowComposer] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -1813,6 +1826,20 @@ function FeedTab() {
               </span>
             )}
           </button>
+          <button
+            onClick={() => navigate('/feed/saved')}
+            aria-label="Gespeicherte Beiträge"
+            style={{
+              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              border: '1.5px solid var(--color-border)',
+              backgroundColor: 'var(--color-bg-secondary)',
+              color: 'var(--color-text-secondary)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Bookmark size={17} />
+          </button>
         </div>
 
         {showFilters && (
@@ -1941,7 +1968,8 @@ function FeedTab() {
           onDelete={handleDelete}
           onClick={p => navigate(`/feed/post/${p.id}`)}
           onRepost={toggleRepost}
-          onBookmark={toggleBookmark}
+          onBookmark={removeBookmark}
+          onBookmarkSaved={markBookmarked}
           onShare={setSharePost}
         />
       ))}

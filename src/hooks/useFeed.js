@@ -222,17 +222,15 @@ export function useFeed(filter = 'all') {
     }
   }
 
-  async function toggleBookmark(postId) {
-    const post = posts.find(p => p.id === postId)
-    const wasBookmarked = !!post?.bookmarked
+  // Entfernt einen Bookmark (das Speichern selbst läuft über SavePostSheet,
+  // das eine Kategorie abfragt und danach markBookmarked lokal aktualisiert).
+  async function removeBookmark(postId) {
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, bookmarked: false } : p))
+    await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
+  }
 
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, bookmarked: !wasBookmarked } : p))
-
-    if (wasBookmarked) {
-      await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
-    } else {
-      await supabase.from('feed_bookmarks').insert({ post_id: postId, user_id: user.id })
-    }
+  function markBookmarked(postId) {
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, bookmarked: true } : p))
   }
 
   async function incrementView(postId) {
@@ -262,7 +260,8 @@ export function useFeed(filter = 'all') {
     deletePost,
     reactToPost,
     toggleRepost,
-    toggleBookmark,
+    removeBookmark,
+    markBookmarked,
     incrementView,
     commentOnPost,
     reload: loadPosts,

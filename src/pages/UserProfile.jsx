@@ -51,7 +51,7 @@ export default function UserProfile() {
   const { getFriendshipStatus, getFriendship, sendRequest, acceptRequest, declineRequest } = useFriendships()
   const {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
-    loading: tabsLoading, reactToPost, toggleRepost, toggleBookmark,
+    loading: tabsLoading, reactToPost, toggleRepost, removeBookmark, markBookmarked,
   } = useProfileTabs(targetId)
 
   const [profile, setProfile] = useState(null)
@@ -410,7 +410,8 @@ export default function UserProfile() {
               currentUserId={user?.id}
               onReact={reactToPost}
               onRepost={toggleRepost}
-              onBookmark={toggleBookmark}
+              onBookmark={removeBookmark}
+              onBookmarkSaved={markBookmarked}
             />
           )}
           {activeTab === 'reposts' && (
@@ -419,7 +420,8 @@ export default function UserProfile() {
               currentUserId={user?.id}
               onReact={reactToPost}
               onRepost={toggleRepost}
-              onBookmark={toggleBookmark}
+              onBookmark={removeBookmark}
+              onBookmarkSaved={markBookmarked}
             />
           )}
           {activeTab === 'prayers' && <PrayersTab prayers={prayerRequests} />}

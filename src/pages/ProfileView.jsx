@@ -102,7 +102,7 @@ export default function ProfileView() {
   const { profile, loading: profileLoading, uploadAvatar } = useProfile()
   const {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
-    loading: tabsLoading, reload, reactToPost, deletePost, toggleRepost, toggleBookmark,
+    loading: tabsLoading, reload, reactToPost, deletePost, toggleRepost, removeBookmark, markBookmarked,
   } = useProfileTabs(user?.id)
   const { updateMap, deleteMap, createMap } = useOikosMaps()
   const { showToast } = useToast()
@@ -392,7 +392,8 @@ export default function ProfileView() {
               onReact={reactToPost}
               onDelete={handleDeletePost}
               onRepost={toggleRepost}
-              onBookmark={toggleBookmark}
+              onBookmark={removeBookmark}
+              onBookmarkSaved={markBookmarked}
               onCreatePost={() => navigate('/friends?tab=feed&compose=1')}
             />
           )}
@@ -403,7 +404,8 @@ export default function ProfileView() {
               onReact={reactToPost}
               onDelete={handleDeletePost}
               onRepost={toggleRepost}
-              onBookmark={toggleBookmark}
+              onBookmark={removeBookmark}
+              onBookmarkSaved={markBookmarked}
             />
           )}
           {activeTab === 'prayers' && (

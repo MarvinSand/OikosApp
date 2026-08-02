@@ -214,7 +214,7 @@ export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
 }
 
 // ─── Posts tab ────────────────────────────────────────────────
-export function PostsTab({ posts, currentUserId, onReact, onDelete, onRepost, onBookmark, onCreatePost }) {
+export function PostsTab({ posts, currentUserId, onReact, onDelete, onRepost, onBookmark, onBookmarkSaved, onCreatePost }) {
   const navigate = useNavigate()
   const [sharePost, setSharePost] = useState(null)
   if (posts.length === 0) {
@@ -244,6 +244,7 @@ export function PostsTab({ posts, currentUserId, onReact, onDelete, onRepost, on
           onClick={post => navigate(`/feed/post/${post.id}`)}
           onRepost={onRepost}
           onBookmark={onBookmark}
+          onBookmarkSaved={onBookmarkSaved}
           onShare={setSharePost}
         />
       ))}
@@ -255,7 +256,7 @@ export function PostsTab({ posts, currentUserId, onReact, onDelete, onRepost, on
 }
 
 // ─── Reposts tab ──────────────────────────────────────────────
-export function RepostsTab({ reposts, currentUserId, onReact, onDelete, onRepost, onBookmark }) {
+export function RepostsTab({ reposts, currentUserId, onReact, onDelete, onRepost, onBookmark, onBookmarkSaved }) {
   const navigate = useNavigate()
   const [sharePost, setSharePost] = useState(null)
   if (reposts.length === 0) {
@@ -277,6 +278,7 @@ export function RepostsTab({ reposts, currentUserId, onReact, onDelete, onRepost
           onClick={post => navigate(`/feed/post/${post.id}`)}
           onRepost={onRepost}
           onBookmark={onBookmark}
+          onBookmarkSaved={onBookmarkSaved}
           onShare={setSharePost}
         />
       ))}

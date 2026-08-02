@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Flame, ChevronRight } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useViralPosts } from '../../hooks/useViralPosts'
 import { PostCard } from '../../pages/FriendsView'
@@ -15,7 +16,13 @@ export default function ViralPostsCarousel() {
   const { posts, loading } = useViralPosts(3)
   const [active, setActive] = useState(0)
   const [sharePost, setSharePost] = useState(null)
+  const [bookmarkedIds, setBookmarkedIds] = useState(() => new Set())
   const trackRef = useRef(null)
+
+  function handleUnbookmark(postId) {
+    setBookmarkedIds(prev => { const next = new Set(prev); next.delete(postId); return next })
+    supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
+  }
 
   if (loading) {
     return <div style={{ height: 180, borderRadius: 16, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
@@ -51,11 +58,13 @@ export default function ViralPostsCarousel() {
         {posts.map(post => (
           <div key={post.id} style={{ flex: '0 0 100%', scrollSnapAlign: 'center', minWidth: 0 }}>
             <PostCard
-              post={post}
+              post={{ ...post, bookmarked: bookmarkedIds.has(post.id) }}
               currentUserId={user?.id}
               onReact={noop}
               onDelete={noop}
               onClick={p => navigate(`/feed/post/${p.id}`)}
+              onBookmark={handleUnbookmark}
+              onBookmarkSaved={postId => setBookmarkedIds(prev => new Set(prev).add(postId))}
               onShare={setSharePost}
             />
           </div>

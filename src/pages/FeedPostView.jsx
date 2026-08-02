@@ -4,6 +4,7 @@ import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare, Trash2
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import ShareSheet from '../components/feed/ShareSheet'
+import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -75,6 +76,7 @@ export default function FeedPostView() {
   const [replyTo, setReplyTo] = useState(null) // { id, author: name }
   const [sending, setSending] = useState(false)
   const [sharePost, setSharePost] = useState(null)
+  const [showSaveSheet, setShowSaveSheet] = useState(false)
   const bottomRef = useRef(null)
   const draftRef = useRef(null)
 
@@ -133,13 +135,9 @@ export default function FeedPostView() {
     }
   }
 
-  async function toggleBookmark() {
-    setBookmarked(v => !v)
-    if (bookmarked) {
-      await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
-    } else {
-      await supabase.from('feed_bookmarks').insert({ post_id: postId, user_id: user.id })
-    }
+  async function removeBookmark() {
+    setBookmarked(false)
+    await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
   }
 
   async function sendComment() {
@@ -262,7 +260,10 @@ export default function FeedPostView() {
             likeCount={likeCount}
             onLike={() => toggleReaction('heart')}
             bookmarked={bookmarked}
-            onBookmark={toggleBookmark}
+            onBookmark={() => {
+              if (bookmarked) removeBookmark()
+              else setShowSaveSheet(true)
+            }}
             onShare={() => setSharePost(post)}
           />
         </div>
@@ -381,6 +382,14 @@ export default function FeedPostView() {
 
       {sharePost && (
         <ShareSheet post={sharePost} onClose={() => setSharePost(null)} />
+      )}
+
+      {showSaveSheet && (
+        <SavePostSheet
+          postId={post.id}
+          onClose={() => setShowSaveSheet(false)}
+          onSaved={() => setBookmarked(true)}
+        />
       )}
     </div>
   )
