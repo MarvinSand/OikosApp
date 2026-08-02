@@ -19,6 +19,7 @@ export default function PostEngagementBar({
   likeCount = 0,
   onLike,
   bookmarked = false,
+  bookmarkCount = 0,
   onBookmark,
   onShare,
 }) {
@@ -45,8 +46,9 @@ export default function PostEngagementBar({
         {likeCount > 0 && <span>{fmtCount(likeCount)}</span>}
       </button>
 
-      <button onClick={e => { e.stopPropagation(); onBookmark?.() }} style={item(bookmarked, 'var(--color-accent-dark)')} aria-label="Merken">
+      <button onClick={e => { e.stopPropagation(); onBookmark?.() }} style={{ ...item(bookmarked, 'var(--color-accent-dark)'), flex: 1 }} aria-label="Merken">
         <Bookmark size={15} fill={bookmarked ? 'var(--color-accent-dark)' : 'none'} />
+        {bookmarkCount > 0 && <span>{fmtCount(bookmarkCount)}</span>}
       </button>
 
       <button onClick={e => { e.stopPropagation(); onShare?.() }} style={item(false)} aria-label="Teilen">

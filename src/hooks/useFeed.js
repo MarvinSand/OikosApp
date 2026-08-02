@@ -7,7 +7,7 @@ const PAGE_SIZE = 20
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
   bible_reference, bible_verse, is_public, visibility_mode,
-  visibility_user_ids, excluded_user_ids, view_count, created_at, updated_at,
+  visibility_user_ids, excluded_user_ids, view_count, bookmark_count, created_at, updated_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 
@@ -225,12 +225,12 @@ export function useFeed(filter = 'all') {
   // Entfernt einen Bookmark (das Speichern selbst läuft über SavePostSheet,
   // das eine Kategorie abfragt und danach markBookmarked lokal aktualisiert).
   async function removeBookmark(postId) {
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, bookmarked: false } : p))
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, bookmarked: false, bookmark_count: Math.max((p.bookmark_count || 0) - 1, 0) } : p))
     await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
   }
 
   function markBookmarked(postId) {
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, bookmarked: true } : p))
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, bookmarked: true, bookmark_count: (p.bookmark_count || 0) + 1 } : p))
   }
 
   async function incrementView(postId) {

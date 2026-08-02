@@ -5,7 +5,7 @@ import { useAuth } from './useAuth'
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
   bible_reference, bible_verse, is_public, visibility_mode,
-  visibility_user_ids, excluded_user_ids, view_count, created_at,
+  visibility_user_ids, excluded_user_ids, view_count, bookmark_count, created_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 
@@ -264,12 +264,12 @@ export function useProfileTabs(profileUserId) {
   }
 
   async function removeBookmark(postId) {
-    patchPostEverywhere(postId, p => ({ ...p, bookmarked: false }))
+    patchPostEverywhere(postId, p => ({ ...p, bookmarked: false, bookmark_count: Math.max((p.bookmark_count || 0) - 1, 0) }))
     await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
   }
 
   function markBookmarked(postId) {
-    patchPostEverywhere(postId, p => ({ ...p, bookmarked: true }))
+    patchPostEverywhere(postId, p => ({ ...p, bookmarked: true, bookmark_count: (p.bookmark_count || 0) + 1 }))
   }
 
   return {

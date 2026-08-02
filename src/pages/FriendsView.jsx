@@ -1171,6 +1171,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         likeCount={likeCount}
         onLike={() => onReact(post.id, 'heart')}
         bookmarked={post.bookmarked}
+        bookmarkCount={post.bookmark_count}
         onBookmark={() => {
           if (post.bookmarked) onBookmark?.(post.id)
           else setShowSaveSheet(true)

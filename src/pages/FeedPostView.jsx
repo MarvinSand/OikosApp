@@ -48,7 +48,7 @@ function UserAvatar({ profile, size = 36 }) {
 
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
-  bible_reference, bible_verse, is_public, view_count, created_at,
+  bible_reference, bible_verse, is_public, view_count, bookmark_count, created_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 
@@ -137,6 +137,7 @@ export default function FeedPostView() {
 
   async function removeBookmark() {
     setBookmarked(false)
+    setPost(prev => prev && { ...prev, bookmark_count: Math.max((prev.bookmark_count || 0) - 1, 0) })
     await supabase.from('feed_bookmarks').delete().eq('post_id', postId).eq('user_id', user.id)
   }
 
@@ -260,6 +261,7 @@ export default function FeedPostView() {
             likeCount={likeCount}
             onLike={() => toggleReaction('heart')}
             bookmarked={bookmarked}
+            bookmarkCount={post.bookmark_count}
             onBookmark={() => {
               if (bookmarked) removeBookmark()
               else setShowSaveSheet(true)
@@ -388,7 +390,10 @@ export default function FeedPostView() {
         <SavePostSheet
           postId={post.id}
           onClose={() => setShowSaveSheet(false)}
-          onSaved={() => setBookmarked(true)}
+          onSaved={() => {
+            setBookmarked(true)
+            setPost(prev => prev && { ...prev, bookmark_count: (prev.bookmark_count || 0) + 1 })
+          }}
         />
       )}
     </div>

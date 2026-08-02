@@ -4,7 +4,7 @@ import { useAuth } from './useAuth'
 
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
-  bible_reference, bible_verse, created_at,
+  bible_reference, bible_verse, bookmark_count, created_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 
