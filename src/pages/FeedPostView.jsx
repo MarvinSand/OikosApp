@@ -78,7 +78,7 @@ export default function FeedPostView() {
   const bottomRef = useRef(null)
   const draftRef = useRef(null)
 
-  useEffect(() => { load() }, [postId])
+  useEffect(() => { load() }, [postId, user?.id])
 
   async function load() {
     setLoading(true)
@@ -90,7 +90,9 @@ export default function FeedPostView() {
         .eq('post_id', postId)
         .order('created_at'),
       supabase.from('feed_reposts').select('id, user_id').eq('post_id', postId),
-      supabase.from('feed_bookmarks').select('id').eq('post_id', postId).eq('user_id', user.id),
+      user
+        ? supabase.from('feed_bookmarks').select('id').eq('post_id', postId).eq('user_id', user.id)
+        : Promise.resolve({ data: [] }),
     ])
     setPost(postData || null)
     setReactions(reactData || [])
@@ -259,7 +261,6 @@ export default function FeedPostView() {
             liked={liked}
             likeCount={likeCount}
             onLike={() => toggleReaction('heart')}
-            viewCount={post.view_count}
             bookmarked={bookmarked}
             onBookmark={toggleBookmark}
             onShare={() => setSharePost(post)}

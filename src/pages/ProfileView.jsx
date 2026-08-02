@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Settings, Camera, MapPin, Church, Map as MapIcon, Newspaper, HandHeart,
-  Loader2, Maximize2, X,
+  Loader2, Maximize2, X, Repeat2,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
@@ -14,7 +14,7 @@ import MapCanvas from '../components/map/MapCanvas'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
 import ConnectionsOverlay from '../components/feed/ConnectionsOverlay'
-import { Avatar, MapsTab, PostsTab, PrayersTab } from '../components/profile/ProfileTabs'
+import { Avatar, MapsTab, PostsTab, RepostsTab, PrayersTab } from '../components/profile/ProfileTabs'
 
 // ─── Inline map preview ───────────────────────────────────────
 function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
@@ -101,8 +101,8 @@ export default function ProfileView() {
   const { user } = useAuth()
   const { profile, loading: profileLoading, uploadAvatar } = useProfile()
   const {
-    maps, posts, prayerRequests, connectionsCount, publicCommunities,
-    loading: tabsLoading, reload, reactToPost, deletePost,
+    maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
+    loading: tabsLoading, reload, reactToPost, deletePost, toggleRepost, toggleBookmark,
   } = useProfileTabs(user?.id)
   const { updateMap, deleteMap, createMap } = useOikosMaps()
   const { showToast } = useToast()
@@ -332,6 +332,7 @@ export default function ProfileView() {
         {[
           { key: 'maps',    icon: MapIcon,   label: 'OIKOS Map' },
           { key: 'posts',   icon: Newspaper, label: 'Posts' },
+          { key: 'reposts', icon: Repeat2,   label: 'Reposts' },
           { key: 'prayers', icon: HandHeart, label: 'Gebete' },
         ].map(t => {
           const isActive = activeTab === t.key
@@ -390,7 +391,19 @@ export default function ProfileView() {
               currentUserId={user?.id}
               onReact={reactToPost}
               onDelete={handleDeletePost}
+              onRepost={toggleRepost}
+              onBookmark={toggleBookmark}
               onCreatePost={() => navigate('/friends?tab=feed&compose=1')}
+            />
+          )}
+          {activeTab === 'reposts' && (
+            <RepostsTab
+              reposts={reposts}
+              currentUserId={user?.id}
+              onReact={reactToPost}
+              onDelete={handleDeletePost}
+              onRepost={toggleRepost}
+              onBookmark={toggleBookmark}
             />
           )}
           {activeTab === 'prayers' && (

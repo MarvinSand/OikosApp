@@ -1,4 +1,4 @@
-import { MessageSquare, Repeat2, Heart, Eye, Bookmark, Share } from 'lucide-react'
+import { MessageSquare, Repeat2, Heart, Bookmark, Share } from 'lucide-react'
 
 function fmtCount(n) {
   if (!n) return ''
@@ -18,7 +18,6 @@ export default function PostEngagementBar({
   liked = false,
   likeCount = 0,
   onLike,
-  viewCount = 0,
   bookmarked = false,
   onBookmark,
   onShare,
@@ -45,11 +44,6 @@ export default function PostEngagementBar({
         <Heart size={15} fill={liked ? '#E0245E' : 'none'} />
         {likeCount > 0 && <span>{fmtCount(likeCount)}</span>}
       </button>
-
-      <div style={{ ...item(false), flex: 1, cursor: 'default' }} aria-label="Aufrufe">
-        <Eye size={15} />
-        {viewCount > 0 && <span>{fmtCount(viewCount)}</span>}
-      </div>
 
       <button onClick={e => { e.stopPropagation(); onBookmark?.() }} style={item(bookmarked, 'var(--color-accent-dark)')} aria-label="Merken">
         <Bookmark size={15} fill={bookmarked ? 'var(--color-accent-dark)' : 'none'} />

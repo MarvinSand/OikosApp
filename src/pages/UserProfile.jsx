@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, UserCheck, UserPlus, Clock, X, MessageCircle, Bell,
-  MapPin, Church, Map as MapIcon, Newspaper, HandHeart,
+  MapPin, Church, Map as MapIcon, Newspaper, HandHeart, Repeat2,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -11,7 +11,7 @@ import { useToast } from '../context/ToastContext'
 import { useNotificationPrefs } from '../hooks/useNotificationPrefs'
 import { useProfileTabs } from '../hooks/useProfileTabs'
 import { countryToFlag, COUNTRIES } from '../lib/countries'
-import { Avatar, MapsTab, PostsTab, PrayersTab } from '../components/profile/ProfileTabs'
+import { Avatar, MapsTab, PostsTab, RepostsTab, PrayersTab } from '../components/profile/ProfileTabs'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -50,8 +50,8 @@ export default function UserProfile() {
   const { showToast } = useToast()
   const { getFriendshipStatus, getFriendship, sendRequest, acceptRequest, declineRequest } = useFriendships()
   const {
-    maps, posts, prayerRequests, connectionsCount, publicCommunities,
-    loading: tabsLoading, reactToPost,
+    maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
+    loading: tabsLoading, reactToPost, toggleRepost, toggleBookmark,
   } = useProfileTabs(targetId)
 
   const [profile, setProfile] = useState(null)
@@ -360,6 +360,7 @@ export default function UserProfile() {
         {[
           { key: 'maps',    icon: MapIcon,   label: 'OIKOS Map' },
           { key: 'posts',   icon: Newspaper, label: 'Posts' },
+          { key: 'reposts', icon: Repeat2,   label: 'Reposts' },
           { key: 'prayers', icon: HandHeart, label: 'Gebete' },
         ].map(t => {
           const isActive = activeTab === t.key
@@ -408,6 +409,17 @@ export default function UserProfile() {
               posts={posts}
               currentUserId={user?.id}
               onReact={reactToPost}
+              onRepost={toggleRepost}
+              onBookmark={toggleBookmark}
+            />
+          )}
+          {activeTab === 'reposts' && (
+            <RepostsTab
+              reposts={reposts}
+              currentUserId={user?.id}
+              onReact={reactToPost}
+              onRepost={toggleRepost}
+              onBookmark={toggleBookmark}
             />
           )}
           {activeTab === 'prayers' && <PrayersTab prayers={prayerRequests} />}

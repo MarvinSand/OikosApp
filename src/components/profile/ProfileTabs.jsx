@@ -214,7 +214,7 @@ export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
 }
 
 // ─── Posts tab ────────────────────────────────────────────────
-export function PostsTab({ posts, currentUserId, onReact, onDelete, onCreatePost }) {
+export function PostsTab({ posts, currentUserId, onReact, onDelete, onRepost, onBookmark, onCreatePost }) {
   const navigate = useNavigate()
   const [sharePost, setSharePost] = useState(null)
   if (posts.length === 0) {
@@ -242,6 +242,41 @@ export function PostsTab({ posts, currentUserId, onReact, onDelete, onCreatePost
           onReact={onReact}
           onDelete={onDelete}
           onClick={post => navigate(`/feed/post/${post.id}`)}
+          onRepost={onRepost}
+          onBookmark={onBookmark}
+          onShare={setSharePost}
+        />
+      ))}
+      {sharePost && (
+        <ShareSheet post={sharePost} onClose={() => setSharePost(null)} />
+      )}
+    </div>
+  )
+}
+
+// ─── Reposts tab ──────────────────────────────────────────────
+export function RepostsTab({ reposts, currentUserId, onReact, onDelete, onRepost, onBookmark }) {
+  const navigate = useNavigate()
+  const [sharePost, setSharePost] = useState(null)
+  if (reposts.length === 0) {
+    return (
+      <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
+        Noch keine Reposts
+      </p>
+    )
+  }
+  return (
+    <div className="px-3 py-3">
+      {reposts.map(p => (
+        <PostCard
+          key={p.id}
+          post={p}
+          currentUserId={currentUserId}
+          onReact={onReact}
+          onDelete={onDelete}
+          onClick={post => navigate(`/feed/post/${post.id}`)}
+          onRepost={onRepost}
+          onBookmark={onBookmark}
           onShare={setSharePost}
         />
       ))}

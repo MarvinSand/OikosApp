@@ -1113,7 +1113,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
                   <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
                   <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
                     <button
-                      onClick={() => { setShowMenu(false); onDelete(post.id) }}
+                      onClick={() => { setShowMenu(false); onDelete?.(post.id) }}
                       style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
                     >
                       <Trash2 size={14} /> Löschen
@@ -1168,7 +1168,6 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         liked={liked}
         likeCount={likeCount}
         onLike={() => onReact(post.id, 'heart')}
-        viewCount={post.view_count}
         bookmarked={post.bookmarked}
         onBookmark={() => onBookmark?.(post.id)}
         onShare={() => onShare?.(post)}
