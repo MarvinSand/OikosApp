@@ -129,16 +129,50 @@ function AppShell() {
 // welcher Route der Link landet) und meldet den User über die Recovery-Session
 // an. Ohne diese Weiche würde man dadurch einfach in der normalen App landen,
 // statt die Seite zum Passwort-Ändern zu sehen.
+//
+// Mail-Apps öffnen den Recovery-Link oft in einem neuen Tab, während zufällig
+// (oder durch den Klick selbst) ein zweiter Tab auf Home aufgeht. Supabase
+// broadcastet PASSWORD_RECOVERY zwar per BroadcastChannel an alle offenen Tabs
+// derselben Origin, aber ein Tab, der erst NACH dem Broadcast gemountet wird,
+// verpasst die Nachricht (BroadcastChannel liefert nicht nach). Deshalb zieht
+// jeder Tab zusätzlich einen localStorage-Marker, den auch ein später
+// gestarteter Tab beim Start noch sieht.
+const RECOVERY_MARKER_KEY = 'oikos_recovery_redirect_at'
+const RECOVERY_MARKER_TTL_MS = 15000
+
 function RecoveryRedirect() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' && window.location.pathname !== '/reset-password') {
+    const redirectToReset = () => {
+      if (window.location.pathname !== '/reset-password') {
         navigate('/reset-password', { replace: true })
       }
+    }
+
+    const markerAt = Number(localStorage.getItem(RECOVERY_MARKER_KEY))
+    if (markerAt && Date.now() - markerAt < RECOVERY_MARKER_TTL_MS) {
+      redirectToReset()
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        localStorage.setItem(RECOVERY_MARKER_KEY, String(Date.now()))
+        redirectToReset()
+      }
     })
-    return () => subscription.unsubscribe()
+
+    const onStorage = (e) => {
+      if (e.key === RECOVERY_MARKER_KEY && e.newValue) {
+        redirectToReset()
+      }
+    }
+    window.addEventListener('storage', onStorage)
+
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('storage', onStorage)
+    }
   }, [navigate])
 
   return null
