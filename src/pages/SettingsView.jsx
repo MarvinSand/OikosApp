@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
-  Moon, Globe, Navigation,
+  Moon, Globe, Navigation, KeyRound,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -98,15 +98,16 @@ function SettingToggle({ icon: Icon, title, desc, checked, onChange }) {
 }
 
 // Menü-Eintrag im Einstellungs-Hub
-function MenuRow({ icon: Icon, title, desc, onClick }) {
+function MenuRow({ icon: Icon, title, desc, onClick, disabled }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       style={{
         display: 'flex', alignItems: 'center', gap: 14, width: '100%',
-        padding: '16px', borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+        padding: '16px', borderRadius: 14, cursor: disabled ? 'wait' : 'pointer', textAlign: 'left',
         border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
-        marginBottom: 10,
+        marginBottom: 10, opacity: disabled ? 0.6 : 1,
       }}
     >
       <div style={{
@@ -181,6 +182,7 @@ export default function SettingsView() {
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [resending, setResending] = useState(false)
+  const [sendingPasswordReset, setSendingPasswordReset] = useState(false)
 
   // Datenschutz-Toggles
   const [showOnMap, setShowOnMap] = useState(false)
@@ -294,6 +296,22 @@ export default function SettingsView() {
     }
   }
 
+  async function handleChangePassword() {
+    if (!user?.email) return
+    setSendingPasswordReset(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: window.location.origin + '/reset-password',
+      })
+      if (error) throw error
+      showToast('E-Mail zum Passwort-Ändern gesendet ✓')
+    } catch {
+      showToast('Fehler beim Senden', 'error')
+    } finally {
+      setSendingPasswordReset(false)
+    }
+  }
+
   async function handleDelete() {
     setDeleting(true)
     try {
@@ -377,6 +395,13 @@ export default function SettingsView() {
             <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>
               Account
             </h3>
+            <MenuRow
+              icon={KeyRound}
+              title="Passwort ändern"
+              desc={sendingPasswordReset ? 'Sende E-Mail…' : 'Link zum Ändern per E-Mail erhalten'}
+              onClick={handleChangePassword}
+              disabled={sendingPasswordReset}
+            />
             <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
               Ausloggen
             </button>
