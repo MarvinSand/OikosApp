@@ -1131,8 +1131,8 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         </div>
       </div>
 
-      {/* Content */}
-      <div onClick={() => onClick(post)} style={{ padding: '0 16px 10px', cursor: 'pointer' }}>
+      {/* Content – links auf Höhe des Namens eingerückt (Avatar-Spalte bleibt für die Linie frei) */}
+      <div onClick={() => onClick(post)} style={{ padding: '0 16px 10px 62px', cursor: 'pointer' }}>
         {post.title && (
           <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{post.title}</p>
         )}

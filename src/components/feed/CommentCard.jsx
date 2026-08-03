@@ -106,7 +106,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
       </div>
 
       {/* Content */}
-      <div onClick={() => onClick?.(comment)} style={{ padding: '0 16px 10px', cursor: 'pointer' }}>
+      <div onClick={() => onClick?.(comment)} style={{ padding: '0 16px 10px 62px', cursor: 'pointer' }}>
         <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: 14, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
           {comment.body}
         </p>
