@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom'
 import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
@@ -125,6 +125,25 @@ function AppShell() {
   return <AppShellInner />
 }
 
+// Supabase liest den Recovery-Code beim Laden automatisch aus der URL (egal auf
+// welcher Route der Link landet) und meldet den User über die Recovery-Session
+// an. Ohne diese Weiche würde man dadurch einfach in der normalen App landen,
+// statt die Seite zum Passwort-Ändern zu sehen.
+function RecoveryRedirect() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' && window.location.pathname !== '/reset-password') {
+        navigate('/reset-password', { replace: true })
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [navigate])
+
+  return null
+}
+
 function OwnMapPage() {
   const { mapId } = useParams()
   return <MapView initialMapId={mapId} hideWorldMapToggle />
@@ -216,6 +235,7 @@ export default function App() {
         <div className="min-h-screen bg-bg w-full flex justify-center md:block">
           <div className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg">
             <BrowserRouter>
+              <RecoveryRedirect />
               <Routes>
                 <Route
                   path="/auth"

@@ -20,40 +20,34 @@ export default function ResetPassword() {
   useEffect(() => {
     let cancelled = false
 
-    async function establishRecoverySession() {
-      // PKCE-Flow (Supabase v2 Standard): Link enthält ?code=... und muss
-      // explizit gegen eine Session getauscht werden, sonst schlägt updateUser() fehl.
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-      if (code) {
-        const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(window.location.href)
-        if (!cancelled) setLinkStatus(exchangeErr ? 'invalid' : 'ready')
-        return
-      }
-
-      // Fallback: älterer Hash-Flow (#access_token=...&type=recovery) –
-      // supabase-js liest das automatisch aus der URL und löst SIGNED_IN/PASSWORD_RECOVERY aus.
-      const hash = window.location.hash
-      if (hash.includes('access_token') || hash.includes('type=recovery')) {
-        return // wird über onAuthStateChange unten behandelt
-      }
-
-      // Kein Recovery-Parameter in der URL – aber evtl. schon eine gültige Session vorhanden
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!cancelled) setLinkStatus(session ? 'ready' : 'invalid')
-    }
-
+    // supabase-js verarbeitet den Recovery-Code/-Token aus der URL automatisch
+    // beim Laden (detectSessionInUrl) und feuert dabei PASSWORD_RECOVERY bzw.
+    // SIGNED_IN. Wir dürfen den Code NICHT zusätzlich manuell tauschen – der
+    // Code ist nur einmal gültig, ein zweiter Tausch würde als "invalid" fehlschlagen.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
         setLinkStatus('ready')
       }
     })
 
-    establishRecoverySession()
+    // Falls die Session (z. B. durch den globalen Redirect in App.jsx) schon
+    // vor dem Mount dieser Seite aufgebaut wurde, direkt übernehmen.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled && session) setLinkStatus('ready')
+    })
+
+    // Fallback: Wenn nach kurzer Zeit weder eine Session noch ein Recovery-Event
+    // eingetroffen ist, war der Link ungültig/abgelaufen.
+    const fallback = setTimeout(() => {
+      if (!cancelled) {
+        setLinkStatus(current => current === 'checking' ? 'invalid' : current)
+      }
+    }, 4000)
 
     return () => {
       cancelled = true
       subscription.unsubscribe()
+      clearTimeout(fallback)
     }
   }, [])
 
