@@ -30,7 +30,7 @@ export default function PostEngagementBar({
   })
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px 12px', borderTop: '1px solid var(--color-warm-3)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px 12px' }}>
       <button onClick={e => { e.stopPropagation(); onComment?.() }} style={{ ...item(false), flex: 1 }} aria-label="Kommentieren">
         <MessageSquare size={15} />
         {commentCount > 0 && <span>{fmtCount(commentCount)}</span>}

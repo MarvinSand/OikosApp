@@ -236,9 +236,9 @@ export default function FeedPostView() {
         </button>
       </div>
 
-      <div style={{ padding: '16px 16px 0' }}>
+      <div>
         {/* ── Original post (full) ── */}
-        <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 16, border: '1.5px solid var(--color-warm-3)', marginBottom: 8, overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)' }}>
           {/* Author row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
             <UserAvatar profile={post.profiles} />
@@ -302,7 +302,7 @@ export default function FeedPostView() {
         </div>
 
         {/* ── Divider ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 14px', padding: '0 16px' }}>
           <div style={{ flex: 1, height: 1, backgroundColor: 'var(--color-warm-3)' }} />
           <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>
             {comments.length} {comments.length === 1 ? 'Antwort' : 'Antworten'}
@@ -312,7 +312,7 @@ export default function FeedPostView() {
 
         {/* ── Comments ── */}
         {comments.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+          <div style={{ textAlign: 'center', padding: '24px 16px' }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>
               Noch keine Antworten. Sei die Erste!
             </p>

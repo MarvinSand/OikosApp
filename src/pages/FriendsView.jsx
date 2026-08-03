@@ -1069,14 +1069,11 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
     <div
       style={{
         backgroundColor: 'var(--color-white)',
-        borderRadius: 16,
-        border: '1.5px solid var(--color-warm-3)',
-        marginBottom: 12,
-        overflow: 'hidden',
+        borderBottom: '1px solid var(--color-warm-3)',
       }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px 8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${post.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
           <FeedAvatar profile={author} />
         </button>
@@ -1129,7 +1126,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
       </div>
 
       {/* Content */}
-      <div onClick={() => onClick(post)} style={{ padding: '0 14px 10px', cursor: 'pointer' }}>
+      <div onClick={() => onClick(post)} style={{ padding: '0 16px 10px', cursor: 'pointer' }}>
         {post.title && (
           <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{post.title}</p>
         )}
@@ -1931,10 +1928,10 @@ function FeedTab() {
         </div>
       </div>{/* /Sticky-Header */}
 
-      <div style={{ padding: '14px 16px 0' }}>
+      <div style={{ padding: '14px 0 0' }}>
       {/* Loading skeleton */}
       {loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '0 16px' }}>
           {[0,1,2].map(i => (
             <div key={i} style={{ height: 140, borderRadius: 16, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />
           ))}

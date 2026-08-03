@@ -55,13 +55,10 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
   return (
     <div style={{
       backgroundColor: 'var(--color-white)',
-      borderRadius: 16,
-      border: '1.5px solid var(--color-warm-3)',
-      marginBottom: 12,
-      overflow: 'hidden',
+      borderBottom: '1px solid var(--color-warm-3)',
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px 8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${comment.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
           <CommentAvatar profile={author} />
         </button>
@@ -103,7 +100,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
       </div>
 
       {/* Content */}
-      <div onClick={() => onClick?.(comment)} style={{ padding: '0 14px 10px', cursor: 'pointer' }}>
+      <div onClick={() => onClick?.(comment)} style={{ padding: '0 16px 10px', cursor: 'pointer' }}>
         <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: 14, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
           {comment.body}
         </p>

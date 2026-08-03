@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Send, Trash2, MoreHorizontal, CornerUpLeft } from 'lucide-react'
+import { ArrowLeft, Send, Trash2, MoreHorizontal } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../context/ToastContext'
 import { useCommentThread } from '../hooks/useCommentThread'
+import { PostCard } from './FriendsView'
 import CommentCard from '../components/feed/CommentCard'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
 import ShareSheet from '../components/feed/ShareSheet'
@@ -40,18 +41,20 @@ function UserAvatar({ profile, size = 36 }) {
   )
 }
 
-// Zeigt einen einzelnen Kommentar als Fokus (wie ein Tweet-Detail): der
-// Kommentar oben wie eine Post-Karte, darunter alle direkten Antworten,
-// die selbst wieder anklickbar sind, um noch tiefer zu drillen.
+// Zeigt einen Kommentar als Fokus, wie ein Tweet-Detail bei Twitter:
+// scrollt man hoch, sieht man den Ursprungs-Post und die ganze Eltern-Kette
+// von Kommentaren darüber. Unter dem fokussierten Kommentar stehen nur
+// dessen direkte Antworten, die selbst wieder anklickbar sind.
 export default function CommentDetailView() {
   const { id: commentId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { showToast } = useToast()
   const {
-    comment, replies, loading, reload,
+    comment, replies, ancestorPost, ancestorComments, loading, reload,
     toggleLike, toggleRepost, removeBookmark, markBookmarked,
     addReply, deleteReply,
+    togglePostLike, togglePostRepost, removePostBookmark, markPostBookmarked, deletePost,
   } = useCommentThread(commentId)
 
   const [draft, setDraft] = useState('')
@@ -59,6 +62,7 @@ export default function CommentDetailView() {
   const [showMenu, setShowMenu] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const [showShareSheet, setShowShareSheet] = useState(false)
+  const [ancestorSharePost, setAncestorSharePost] = useState(null)
   const bottomRef = useRef(null)
   const draftRef = useRef(null)
 
@@ -87,6 +91,18 @@ export default function CommentDetailView() {
 
   async function handleDeleteReply(replyId) {
     await deleteReply(replyId)
+  }
+
+  async function handleDeleteAncestorComment(id) {
+    if (!window.confirm('Kommentar wirklich löschen?')) return
+    await supabase.from('feed_comments').delete().eq('id', id)
+    await reload()
+  }
+
+  async function handleDeleteAncestorPost() {
+    if (!window.confirm('Post wirklich löschen?')) return
+    await deletePost()
+    navigate('/friends?tab=feed', { replace: true })
   }
 
   if (loading) {
@@ -127,18 +143,38 @@ export default function CommentDetailView() {
         </button>
       </div>
 
-      <div style={{ padding: '16px 16px 0' }}>
-        {/* Breadcrumb zurück zum Ursprungs-Post / übergeordneten Kommentar */}
-        <button
-          onClick={() => navigate(comment.parent_id ? `/feed/comment/${comment.parent_id}` : `/feed/post/${comment.post_id}`)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: '0 0 10px', fontWeight: 600 }}
-        >
-          <CornerUpLeft size={13} />
-          {comment.parent_id ? 'Antwort auf einen Kommentar' : 'Zum Beitrag'}
-        </button>
+      <div>
+        {/* ── Kontext oberhalb: Ursprungs-Post + Eltern-Kommentare (wie bei Twitter beim Hochscrollen) ── */}
+        {ancestorPost && (
+          <PostCard
+            post={ancestorPost}
+            currentUserId={user?.id}
+            onReact={togglePostLike}
+            onDelete={handleDeleteAncestorPost}
+            onClick={p => navigate(`/feed/post/${p.id}`)}
+            onRepost={togglePostRepost}
+            onBookmark={removePostBookmark}
+            onBookmarkSaved={markPostBookmarked}
+            onShare={setAncestorSharePost}
+          />
+        )}
+
+        {ancestorComments.map(ancestor => (
+          <CommentCard
+            key={ancestor.id}
+            comment={ancestor}
+            currentUserId={user?.id}
+            onLike={toggleLike}
+            onRepost={toggleRepost}
+            onBookmark={removeBookmark}
+            onBookmarkSaved={markBookmarked}
+            onDelete={handleDeleteAncestorComment}
+            onClick={c => navigate(`/feed/comment/${c.id}`)}
+          />
+        ))}
 
         {/* ── Fokussierter Kommentar (voll, wie ein Post) ── */}
-        <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 16, border: '1.5px solid var(--color-warm-3)', marginBottom: 8, overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
             <button onClick={() => navigate(`/user/${comment.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
               <UserAvatar profile={comment.profiles} />
@@ -197,7 +233,7 @@ export default function CommentDetailView() {
         </div>
 
         {/* ── Divider ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 14px', padding: '0 16px' }}>
           <div style={{ flex: 1, height: 1, backgroundColor: 'var(--color-warm-3)' }} />
           <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>
             {replies.length} {replies.length === 1 ? 'Antwort' : 'Antworten'}
@@ -207,7 +243,7 @@ export default function CommentDetailView() {
 
         {/* ── Antworten ── */}
         {replies.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+          <div style={{ textAlign: 'center', padding: '24px 16px' }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>
               Noch keine Antworten. Sei die Erste!
             </p>
@@ -263,6 +299,10 @@ export default function CommentDetailView() {
 
       {showShareSheet && (
         <ShareSheet comment={comment} onClose={() => setShowShareSheet(false)} />
+      )}
+
+      {ancestorSharePost && (
+        <ShareSheet post={ancestorSharePost} onClose={() => setAncestorSharePost(null)} />
       )}
     </div>
   )
