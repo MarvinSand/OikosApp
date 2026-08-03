@@ -134,7 +134,7 @@ export default function CommentDetailView() {
   return (
     <div className="min-h-screen bg-bg pb-32">
       {/* Back button */}
-      <div style={{ padding: '48px 16px 12px', backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)', position: 'sticky', top: 0, zIndex: 10 }}>
+      <div style={{ padding: '48px 16px 12px', backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-warm-3)', position: 'sticky', top: 0, zIndex: 10 }}>
         <button
           onClick={() => navigate(-1)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-warm-1)', fontWeight: 600, padding: 0 }}
@@ -156,6 +156,7 @@ export default function CommentDetailView() {
             onBookmark={removePostBookmark}
             onBookmarkSaved={markPostBookmarked}
             onShare={setAncestorSharePost}
+            threadLineAfter
           />
         )}
 
@@ -170,11 +171,12 @@ export default function CommentDetailView() {
             onBookmarkSaved={markBookmarked}
             onDelete={handleDeleteAncestorComment}
             onClick={c => navigate(`/feed/comment/${c.id}`)}
+            threadLineAfter
           />
         ))}
 
         {/* ── Fokussierter Kommentar (voll, wie ein Post) ── */}
-        <div style={{ backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)' }}>
+        <div style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-warm-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
             <button onClick={() => navigate(`/user/${comment.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
               <UserAvatar profile={comment.profiles} />
@@ -268,7 +270,7 @@ export default function CommentDetailView() {
       </div>
 
       {/* ── Sticky Antwort-Eingabe ── */}
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)', padding: '10px 16px', paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))', zIndex: 20 }}>
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-bg)', borderTop: '1px solid var(--color-warm-3)', padding: '10px 16px', paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))', zIndex: 20 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <textarea
             ref={draftRef}

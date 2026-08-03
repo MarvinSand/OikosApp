@@ -1045,7 +1045,7 @@ function FeedAvatar({ profile, size = 36 }) {
 }
 
 // ─── Post Card ───────────────────────────────────────────────
-export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare }) {
+export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
@@ -1068,10 +1068,16 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   return (
     <div
       style={{
-        backgroundColor: 'var(--color-white)',
+        backgroundColor: 'var(--color-bg)',
         borderBottom: '1px solid var(--color-warm-3)',
+        position: 'relative',
       }}
     >
+      {/* Thread-Verbindungslinie zum nächsten Post in der Kette (wie bei Twitter) */}
+      {threadLineAfter && (
+        <div style={{ position: 'absolute', left: 33, top: 48, bottom: 0, width: 2, backgroundColor: 'var(--color-warm-3)' }} />
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${post.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>

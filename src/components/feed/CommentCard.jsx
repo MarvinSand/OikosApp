@@ -39,7 +39,7 @@ function CommentAvatar({ profile, size = 36 }) {
 // Kommentar-Karte im selben Stil wie ein Feed-Post: gleiche Icon-Leiste
 // (Kommentar/Repost/Like/Bookmark/Teilen); Klick öffnet den Kommentar als
 // eigenen Thread mit all seinen Antworten (/feed/comment/:id).
-export default function CommentCard({ comment, currentUserId, onLike, onRepost, onBookmark, onBookmarkSaved, onDelete, onClick }) {
+export default function CommentCard({ comment, currentUserId, onLike, onRepost, onBookmark, onBookmarkSaved, onDelete, onClick, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
@@ -54,9 +54,15 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
 
   return (
     <div style={{
-      backgroundColor: 'var(--color-white)',
+      backgroundColor: 'var(--color-bg)',
       borderBottom: '1px solid var(--color-warm-3)',
+      position: 'relative',
     }}>
+      {/* Thread-Verbindungslinie zum nächsten Kommentar in der Kette (wie bei Twitter) */}
+      {threadLineAfter && (
+        <div style={{ position: 'absolute', left: 33, top: 48, bottom: 0, width: 2, backgroundColor: 'var(--color-warm-3)' }} />
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${comment.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>

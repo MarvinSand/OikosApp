@@ -27,7 +27,7 @@ export default function SavedPostsView() {
 
   return (
     <div className="min-h-screen bg-bg pb-24">
-      <div style={{ padding: '48px 16px 12px', backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)', position: 'sticky', top: 0, zIndex: 10 }}>
+      <div style={{ padding: '48px 16px 12px', backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-warm-3)', position: 'sticky', top: 0, zIndex: 10 }}>
         <button
           onClick={() => navigate(-1)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-warm-1)', fontWeight: 600, padding: 0, marginBottom: 10 }}
@@ -66,9 +66,9 @@ export default function SavedPostsView() {
         )}
       </div>
 
-      <div style={{ padding: '16px 16px 0' }}>
+      <div style={{ padding: '16px 0 0' }}>
         {loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 16px' }}>
             {[0, 1, 2].map(i => (
               <div key={i} style={{ height: 120, borderRadius: 16, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
             ))}
