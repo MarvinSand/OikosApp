@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Cross, Eye, EyeOff } from 'lucide-react'
+import { Cross, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 
@@ -14,6 +14,48 @@ export default function ResetPassword() {
   const [done, setDone] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  // 'checking' | 'ready' | 'invalid' – ob der Recovery-Link gültig ist und eine Session aufgebaut wurde
+  const [linkStatus, setLinkStatus] = useState('checking')
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function establishRecoverySession() {
+      // PKCE-Flow (Supabase v2 Standard): Link enthält ?code=... und muss
+      // explizit gegen eine Session getauscht werden, sonst schlägt updateUser() fehl.
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
+      if (code) {
+        const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(window.location.href)
+        if (!cancelled) setLinkStatus(exchangeErr ? 'invalid' : 'ready')
+        return
+      }
+
+      // Fallback: älterer Hash-Flow (#access_token=...&type=recovery) –
+      // supabase-js liest das automatisch aus der URL und löst SIGNED_IN/PASSWORD_RECOVERY aus.
+      const hash = window.location.hash
+      if (hash.includes('access_token') || hash.includes('type=recovery')) {
+        return // wird über onAuthStateChange unten behandelt
+      }
+
+      // Kein Recovery-Parameter in der URL – aber evtl. schon eine gültige Session vorhanden
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!cancelled) setLinkStatus(session ? 'ready' : 'invalid')
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
+        setLinkStatus('ready')
+      }
+    })
+
+    establishRecoverySession()
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [])
 
   function validate() {
     if (password.length < 8) return 'Das Passwort muss mindestens 8 Zeichen haben.'
@@ -59,7 +101,32 @@ export default function ResetPassword() {
 
       {/* Main Card */}
       <div className="w-full max-w-sm glass-panel rounded-3xl p-7 relative z-10 animate-slide-up">
-        {done ? (
+        {linkStatus === 'checking' && (
+          <div className="text-center py-6 animate-fade-in">
+            <div className="w-12 h-12 rounded-full border-[3px] border-warm-3 border-t-warm-1 animate-spin mx-auto mb-5" />
+            <p className="text-sm text-dark-muted">Link wird geprüft…</p>
+          </div>
+        )}
+
+        {linkStatus === 'invalid' && (
+          <div className="text-center py-4 animate-fade-in">
+            <div className="w-16 h-16 bg-error-bg rounded-full flex items-center justify-center mx-auto mb-5">
+              <AlertCircle size={30} className="text-error" strokeWidth={2} />
+            </div>
+            <h3 className="text-xl font-bold text-dark mb-2">Link ungültig</h3>
+            <p className="text-sm text-dark-muted leading-relaxed mb-6">
+              Dieser Link ist abgelaufen oder wurde bereits verwendet.
+            </p>
+            <a
+              href="/auth"
+              className="inline-block w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-warm-1/30 transition-all duration-300"
+            >
+              Neuen Reset-Link anfordern
+            </a>
+          </div>
+        )}
+
+        {linkStatus === 'ready' && (done ? (
           <div className="text-center py-6 animate-fade-in">
             <div className="w-16 h-16 bg-accent-light/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <p className="font-serif text-3xl text-accent font-bold">✓</p>
@@ -134,7 +201,7 @@ export default function ResetPassword() {
               </button>
             </form>
           </div>
-        )}
+        ))}
       </div>
     </div>
   )
