@@ -5,9 +5,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { useBookmarkCollections } from '../../hooks/useBookmarkCollections'
 import { useToast } from '../../context/ToastContext'
 
-// Sheet zum Speichern eines Posts – wie bei Instagram: ohne Kategorie speichern,
-// in eine bestehende Sammlung ablegen oder eine neue Sammlung anlegen.
-export default function SavePostSheet({ postId, onClose, onSaved }) {
+// Sheet zum Speichern eines Posts oder Kommentars – wie bei Instagram: ohne
+// Kategorie speichern, in eine bestehende Sammlung ablegen oder eine neue
+// Sammlung anlegen. Beide teilen sich dieselben Bookmark-Sammlungen.
+export default function SavePostSheet({ postId, commentId, onClose, onSaved }) {
   const { user } = useAuth()
   const { showToast } = useToast()
   const { collections, createCollection } = useBookmarkCollections()
@@ -15,12 +16,16 @@ export default function SavePostSheet({ postId, onClose, onSaved }) {
   const [showNewCollection, setShowNewCollection] = useState(false)
   const [newName, setNewName] = useState('')
 
+  const table = commentId ? 'feed_comment_bookmarks' : 'feed_bookmarks'
+  const matchField = commentId ? 'comment_id' : 'post_id'
+  const targetId = commentId || postId
+
   async function saveTo(collectionId) {
     if (saving) return
     setSaving(true)
     const { error } = await supabase
-      .from('feed_bookmarks')
-      .upsert({ post_id: postId, user_id: user.id, collection_id: collectionId }, { onConflict: 'post_id,user_id' })
+      .from(table)
+      .upsert({ [matchField]: targetId, user_id: user.id, collection_id: collectionId }, { onConflict: `${matchField},user_id` })
     setSaving(false)
     if (error) {
       showToast('Fehler beim Speichern', 'error')
@@ -56,7 +61,7 @@ export default function SavePostSheet({ postId, onClose, onSaved }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Post speichern</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{commentId ? 'Kommentar speichern' : 'Post speichern'}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>

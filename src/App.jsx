@@ -29,6 +29,7 @@ const AnsweredPrayersView = lazy(() => import('./pages/AnsweredPrayersView'))
 const PrayerStatsView = lazy(() => import('./pages/PrayerStatsView'))
 const FeedPostView = lazy(() => import('./pages/FeedPostView'))
 const SavedPostsView = lazy(() => import('./pages/SavedPostsView'))
+const CommentDetailView = lazy(() => import('./pages/CommentDetailView'))
 const PrayerDetailView = lazy(() => import('./pages/PrayerDetailView'))
 const PublicMapView = lazy(() => import('./pages/PublicMapView'))
 const Prayers = lazy(() => import('./pages/Prayers'))
@@ -84,6 +85,7 @@ function AppShellInner() {
           <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/feed/saved" element={<SavedPostsView />} />
+          <Route path="/feed/comment/:id" element={<CommentDetailView />} />
           <Route path="/chat" element={<Navigate to="/chats" replace />} />
           <Route path="/chats" element={<FriendsView />} />
           <Route path="/chat/:conversationId" element={<ConversationView />} />

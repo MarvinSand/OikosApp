@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
+import CommentCard from '../components/feed/CommentCard'
+import { COMMENT_SELECT, attachCommentEngagement } from '../lib/commentEngagement'
 
 // ─── Helpers ─────────────────────────────────────────────────
 const TYPE_CONFIG = {
@@ -73,7 +75,6 @@ export default function FeedPostView() {
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
-  const [replyTo, setReplyTo] = useState(null) // { id, author: name }
   const [sending, setSending] = useState(false)
   const [sharePost, setSharePost] = useState(null)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
@@ -87,10 +88,7 @@ export default function FeedPostView() {
     const [{ data: postData }, { data: reactData }, { data: commentData }, { data: repostData }, { data: bookmarkData }] = await Promise.all([
       supabase.from('feed_posts').select(POST_SELECT).eq('id', postId).single(),
       supabase.from('feed_reactions').select('id, user_id, type').eq('post_id', postId),
-      supabase.from('feed_comments')
-        .select('id, post_id, parent_id, author_id, body, created_at, profiles:author_id(id, full_name, username, avatar_url, is_christian)')
-        .eq('post_id', postId)
-        .order('created_at'),
+      supabase.from('feed_comments').select(COMMENT_SELECT).eq('post_id', postId).order('created_at'),
       supabase.from('feed_reposts').select('id, user_id').eq('post_id', postId),
       user
         ? supabase.from('feed_bookmarks').select('id').eq('post_id', postId).eq('user_id', user.id)
@@ -98,7 +96,7 @@ export default function FeedPostView() {
     ])
     setPost(postData || null)
     setReactions(reactData || [])
-    setComments(commentData || [])
+    setComments(await attachCommentEngagement(commentData || [], user?.id))
     setReposts(repostData || [])
     setBookmarked((bookmarkData || []).length > 0)
     setLoading(false)
@@ -147,13 +145,12 @@ export default function FeedPostView() {
     setSending(true)
     const { data, error } = await supabase
       .from('feed_comments')
-      .insert({ post_id: postId, author_id: user.id, body, parent_id: replyTo?.id || null })
-      .select('id, post_id, parent_id, author_id, body, created_at, profiles:author_id(id, full_name, username, avatar_url, is_christian)')
+      .insert({ post_id: postId, author_id: user.id, body, parent_id: null })
+      .select(COMMENT_SELECT)
       .single()
     if (!error && data) {
-      setComments(prev => [...prev, data])
+      setComments(prev => [...prev, { ...data, likes: [], reposts: [], bookmarked: false, replyCount: 0 }])
       setDraft('')
-      setReplyTo(null)
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
     }
     setSending(false)
@@ -162,6 +159,41 @@ export default function FeedPostView() {
   async function deleteComment(commentId) {
     setComments(prev => prev.filter(c => c.id !== commentId))
     await supabase.from('feed_comments').delete().eq('id', commentId)
+  }
+
+  function patchCommentAnywhere(commentId, updater) {
+    setComments(prev => prev.map(c => c.id === commentId ? updater(c) : c))
+  }
+
+  async function toggleCommentLike(commentId) {
+    const target = comments.find(c => c.id === commentId)
+    const mine = target?.likes?.find(l => l.user_id === user.id)
+    patchCommentAnywhere(commentId, c => ({
+      ...c,
+      likes: mine ? c.likes.filter(l => l.user_id !== user.id) : [...(c.likes || []), { comment_id: commentId, user_id: user.id }],
+    }))
+    if (mine) await supabase.from('feed_comment_likes').delete().eq('comment_id', commentId).eq('user_id', user.id)
+    else await supabase.from('feed_comment_likes').insert({ comment_id: commentId, user_id: user.id })
+  }
+
+  async function toggleCommentRepost(commentId) {
+    const target = comments.find(c => c.id === commentId)
+    const mine = target?.reposts?.find(r => r.user_id === user.id)
+    patchCommentAnywhere(commentId, c => ({
+      ...c,
+      reposts: mine ? c.reposts.filter(r => r.user_id !== user.id) : [...(c.reposts || []), { comment_id: commentId, user_id: user.id }],
+    }))
+    if (mine) await supabase.from('feed_comment_reposts').delete().eq('comment_id', commentId).eq('user_id', user.id)
+    else await supabase.from('feed_comment_reposts').insert({ comment_id: commentId, user_id: user.id })
+  }
+
+  async function removeCommentBookmark(commentId) {
+    patchCommentAnywhere(commentId, c => ({ ...c, bookmarked: false, bookmark_count: Math.max((c.bookmark_count || 0) - 1, 0) }))
+    await supabase.from('feed_comment_bookmarks').delete().eq('comment_id', commentId).eq('user_id', user.id)
+  }
+
+  function markCommentBookmarked(commentId) {
+    patchCommentAnywhere(commentId, c => ({ ...c, bookmarked: true, bookmark_count: (c.bookmark_count || 0) + 1 }))
   }
 
   if (loading) {
@@ -190,8 +222,7 @@ export default function FeedPostView() {
   const likeCount = reactions.filter(x => x.type === 'heart').length
   const reposted = reposts.some(r => r.user_id === user?.id)
 
-  const topComments  = comments.filter(c => !c.parent_id)
-  const getReplies   = (parentId) => comments.filter(c => c.parent_id === parentId)
+  const topComments = comments.filter(c => !c.parent_id)
 
   return (
     <div className="min-h-screen bg-bg pb-32">
@@ -288,80 +319,25 @@ export default function FeedPostView() {
           </div>
         )}
 
-        {topComments.map(comment => {
-          const replies = getReplies(comment.id)
-          const isOwn = comment.author_id === user?.id
-          return (
-            <div key={comment.id} style={{ marginBottom: 12 }}>
-              <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 14, border: '1px solid var(--color-warm-3)', padding: '12px 14px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                  <UserAvatar profile={comment.profiles} size={30} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
-                        {comment.profiles?.full_name || comment.profiles?.username || '…'}
-                      </span>
-                      <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)' }}>{timeAgo(comment.created_at)}</span>
-                      {isOwn && (
-                        <button onClick={() => deleteComment(comment.id)} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', color: '#C0392B', display: 'flex', padding: 2 }}>
-                          <Trash2 size={12} />
-                        </button>
-                      )}
-                    </div>
-                    <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>{comment.body}</p>
-                    <button
-                      onClick={() => setReplyTo({ id: comment.id, author: comment.profiles?.full_name || comment.profiles?.username })}
-                      style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', padding: '4px 0 0', fontWeight: 600 }}
-                    >
-                      Antworten
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Replies */}
-              {replies.map(reply => (
-                <div key={reply.id} style={{ marginLeft: 30, marginTop: 6 }}>
-                  <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, border: '1px solid var(--color-warm-3)', padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <UserAvatar profile={reply.profiles} size={26} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
-                            {reply.profiles?.full_name || reply.profiles?.username || '…'}
-                          </span>
-                          <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)' }}>{timeAgo(reply.created_at)}</span>
-                          {reply.author_id === user?.id && (
-                            <button onClick={() => deleteComment(reply.id)} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', color: '#C0392B', display: 'flex', padding: 2 }}>
-                              <Trash2 size={11} />
-                            </button>
-                          )}
-                        </div>
-                        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>{reply.body}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        })}
+        {topComments.map(comment => (
+          <CommentCard
+            key={comment.id}
+            comment={comment}
+            currentUserId={user?.id}
+            onLike={toggleCommentLike}
+            onRepost={toggleCommentRepost}
+            onBookmark={removeCommentBookmark}
+            onBookmarkSaved={markCommentBookmarked}
+            onDelete={deleteComment}
+            onClick={c => navigate(`/feed/comment/${c.id}`)}
+          />
+        ))}
 
         <div ref={bottomRef} style={{ height: 8 }} />
       </div>
 
       {/* ── Sticky comment input ── */}
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)', padding: '10px 16px', paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))', zIndex: 20 }}>
-        {replyTo && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 10px', borderRadius: 8, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', flex: 1 }}>
-              Antwort an <strong>{replyTo.author}</strong>
-            </span>
-            <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', color: 'var(--color-text-light)' }}>
-              <X size={14} />
-            </button>
-          </div>
-        )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <textarea
             ref={draftRef}

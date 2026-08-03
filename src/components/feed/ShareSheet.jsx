@@ -3,14 +3,16 @@ import { X, Link2, Send, Check } from 'lucide-react'
 import ForwardSheet from '../prayer/ForwardSheet'
 import { useToast } from '../../context/ToastContext'
 
-// Sheet zum Teilen eines Feed-Posts: entweder app-intern an Geschwister
-// (ForwardSheet) oder als öffentlicher Link zum Kopieren/Teilen außerhalb der App.
-export default function ShareSheet({ post, onClose }) {
+// Sheet zum Teilen eines Feed-Posts oder Kommentars: entweder app-intern an
+// Geschwister (ForwardSheet) oder als öffentlicher Link zum Kopieren/Teilen
+// außerhalb der App.
+export default function ShareSheet({ post, comment, onClose }) {
   const { showToast } = useToast()
   const [showForward, setShowForward] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const postUrl = `${window.location.origin}/feed/post/${post.id}`
+  const item = comment || post
+  const postUrl = `${window.location.origin}${comment ? `/feed/comment/${item.id}` : `/feed/post/${item.id}`}`
 
   async function handleCopyLink() {
     try {
@@ -25,7 +27,7 @@ export default function ShareSheet({ post, onClose }) {
 
   async function handleSystemShare() {
     try {
-      await navigator.share({ title: 'OIKOS', text: post.title || post.body || 'Beitrag', url: postUrl })
+      await navigator.share({ title: 'OIKOS', text: item.title || item.body || 'Beitrag', url: postUrl })
       onClose()
     } catch {
       // Nutzer hat den Share-Dialog abgebrochen – nichts tun
@@ -34,12 +36,12 @@ export default function ShareSheet({ post, onClose }) {
 
   function buildMessage() {
     const parts = []
-    if (post.title) parts.push(post.title)
-    if (post.type === 'bible') {
-      if (post.bible_reference) parts.push(`📖 ${post.bible_reference}`)
-      if (post.bible_verse) parts.push(`„${post.bible_verse}"`)
+    if (item.title) parts.push(item.title)
+    if (item.type === 'bible') {
+      if (item.bible_reference) parts.push(`📖 ${item.bible_reference}`)
+      if (item.bible_verse) parts.push(`„${item.bible_verse}"`)
     }
-    if (post.body) parts.push(post.body)
+    if (item.body) parts.push(item.body)
     parts.push(postUrl)
     return { type: 'text', text: parts.join('\n\n') }
   }
@@ -47,7 +49,7 @@ export default function ShareSheet({ post, onClose }) {
   if (showForward) {
     return (
       <ForwardSheet
-        previewTitle={post.title || post.body || 'Beitrag'}
+        previewTitle={item.title || item.body || 'Beitrag'}
         buildMessage={buildMessage}
         onClose={onClose}
       />
@@ -66,7 +68,7 @@ export default function ShareSheet({ post, onClose }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Beitrag teilen</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{comment ? 'Kommentar teilen' : 'Beitrag teilen'}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>
