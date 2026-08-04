@@ -390,17 +390,20 @@ function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJump
       onTouchCancel={msg.is_deleted ? undefined : longPress.onTouchCancel}
       onClick={handleClick}
     >
-      {/* Sender name for community chats (non-own) */}
+      {/* Sender name + avatar for community/activity chats (non-own) */}
       {isCommunity && !isOwn && (
-        <p style={{
-          fontFamily: 'Lora, serif',
-          fontSize: 11,
-          color: 'var(--color-text-muted)',
-          margin: '0 0 2px 4px',
-          fontStyle: 'italic',
-        }}>
-          {senderName}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, margin: '0 0 2px 4px' }}>
+          <Avatar name={senderName} size={16} isChristian={msg.profiles?.is_christian} avatarUrl={msg.profiles?.avatar_url} />
+          <p style={{
+            fontFamily: 'Lora, serif',
+            fontSize: 11,
+            color: 'var(--color-text-muted)',
+            margin: 0,
+            fontStyle: 'italic',
+          }}>
+            {senderName}
+          </p>
+        </div>
       )}
 
       <div
