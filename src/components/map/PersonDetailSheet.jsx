@@ -125,7 +125,7 @@ function EditPersonForm({ person, onSave, onCancel }) {
 }
 
 // --- Connections Section ---
-function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor, onAddConnectedPerson, mapOwnerName, ownerDisconnected, onOwnerDisconnect, onDeletePerson, placeConnections = [], places = [], onDisconnectFromPlace }) {
+function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor, onAddConnectedPerson, mapOwnerName, ownerDisconnected, onOwnerDisconnect, onDeletePerson, placeConnections = [], places = [], onDisconnectFromPlace, isOwner = true }) {
   const [showAddSearch, setShowAddSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [labelModal, setLabelModal] = useState(null) // { targetId }
@@ -216,6 +216,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                 (Map-Besitzer)
               </span>
             </div>
+            {isOwner && (
             <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
               <button
                 onClick={() => {
@@ -240,8 +241,9 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                 <Trash2 size={14} />
               </button>
             </div>
+            )}
           </div>
-          {ownerPickerOpen && (
+          {isOwner && ownerPickerOpen && (
             <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 14, marginBottom: 8 }}>
               <ColorSwatches colors={CONN_COLORS} selected={ownerColorDraft} onSelect={hex => setOwnerColorDraft(hex)} />
               <button
@@ -262,7 +264,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
       )}
 
       {/* Bestätigung: Person von Map entfernen */}
-      {showOwnerDisconnectConfirm && (
+      {isOwner && showOwnerDisconnectConfirm && (
         <>
           <div
             onClick={() => setShowOwnerDisconnectConfirm(false)}
@@ -319,6 +321,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                   </span>
                 )}
               </div>
+              {isOwner && (
               <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                 <button
                   onClick={() => {
@@ -341,10 +344,11 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                   <Trash2 size={14} />
                 </button>
               </div>
+              )}
             </div>
 
             {/* Inline color picker */}
-            {isPickerOpen && (
+            {isOwner && isPickerOpen && (
               <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 14, marginBottom: 8 }}>
                 <ColorSwatches colors={CONN_COLORS} selected={colorDraft} onSelect={hex => setColorDraft(hex)} />
                 <button
@@ -396,6 +400,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                     </span>
                   )}
                 </div>
+                {isOwner && (
                 <button
                   onClick={() => onDisconnectFromPlace?.(pl.id, person.id)}
                   style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: '#C0392B', flexShrink: 0, display: 'flex' }}
@@ -403,6 +408,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                 >
                   <Trash2 size={14} />
                 </button>
+                )}
               </div>
             )
           })}
@@ -410,7 +416,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
       )}
 
       {/* Add buttons */}
-      {!showAddSearch && !showNewPersonForm && (
+      {isOwner && !showAddSearch && !showNewPersonForm && (
         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           <button
             onClick={() => setShowAddSearch(true)}
@@ -428,7 +434,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
       )}
 
       {/* New person inline form */}
-      {showNewPersonForm && (
+      {isOwner && showNewPersonForm && (
         <div style={{ marginTop: 10, backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 12 }}>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8, lineHeight: 1.5 }}>
             Neue Person wird direkt mit <strong>{person.name}</strong> verbunden.
@@ -461,7 +467,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
       )}
 
       {/* Inline search */}
-      {showAddSearch && (
+      {isOwner && showAddSearch && (
         <div style={{ marginTop: 10, backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 12 }}>
           <input
             type="text"
@@ -496,7 +502,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
       )}
 
       {/* Inline label modal */}
-      {labelModal && (
+      {isOwner && labelModal && (
         <>
           <div
             onClick={() => { setLabelModal(null); setLabelInput('') }}
@@ -545,7 +551,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
 }
 
 // --- Account Linking Section ---
-function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkAccount, onUpdateOverlay }) {
+function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkAccount, onUpdateOverlay, isOwner = true }) {
   const navigate = useNavigate()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -656,7 +662,8 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
           </button>
         </div>
 
-        {/* OIKOS einblenden toggle */}
+        {/* OIKOS einblenden toggle — nur für den Besitzer konfigurierbar */}
+        {isOwner && (
         <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: overlayEnabled ? 10 : 0 }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
@@ -752,9 +759,10 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
             </div>
           )}
         </div>
+        )}
 
-        {/* Unlink */}
-        {!confirmUnlink ? (
+        {/* Unlink — nur der Besitzer darf die Verknüpfung lösen */}
+        {isOwner && (!confirmUnlink ? (
           <button
             onClick={() => setConfirmUnlink(true)}
             style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: '#C0392B', cursor: 'pointer' }}
@@ -777,10 +785,13 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
               Nein
             </button>
           </div>
-        )}
+        ))}
       </div>
     )
   }
+
+  // Nicht verknüpft: Verknüpfen-UI ist eine reine Besitzer-Aktion
+  if (!isOwner) return null
 
   return (
     <div style={{ marginBottom: 8 }}>
@@ -1054,6 +1065,7 @@ export default function PersonDetailSheet({
         <div>
           <ImpactMapSection
             personId={person.id} isOwner={isOwner} personName={person.name}
+            impactStage={person.impact_stage}
             onStageCompleted={(nextStage) => {
               setPerson(p => ({ ...p, impact_stage: nextStage }))
               onUpdate?.({ impact_stage: nextStage })
@@ -1080,6 +1092,7 @@ export default function PersonDetailSheet({
           placeConnections={placeConnections}
           places={places}
           onDisconnectFromPlace={onDisconnectFromPlace}
+          isOwner={isOwner}
         />
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
@@ -1098,6 +1111,7 @@ export default function PersonDetailSheet({
               setPerson(p => ({ ...p, linked_user_id: null, overlay_map_id: null }))
             }}
             onUpdateOverlay={onUpdateOverlay}
+            isOwner={isOwner}
           />
         </div>
 
