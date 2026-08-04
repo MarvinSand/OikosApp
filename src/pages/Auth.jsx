@@ -104,7 +104,7 @@ export default function Auth() {
   }
 
   return (
-    <div className={`bg-bg flex flex-col items-center relative ${view === 'welcome' ? 'h-[100dvh] overflow-hidden justify-center px-5 py-4' : 'min-h-screen justify-start p-6 pt-10 pb-10 overflow-y-auto'}`}>
+    <div className={`bg-bg flex flex-col items-center relative ${view === 'welcome' ? 'h-[100dvh] overflow-hidden justify-center px-5 py-4' : 'h-[100dvh] justify-start p-6 pt-10 pb-10 overflow-y-auto overflow-x-hidden'}`}>
       {/* Decorative circles */}
       <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-accent/10 pointer-events-none blur-2xl" />
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/5 pointer-events-none blur-3xl animate-pulse" />
