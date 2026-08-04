@@ -209,7 +209,7 @@ export default function PublicMapView() {
   const { id: userId, mapId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { map, people, connections, ownerName, loading } = usePublicMap(userId, mapId)
+  const { map, people, connections, places, placeConnections, ownerName, loading } = usePublicMap(userId, mapId)
   const [selectedPerson, setSelectedPerson] = useState(null)
 
   if (loading) {
@@ -258,6 +258,8 @@ export default function PublicMapView() {
           userName={ownerName}
           people={people}
           connections={connections}
+          places={places}
+          placeConnections={placeConnections}
           onPersonClick={setSelectedPerson}
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
