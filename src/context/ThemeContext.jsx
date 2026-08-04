@@ -49,10 +49,9 @@ export function ThemeProvider({ children }) {
       } catch { /* non-critical */ }
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) loadFromProfile(session.user.id)
-    })
-
+    // Kein extra `getSession()` nötig: Supabase feuert direkt nach dem
+    // Abonnieren ein `INITIAL_SESSION`-Event mit der gespeicherten Session.
+    // Der zusätzliche Aufruf war ein doppelter Round-Trip beim App-Start.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') loadFromProfile(session.user.id)
