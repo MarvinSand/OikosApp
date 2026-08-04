@@ -10,6 +10,27 @@ import { useAuth } from './useAuth'
 let cache = { userId: null, rows: null }
 let inFlight = null
 
+// Aufräumen alter gelesener Benachrichtigungen: höchstens einmal pro Session
+// und im Leerlauf, damit es nie mit dem ersten Bildschirmaufbau konkurriert.
+let pruned = false
+function pruneOldNotifications(userId) {
+  if (pruned) return
+  pruned = true
+  const run = () => {
+    const oneMonthAgo = new Date()
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId)
+      .eq('is_read', true)
+      .lt('created_at', oneMonthAgo.toISOString())
+      .then(() => {}, () => { /* non-critical */ })
+  }
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 10000 })
+  else setTimeout(run, 3000)
+}
+
 export function useNotifications() {
   const { user } = useAuth()
   const userId = user?.id ?? null
@@ -36,17 +57,12 @@ export function useNotifications() {
 
     if (!inFlight || cache.userId !== userId) {
       cache = { userId, rows: cache.userId === userId ? cache.rows : null }
-      inFlight = (async () => {
-        // Gelesene Benachrichtigungen älter als 1 Monat automatisch löschen
-        const oneMonthAgo = new Date()
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-        await supabase
-          .from('notifications')
-          .delete()
-          .eq('user_id', userId)
-          .eq('is_read', true)
-          .lt('created_at', oneMonthAgo.toISOString())
+      // Gelesene Benachrichtigungen älter als 1 Monat aufräumen – bewusst
+      // *nicht* awaited: das Aufräumen ist reine Hygiene und hing sonst als
+      // zusätzlicher Round-Trip vor der Abfrage, die die Liste füllt.
+      pruneOldNotifications(userId)
 
+      inFlight = (async () => {
         const { data } = await supabase
           .from('notifications')
           .select('*')
