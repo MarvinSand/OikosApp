@@ -117,7 +117,7 @@ export default function UserProfile() {
   }
 
   const status = getFriendshipStatus(targetId)
-  const hasNotifPrefs = prefs.notify_prayer_requests || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos || prefs.notify_storyline_entries
+  const hasNotifPrefs = prefs.notify_prayer_requests || prefs.notify_feed_posts || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos || prefs.notify_storyline_entries
 
   function dismissBanner() {
     localStorage.setItem(birthdayBannerKey, '1')
@@ -460,6 +460,7 @@ export default function UserProfile() {
             </div>
             {[
               { field: 'notify_prayer_requests', label: 'Neue Gebetsanliegen', desc: 'Wenn neue Anliegen hinzugefügt werden' },
+              { field: 'notify_feed_posts', label: 'Neue Feed-Beiträge', desc: 'Wenn im Feed etwas Neues gepostet wird' },
               { field: 'notify_oikos_entries', label: 'Neue OIKOS-Einträge', desc: 'Wenn Personen zur OIKOS-Map hinzugefügt werden' },
               { field: 'notify_prayers_for_oikos', label: 'Gebetsanliegen für OIKOS', desc: 'Wenn ein neues Gebetsanliegen für eine Person im OIKOS gepostet wird' },
               { field: 'notify_storyline_entries', label: 'Neue Story-Line Einträge', desc: 'Wenn ein neuer Story-Line Eintrag für eine OIKOS-Person hinzugefügt wird' },

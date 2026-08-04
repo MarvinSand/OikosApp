@@ -8,7 +8,9 @@ import { useAuth } from '../hooks/useAuth'
 function resolveDestination(n, currentUserId) {
   // oikos_entry / prayer_shared / prayer_log carry map_id + person_id in `data`
   // so we can deep-link straight into the map and open that person's sheet
-  const { map_id, person_id, map_owner_id, request_id, requester_id } = n.data || {}
+  const { map_id, person_id, map_owner_id, request_id, requester_id, post_id } = n.data || {}
+
+  if (n.type === 'feed_post' && post_id) return `/feed/post/${post_id}`
   if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log')) {
     const base = map_owner_id && map_owner_id !== currentUserId
       ? `/user/${map_owner_id}/map/${map_id}`
@@ -67,6 +69,7 @@ const ICONS = {
   prayer_log: '🙏',
   oikos_entry: '🗺',
   birthday: '🎂',
+  feed_post: '📝',
 }
 
 // ─── NotificationItem ─────────────────────────────────────────
@@ -199,6 +202,7 @@ export default function NotificationsPage() {
     prayer_log: 'Gebetsprotokolle',
     oikos_entry: 'Oikos-Karte',
     birthday: 'Geburtstage',
+    feed_post: 'Feed',
   }
 
   // Build ordered groups: preserve insertion order of first occurrence
