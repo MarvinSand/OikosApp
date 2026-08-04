@@ -75,7 +75,11 @@ export function useProfile() {
   }
 
   async function deleteAccount() {
-    await supabase.rpc('delete_user')
+    const { error } = await supabase.rpc('delete_user')
+    if (error) {
+      console.error('Delete user error:', error)
+      throw new Error(error.message || 'Failed to delete account')
+    }
     await supabase.auth.signOut()
   }
 

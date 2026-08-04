@@ -316,8 +316,10 @@ export default function SettingsView() {
     setDeleting(true)
     try {
       await deleteAccount()
-    } catch {
-      showToast('Fehler beim Löschen', 'error')
+      showToast('Account gelöscht ✓', 'success')
+      navigate('/login')
+    } catch (error) {
+      showToast('Fehler beim Löschen: ' + (error.message || 'Unbekannter Fehler'), 'error')
       setDeleting(false)
       setShowDelete(false)
     }
