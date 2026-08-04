@@ -51,6 +51,48 @@ git push -u origin temp-fix:main
 
 ---
 
+## Performance: `useAuth` ist ein geteilter Store – nicht wieder aufsplitten
+
+**Problem (bis Aug. 2026):** `useAuth()` legte pro Aufrufstelle eigenen State an, rief `supabase.auth.getSession()` auf und registrierte einen eigenen `onAuthStateChange`-Listener. Bei ~80 Aufrufstellen: ~80 Session-Abfragen + ~80 Listener pro Seitenaufbau. Schlimmer noch: jede Instanz startete mit `user = null`, also lief **jeder** abhängige Hook (`useEffect(..., [user?.id])`) zweimal – einmal ins Leere, einmal mit User. Das verdoppelte praktisch alle Datenabfragen und war die Hauptursache für den langsamen Start.
+
+**Jetzt:** `src/hooks/useAuth.js` ist ein Modul-Store mit `useSyncExternalStore` – eine Session-Abfrage, ein Listener, ein geteilter Zustand. Die API (`{ user, session, loading, login, register, logout, resendVerificationEmail }`) ist unverändert, alle Aufrufstellen bleiben gleich.
+
+**Nebeneffekt:** Weil `App` das Rendern bis `loading === false` blockiert, sehen alle Kind-Komponenten den User jetzt **sofort beim ersten Render**. Der Crash-Typ „Cannot read properties of null (reading 'id')" bei Mount-Effekten ist damit strukturell weg.
+
+**Lektion:** Hooks, die dieselben Daten für viele Komponenten laden (`useCommunities`, `useNotifications`, …), brauchen einen Modul-Cache mit In-Flight-Dedupe – sonst feuert jede Instanz dieselbe Query erneut.
+
+---
+
+## Realtime-Kanäle brauchen eindeutige Namen
+
+`supabase.channel('conversations-realtime')` mit **festem** Namen in einem Hook, der mehrfach gemountet wird: die Instanzen teilen sich einen Kanal, und der erste Unmount (`removeChannel`) killt das Abo für alle noch gemounteten. Kanalnamen deshalb pro Instanz eindeutig machen (`...-${Math.random().toString(36).slice(2)}`). Reloads aus Realtime-Events außerdem debouncen – sonst läuft bei einem Schwall Inserts die komplette Query-Kette pro Event.
+
+---
+
+## `preventDefault()` in Touch-/Wheel-Handlern: native Listener nötig
+
+**Konsolen-Warnung:** `Unable to preventDefault inside passive event listener invocation.`
+
+**Ursache:** React hängt `touchstart`, `touchmove` und `wheel` **passiv** an den Root-Container. `e.preventDefault()` in `onTouchMove` / `onWheel` ist dort wirkungslos und erzeugt nur die Warnung.
+
+**Lösung (siehe `MapCanvas.jsx`):** Handler per `addEventListener(..., { passive: false })` direkt am Element registrieren. Damit der Listener nur einmal registriert wird und trotzdem aktuellen State sieht, den Handler über eine Ref lesen:
+
+```js
+const gestureHandlers = useRef({})
+gestureHandlers.current.touchMove = handleTouchMove   // jedes Render aktualisieren
+
+useEffect(() => {
+  const el = rootRef.current
+  const onTouchMove = e => gestureHandlers.current.touchMove(e)
+  el.addEventListener('touchmove', onTouchMove, { passive: false })
+  return () => el.removeEventListener('touchmove', onTouchMove)
+}, [])
+```
+
+**Alternative:** Wenn `preventDefault` nur das Scrollen verhindern soll, reicht oft `touch-action: none` im CSS – dann kann der `preventDefault`-Aufruf ganz entfallen (so gelöst beim Zoom-Slider in `WorldMapView.jsx`).
+
+---
+
 ## Eingabeleisten/Chat: fix unten an der Bottom-Nav verankern
 
 **Problem:** Eine Chat-Eingabeleiste als normales Flex-Kind (Seite `h-full`/`100dvh` + `flex flex-col`, Leiste als letztes Kind) hängt von der Höhen-Mathematik des Containers ab. Folge: eine **schwarze Lücke** über der Bottom-Nav und die Leiste **verschiebt sich** (z. B. wenn das Textfeld mehrzeilig wird oder die Tastatur aufgeht). Trat zuerst im Chat (`ConversationView`) auf, später erneut auf der Community-Detailseite (`CommunityDetail`).

@@ -1,62 +1,123 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
+// Kleiner Modul-Cache: `useNotifications` wird gleichzeitig von Home,
+// FriendsView und der NotificationsPage genutzt. Ohne Cache lädt jede
+// Instanz dieselben 50 Zeilen erneut. Der Cache liefert sofort einen
+// Startwert (kein Spinner beim Tab-Wechsel) und bündelt parallele Ladungen.
+let cache = { userId: null, rows: null }
+let inFlight = null
+
 export function useNotifications() {
   const { user } = useAuth()
-  const [notifications, setNotifications] = useState([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const userId = user?.id ?? null
+
+  const initial = cache.userId === userId && cache.rows ? cache.rows : []
+  const [notifications, setNotifications] = useState(initial)
+  const [unreadCount, setUnreadCount] = useState(initial.filter(n => !n.is_read).length)
+  const [loading, setLoading] = useState(!(cache.userId === userId && cache.rows))
+  const mounted = useRef(true)
 
   useEffect(() => {
-    if (!user) return
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+
+  const load = useCallback(async () => {
+    if (!userId) {
+      setNotifications([])
+      setUnreadCount(0)
+      setLoading(false)
+      return
+    }
+
+    if (!inFlight || cache.userId !== userId) {
+      cache = { userId, rows: cache.userId === userId ? cache.rows : null }
+      inFlight = supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+        .then(({ data }) => {
+          const rows = data || []
+          cache = { userId, rows }
+          inFlight = null
+          return rows
+        }, () => {
+          inFlight = null
+          return []
+        })
+    }
+
+    setLoading(true)
+    const rows = await inFlight
+    if (!mounted.current) return
+    setNotifications(rows)
+    setUnreadCount(rows.filter(n => !n.is_read).length)
+    setLoading(false)
+  }, [userId])
+
+  useEffect(() => {
+    if (!userId) {
+      setNotifications([])
+      setUnreadCount(0)
+      setLoading(false)
+      return
+    }
+
     load()
 
+    // Kanalname pro Instanz eindeutig – zwei Komponenten mit demselben
+    // Topic-Namen teilen sich sonst einen Kanal, und der erste Unmount
+    // entfernt das Abo auch für die noch gemountete Komponente.
     const channel = supabase
-      .channel(`notifications-${user.id}`)
+      .channel(`notifications-${userId}-${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         (payload) => {
-          setNotifications(prev => [payload.new, ...prev])
+          if (cache.userId === userId && cache.rows) {
+            cache = { userId, rows: [payload.new, ...cache.rows] }
+          }
+          setNotifications(prev => (
+            prev.some(n => n.id === payload.new.id) ? prev : [payload.new, ...prev]
+          ))
           setUnreadCount(prev => prev + 1)
         }
       )
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [user?.id])
+  }, [userId, load])
 
-  async function load() {
-    if (!user) return
-    setLoading(true)
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50)
-
-    setNotifications(data || [])
-    setUnreadCount((data || []).filter(n => !n.is_read).length)
-    setLoading(false)
-  }
-
-  async function markAllRead() {
+  const markAllRead = useCallback(async () => {
+    // Ohne diese Prüfung warf der Aufruf beim Mount der NotificationsPage
+    // "Cannot read properties of null (reading 'id')", weil die Session
+    // beim ersten Render noch nicht geladen war.
+    if (!userId) return
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    setUnreadCount(0)
+    if (cache.userId === userId && cache.rows) {
+      cache = { userId, rows: cache.rows.map(n => ({ ...n, is_read: true })) }
+    }
     await supabase
       .from('notifications')
       .update({ is_read: true })
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('is_read', false)
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-    setUnreadCount(0)
-  }
+  }, [userId])
 
-  async function markRead(id) {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+  const markRead = useCallback(async (id) => {
+    if (!id) return
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
     setUnreadCount(prev => Math.max(0, prev - 1))
-  }
+    if (cache.userId === userId && cache.rows) {
+      cache = { userId, rows: cache.rows.map(n => n.id === id ? { ...n, is_read: true } : n) }
+    }
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+  }, [userId])
 
   return { notifications, unreadCount, loading, markAllRead, markRead, reload: load }
 }

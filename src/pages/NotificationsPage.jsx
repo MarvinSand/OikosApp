@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
@@ -148,11 +148,17 @@ function LoadingSkeleton() {
 export default function NotificationsPage() {
   const navigate = useNavigate()
   const { notifications, loading, markAllRead, markRead } = useNotifications()
+  const markedRef = useRef(false)
 
-  // Mark all as read when the page mounts
+  // Erst als gelesen markieren, wenn die Liste geladen ist. Beim Mount ist
+  // die Supabase-Session u. U. noch nicht da (markAllRead lief dann auf
+  // `user.id` von `null`), und ein optimistisches Update vor dem Laden
+  // wurde vom eintreffenden Ergebnis sofort wieder überschrieben.
   useEffect(() => {
+    if (loading || markedRef.current) return
+    markedRef.current = true
     markAllRead()
-  }, [])
+  }, [loading, markAllRead])
 
   function handleNotificationClick(n) {
     if (!n.is_read) markRead(n.id)

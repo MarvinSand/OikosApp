@@ -350,7 +350,10 @@ function useSnapchatZoom({ map, minZoom = 2 }) {
     draggingRef.current = true
     startYRef.current   = e.touches ? e.touches[0].clientY : e.clientY
     startZoomRef.current = map.getZoom()
-    e.preventDefault?.()
+    // Nur für Maus-Events: React hängt `touchstart` passiv an den Root,
+    // dort ist preventDefault wirkungslos und löst nur eine Konsolen-Warnung
+    // aus. Für Touch übernimmt `touch-action: none` am Track dieselbe Aufgabe.
+    if (e.type === 'mousedown') e.preventDefault?.()
   }
 
   return { trackRef, currentZoom, onDragStart }
