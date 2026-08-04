@@ -247,9 +247,13 @@
   z-index: 35;
 }
 @media (min-width: 768px) {
-  /* Auf Desktop gibt es keine Bottom-Nav */
+  /* Auf Desktop gibt es keine Bottom-Nav, aber eine 220px breite SideNav
+     (siehe SideNav.jsx, w-[220px]), die links echten Platz einnimmt.
+     "left: 50%" würde sonst am gesamten Viewport zentrieren statt am
+     Content-Bereich rechts der SideNav -> Leiste wirkt nach links verschoben. */
   .chat-input-bar {
     bottom: 0;
+    left: calc(50% + 110px);
   }
 }
 
