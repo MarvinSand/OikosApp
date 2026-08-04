@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { subscribeShared } from '../lib/realtime'
 import { useAuth } from './useAuth'
 
 // Kleiner Modul-Cache: `useNotifications` wird gleichzeitig von Home,
@@ -8,6 +9,27 @@ import { useAuth } from './useAuth'
 // Startwert (kein Spinner beim Tab-Wechsel) und bündelt parallele Ladungen.
 let cache = { userId: null, rows: null }
 let inFlight = null
+
+// Aufräumen alter gelesener Benachrichtigungen: höchstens einmal pro Session
+// und im Leerlauf, damit es nie mit dem ersten Bildschirmaufbau konkurriert.
+let pruned = false
+function pruneOldNotifications(userId) {
+  if (pruned) return
+  pruned = true
+  const run = () => {
+    const oneMonthAgo = new Date()
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId)
+      .eq('is_read', true)
+      .lt('created_at', oneMonthAgo.toISOString())
+      .then(() => {}, () => { /* non-critical */ })
+  }
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 10000 })
+  else setTimeout(run, 3000)
+}
 
 export function useNotifications() {
   const { user } = useAuth()
@@ -18,6 +40,7 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(initial.filter(n => !n.is_read).length)
   const [loading, setLoading] = useState(!(cache.userId === userId && cache.rows))
   const mounted = useRef(true)
+  const seenIds = useRef(new Set())
 
   useEffect(() => {
     mounted.current = true
@@ -34,17 +57,12 @@ export function useNotifications() {
 
     if (!inFlight || cache.userId !== userId) {
       cache = { userId, rows: cache.userId === userId ? cache.rows : null }
-      inFlight = (async () => {
-        // Gelesene Benachrichtigungen älter als 1 Monat automatisch löschen
-        const oneMonthAgo = new Date()
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-        await supabase
-          .from('notifications')
-          .delete()
-          .eq('user_id', userId)
-          .eq('is_read', true)
-          .lt('created_at', oneMonthAgo.toISOString())
+      // Gelesene Benachrichtigungen älter als 1 Monat aufräumen – bewusst
+      // *nicht* awaited: das Aufräumen ist reine Hygiene und hing sonst als
+      // zusätzlicher Round-Trip vor der Abfrage, die die Liste füllt.
+      pruneOldNotifications(userId)
 
+      inFlight = (async () => {
         const { data } = await supabase
           .from('notifications')
           .select('*')
@@ -77,27 +95,24 @@ export function useNotifications() {
 
     load()
 
-    // Kanalname pro Instanz eindeutig – zwei Komponenten mit demselben
-    // Topic-Namen teilen sich sonst einen Kanal, und der erste Unmount
-    // entfernt das Abo auch für die noch gemountete Komponente.
-    const channel = supabase
-      .channel(`notifications-${userId}-${Math.random().toString(36).slice(2)}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => {
-          if (cache.userId === userId && cache.rows) {
-            cache = { userId, rows: [payload.new, ...cache.rows] }
-          }
-          setNotifications(prev => (
-            prev.some(n => n.id === payload.new.id) ? prev : [payload.new, ...prev]
-          ))
-          setUnreadCount(prev => prev + 1)
-        }
-      )
-      .subscribe()
+    // Geteilter Kanal: Home, FriendsView und die NotificationsPage hängen
+    // am selben Abo, statt jeweils ein eigenes aufzumachen.
+    return subscribeShared(
+      `notifications-${userId}`,
+      [{ event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }],
+      (payload) => {
+        // Dedupe über eine Ref statt im State-Updater – Updater müssen frei
+        // von Seiteneffekten bleiben (React ruft sie ggf. mehrfach auf).
+        if (seenIds.current.has(payload.new.id)) return
+        seenIds.current.add(payload.new.id)
 
-    return () => { supabase.removeChannel(channel) }
+        if (cache.userId === userId && cache.rows) {
+          cache = { userId, rows: [payload.new, ...cache.rows] }
+        }
+        setNotifications(prev => [payload.new, ...prev])
+        if (!payload.new.is_read) setUnreadCount(c => c + 1)
+      }
+    )
   }, [userId, load])
 
   const markAllRead = useCallback(async () => {

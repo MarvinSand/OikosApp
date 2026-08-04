@@ -130,15 +130,29 @@ export function getCurrentUser() {
   return state.user
 }
 
-let _lastActiveTime = 0
-async function updateLastActive(userId) {
-  const now = Date.now()
-  if (now - _lastActiveTime < 5 * 60 * 1000) return
-  _lastActiveTime = now
-  try {
-    await supabase
+// `last_active_at` ist der mit Abstand teuerste Schreibzugriff der App
+// (~42 ms laut pg_stat_statements, gegenüber 0,1–13 ms für die Lesequeries).
+// Er lief bisher bei jedem App-Start und konkurrierte dort mit den Queries,
+// die tatsächlich den ersten Bildschirm füllen. Jetzt: Drosselung über
+// localStorage (überlebt Reloads, nicht nur den Page-Load) und Ausführung
+// erst im Leerlauf, wenn die eigentlichen Daten schon unterwegs sind.
+const LAST_ACTIVE_KEY = 'oikos_last_active_ping'
+const LAST_ACTIVE_INTERVAL = 5 * 60 * 1000
+
+function updateLastActive(userId) {
+  let last = 0
+  try { last = parseInt(localStorage.getItem(LAST_ACTIVE_KEY) || '0', 10) || 0 } catch { /* ignore */ }
+  if (Date.now() - last < LAST_ACTIVE_INTERVAL) return
+  try { localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now())) } catch { /* ignore */ }
+
+  const run = () => {
+    supabase
       .from('profiles')
       .update({ last_active_at: new Date().toISOString() })
       .eq('id', userId)
-  } catch { /* non-critical */ }
+      .then(() => {}, () => { /* non-critical */ })
+  }
+
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 5000 })
+  else setTimeout(run, 2000)
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { subscribeShared } from '../lib/realtime'
 import { useAuth } from './useAuth'
 
 export function useConversations() {
@@ -211,26 +212,23 @@ export function useConversations() {
   // Realtime: subscribe to new messages to trigger reload
   useEffect(() => {
     if (!user) return
-    // Eindeutiger Kanalname pro Instanz: bei gleichem Topic teilen sich
-    // mehrere Komponenten einen Kanal und der erste Unmount killt das Abo
-    // für alle. Zusätzlich wird der Reload gebündelt – bei einem Schwall
-    // neuer Nachrichten lief sonst die komplette Query-Kette pro Insert.
+    // Ein geteilter Kanal für alle Instanzen (Home, FriendsView,
+    // ConversationView) statt einem Abo pro Mount. Reload zusätzlich
+    // gebündelt – bei einem Schwall Inserts lief sonst die komplette
+    // Query-Kette pro einzelnem Event.
     let timer = null
-    const channel = supabase
-      .channel(`conversations-realtime-${Math.random().toString(36).slice(2)}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        () => {
-          if (timer) clearTimeout(timer)
-          timer = setTimeout(() => { timer = null; load() }, 400)
-        }
-      )
-      .subscribe()
+    const unsubscribe = subscribeShared(
+      'messages-insert',
+      [{ event: 'INSERT', schema: 'public', table: 'messages' }],
+      () => {
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(() => { timer = null; load() }, 400)
+      }
+    )
 
     return () => {
       if (timer) clearTimeout(timer)
-      supabase.removeChannel(channel)
+      unsubscribe()
     }
   }, [user?.id, load])
 

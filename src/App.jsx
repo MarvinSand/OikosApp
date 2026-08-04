@@ -37,6 +37,28 @@ const MapView = lazy(() => import('./pages/MapView'))
 const ConversationView = lazy(() => import('./pages/ConversationView'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 
+// Der Start lief bisher streng seriell: Entry-Bundle → Session prüfen →
+// *dann erst* den Chunk der Landing-Route holen → dann die Daten laden.
+// Schritt 3 ist ein kompletter Round-Trip, der nichts von Schritt 2 braucht.
+// Deshalb den Home-Chunk sofort beim Import anstoßen (er lädt parallel zur
+// Session-Prüfung; `lazy` greift danach auf den Modul-Cache zu) und die
+// übrigen Haupt-Tabs nachziehen, sobald der Browser Leerlauf hat.
+import('./pages/Home')
+
+const idle = typeof requestIdleCallback === 'function'
+  ? requestIdleCallback
+  : (cb) => setTimeout(cb, 1500)
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    idle(() => {
+      import('./pages/FriendsView')
+      import('./pages/Prayers')
+      import('./pages/ProfileView')
+    })
+  }, { once: true })
+}
+
 function LoadingSpinner() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg">

@@ -8,20 +8,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!--
-      Google-Fonts-Stylesheet nicht render-blockierend laden: mit media="print"
-      wartet der Browser beim ersten Paint nicht auf die Antwort von
-      fonts.googleapis.com, onload schaltet das Stylesheet auf "all".
-      `display=swap` sorgt weiterhin dafür, dass Text sofort sichtbar ist.
+      Bewusst ein normales (render-blockierendes) Stylesheet: der media="print"
+      /onload-Trick holt die Font-CSS mit niedriger Priorität, dadurch starten
+      die Font-Downloads später und der Wechsel von der Fallback- zur echten
+      Schrift wird deutlich sichtbar – das wirkt langsamer, auch wenn der
+      technische First Paint früher kommt. Die preconnects oben decken den
+      Verbindungsaufbau bereits ab.
     -->
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap"
-      media="print"
-      onload="this.media='all';this.onload=null"
-    >
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap">
-    </noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
     <title>OIKOS</title>
     <script>
       // Dark Mode ist Standard – früh setzen, um Flash beim Laden zu vermeiden

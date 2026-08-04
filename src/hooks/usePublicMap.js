@@ -8,12 +8,36 @@ export function usePublicMap(userId, mapId) {
   const [places, setPlaces] = useState([])
   const [placeConnections, setPlaceConnections] = useState([])
   const [ownerName, setOwnerName] = useState('')
+  const [linkedProfiles, setLinkedProfiles] = useState({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!userId || !mapId) return
     load()
   }, [userId, mapId])
+
+  // Profile verlinkter Personen nachladen (für AccountLinkingSection in PersonDetailSheet)
+  useEffect(() => {
+    const linkedIds = people
+      .filter(p => p.linked_user_id)
+      .map(p => p.linked_user_id)
+      .filter(id => !linkedProfiles[id])
+
+    if (linkedIds.length === 0) return
+
+    supabase
+      .from('profiles')
+      .select('id, full_name, username, avatar_url')
+      .in('id', linkedIds)
+      .then(({ data }) => {
+        if (!data) return
+        setLinkedProfiles(prev => {
+          const next = { ...prev }
+          data.forEach(profile => { next[profile.id] = profile })
+          return next
+        })
+      })
+  }, [people])
 
   async function load() {
     setLoading(true)
@@ -63,5 +87,5 @@ export function usePublicMap(userId, mapId) {
     setLoading(false)
   }
 
-  return { map, people, connections, places, placeConnections, ownerName, loading }
+  return { map, people, connections, places, placeConnections, ownerName, linkedProfiles, loading }
 }
