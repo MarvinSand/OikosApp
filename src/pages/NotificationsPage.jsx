@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { ArrowLeft, Trash2, Check, X, User } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { useAuth } from '../hooks/useAuth'
+import { useFriendships } from '../hooks/useFriendships'
 
 // Derive the best navigation target for a notification
 function resolveDestination(n, currentUserId) {
@@ -21,6 +22,10 @@ function resolveDestination(n, currentUserId) {
   // Personal (non-oikos) prayer request shared with friends
   if (n.type === 'prayer_shared' && request_id) return `/prayer/${request_id}`
   if (n.type === 'prayer_shared' && requester_id) return `/user/${requester_id}`
+
+  // Friend request → the requester's profile (also reachable via the
+  // dedicated "Profil ansehen" button rendered for this type)
+  if (n.type === 'friend_request' && requester_id) return `/user/${requester_id}`
 
   // Birthday reminder → the person's profile
   if (n.type === 'birthday' && person_id) return `/user/${person_id}`
@@ -74,7 +79,9 @@ const ICONS = {
 
 // ─── NotificationItem ─────────────────────────────────────────
 
-function NotificationItem({ n, onClick, onDelete }) {
+function NotificationItem({ n, onClick, onDelete, onViewProfile, onAccept, onDecline }) {
+  const isFriendRequest = n.type === 'friend_request' && n.data?.friendship_id && n.data?.requester_id
+
   return (
     <div
       onClick={onClick}
@@ -100,6 +107,30 @@ function NotificationItem({ n, onClick, onDelete }) {
         <p className="font-sans text-[11px] font-medium text-warm-2/80 uppercase tracking-widest mt-0.5">
           {formatTime(n.created_at)}
         </p>
+
+        {/* Freundschaftsanfrage: Profil ansehen / Annehmen / Ablehnen */}
+        {isFriendRequest && (
+          <div className="flex items-center gap-2 mt-2.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={onViewProfile}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-warm-3 text-[12px] font-semibold text-dark hover:bg-surface active:scale-95 transition-all duration-150"
+            >
+              <User size={12} /> Profil
+            </button>
+            <button
+              onClick={onAccept}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-white text-[12px] font-semibold hover:opacity-90 active:scale-95 transition-all duration-150"
+            >
+              <Check size={12} /> Annehmen
+            </button>
+            <button
+              onClick={onDecline}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-warm-3 text-[12px] font-semibold text-warm-2/80 hover:bg-red-50 hover:text-red-600 hover:border-red-200 active:scale-95 transition-all duration-150"
+            >
+              <X size={12} /> Ablehnen
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Unread dot */}
@@ -180,6 +211,7 @@ export default function NotificationsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { notifications, loading, markAllRead, markRead, deleteNotification } = useNotifications()
+  const { acceptRequest, declineRequest } = useFriendships()
   const markedRef = useRef(false)
 
   // Erst als gelesen markieren, wenn die Liste geladen ist. Beim Mount ist
@@ -196,6 +228,18 @@ export default function NotificationsPage() {
     if (!n.is_read) markRead(n.id)
     const dest = resolveDestination(n, user?.id)
     if (dest) navigate(dest)
+  }
+
+  async function handleAcceptFriendRequest(n) {
+    if (!n.is_read) markRead(n.id)
+    await acceptRequest(n.data.friendship_id)
+    deleteNotification(n.id)
+  }
+
+  async function handleDeclineFriendRequest(n) {
+    if (!n.is_read) markRead(n.id)
+    await declineRequest(n.data.friendship_id)
+    deleteNotification(n.id)
   }
 
   // Group notifications by type label
@@ -278,6 +322,9 @@ export default function NotificationsPage() {
                 n={n}
                 onClick={() => handleNotificationClick(n)}
                 onDelete={() => deleteNotification(n.id)}
+                onViewProfile={() => { if (!n.is_read) markRead(n.id); navigate(`/user/${n.data?.requester_id}`) }}
+                onAccept={() => handleAcceptFriendRequest(n)}
+                onDecline={() => handleDeclineFriendRequest(n)}
               />
             ))}
           </div>
