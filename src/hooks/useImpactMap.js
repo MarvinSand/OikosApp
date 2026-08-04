@@ -35,7 +35,7 @@ export const STAGES = [
   },
 ]
 
-export function useImpactMap(personId) {
+export function useImpactMap(personId, { impactStageFloor = 0 } = {}) {
   const { user } = useAuth()
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -62,9 +62,13 @@ export function useImpactMap(personId) {
 
   function getStageStatus(stage) {
     const e = getEntry(stage)
-    if (!e) return 'future'
-    if (e.completed_at) return 'done'
-    return 'active'
+    if (e) return e.completed_at ? 'done' : 'active'
+    // Kein sichtbarer Eintrag — bei einem Besucher kann das an RLS liegen
+    // (der Besitzer hat die Stufe privat erledigt). Das immer sichtbare
+    // impact_stage-Badge auf oikos_people bestätigt dann trotzdem, dass die
+    // Stufe erreicht wurde, auch ohne Detail-Eintrag.
+    if (stage <= impactStageFloor) return 'done'
+    return 'future'
   }
 
   const currentStage = [1, 2, 3, 4, 5, 6].find(n => getStageStatus(n) !== 'done') || null

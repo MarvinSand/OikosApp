@@ -192,8 +192,12 @@ function CompletedStageRow({ stage, entry, isOwner, onSaveNote }) {
   )
 }
 
-export default function ImpactMapSection({ personId, isOwner, personName, onStageCompleted }) {
-  const { entries, loading, currentStage, isAllDone, getEntry, getStageStatus, saveNote, completeStage } = useImpactMap(personId)
+export default function ImpactMapSection({ personId, isOwner, personName, impactStage, onStageCompleted }) {
+  // Für Besucher können private Stufen-Einträge des Besitzers per RLS
+  // unsichtbar sein — das impact_stage-Badge ist aber immer sichtbar, also
+  // als Untergrenze nutzen, damit der Stepper nicht fälschlich zurückfällt.
+  const floor = !isOwner ? Math.max(0, (impactStage ?? 1) - 1) : 0
+  const { entries, loading, currentStage, isAllDone, getEntry, getStageStatus, saveNote, completeStage } = useImpactMap(personId, { impactStageFloor: floor })
   const { showToast } = useToast()
   const [showConfetti, setShowConfetti] = useState(false)
 
