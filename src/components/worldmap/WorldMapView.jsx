@@ -374,6 +374,11 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const snapZoom = useSnapchatZoom({ map, minZoom: minZoomRef.current })
   const [selectedUser, setSelectedUser] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
+  // Merkt sich, ob das aktuell offene Detail (Person/Event) aus der
+  // Drawer-Liste heraus geöffnet wurde. Falls ja, springt das Drawer beim
+  // Schließen (X) wieder zurück zur vollen Liste statt eingeklappt zu bleiben.
+  const openedFromListRef = useRef(false)
+  const [reopenListKey, setReopenListKey] = useState(0)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
   // Zwei unabhängige Ebenen – beide können gleichzeitig aktiv sein.
@@ -610,8 +615,9 @@ export default function WorldMapView({ onNavigateToProfile }) {
           hasOwnLocation={hasOwnLocation}
           radiusKm={radiusKm}
           onRadiusChange={setRadiusKm}
-          onSelectUser={(u) => { focusOn(u.latitude, u.longitude); setSelectedUser(u) }}
-          onSelectActivity={(a) => { focusOn(a.latitude, a.longitude); setSelectedActivity(a) }}
+          reopenListKey={reopenListKey}
+          onSelectUser={(u) => { focusOn(u.latitude, u.longitude); openedFromListRef.current = true; setSelectedUser(u) }}
+          onSelectActivity={(a) => { focusOn(a.latitude, a.longitude); openedFromListRef.current = true; setSelectedActivity(a) }}
         />
 
         {/* Privacy banner */}
@@ -620,13 +626,19 @@ export default function WorldMapView({ onNavigateToProfile }) {
 
       {/* Bottom Sheets */}
       {selectedUser && (
-        <UserPinSheet user={selectedUser} onClose={() => setSelectedUser(null)} />
+        <UserPinSheet user={selectedUser} onClose={() => {
+          setSelectedUser(null)
+          if (openedFromListRef.current) { openedFromListRef.current = false; setReopenListKey(k => k + 1) }
+        }} />
       )}
       {selectedActivity && (
         <ActivitySheet
           activity={selectedActivity}
           currentUserId={user?.id}
-          onClose={() => setSelectedActivity(null)}
+          onClose={() => {
+            setSelectedActivity(null)
+            if (openedFromListRef.current) { openedFromListRef.current = false; setReopenListKey(k => k + 1) }
+          }}
           onJoin={joinActivity}
           onJoinChat={joinActivityChat}
           onLeave={leaveActivity}
