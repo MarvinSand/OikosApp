@@ -1235,7 +1235,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
   }
 
   return (
-    <div className="chat-input-bar" style={{ position: 'sticky', bottom: 0, backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)', zIndex: 20 }}>
+    <div className="chat-input-bar" style={{ backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)' }}>
       {/* Reply preview */}
       {replyTo && <ReplyComposerPreview msg={replyTo} onCancel={onCancelReply} />}
 
