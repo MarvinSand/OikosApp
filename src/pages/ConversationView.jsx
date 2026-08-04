@@ -1626,7 +1626,7 @@ export default function ConversationView() {
     showToast(`Weitergeleitet an ${targetConvIds.length}`)
   }
 
-  const isCommunity = convInfo?.type === 'community'
+  const isCommunity = convInfo?.type === 'community' || convInfo?.type === 'activity'
   const pinnedMessages = messages.filter(m => m.is_pinned && !m.is_deleted)
   const messageById = new Map(messages.map(m => [m.id, m]))
 
