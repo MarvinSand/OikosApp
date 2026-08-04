@@ -8,13 +8,20 @@ import { useAuth } from '../hooks/useAuth'
 function resolveDestination(n, currentUserId) {
   // oikos_entry / prayer_shared / prayer_log carry map_id + person_id in `data`
   // so we can deep-link straight into the map and open that person's sheet
-  const { map_id, person_id, map_owner_id } = n.data || {}
+  const { map_id, person_id, map_owner_id, request_id, requester_id } = n.data || {}
   if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log')) {
     const base = map_owner_id && map_owner_id !== currentUserId
       ? `/user/${map_owner_id}/map/${map_id}`
       : `/map/${map_id}`
     return person_id ? `${base}?openPerson=${person_id}` : base
   }
+
+  // Personal (non-oikos) prayer request shared with friends
+  if (n.type === 'prayer_shared' && request_id) return `/prayer/${request_id}`
+  if (n.type === 'prayer_shared' && requester_id) return `/user/${requester_id}`
+
+  // Birthday reminder → the person's profile
+  if (n.type === 'birthday' && person_id) return `/user/${person_id}`
 
   // If there's an explicit related_url, use it
   if (n.related_url) return n.related_url
@@ -59,6 +66,7 @@ const ICONS = {
   prayer_shared: '🙏',
   prayer_log: '🙏',
   oikos_entry: '🗺',
+  birthday: '🎂',
 }
 
 // ─── NotificationItem ─────────────────────────────────────────
@@ -190,6 +198,7 @@ export default function NotificationsPage() {
     prayer_shared: 'Gebete',
     prayer_log: 'Gebetsprotokolle',
     oikos_entry: 'Oikos-Karte',
+    birthday: 'Geburtstage',
   }
 
   // Build ordered groups: preserve insertion order of first occurrence

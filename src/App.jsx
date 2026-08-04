@@ -201,13 +201,16 @@ async function checkBirthdays(userId) {
 
     for (const p of todayBirthdays) {
       const name = p.full_name || p.username || 'Jemand'
+      // Note: `notifications` has no `related_url` column (never migrated) -
+      // an insert/filter referencing it fails the whole query. Use the
+      // `data` jsonb column instead, same as the DB notification triggers.
       const { data: existing } = await supabase
         .from('notifications')
         .select('id')
         .eq('user_id', userId)
         .eq('type', 'birthday')
         .gte('created_at', new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString())
-        .eq('related_url', `/user/${p.id}`)
+        .eq('data->>person_id', p.id)
         .maybeSingle()
       if (!existing) {
         await supabase.from('notifications').insert({
@@ -215,7 +218,7 @@ async function checkBirthdays(userId) {
           type: 'birthday',
           title: `🎂 ${name} hat heute Geburtstag!`,
           body: 'Schreib ihm/ihr eine Nachricht',
-          related_url: `/user/${p.id}`,
+          data: { person_id: p.id },
         })
       }
     }

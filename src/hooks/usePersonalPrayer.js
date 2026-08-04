@@ -74,14 +74,16 @@ export function usePersonalPrayer() {
             const { data: userProfile } = await supabase.from('profiles').select('full_name, username').eq('id', user.id).single()
             const myName = userProfile?.full_name || userProfile?.username || 'Jemand'
 
+            // `notifications` has no `related_url` column (never migrated) -
+            // an insert referencing it fails the WHOLE insert silently.
             const notifs = toNotify.map(friendId => ({
               user_id: friendId,
               type: 'prayer_shared',
               title: `${myName} hat ein Anliegen geteilt`,
               body: title,
-              related_url: `/user/${user.id}`
+              data: { requester_id: user.id, request_id: data.id },
             }))
-            
+
             await supabase.from('notifications').insert(notifs)
           }
         }
