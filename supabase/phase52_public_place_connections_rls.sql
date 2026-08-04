@@ -1,4 +1,4 @@
--- Phase 47: RLS-Fix für person_place_connections bei geteilten Maps
+-- Phase 52: RLS-Fix für person_place_connections bei geteilten Maps
 --
 -- Problem: Beim Ansehen der Oikos-Map eines Geschwisters wurden die Orte
 -- selbst zwar (dank is_public=true auf oikos_places) sichtbar, die
