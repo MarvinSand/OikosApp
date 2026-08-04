@@ -81,29 +81,10 @@ export function usePrayerLogs(prayerRequestId) {
     }
     setLogs(l => l.map(x => x.id === tempId ? { ...data, profiles: optimistic.profiles } : x))
 
-    // Notify the prayer request owner (if it's not the current user)
-    try {
-      const { data: req } = await supabase
-        .from('prayer_requests')
-        .select('owner_id, person_id, title')
-        .eq('id', prayerRequestId)
-        .single()
-      if (req && req.owner_id && req.owner_id !== user.id) {
-        const { data: myProfile } = await supabase
-          .from('profiles')
-          .select('full_name, username')
-          .eq('id', user.id)
-          .single()
-        const myName = myProfile?.full_name || myProfile?.username || 'Jemand'
-        await supabase.from('notifications').insert({
-          user_id: req.owner_id,
-          type: 'prayer_log',
-          title: `${myName} hat für „${req.title}" gebetet`,
-          body: null,
-          related_url: req.person_id ? `/?openPerson=${req.person_id}` : '/prayers',
-        })
-      }
-    } catch { /* non-critical */ }
+    // Note: the "prayer_log" notification for the request owner is created
+    // server-side by the on_prayer_log_insert DB trigger (notify_on_prayer_log).
+    // Do NOT also insert one here - that produced a duplicate notification
+    // for every single prayer log.
   }
 
   return { logs, loading, prayersByUser, totalCount, myLastPrayedAt, othersLastPrayedAt, logPrayer }

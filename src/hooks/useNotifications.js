@@ -30,6 +30,17 @@ export function useNotifications() {
   async function load() {
     if (!user) return
     setLoading(true)
+
+    // Gelesene Benachrichtigungen älter als 1 Monat automatisch löschen
+    const oneMonthAgo = new Date()
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('is_read', true)
+      .lt('created_at', oneMonthAgo.toISOString())
+
     const { data } = await supabase
       .from('notifications')
       .select('*')
@@ -58,5 +69,12 @@ export function useNotifications() {
     setUnreadCount(prev => Math.max(0, prev - 1))
   }
 
-  return { notifications, unreadCount, loading, markAllRead, markRead, reload: load }
+  async function deleteNotification(id) {
+    const wasUnread = notifications.find(n => n.id === id)?.is_read === false
+    setNotifications(prev => prev.filter(n => n.id !== id))
+    if (wasUnread) setUnreadCount(prev => Math.max(0, prev - 1))
+    await supabase.from('notifications').delete().eq('id', id)
+  }
+
+  return { notifications, unreadCount, loading, markAllRead, markRead, deleteNotification, reload: load }
 }

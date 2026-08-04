@@ -1,14 +1,25 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Trash2 } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
+import { useAuth } from '../hooks/useAuth'
 
 // Derive the best navigation target for a notification
-function resolveDestination(n) {
+function resolveDestination(n, currentUserId) {
+  // oikos_entry / prayer_shared / prayer_log carry map_id + person_id in `data`
+  // so we can deep-link straight into the map and open that person's sheet
+  const { map_id, person_id, map_owner_id } = n.data || {}
+  if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log')) {
+    const base = map_owner_id && map_owner_id !== currentUserId
+      ? `/user/${map_owner_id}/map/${map_id}`
+      : `/map/${map_id}`
+    return person_id ? `${base}?openPerson=${person_id}` : base
+  }
+
   // If there's an explicit related_url, use it
   if (n.related_url) return n.related_url
 
-  // Fallback by type
+  // Fallback by type (older notifications without `data`)
   switch (n.type) {
     case 'friend_request':
     case 'friend_accepted':
@@ -52,7 +63,7 @@ const ICONS = {
 
 // ─── NotificationItem ─────────────────────────────────────────
 
-function NotificationItem({ n, onClick }) {
+function NotificationItem({ n, onClick, onDelete }) {
   return (
     <div
       onClick={onClick}
@@ -84,6 +95,15 @@ function NotificationItem({ n, onClick }) {
       {!n.is_read && (
         <div className="w-2.5 h-2.5 shrink-0 rounded-full bg-accent shadow-sm mt-2 ring-4 ring-bg" />
       )}
+
+      {/* Delete box */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete() }}
+        aria-label="Benachrichtigung löschen"
+        className="w-8 h-8 shrink-0 rounded-lg border border-warm-3 flex items-center justify-center text-warm-2/70 hover:text-red-600 hover:border-red-200 hover:bg-red-50 active:scale-95 transition-all duration-150 mt-1"
+      >
+        <Trash2 size={15} />
+      </button>
     </div>
   )
 }
@@ -147,7 +167,8 @@ function LoadingSkeleton() {
 
 export default function NotificationsPage() {
   const navigate = useNavigate()
-  const { notifications, loading, markAllRead, markRead } = useNotifications()
+  const { user } = useAuth()
+  const { notifications, loading, markAllRead, markRead, deleteNotification } = useNotifications()
 
   // Mark all as read when the page mounts
   useEffect(() => {
@@ -156,7 +177,7 @@ export default function NotificationsPage() {
 
   function handleNotificationClick(n) {
     if (!n.is_read) markRead(n.id)
-    const dest = resolveDestination(n)
+    const dest = resolveDestination(n, user?.id)
     if (dest) navigate(dest)
   }
 
@@ -237,6 +258,7 @@ export default function NotificationsPage() {
                 key={n.id}
                 n={n}
                 onClick={() => handleNotificationClick(n)}
+                onDelete={() => deleteNotification(n.id)}
               />
             ))}
           </div>

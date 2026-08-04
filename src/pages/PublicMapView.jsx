@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -211,6 +211,18 @@ export default function PublicMapView() {
   const { user } = useAuth()
   const { map, people, connections, places, placeConnections, ownerName, loading } = usePublicMap(userId, mapId)
   const [selectedPerson, setSelectedPerson] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Deep-link: ?openPerson=PERSON_ID → open that person's sheet (used by notifications)
+  useEffect(() => {
+    const personId = searchParams.get('openPerson')
+    if (!personId || !people.length) return
+    const person = people.find(p => p.id === personId)
+    if (person) {
+      setSelectedPerson(person)
+      setSearchParams(prev => { prev.delete('openPerson'); return prev }, { replace: true })
+    }
+  }, [searchParams, people])
 
   if (loading) {
     return (
