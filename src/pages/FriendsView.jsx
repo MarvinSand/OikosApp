@@ -4,6 +4,7 @@ import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, 
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
+import FeedCardFrame, { CONTENT_INSET } from '../components/feed/FeedCardFrame'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
@@ -1066,18 +1067,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   const displayBody = bodyLong && !expanded ? post.body.slice(0, 240) + '…' : post.body
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--color-bg)',
-        borderBottom: '1px solid var(--color-warm-3)',
-        position: 'relative',
-      }}
-    >
-      {/* Thread-Verbindungslinie zum nächsten Post in der Kette (wie bei Twitter) */}
-      {threadLineAfter && (
-        <div style={{ position: 'absolute', left: 33, top: 48, bottom: 0, width: 2, backgroundColor: 'var(--color-warm-3)' }} />
-      )}
-
+    <FeedCardFrame threadLineAfter={threadLineAfter}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${post.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
@@ -1132,7 +1122,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
       </div>
 
       {/* Content – links auf Höhe des Namens eingerückt (Avatar-Spalte bleibt für die Linie frei) */}
-      <div onClick={() => onClick(post)} style={{ padding: '0 16px 10px 62px', cursor: 'pointer' }}>
+      <div onClick={() => onClick(post)} style={{ padding: `0 16px 10px ${CONTENT_INSET}px`, cursor: 'pointer' }}>
         {post.title && (
           <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{post.title}</p>
         )}
@@ -1189,7 +1179,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
           onSaved={() => onBookmarkSaved?.(post.id)}
         />
       )}
-    </div>
+    </FeedCardFrame>
   )
 }
 
@@ -1963,20 +1953,24 @@ function FeedTab() {
         </div>
       )}
 
-      {!loading && filteredPosts.map(post => (
-        <PostCard
-          key={post.id}
-          post={post}
-          currentUserId={user?.id}
-          onReact={reactToPost}
-          onDelete={handleDelete}
-          onClick={p => navigate(`/feed/post/${p.id}`)}
-          onRepost={toggleRepost}
-          onBookmark={removeBookmark}
-          onBookmarkSaved={markBookmarked}
-          onShare={setSharePost}
-        />
-      ))}
+      {!loading && filteredPosts.length > 0 && (
+        <div style={{ borderTop: '1px solid var(--color-warm-3)' }}>
+          {filteredPosts.map(post => (
+            <PostCard
+              key={post.id}
+              post={post}
+              currentUserId={user?.id}
+              onReact={reactToPost}
+              onDelete={handleDelete}
+              onClick={p => navigate(`/feed/post/${p.id}`)}
+              onRepost={toggleRepost}
+              onBookmark={removeBookmark}
+              onBookmarkSaved={markBookmarked}
+              onShare={setSharePost}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Infinite scroll sentinel */}
       {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}

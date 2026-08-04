@@ -84,17 +84,21 @@ export default function SavedPostsView() {
           </div>
         )}
 
-        {!loading && filtered.map(post => (
-          <PostCard
-            key={post.id}
-            post={post}
-            currentUserId={user?.id}
-            onReact={reactToPost}
-            onClick={p => navigate(`/feed/post/${p.id}`)}
-            onRepost={toggleRepost}
-            onBookmark={removeBookmark}
-          />
-        ))}
+        {!loading && filtered.length > 0 && (
+          <div style={{ borderTop: '1px solid var(--color-warm-3)' }}>
+            {filtered.map(post => (
+              <PostCard
+                key={post.id}
+                post={post}
+                currentUserId={user?.id}
+                onReact={reactToPost}
+                onClick={p => navigate(`/feed/post/${p.id}`)}
+                onRepost={toggleRepost}
+                onBookmark={removeBookmark}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -7,6 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { useCommentThread } from '../hooks/useCommentThread'
 import { PostCard } from './FriendsView'
 import CommentCard from '../components/feed/CommentCard'
+import FeedCardFrame from '../components/feed/FeedCardFrame'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
@@ -171,13 +172,14 @@ export default function CommentDetailView() {
             onBookmarkSaved={markBookmarked}
             onDelete={handleDeleteAncestorComment}
             onClick={c => navigate(`/feed/comment/${c.id}`)}
+            threadLineBefore
             threadLineAfter
           />
         ))}
 
-        {/* ── Fokussierter Kommentar (voll, wie ein Post) ── */}
-        <div style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-warm-3)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
+        {/* ── Fokussierter Kommentar – volle Breite, Linie läuft von oben hinein ── */}
+        <FeedCardFrame threadLineBefore={!!ancestorPost}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 10px' }}>
             <button onClick={() => navigate(`/user/${comment.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
               <UserAvatar profile={comment.profiles} />
             </button>
@@ -231,22 +233,32 @@ export default function CommentDetailView() {
               else setShowSaveSheet(true)
             }}
             onShare={() => setShowShareSheet(true)}
+            inset={16}
           />
-        </div>
+        </FeedCardFrame>
 
-        {/* ── Divider ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 14px', padding: '0 16px' }}>
-          <div style={{ flex: 1, height: 1, backgroundColor: 'var(--color-warm-3)' }} />
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>
+        {/* ── Abschnittsüberschrift für die Antworten ── */}
+        <div style={{
+          padding: '10px 16px',
+          backgroundColor: 'var(--color-warm-4)',
+          borderLeft: '1px solid var(--color-warm-3)',
+          borderRight: '1px solid var(--color-warm-3)',
+          borderBottom: '1px solid var(--color-warm-3)',
+        }}>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: 0.2 }}>
             {replies.length} {replies.length === 1 ? 'Antwort' : 'Antworten'}
           </span>
-          <div style={{ flex: 1, height: 1, backgroundColor: 'var(--color-warm-3)' }} />
         </div>
 
         {/* ── Antworten ── */}
         {replies.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '24px 16px' }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>
+          <div style={{
+            textAlign: 'center', padding: '24px 16px',
+            borderLeft: '1px solid var(--color-warm-3)',
+            borderRight: '1px solid var(--color-warm-3)',
+            borderBottom: '1px solid var(--color-warm-3)',
+          }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', margin: 0 }}>
               Noch keine Antworten. Sei die Erste!
             </p>
           </div>

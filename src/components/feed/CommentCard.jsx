@@ -4,6 +4,7 @@ import { MoreHorizontal, Trash2 } from 'lucide-react'
 import PostEngagementBar from './PostEngagementBar'
 import ShareSheet from './ShareSheet'
 import SavePostSheet from './SavePostSheet'
+import FeedCardFrame, { CONTENT_INSET } from './FeedCardFrame'
 
 function timeAgo(iso) {
   const d = new Date(iso)
@@ -39,7 +40,7 @@ function CommentAvatar({ profile, size = 36 }) {
 // Kommentar-Karte im selben Stil wie ein Feed-Post: gleiche Icon-Leiste
 // (Kommentar/Repost/Like/Bookmark/Teilen); Klick öffnet den Kommentar als
 // eigenen Thread mit all seinen Antworten (/feed/comment/:id).
-export default function CommentCard({ comment, currentUserId, onLike, onRepost, onBookmark, onBookmarkSaved, onDelete, onClick, threadLineAfter }) {
+export default function CommentCard({ comment, currentUserId, onLike, onRepost, onBookmark, onBookmarkSaved, onDelete, onClick, threadLineBefore, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
@@ -53,16 +54,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
   const repostCount = (comment.reposts || []).length
 
   return (
-    <div style={{
-      backgroundColor: 'var(--color-bg)',
-      borderBottom: '1px solid var(--color-warm-3)',
-      position: 'relative',
-    }}>
-      {/* Thread-Verbindungslinie zum nächsten Kommentar in der Kette (wie bei Twitter) */}
-      {threadLineAfter && (
-        <div style={{ position: 'absolute', left: 33, top: 48, bottom: 0, width: 2, backgroundColor: 'var(--color-warm-3)' }} />
-      )}
-
+    <FeedCardFrame threadLineBefore={threadLineBefore} threadLineAfter={threadLineAfter}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${comment.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
@@ -106,7 +98,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
       </div>
 
       {/* Content */}
-      <div onClick={() => onClick?.(comment)} style={{ padding: '0 16px 10px 62px', cursor: 'pointer' }}>
+      <div onClick={() => onClick?.(comment)} style={{ padding: `0 16px 10px ${CONTENT_INSET}px`, cursor: 'pointer' }}>
         <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: 14, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
           {comment.body}
         </p>
@@ -142,6 +134,6 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
       {showShareSheet && (
         <ShareSheet comment={comment} onClose={() => setShowShareSheet(false)} />
       )}
-    </div>
+    </FeedCardFrame>
   )
 }

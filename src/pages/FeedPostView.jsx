@@ -7,6 +7,7 @@ import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
 import CommentCard from '../components/feed/CommentCard'
+import FeedCardFrame from '../components/feed/FeedCardFrame'
 import { COMMENT_SELECT, attachCommentEngagement } from '../lib/commentEngagement'
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -237,8 +238,8 @@ export default function FeedPostView() {
       </div>
 
       <div>
-        {/* ── Original post (full) ── */}
-        <div style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-warm-3)' }}>
+        {/* ── Original post (full) – fokussiert, daher über die volle Breite ── */}
+        <FeedCardFrame>
           {/* Author row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
             <UserAvatar profile={post.profiles} />
@@ -298,22 +299,32 @@ export default function FeedPostView() {
               else setShowSaveSheet(true)
             }}
             onShare={() => setSharePost(post)}
+            inset={16}
           />
-        </div>
+        </FeedCardFrame>
 
-        {/* ── Divider ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 14px', padding: '0 16px' }}>
-          <div style={{ flex: 1, height: 1, backgroundColor: 'var(--color-warm-3)' }} />
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>
+        {/* ── Abschnittsüberschrift für die Antworten ── */}
+        <div style={{
+          padding: '10px 16px',
+          backgroundColor: 'var(--color-warm-4)',
+          borderLeft: '1px solid var(--color-warm-3)',
+          borderRight: '1px solid var(--color-warm-3)',
+          borderBottom: '1px solid var(--color-warm-3)',
+        }}>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: 0.2 }}>
             {comments.length} {comments.length === 1 ? 'Antwort' : 'Antworten'}
           </span>
-          <div style={{ flex: 1, height: 1, backgroundColor: 'var(--color-warm-3)' }} />
         </div>
 
         {/* ── Comments ── */}
         {comments.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '24px 16px' }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>
+          <div style={{
+            textAlign: 'center', padding: '24px 16px',
+            borderLeft: '1px solid var(--color-warm-3)',
+            borderRight: '1px solid var(--color-warm-3)',
+            borderBottom: '1px solid var(--color-warm-3)',
+          }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', margin: 0 }}>
               Noch keine Antworten. Sei die Erste!
             </p>
           </div>
