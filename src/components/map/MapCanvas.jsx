@@ -884,14 +884,41 @@ export default function MapCanvas({
     setAddingPersonBusy(false)
   }
 
+  // React hängt `touchmove` und `wheel` als *passive* Listener an den Root –
+  // `preventDefault()` darin ist wirkungslos und erzeugt die Konsolen-Warnung
+  // "Unable to preventDefault inside passive event listener invocation".
+  // Beide Gesten (Pan/Pinch auf der Karte, Zoom per Mausrad) brauchen aber
+  // preventDefault, sonst scrollt/zoomt der Browser mit. Darum native
+  // Listener mit `{ passive: false }` registrieren. Der Handler wird über
+  // eine Ref gelesen, damit der Listener nur einmal registriert wird und
+  // trotzdem immer den aktuellen State sieht.
+  const rootRef = useRef(null)
+  const gestureHandlers = useRef({})
+  gestureHandlers.current.touchMove = handleTouchMove
+  gestureHandlers.current.wheel = handleWheel
+
+  useEffect(() => {
+    const root = rootRef.current
+    const svg = svgRef.current
+    if (!root || !svg) return
+    const onTouchMove = e => gestureHandlers.current.touchMove(e)
+    const onWheel = e => gestureHandlers.current.wheel(e)
+    root.addEventListener('touchmove', onTouchMove, { passive: false })
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      root.removeEventListener('touchmove', onTouchMove)
+      svg.removeEventListener('wheel', onWheel)
+    }
+  }, [])
+
   return (
     <div
+      ref={rootRef}
       style={{ position: 'relative', width: '100%', height: '100%', touchAction: 'none' }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseDown={handleBackgroundMouseDown}
       onTouchStart={handleBackgroundTouchStart}
-      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       {/* Zoom buttons */}
@@ -974,7 +1001,6 @@ export default function MapCanvas({
         viewBox={`${viewOrigin.x} ${viewOrigin.y} ${vbSize / zoom} ${vbSize / zoom}`}
         style={{ width: '100%', height: '100%', cursor: dragging?.moved ? 'grabbing' : panning ? 'grabbing' : 'grab' }}
         xmlns="http://www.w3.org/2000/svg"
-        onWheel={handleWheel}
       >
         {/* Transparent background to catch pan gestures */}
         <rect
