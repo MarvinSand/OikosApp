@@ -10,6 +10,7 @@ export function useCommunityDetail(communityId) {
   const [posts, setPosts] = useState([])
   const [events, setEvents] = useState([])
   const [myRsvps, setMyRsvps] = useState({})
+  const [joinRequests, setJoinRequests] = useState([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -22,6 +23,7 @@ export function useCommunityDetail(communityId) {
       { data: convData },
       postsResult,
       eventsResult,
+      joinRequestsResult,
     ] = await Promise.all([
       supabase.from('communities').select('*').eq('id', communityId).single(),
       supabase
@@ -49,6 +51,14 @@ export function useCommunityDetail(communityId) {
         .gte('starts_at', new Date(Date.now() - 86400000 * 7).toISOString())
         .order('starts_at')
         .limit(20),
+      // RLS lässt Nicht-Admins nur ihre eigene Anfrage sehen – für sie kommt
+      // hier höchstens 1 Zeile zurück, ungefährlich mitzuladen.
+      supabase
+        .from('community_join_requests')
+        .select('id, user_id, status, created_at')
+        .eq('community_id', communityId)
+        .eq('status', 'pending')
+        .order('created_at'),
     ])
 
     setCommunity(communityData)
@@ -73,6 +83,18 @@ export function useCommunityDetail(communityId) {
     }
 
     setMembers(finalMembers)
+
+    const requests = joinRequestsResult.data || []
+    if (requests.length > 0) {
+      const { data: reqProfiles } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url, is_christian')
+        .in('id', requests.map(r => r.user_id))
+      const reqProfMap = Object.fromEntries((reqProfiles || []).map(p => [p.id, p]))
+      setJoinRequests(requests.map(r => ({ ...r, profile: reqProfMap[r.user_id] || null })))
+    } else {
+      setJoinRequests([])
+    }
 
     const ev = eventsResult.data || []
     setEvents(ev)
@@ -116,6 +138,7 @@ export function useCommunityDetail(communityId) {
 
   const myMembership = members.find(m => m.user_id === user?.id)
   const isAdmin = myMembership?.role === 'admin'
+  const isOwner = !!community && community.created_by === user?.id
   const adminCount = members.filter(m => m.role === 'admin').length
 
   async function changeRole(userId, role) {
@@ -132,6 +155,18 @@ export function useCommunityDetail(communityId) {
       .delete()
       .eq('community_id', communityId)
       .eq('user_id', userId)
+  }
+
+  // Beitrittsanfrage annehmen/ablehnen – läuft über die Security-Definer-RPC
+  // (respond_to_join_request), da direktes Einfügen in community_members für
+  // request-Communities per RLS gesperrt ist.
+  async function respondToJoinRequest(requestId, approve) {
+    setJoinRequests(prev => prev.filter(r => r.id !== requestId))
+    const { error } = await supabase.rpc('respond_to_join_request', {
+      p_request_id: requestId, p_approve: approve,
+    })
+    if (error) { await load(); throw error }
+    if (approve) await load()
   }
 
   async function updateCommunity(updates) {
@@ -218,10 +253,10 @@ export function useCommunityDetail(communityId) {
   }
 
   return {
-    community, members, myMembership, isAdmin, adminCount,
+    community, members, myMembership, isAdmin, isOwner, adminCount,
     loading, conversationId, reload: load, changeRole, removeMember,
     posts, createPost, deletePost, togglePinPost,
     events, myRsvps, createEvent, deleteEvent, rsvpEvent,
-    updateCommunity,
+    updateCommunity, joinRequests, respondToJoinRequest,
   }
 }

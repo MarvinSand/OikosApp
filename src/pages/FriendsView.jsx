@@ -540,6 +540,8 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
   const { showToast } = useToast()
   const [publicCommunities, setPublicCommunities] = useState([])
   const [loadingPublic, setLoadingPublic] = useState(false)
+  const [requestedIds, setRequestedIds] = useState(new Set())
+  const [joiningId, setJoiningId] = useState(null)
   const previews = useCommunityMembersPreview([...myCommunities.map(c => c.id), ...publicCommunities.map(c => c.id)])
 
   useEffect(() => {
@@ -551,23 +553,49 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
     const myIds = myCommunities.map(c => c.id)
     const { data } = await supabase
       .from('communities')
-      .select('id, name, description, is_public')
+      .select('id, name, description, is_public, join_mode, avatar_url')
       .eq('is_public', true)
       .limit(20)
     const filtered = (data || []).filter(c => !myIds.includes(c.id))
     setPublicCommunities(filtered)
     setLoadingPublic(false)
+
+    // Eigene offene Anfragen laden, damit "Angefragt" statt "Anfrage senden"
+    // angezeigt wird – auch nach einem Reload der Seite.
+    const requestIds = filtered.filter(c => c.join_mode === 'request').map(c => c.id)
+    if (requestIds.length > 0) {
+      const { data: myRequests } = await supabase
+        .from('community_join_requests')
+        .select('community_id')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .in('community_id', requestIds)
+      setRequestedIds(new Set((myRequests || []).map(r => r.community_id)))
+    }
   }
 
-  async function handleJoinPublic(communityId, communityName) {
-    const { error } = await supabase
-      .from('community_members')
-      .insert({ community_id: communityId, user_id: user.id, role: 'member' })
-    if (!error) {
-      showToast(`Willkommen in ${communityName}!`)
-      navigate(`/community/${communityId}`)
-    } else {
+  async function handleJoinPublic(community) {
+    setJoiningId(community.id)
+    try {
+      if (community.join_mode === 'request') {
+        const { error } = await supabase
+          .from('community_join_requests')
+          .insert({ community_id: community.id, user_id: user.id })
+        if (error) throw error
+        setRequestedIds(prev => new Set(prev).add(community.id))
+        showToast('Beitrittsanfrage gesendet ✓')
+        return
+      }
+      const { error } = await supabase
+        .from('community_members')
+        .insert({ community_id: community.id, user_id: user.id, role: 'member' })
+      if (error) throw error
+      showToast(`Willkommen in ${community.name}!`)
+      navigate(`/community/${community.id}`)
+    } catch {
       showToast('Fehler beim Beitreten', 'error')
+    } finally {
+      setJoiningId(null)
     }
   }
 
@@ -624,7 +652,9 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
                 community={c}
                 members={previews[c.id] || []}
                 variant="discover"
-                onJoin={(comm) => handleJoinPublic(comm.id, comm.name)}
+                onJoin={handleJoinPublic}
+                joining={joiningId === c.id}
+                requested={requestedIds.has(c.id)}
               />
             ))}
           </div>

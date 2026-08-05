@@ -12,7 +12,7 @@ let inFlight = null
 async function fetchCommunities(userId) {
   const { data } = await supabase
     .from('community_members')
-    .select('id, role, joined_at, community_id, communities(id, name, description, is_public, invite_code, created_by, created_at)')
+    .select('id, role, joined_at, community_id, communities(id, name, description, is_public, join_mode, avatar_url, invite_code, created_by, created_at)')
     .eq('user_id', userId)
 
   if (!data || data.length === 0) return []
@@ -146,7 +146,19 @@ export function useCommunities() {
     await supabase.from('community_members').delete().eq('community_id', communityId).eq('user_id', userId)
   }
 
+  // Nur der Ersteller darf löschen (RLS: created_by = auth.uid()). Alle
+  // abhängigen Zeilen (Mitglieder, Chat, Beiträge, Events, …) hängen per
+  // ON DELETE CASCADE an communities.id, siehe phase58_community_admin.sql.
+  async function deleteCommunity(communityId) {
+    setMyCommunities(prev => prev.filter(c => c.id !== communityId))
+    if (cache.userId === userId && cache.rows) {
+      cache = { userId, rows: cache.rows.filter(c => c.id !== communityId) }
+    }
+    const { error } = await supabase.from('communities').delete().eq('id', communityId)
+    if (error) throw error
+  }
+
   const reload = useCallback(() => load(true), [load])
 
-  return { myCommunities, loading, createCommunity, joinByCode, leaveCommunity, reload }
+  return { myCommunities, loading, createCommunity, joinByCode, leaveCommunity, deleteCommunity, reload }
 }
