@@ -109,3 +109,19 @@ useEffect(() => {
 **⚠️ iOS-Safari-Caveat (wichtig!):** `position: fixed`-Leisten können auf iOS Safari beim **Unmount einer SPA-Route** eine schwarze Compositing-Geister-Fläche unten hinterlassen, die **auch auf anderen Seiten bleibt, bis man neu lädt**. Das tritt v. a. auf, wenn die Leiste **bedingt** (in einem Tab) gemountet wird – wie auf der Community-Detailseite (`CommunityDetail`). **Lösung dort:** KEINE fixed-Leiste, sondern Eingabeleiste **im Fluss** (Flex-Kind) + Root-Container `style={{ height: '100dvh', paddingBottom: 'var(--bottom-nav-h, 64px)' }}`.
 
 **Exakte Nav-Höhe:** `BottomNav.jsx` misst die echte Nav-Höhe (inkl. Safe-Area) per `ResizeObserver` und schreibt sie als CSS-Variable **`--bottom-nav-h`** auf `document.documentElement`. Für Bottom-Insets (z. B. Chat-Seiten ohne fixe Leiste) `var(--bottom-nav-h, 64px)` nutzen – so bleibt in Dark Mode keine schwarze Rest-Lücke. (Die fixe `.chat-input-bar` ist weiterhin okay für **dedizierte Vollbild-Chatseiten** wie `ConversationView`, die selten unmounten.)
+
+---
+
+## Gebete: EIN Modell, EINE Karte (ab Phase 57)
+
+**Vorher:** Gebete wurden an fünf Stellen unterschiedlich gerendert und an drei Stellen unterschiedlich gespeichert. Community-Gebete waren gar keine Gebete, sondern Chat-Nachrichten (`messages.type='prayer_request'`) mit einem Zähler im **localStorage** – also pro Gerät, maximal ein Gebet, für niemanden sonst sichtbar.
+
+**Jetzt:**
+- `src/lib/prayerModel.js` normalisiert beide Tabellen zu einem Objekt (`kind: 'oikos' | 'personal'`) und liefert die Tabellen-/Spaltenwahl (`logTable`, `logColumn`, `listColumn`, `noteColumn`). **Nie wieder** `request.person_id ? … : …` an einzelnen Aufrufstellen ausschreiben.
+- `src/components/prayer/PrayerCard.jsx` ist die einzige Gebets-Karte (Design: Oikos-Map). `PrayerCardList.jsx` verdrahtet Beten/Kommentar/Liste/Weiterleiten und mountet die Sheets einmal pro Liste.
+- Logs + Kommentare kommen gesammelt aus `usePrayerEngagement(prayers)` – nicht pro Karte einzeln nachladen.
+- Community-Gebete sind `personal_prayer_requests` mit `visibility='community'` + `visibility_community_id`; zusätzlich wird eine Chat-Nachricht mit `personal_prayer_request_id` gepostet, damit das Gebet im Chat sichtbar bleibt und denselben Zähler bedient.
+
+**Wichtig:** `visibility` hatte einen Check-Constraint auf `('public','siblings','communities','private')`, das Frontend schrieb aber seit jeher `'community'` (Singular). Jedes Community-Gebet scheiterte still am Constraint. Seit `phase57_community_prayers.sql` ist `'community'` der gültige Wert.
+
+**Merksatz:** Zustand, den mehrere Nutzer sehen sollen (Gebets-Zähler, Kommentare), gehört **nie** in den localStorage.

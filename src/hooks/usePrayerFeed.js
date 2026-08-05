@@ -1,362 +1,194 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import {
+  normalizePrayer, dedupePrayers, sortByCreatedDesc,
+  KIND_OIKOS, KIND_PERSONAL,
+} from '../lib/prayerModel'
 
-const PAGE_SIZE = 20
+// ════════════════════════════════════════════════════════════════════════
+// Der Gebete-Feed
+// ════════════════════════════════════════════════════════════════════════
+// Liefert normalisierte Gebete je Quelle. „alle" vereint sämtliche Gebete,
+// die für den Nutzer sichtbar sind – eigene und öffentliche Anliegen,
+// Anliegen von Geschwistern, Oikos-Anliegen, Community-Anliegen und im Chat
+// geteilte Gebete – dedupliziert und nach Datum sortiert.
 
-function getPreviousDay(dateStr) {
-  const d = new Date(dateStr)
-  d.setDate(d.getDate() - 1)
-  return d.toISOString().split('T')[0]
+export const PRAYER_SOURCES = [
+  { key: 'foryou',      label: 'Für dich' },
+  { key: 'siblings',    label: 'Geschwister' },
+  { key: 'oikos',       label: 'Oikos' },
+  { key: 'communities', label: 'Communities' },
+  { key: 'shared',      label: 'Geteilt' },
+  { key: 'all',         label: 'Alle' },
+]
+
+const PROFILE_SELECT = 'profiles!owner_id(id, username, full_name, gender, is_christian, avatar_url)'
+
+function applyStatus(query, statusFilter) {
+  if (statusFilter === 'answered') return query.eq('is_answered', true)
+  if (statusFilter === 'all') return query
+  return query.eq('is_answered', false)
 }
 
-async function updatePrayerStats(supabaseClient, userId) {
-  try {
-    const today = new Date().toISOString().split('T')[0]
-    const { data: stats } = await supabaseClient
-      .from('user_prayer_stats')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    const lastDate = stats?.last_prayer_date
-    const isToday = lastDate === today
-    const isConsecutive = lastDate === getPreviousDay(today)
-
-    if (!isToday) {
-      await supabaseClient.from('user_prayer_stats').upsert({
-        user_id: userId,
-        last_prayer_date: today,
-        current_streak: isConsecutive ? (stats?.current_streak || 0) + 1 : 1,
-        longest_streak: Math.max(stats?.longest_streak || 0, isConsecutive ? (stats?.current_streak || 0) + 1 : 1),
-        total_prayers: (stats?.total_prayers || 0) + 1,
-        updated_at: new Date().toISOString(),
-      })
-    } else {
-      await supabaseClient.from('user_prayer_stats')
-        .update({ total_prayers: (stats?.total_prayers || 0) + 1, updated_at: new Date().toISOString() })
-        .eq('user_id', userId)
-    }
-  } catch {
-    // Stats sind nicht-kritisch
-  }
+// Verbundene Geschwister (akzeptierte Freundschaften).
+async function fetchSiblingIds(userId) {
+  const { data } = await supabase
+    .from('friendships')
+    .select('requester_id, addressee_id')
+    .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+    .eq('status', 'accepted')
+  return (data || []).map(f => (f.requester_id === userId ? f.addressee_id : f.requester_id))
 }
 
-export function usePrayerFeed(tab, statusFilter = 'open') {
+// ── Einzelne Quellen ────────────────────────────────────────────────────
+
+// Öffentliche Anliegen (inkl. eigener) – der klassische For-You-Feed.
+async function fetchForYou(statusFilter, limit) {
+  const { data } = await applyStatus(
+    supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`),
+    statusFilter,
+  ).eq('visibility', 'public').order('created_at', { ascending: false }).limit(limit)
+  return (data || []).map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'personal' }))
+}
+
+// Anliegen verbundener Geschwister – persönliche und Oikos-Anliegen.
+async function fetchSiblings(userId, statusFilter, limit) {
+  const siblingIds = await fetchSiblingIds(userId)
+  if (siblingIds.length === 0) return []
+
+  const [{ data: personal }, { data: oikos }] = await Promise.all([
+    applyStatus(
+      supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`),
+      statusFilter,
+    ).in('owner_id', siblingIds).in('visibility', ['public', 'siblings'])
+      .order('created_at', { ascending: false }).limit(limit),
+    applyStatus(
+      supabase.from('prayer_requests')
+        .select(`*, ${PROFILE_SELECT}, oikos_people!person_id(name, is_christian, map_id)`),
+      statusFilter,
+    ).in('owner_id', siblingIds).not('person_id', 'is', null).eq('is_public', true)
+      .order('created_at', { ascending: false }).limit(limit),
+  ])
+
+  return [
+    ...(personal || []).map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'sibling' })),
+    ...(oikos || []).map(r => normalizePrayer(r, { kind: KIND_OIKOS, source: 'sibling' })),
+  ]
+}
+
+// Eigene Oikos-Anliegen über alle eigenen Maps.
+async function fetchOikos(userId, statusFilter, limit) {
+  const { data: maps } = await supabase.from('oikos_maps').select('id').eq('user_id', userId)
+  const mapIds = (maps || []).map(m => m.id)
+  if (mapIds.length === 0) return []
+
+  const { data: people } = await supabase.from('oikos_people').select('id, name').in('map_id', mapIds)
+  const peopleIds = (people || []).map(p => p.id)
+  if (peopleIds.length === 0) return []
+  const nameById = Object.fromEntries((people || []).map(p => [p.id, p.name]))
+
+  const { data } = await applyStatus(
+    supabase.from('prayer_requests').select('*'),
+    statusFilter,
+  ).in('person_id', peopleIds).order('created_at', { ascending: false }).limit(limit)
+
+  return (data || []).map(r => normalizePrayer(
+    { ...r, oikos_people: { name: nameById[r.person_id] || 'Person' } },
+    { kind: KIND_OIKOS, source: 'oikos' },
+  ))
+}
+
+// Anliegen aus allen Communities, in denen der Nutzer Mitglied ist.
+async function fetchCommunities(userId, statusFilter, limit) {
+  const { data: memberships } = await supabase
+    .from('community_members').select('community_id').eq('user_id', userId)
+  const communityIds = (memberships || []).map(m => m.community_id)
+  if (communityIds.length === 0) return []
+
+  const { data } = await applyStatus(
+    supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`),
+    statusFilter,
+  ).eq('visibility', 'community').in('visibility_community_id', communityIds)
+    .order('created_at', { ascending: false }).limit(limit)
+
+  return (data || []).map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'community' }))
+}
+
+// Gebete, die in einem Chat geteilt wurden (Direktnachricht oder Community).
+async function fetchShared(userId, statusFilter, limit) {
+  const { data: memberships } = await supabase
+    .from('conversation_members').select('conversation_id').eq('user_id', userId)
+  const convIds = (memberships || []).map(m => m.conversation_id)
+  if (convIds.length === 0) return []
+
+  const { data: msgs } = await supabase
+    .from('messages')
+    .select('personal_prayer_request_id, prayer_request_id, created_at')
+    .in('conversation_id', convIds)
+    .eq('type', 'prayer_request')
+    .neq('is_deleted', true)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  const personalIds = [...new Set((msgs || []).map(m => m.personal_prayer_request_id).filter(Boolean))]
+  const oikosIds = [...new Set((msgs || []).map(m => m.prayer_request_id).filter(Boolean))]
+  if (personalIds.length === 0 && oikosIds.length === 0) return []
+
+  const [{ data: personal }, { data: oikos }] = await Promise.all([
+    personalIds.length
+      ? applyStatus(supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`), statusFilter).in('id', personalIds)
+      : Promise.resolve({ data: [] }),
+    oikosIds.length
+      ? applyStatus(supabase.from('prayer_requests').select(`*, ${PROFILE_SELECT}`), statusFilter).in('id', oikosIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  return [
+    ...(personal || []).map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'shared' })),
+    ...(oikos || []).map(r => normalizePrayer(r, { kind: KIND_OIKOS, source: 'shared' })),
+  ]
+}
+
+// Alle Gebete einer Quelle (oder aller Quellen) laden.
+export async function fetchPrayersBySource(source, userId, statusFilter = 'open', limit = 100) {
+  if (source === 'foryou') return sortByCreatedDesc(dedupePrayers(await fetchForYou(statusFilter, limit)))
+  if (source === 'siblings') return sortByCreatedDesc(dedupePrayers(await fetchSiblings(userId, statusFilter, limit)))
+  if (source === 'oikos') return sortByCreatedDesc(dedupePrayers(await fetchOikos(userId, statusFilter, limit)))
+  if (source === 'communities') return sortByCreatedDesc(dedupePrayers(await fetchCommunities(userId, statusFilter, limit)))
+  if (source === 'shared') return sortByCreatedDesc(dedupePrayers(await fetchShared(userId, statusFilter, limit)))
+
+  // 'all' – alles zusammen, dedupliziert. Ein Gebet kann über mehrere Wege
+  // sichtbar sein (z.B. Community-Anliegen, das jemand im Chat geteilt hat).
+  const groups = await Promise.all([
+    fetchForYou(statusFilter, limit),
+    fetchSiblings(userId, statusFilter, limit),
+    fetchOikos(userId, statusFilter, limit),
+    fetchCommunities(userId, statusFilter, limit),
+    fetchShared(userId, statusFilter, limit),
+  ])
+  return sortByCreatedDesc(dedupePrayers(groups.flat()))
+}
+
+export function usePrayerFeed(source = 'foryou', statusFilter = 'open') {
   const { user } = useAuth()
-  const [requests, setRequests] = useState([])
-  const [logsMap, setLogsMap] = useState({})   // requestId → [log]
-  const [notesMap, setNotesMap] = useState({})  // requestId → [note]
+  const [prayers, setPrayers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [hasMore, setHasMore] = useState(false)
-  const offsetRef = useRef(0)
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!user) return
-    loadFeed(true)
-  }, [tab, statusFilter, user?.id])
-
-  // Apply the answered/open status filter to a query.
-  // 'open' → only unanswered, 'answered' → only answered, 'all' → no restriction.
-  function applyStatus(query) {
-    if (statusFilter === 'answered') return query.eq('is_answered', true)
-    if (statusFilter === 'all') return query
-    return query.eq('is_answered', false)
-  }
-
-  async function getOwnerIds() {
-    if (tab === 'all') return null
-
-    if (tab === 'siblings') {
-      const { data } = await supabase
-        .from('friendships')
-        .select('requester_id, addressee_id')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-        .eq('status', 'accepted')
-      return (data || []).map(f =>
-        f.requester_id === user.id ? f.addressee_id : f.requester_id
-      )
-    }
-
-    if (tab === 'communities') {
-      const { data: memberships } = await supabase
-        .from('community_members').select('community_id').eq('user_id', user.id)
-      const communityIds = (memberships || []).map(m => m.community_id)
-      if (!communityIds.length) return []
-      const { data: members } = await supabase
-        .from('community_members').select('user_id')
-        .in('community_id', communityIds).neq('user_id', user.id)
-      return [...new Set((members || []).map(m => m.user_id))]
-    }
-
-    return null
-  }
-
-  async function loadFeed(reset) {
-    if (reset) offsetRef.current = 0
     setLoading(true)
-
-    const ownerIds = await getOwnerIds()
-
-    // Siblings tab: hard stop if no friends
-    if (tab === 'siblings' && ownerIds?.length === 0) {
-      if (reset) { setRequests([]); setLogsMap({}); setNotesMap({}) }
-      setHasMore(false)
+    try {
+      setPrayers(await fetchPrayersBySource(source, user.id, statusFilter))
+    } catch (err) {
+      console.error('[usePrayerFeed] Laden fehlgeschlagen:', err)
+      setPrayers([])
+    } finally {
       setLoading(false)
-      return
     }
+  }, [source, statusFilter, user?.id])
 
-    const sourceType = tab === 'siblings' ? 'sibling_personal' : 'all_public'
+  useEffect(() => { load() }, [load])
 
-    // ── personal_prayer_requests (paginated) ──────────────────
-    // Communities tab: skip entirely – only community chat prayers are shown there
-    let personalItems = []
-    if (tab !== 'communities') {
-      let query = applyStatus(supabase
-        .from('personal_prayer_requests')
-        .select('*, profiles!owner_id(id, username, full_name, gender, is_christian)'))
-        .order('created_at', { ascending: false })
-        .range(offsetRef.current, offsetRef.current + PAGE_SIZE - 1)
-
-      if (tab === 'all') {
-        // Eigene öffentliche Anliegen sollen ebenfalls im For-You-Feed erscheinen.
-        query = query.eq('visibility', 'public')
-      } else if (tab === 'siblings') {
-        query = query.in('owner_id', ownerIds).in('visibility', ['public', 'siblings'])
-      }
-
-      const { data: personalResults } = await query
-      personalItems = (personalResults || []).map(r => ({ ...r, _sourceType: sourceType }))
-    }
-
-    // ── prayer_requests (OIKOS-linked), only for siblings tab on reset ──
-    let oikosItems = []
-    if (tab === 'siblings' && ownerIds?.length > 0 && reset) {
-      const { data: oikosResults } = await supabase
-        .from('prayer_requests')
-        .select('*, profiles!owner_id(id, username, full_name, gender, is_christian), oikos_people!person_id(name, is_christian, map_id)')
-        .in('owner_id', ownerIds)
-        .not('person_id', 'is', null)
-        .eq('is_public', true)
-        .eq('is_answered', false)
-        .order('created_at', { ascending: false })
-        .limit(50)
-      oikosItems = (oikosResults || []).map(r => ({ ...r, _sourceType: 'sibling_oikos' }))
-    }
-
-    // ── community message prayers, only for communities tab on reset ──
-    // Fetched via two paths to maximise RLS coverage:
-    // Path A: conversation_members (works if user has opened community chat before)
-    // Path B: community_members → conversations (works if user is a community member)
-    let communityMsgItems = []
-    let localCommLogs = {}   // built here, merged into setLogsMap below
-    let localCommNotes = {}  // built here, merged into setNotesMap below
-    if (tab === 'communities' && reset) {
-      const [
-        { data: convMemberships },
-        { data: myMemberships },
-      ] = await Promise.all([
-        supabase.from('conversation_members').select('conversation_id').eq('user_id', user.id),
-        supabase.from('community_members').select('community_id').eq('user_id', user.id),
-      ])
-
-      // Path A: from conversation_members
-      const convMemberIds = (convMemberships || []).map(m => m.conversation_id)
-
-      // Path B: community_members → conversations
-      const communityIds = (myMemberships || []).map(m => m.community_id)
-      let convViaCommIds = []
-      if (communityIds.length > 0) {
-        const { data: communityConvs } = await supabase
-          .from('conversations').select('id')
-          .in('community_id', communityIds).eq('type', 'community')
-        convViaCommIds = (communityConvs || []).map(c => c.id)
-      }
-
-      // Union both sets
-      const communityConvIds = [...new Set([...convMemberIds, ...convViaCommIds])]
-
-      if (communityConvIds.length > 0) {
-        // Also confirm these are community-type conversations (in case Path A includes DMs)
-        const { data: confirmedConvs } = await supabase
-          .from('conversations').select('id')
-          .in('id', communityConvIds).eq('type', 'community')
-        const finalConvIds = (confirmedConvs || []).map(c => c.id)
-
-        if (finalConvIds.length > 0) {
-          const { data: msgData } = await supabase
-            .from('messages')
-            .select('id, sender_id, text, bible_verse_text, created_at, conversation_id')
-            .in('conversation_id', finalConvIds)
-            .eq('type', 'prayer_request')
-            .neq('is_deleted', true)
-            .neq('sender_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(50)
-
-          if (msgData && msgData.length > 0) {
-            const senderIds = [...new Set(msgData.map(m => m.sender_id))]
-            const { data: profiles } = await supabase
-              .from('profiles').select('id, username, full_name, gender, is_christian')
-              .in('id', senderIds)
-            const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]))
-            communityMsgItems = msgData.map(m => ({
-              id: m.id,
-              title: m.text,
-              description: m.bible_verse_text || null,
-              owner_id: m.sender_id,
-              profiles: profileMap[m.sender_id] || null,
-              created_at: m.created_at,
-              is_answered: false,
-              visibility: 'communities',
-              _sourceType: 'community_message',
-            }))
-          }
-          // Build localStorage-based logs/notes – merged into setLogsMap/setNotesMap below
-          const localPrayed = (() => { try { return JSON.parse(localStorage.getItem('comm_prayed') || '{}') } catch { return {} } })()
-          const localSavedNotes = (() => { try { return JSON.parse(localStorage.getItem('comm_notes') || '{}') } catch { return {} } })()
-          for (const item of communityMsgItems) {
-            if (localPrayed[item.id]) {
-              localCommLogs[item.id] = [{ id: 'local_' + item.id, request_id: item.id, user_id: user.id, created_at: new Date().toISOString(), profiles: null }]
-            }
-            if (localSavedNotes[item.id]) {
-              localCommNotes[item.id] = [{ id: 'local_note_' + item.id, request_id: item.id, text: localSavedNotes[item.id].text, created_at: localSavedNotes[item.id].created_at, profiles: null }]
-            }
-          }
-        }
-      }
-    }
-
-    // If communities tab and both personal and community messages are empty, show empty state
-    if (tab === 'communities' && reset && personalItems.length === 0 && communityMsgItems.length === 0) {
-      setRequests([]); setLogsMap({}); setNotesMap({})
-      setHasMore(false)
-      setLoading(false)
-      return
-    }
-
-    // Combine: on reset merge all; on load-more append only personal
-    const allNewItems = reset
-      ? [...personalItems, ...oikosItems, ...communityMsgItems].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      : personalItems
-
-    // ── Fetch logs + notes ────────────────────────────────────
-    if (allNewItems.length > 0) {
-      const personalIds = allNewItems.filter(r => r._sourceType !== 'sibling_oikos').map(r => r.id)
-      const oikosIds    = allNewItems.filter(r => r._sourceType === 'sibling_oikos').map(r => r.id)
-
-      const [{ data: personalLogs }, { data: oikosLogs }, { data: notesData }] = await Promise.all([
-        personalIds.length > 0
-          ? supabase.from('personal_prayer_logs')
-              .select('id, request_id, user_id, created_at, profiles!user_id(id, username, full_name)')
-              .in('request_id', personalIds).order('created_at', { ascending: false })
-          : Promise.resolve({ data: [] }),
-        oikosIds.length > 0
-          ? supabase.from('prayer_logs')
-              .select('id, prayer_request_id, user_id, created_at')
-              .in('prayer_request_id', oikosIds).order('created_at', { ascending: false })
-          : Promise.resolve({ data: [] }),
-        personalIds.length > 0
-          ? supabase.from('prayer_notes')
-              .select('id, request_id, text, created_at, profiles!author_id(id, username, full_name)')
-              .in('request_id', personalIds).eq('is_public', true)
-              .order('created_at', { ascending: false })
-          : Promise.resolve({ data: [] }),
-      ])
-
-      const newLogs = {}
-      for (const l of (personalLogs || [])) {
-        if (!newLogs[l.request_id]) newLogs[l.request_id] = []
-        newLogs[l.request_id].push(l)
-      }
-      for (const l of (oikosLogs || [])) {
-        const id = l.prayer_request_id
-        if (!newLogs[id]) newLogs[id] = []
-        newLogs[id].push({ ...l, request_id: id })
-      }
-      const newNotes = {}
-      for (const n of (notesData || [])) {
-        if (!newNotes[n.request_id]) newNotes[n.request_id] = []
-        newNotes[n.request_id].push(n)
-      }
-      // Merge community message localStorage logs/notes so they survive the reset
-      setLogsMap(prev => reset ? { ...newLogs, ...localCommLogs } : { ...prev, ...newLogs, ...localCommLogs })
-      setNotesMap(prev => reset ? { ...newNotes, ...localCommNotes } : { ...prev, ...newNotes, ...localCommNotes })
-    } else if (reset) {
-      setLogsMap(localCommLogs)
-      setNotesMap(localCommNotes)
-    }
-
-    setRequests(prev => reset ? allNewItems : [...prev, ...personalItems])
-    setHasMore(personalItems.length === PAGE_SIZE)
-    offsetRef.current += personalItems.length
-    setLoading(false)
-  }
-
-  async function logPrayer(requestId) {
-    const item = requests.find(r => r.id === requestId)
-    if (item?._sourceType === 'community_message') {
-      try {
-        const map = JSON.parse(localStorage.getItem('comm_prayed') || '{}')
-        map[requestId] = true
-        localStorage.setItem('comm_prayed', JSON.stringify(map))
-      } catch {}
-      const fakeLog = { id: 'local_' + Date.now(), request_id: requestId, user_id: user.id, created_at: new Date().toISOString(), profiles: null }
-      setLogsMap(prev => ({ ...prev, [requestId]: [fakeLog, ...(prev[requestId] || [])] }))
-      updatePrayerStats(supabase, user.id)
-      return
-    }
-    const isOikos = item?._sourceType === 'sibling_oikos'
-    const opt = { id: 'opt_' + Date.now(), request_id: requestId, user_id: user.id, created_at: new Date().toISOString(), profiles: null }
-    setLogsMap(prev => ({ ...prev, [requestId]: [opt, ...(prev[requestId] || [])] }))
-    const { error } = isOikos
-      ? await supabase.from('prayer_logs').insert({ prayer_request_id: requestId, user_id: user.id })
-      : await supabase.from('personal_prayer_logs').insert({ request_id: requestId, user_id: user.id })
-    if (error) {
-      setLogsMap(prev => ({ ...prev, [requestId]: (prev[requestId] || []).filter(l => l.id !== opt.id) }))
-    } else {
-      updatePrayerStats(supabase, user.id)
-    }
-  }
-
-  async function addNote(requestId, text, isPublic) {
-    const item = requests.find(r => r.id === requestId)
-    if (item?._sourceType === 'community_message') {
-      // localStorage-based note for community message prayers
-      const notesStore = (() => { try { return JSON.parse(localStorage.getItem('comm_notes') || '{}') } catch { return {} } })()
-      const note = { id: 'local_note_' + Date.now(), request_id: requestId, text, created_at: new Date().toISOString(), profiles: null }
-      notesStore[requestId] = { text, created_at: note.created_at }
-      try { localStorage.setItem('comm_notes', JSON.stringify(notesStore)) } catch {}
-      setNotesMap(prev => ({ ...prev, [requestId]: [note, ...(prev[requestId] || [])] }))
-      return note
-    }
-    const { data, error } = await supabase.from('prayer_notes')
-      .insert({ request_id: requestId, author_id: user.id, text, is_public: isPublic })
-      .select('id, request_id, text, created_at, profiles!author_id(id, username, full_name)')
-      .single()
-    if (error) throw error
-    if (isPublic) {
-      setNotesMap(prev => ({ ...prev, [requestId]: [data, ...(prev[requestId] || [])] }))
-    }
-    return data
-  }
-
-  async function deleteRequest(requestId) {
-    const item = requests.find(r => r.id === requestId)
-    if (!item) return
-    // Nur eigene Anliegen löschbar; Community-Nachrichten sind keine echten Anliegen.
-    if (item.owner_id !== user.id || item._sourceType === 'community_message') return
-    // person_id vorhanden → prayer_requests, sonst personal_prayer_requests.
-    const table = item.person_id ? 'prayer_requests' : 'personal_prayer_requests'
-    const { error } = await supabase.from(table).delete().eq('id', requestId).eq('owner_id', user.id)
-    if (error) throw error
-    setRequests(rs => rs.filter(r => r.id !== requestId))
-  }
-
-  return {
-    requests, logsMap, notesMap, loading, hasMore,
-    loadMore: () => loadFeed(false),
-    reload: () => loadFeed(true),
-    logPrayer, addNote, deleteRequest,
-  }
+  return { prayers, loading, reload: load }
 }

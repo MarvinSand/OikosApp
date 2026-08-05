@@ -134,7 +134,9 @@ function Avatar({ name, size = 36, isChristian, avatarUrl }) {
 
 // ─── Prayer Request Card ──────────────────────────────────────
 function PrayerCard({ msg, isOwn, user, showToast }) {
+  const navigate = useNavigate()
   const [logging, setLogging] = useState(false)
+  const linkedId = msg.personal_prayer_request_id || msg.prayer_request_id
 
   async function handlePray() {
     setLogging(true)
@@ -208,6 +210,22 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
       >
         {logging ? '…' : 'Beten 🙏'}
       </button>
+      {/* Zur vollen Gebets-Karte – dort gibt es Kommentare, Gebetsliste und
+          Weiterleiten, genau wie überall sonst. */}
+      {linkedId && (
+        <button
+          onClick={() => navigate(`/prayer/${linkedId}`)}
+          style={{
+            marginLeft: 8, padding: '5px 12px', borderRadius: 8,
+            border: `1.5px solid ${isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-border)'}`,
+            backgroundColor: 'transparent',
+            color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text-secondary)',
+            fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}
+        >
+          Öffnen
+        </button>
+      )}
     </div>
   )
 }

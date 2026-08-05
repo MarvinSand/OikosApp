@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Pencil, Plus, X, Trash2, MoreVertical, Check } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, X, Check } from 'lucide-react'
 import { usePrayerListDetail } from '../hooks/usePrayerListDetail'
 import { usePrayerLists } from '../hooks/usePrayerLists'
 import { usePrayerUpdates } from '../hooks/usePrayerUpdates'
@@ -9,6 +9,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
+import PrayerCardList from '../components/prayer/PrayerCardList'
+import { normalizePrayer, KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
 import Confetti from '../components/ui/Confetti'
 
 // ─── Ampel ───────────────────────────────────────────────────
@@ -25,86 +27,6 @@ function AmpelLabel({ ampel }) {
     }}>
       {ampel.label}
     </span>
-  )
-}
-
-// ─── ListItemCard ─────────────────────────────────────────────
-function ListItemCard({ item, onRemove, onMarkAnswered, onAddUpdate }) {
-  const [showMenu, setShowMenu] = useState(false)
-  const req = item.request
-  const author = req?.profiles
-  const authorName = author?.full_name || author?.username || 'Unbekannt'
-
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'stretch', backgroundColor: 'var(--color-white)',
-      borderRadius: 14, marginBottom: 10, overflow: 'visible',
-      boxShadow: '0 2px 8px rgba(58,46,36,0.07)', border: '1px solid var(--color-warm-3)',
-      position: 'relative',
-    }}>
-      <AmpelBar ampel={item.ampel} />
-      <div style={{ flex: 1, padding: '12px 14px', minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{
-              fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700,
-              color: req?.is_answered ? 'var(--color-text-muted)' : 'var(--color-text)',
-              margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              textDecoration: req?.is_answered ? 'line-through' : 'none',
-            }}>
-              {req?.title || 'Unbekanntes Anliegen'}
-            </p>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>
-              Von {authorName}
-            </p>
-            <AmpelLabel ampel={item.ampel} />
-          </div>
-
-          {/* Three-dot menu */}
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button
-              onClick={() => setShowMenu(v => !v)}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-light)', padding: 4, borderRadius: 6 }}
-            >
-              <MoreVertical size={16} />
-            </button>
-            {showMenu && (
-              <>
-                <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                <div style={{
-                  position: 'absolute', right: 0, top: '100%', marginTop: 4,
-                  backgroundColor: 'var(--color-white)', borderRadius: 12,
-                  boxShadow: '0 4px 16px rgba(58,46,36,0.15)',
-                  border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 200,
-                  overflow: 'hidden',
-                }}>
-                  <button
-                    onClick={() => { setShowMenu(false); onAddUpdate(item) }}
-                    style={menuItem}
-                  >
-                    📝 Update hinzufügen
-                  </button>
-                  <button
-                    onClick={() => { setShowMenu(false); onMarkAnswered(item) }}
-                    style={{ ...menuItem, color: '#27AE60' }}
-                  >
-                    <Check size={14} style={{ display: 'inline', marginRight: 6 }} />
-                    Als erhört markieren
-                  </button>
-                  <button
-                    onClick={() => { setShowMenu(false); onRemove(item.itemId) }}
-                    style={{ ...menuItem, color: '#C0392B', borderTop: '1px solid var(--color-warm-3)' }}
-                  >
-                    <Trash2 size={14} style={{ display: 'inline', marginRight: 6 }} />
-                    Aus Liste entfernen
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -513,6 +435,18 @@ export default function PrayerListDetailView() {
   const [confetti, setConfetti] = useState(false)
 
   const existingIds = new Set(items.map(i => i.request?.id).filter(Boolean))
+
+  // Listen-Einträge auf die gemeinsame Gebets-Form bringen; Ampel und der
+  // Listen-Eintrag bleiben je Gebet nachschlagbar.
+  const listPrayers = items
+    .map(i => normalizePrayer(i.request, { kind: i.type === 'oikos' ? KIND_OIKOS : KIND_PERSONAL }))
+    .filter(Boolean)
+  const itemByKey = new Map(items
+    .filter(i => i.request)
+    .map(i => [`${i.type === 'oikos' ? KIND_OIKOS : KIND_PERSONAL}:${i.request.id}`, i]))
+  const ampelByKey = new Map(items
+    .filter(i => i.request)
+    .map(i => [`${i.type === 'oikos' ? KIND_OIKOS : KIND_PERSONAL}:${i.request.id}`, i.ampel]))
   const activeItems = items.filter(i => !i.request?.is_answered)
 
   async function handleRemoveItem(itemId) {
@@ -655,15 +589,27 @@ export default function PrayerListDetailView() {
           </div>
         )}
 
-        {items.map(item => (
-          <ListItemCard
-            key={item.itemId}
-            item={item}
-            onRemove={handleRemoveItem}
-            onMarkAnswered={setAnsweredItem}
-            onAddUpdate={setUpdateItem}
+        {items.length > 0 && (
+          <PrayerCardList
+            prayers={listPrayers}
+            onChanged={reload}
+            // Ampel + Listen-Aktionen bleiben erhalten, stecken jetzt aber in
+            // der gemeinsamen Gebets-Karte.
+            extraBadge={p => {
+              const ampel = ampelByKey.get(p.key)
+              return ampel && ampel.status !== 'green' ? { label: ampel.label, color: ampel.color } : null
+            }}
+            extraMenuItems={p => {
+              const item = itemByKey.get(p.key)
+              if (!item) return []
+              return [
+                { label: '📝 Update hinzufügen', onClick: () => setUpdateItem(item) },
+                { label: '✓ Als erhört markieren', onClick: () => setAnsweredItem(item) },
+                { label: '🗑 Aus Liste entfernen', onClick: () => handleRemoveItem(item.itemId), danger: true },
+              ]
+            }}
           />
-        ))}
+        )}
       </div>
 
       {/* FAB */}
@@ -729,4 +675,3 @@ export default function PrayerListDetailView() {
 
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }
 const inp = { width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }
-const menuItem = { display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', transition: 'background-color 0.1s' }
