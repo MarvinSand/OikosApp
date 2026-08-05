@@ -112,7 +112,10 @@ export function useOikosFilterSource({ enabled }) {
     const list = []
     for (const mapId of checkedMapIds) {
       const map = availableMaps.find(m => m.id === mapId)
-      for (const p of (peopleByMap[mapId] || [])) list.push({ id: p.id, name: p.name, mapId, mapName: map?.name || null })
+      for (const p of (peopleByMap[mapId] || [])) list.push({
+        id: p.id, name: p.name, mapId,
+        mapName: map?.name || null, isOwn: map?.isOwn ?? false, ownerName: map?.ownerName || null,
+      })
     }
     return list
   }, [checkedMapIds, peopleByMap, availableMaps])

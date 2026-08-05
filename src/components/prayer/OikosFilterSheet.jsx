@@ -190,7 +190,9 @@ export default function OikosFilterSheet({ source, onClose }) {
                     <CheckRow checked={checkedPersonIds.has(p.id)} onToggle={() => togglePerson(p.id)}>
                       <span style={{ fontSize: 13.5, color: 'var(--color-text)' }}>{p.name}</span>
                       {p.mapName && (
-                        <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>· {p.mapName}</span>
+                        <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                          · {p.mapName} · {p.isOwn ? 'von dir' : (p.ownerName ? `von ${p.ownerName}` : 'von Geschwistern')}
+                        </span>
                       )}
                     </CheckRow>
                   </div>
