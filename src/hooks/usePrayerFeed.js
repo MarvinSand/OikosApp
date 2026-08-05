@@ -55,8 +55,12 @@ async function fetchForYou(statusFilter, limit) {
 // Öffentliche Oikos-Anliegen verbundener Geschwister.
 async function fetchSiblingOikos(siblingIds, statusFilter, limit, source) {
   if (siblingIds.length === 0) return []
+  // Kein profiles!owner_id-Embed: prayer_requests.owner_id verweist auf
+  // auth.users, nicht auf profiles – PostgREST kann den Join nicht auflösen
+  // und lässt die ganze Abfrage leer laufen. Profile werden in
+  // attachPrayerContext() separat nachgeladen (wie usePrayerRequests.js).
   const { data } = await applyStatus(
-    supabase.from('prayer_requests').select(`*, ${PROFILE_SELECT}`),
+    supabase.from('prayer_requests').select('*'),
     statusFilter,
   ).in('owner_id', siblingIds).not('person_id', 'is', null).eq('is_public', true)
     .order('created_at', { ascending: false }).limit(limit)
@@ -105,7 +109,7 @@ async function fetchOwnOikos(userId, statusFilter, limit) {
   if (peopleIds.length === 0) return []
 
   const { data } = await applyStatus(
-    supabase.from('prayer_requests').select(`*, ${PROFILE_SELECT}`),
+    supabase.from('prayer_requests').select('*'),
     statusFilter,
   ).in('person_id', peopleIds).order('created_at', { ascending: false }).limit(limit)
 
@@ -153,7 +157,7 @@ async function fetchShared(userId, statusFilter, limit) {
       ? applyStatus(supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`), statusFilter).in('id', personalIds)
       : Promise.resolve({ data: [] }),
     oikosIds.length
-      ? applyStatus(supabase.from('prayer_requests').select(`*, ${PROFILE_SELECT}`), statusFilter).in('id', oikosIds)
+      ? applyStatus(supabase.from('prayer_requests').select('*'), statusFilter).in('id', oikosIds)
       : Promise.resolve({ data: [] }),
   ])
 
@@ -163,27 +167,35 @@ async function fetchShared(userId, statusFilter, limit) {
   ]
 }
 
-// ── Herkunft nachladen ──────────────────────────────────────────────────
-// Person → Map → Map-Besitzer bzw. Community-Name. Bewusst als eigene
-// .in()-Queries statt verschachtelter Embeds: ein nicht auflösbarer Join
-// würde die ganze Liste still leeren (siehe CLAUDE.md). Schlägt hier etwas
-// fehl, fehlt nur die Kontext-Zeile.
+// ── Herkunft + Autor nachladen ───────────────────────────────────────────
+// Person → Map → Map-Besitzer bzw. Community-Name, sowie die Autoren-Profile
+// von Oikos-Anliegen (prayer_requests.owner_id verweist auf auth.users, nicht
+// auf profiles – ein profiles!owner_id-Embed dort scheitert und lässt die
+// Abfrage leer laufen). Bewusst als eigene .in()-Queries statt verschachtelter
+// Embeds: ein nicht auflösbarer Join würde die ganze Liste still leeren
+// (siehe CLAUDE.md). Schlägt hier etwas fehl, fehlt nur die Kontext-Zeile
+// bzw. der Autor.
 async function attachPrayerContext(prayers, userId) {
   const personIds = [...new Set(prayers.map(p => p.personId).filter(Boolean))]
   const communityIds = [...new Set(prayers.map(p => p.communityId).filter(Boolean))]
-  if (personIds.length === 0 && communityIds.length === 0) return prayers
+  const oikosOwnerIds = [...new Set(prayers.filter(p => p.kind === KIND_OIKOS && !p.author).map(p => p.ownerId).filter(Boolean))]
+  if (personIds.length === 0 && communityIds.length === 0 && oikosOwnerIds.length === 0) return prayers
 
-  const [{ data: people }, { data: communities }] = await Promise.all([
+  const [{ data: people }, { data: communities }, { data: authors }] = await Promise.all([
     personIds.length
       ? supabase.from('oikos_people').select('id, name, map_id').in('id', personIds)
       : Promise.resolve({ data: [] }),
     communityIds.length
       ? supabase.from('communities').select('id, name').in('id', communityIds)
       : Promise.resolve({ data: [] }),
+    oikosOwnerIds.length
+      ? supabase.from('profiles').select('id, username, full_name, gender, is_christian, avatar_url').in('id', oikosOwnerIds)
+      : Promise.resolve({ data: [] }),
   ])
 
   const personById = Object.fromEntries((people || []).map(p => [p.id, p]))
   const communityById = Object.fromEntries((communities || []).map(c => [c.id, c]))
+  const authorById = Object.fromEntries((authors || []).map(a => [a.id, a]))
 
   // Maps der gefundenen Personen + deren Besitzer
   const mapIds = [...new Set((people || []).map(p => p.map_id).filter(Boolean))]
@@ -201,17 +213,19 @@ async function attachPrayerContext(prayers, userId) {
   }
 
   return prayers.map(p => {
-    if (p.communityId) {
-      const community = communityById[p.communityId]
-      return community ? { ...p, communityName: community.name } : p
+    const withAuthor = !p.author && authorById[p.ownerId] ? { ...p, author: authorById[p.ownerId] } : p
+
+    if (withAuthor.communityId) {
+      const community = communityById[withAuthor.communityId]
+      return community ? { ...withAuthor, communityName: community.name } : withAuthor
     }
-    const person = p.personId ? personById[p.personId] : null
-    if (!person) return p
+    const person = withAuthor.personId ? personById[withAuthor.personId] : null
+    if (!person) return withAuthor
     const map = person.map_id ? mapById[person.map_id] : null
     const owner = map?.user_id ? ownerById[map.user_id] : null
     return {
-      ...p,
-      personName: p.personName || person.name,
+      ...withAuthor,
+      personName: withAuthor.personName || person.name,
       mapId: map?.id || person.map_id || null,
       mapName: map?.name || null,
       mapOwnerId: map?.user_id || null,

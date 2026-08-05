@@ -129,12 +129,14 @@ async function fetchListItems(listId) {
   const personalIds = listItems.filter(i => i.personal_prayer_request_id).map(i => i.personal_prayer_request_id)
   const oikosIds = listItems.filter(i => i.prayer_request_id).map(i => i.prayer_request_id)
 
+  // Kein profiles!owner_id-Embed auf prayer_requests: owner_id verweist auf
+  // auth.users, nicht auf profiles – der Join scheitert und liefert nichts.
   const [{ data: personalReqs }, { data: oikosReqs }] = await Promise.all([
     personalIds.length > 0
       ? supabase.from('personal_prayer_requests').select('*, profiles!owner_id(id, username, full_name, is_christian)').in('id', personalIds)
       : Promise.resolve({ data: [] }),
     oikosIds.length > 0
-      ? supabase.from('prayer_requests').select('*, profiles!owner_id(id, username, full_name, is_christian)').in('id', oikosIds)
+      ? supabase.from('prayer_requests').select('*').in('id', oikosIds)
       : Promise.resolve({ data: [] }),
   ])
 
