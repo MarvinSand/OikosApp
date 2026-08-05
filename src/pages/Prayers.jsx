@@ -16,6 +16,8 @@ import PrayerModeSetupSheet from '../components/prayer/PrayerModeSetupSheet'
 import PrayerCardList from '../components/prayer/PrayerCardList'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
 import SiblingPicker from '../components/prayer/SiblingPicker'
+import OikosFilterSheet from '../components/prayer/OikosFilterSheet'
+import { useOikosFilterSource } from '../hooks/useOikosFilterSource'
 import { KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
 
 // ─── Konstanten ───────────────────────────────────────────────
@@ -360,18 +362,16 @@ export default function Prayers() {
   // Quelle des Feeds: 'foryou' (Standard) … 'all' zeigt jedes Gebet, das für
   // den Nutzer sichtbar ist – auch Oikos-, Community- und geteilte Gebete.
   const [sourceFilter, setSourceFilter] = useState('foryou')
-  // Feinfilter innerhalb einer Quelle: Oikos (Map/Person/Besitzer) bzw.
-  // Community. Wird beim Wechsel der Quelle zurückgesetzt.
-  const [mapFilter, setMapFilter] = useState('all')
-  const [personFilter, setPersonFilter] = useState('all')
-  const [ownerFilter, setOwnerFilter] = useState('all')   // 'all' | 'mine' | 'siblings'
+  // Feinfilter innerhalb einer Quelle. Community bleibt eine einfache
+  // Einfachauswahl; Oikos hat einen eigenen mehrstufigen Filter (von wem →
+  // welche Maps → welche Personen, siehe useOikosFilterSource) mit eigenem
+  // Auswahlzustand, der beim Quellenwechsel bewusst NICHT zurückgesetzt wird.
   const [communityFilter, setCommunityFilter] = useState('all')
+  const [showOikosFilterSheet, setShowOikosFilterSheet] = useState(false)
+  const oikosFilter = useOikosFilterSource({ enabled: sourceFilter === 'oikos' })
 
   function selectSource(key) {
     setSourceFilter(key)
-    setMapFilter('all')
-    setPersonFilter('all')
-    setOwnerFilter('all')
     setCommunityFilter('all')
   }
   const { prayers, loading, reload } = usePrayerFeed(sourceFilter, statusFilter)
@@ -464,27 +464,18 @@ export default function Prayers() {
   const q = searchQuery.trim().toLowerCase()
 
   // Auswahlmöglichkeiten aus den geladenen Gebeten ableiten – so stehen nur
-  // Maps/Personen/Communities zur Wahl, zu denen es auch Anliegen gibt.
+  // Communities zur Wahl, zu denen es auch Anliegen gibt. Der Oikos-Filter
+  // hat eigene, unabhängig geladene Referenzdaten (useOikosFilterSource).
   const showOikosFilters = sourceFilter === 'oikos'
   const showCommunityFilter = sourceFilter === 'communities'
 
-  const mapOptions = uniqueOptions(prayers, p => p.mapId && [p.mapId, p.mapName || 'Unbenannte Map'])
-  const personOptions = uniqueOptions(
-    prayers.filter(p => mapFilter === 'all' || p.mapId === mapFilter),
-    p => p.personId && [p.personId, p.personName || 'Unbekannt'],
-  )
   const communityOptions = uniqueOptions(prayers, p => p.communityId && [p.communityId, p.communityName || 'Community'])
 
-  const oikosFilterActive = showOikosFilters && (mapFilter !== 'all' || personFilter !== 'all' || ownerFilter !== 'all')
+  const oikosFilterActive = showOikosFilters && oikosFilter.isActive
   const communityFilterActive = showCommunityFilter && communityFilter !== 'all'
 
   const filteredPrayers = prayers.filter(p => {
-    if (showOikosFilters) {
-      if (mapFilter !== 'all' && p.mapId !== mapFilter) return false
-      if (personFilter !== 'all' && p.personId !== personFilter) return false
-      if (ownerFilter === 'mine' && !p.isOwnMap) return false
-      if (ownerFilter === 'siblings' && p.isOwnMap) return false
-    }
+    if (showOikosFilters && !oikosFilter.matchesPrayer(p)) return false
     if (showCommunityFilter && communityFilter !== 'all' && p.communityId !== communityFilter) return false
     if (activeCategories.length > 0 && !activeCategories.includes(p.category)) return false
     if (!matchesDateFilter(p.createdAt, dateFilter)) return false
@@ -516,13 +507,6 @@ export default function Prayers() {
   // Count of non-default filter facets (status counts when not the default "open")
   const filterFacetCount = activeCategories.length + (dateActive ? 1 : 0) + (statusFilter !== 'open' ? 1 : 0)
   const hasActiveFilter = filterFacetCount > 0 || q.length > 0 || oikosFilterActive || communityFilterActive
-
-  // Passt die gewählte Person nicht mehr zur gewählten Map, Auswahl lösen.
-  useEffect(() => {
-    if (personFilter === 'all') return
-    if (!personOptions.some(o => o.value === personFilter)) setPersonFilter('all')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapFilter, personOptions.length])
 
   // Vom Profil verlinktes Gebet anspringen + kurz hervorheben
   useEffect(() => {
@@ -745,24 +729,10 @@ export default function Prayers() {
       {(showOikosFilters || showCommunityFilter) && (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '10px 16px', borderBottom: '1px solid var(--color-border)' }}>
           {showOikosFilters && (
-            <>
-              <FilterSelect
-                value={mapFilter} onChange={setMapFilter}
-                allLabel="Alle Maps" options={mapOptions}
-              />
-              <FilterSelect
-                value={personFilter} onChange={setPersonFilter}
-                allLabel="Alle Personen" options={personOptions}
-              />
-              <FilterSelect
-                value={ownerFilter} onChange={setOwnerFilter}
-                allLabel="Alle Besitzer"
-                options={[
-                  { value: 'mine', label: 'Meine Maps' },
-                  { value: 'siblings', label: 'Von Geschwistern' },
-                ]}
-              />
-            </>
+            <button onClick={() => setShowOikosFilterSheet(true)} style={sourceChipStyle(oikosFilter.isActive)}>
+              Von wem & welche Maps
+              {oikosFilter.isActive && <span style={{ marginLeft: 4 }}>●</span>}
+            </button>
           )}
           {showCommunityFilter && (
             <FilterSelect
@@ -852,6 +822,10 @@ export default function Prayers() {
       >
         +
       </button>
+
+      {showOikosFilterSheet && (
+        <OikosFilterSheet source={oikosFilter} onClose={() => setShowOikosFilterSheet(false)} />
+      )}
 
       {showCreate && (
         <CreatePrayerSheet

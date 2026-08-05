@@ -13,7 +13,7 @@ const COVERS = [
   { from: '#10B981', to: '#0D9488' }, // Grün → Teal
 ]
 
-function hashString(str) {
+export function hashString(str) {
   let h = 0
   const s = String(str || '')
   for (let i = 0; i < s.length; i++) {
