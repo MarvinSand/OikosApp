@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Search, SlidersHorizontal, Users, CalendarDays, X, MapPin } from 'lucide-react'
+import { Search, SlidersHorizontal, Users, CalendarDays, X, MapPin, Repeat } from 'lucide-react'
+import { nextOccurrence, formatRecurrenceLabel, isRecurring } from '../../lib/recurrence'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -192,7 +193,7 @@ export default function MapDrawer({
     }
     return [...arr].sort((a, b) =>
       (a.distance ?? Infinity) - (b.distance ?? Infinity) ||
-      new Date(a.starts_at || 0) - new Date(b.starts_at || 0)
+      (nextOccurrence(a)?.getTime() ?? 0) - (nextOccurrence(b)?.getTime() ?? 0)
     )
   }, [tab, users, activities, search, filter, myProfile?.city, myProfile?.church_name])
 
@@ -485,7 +486,9 @@ function SiblingRow({ user, onClick }) {
 
 // ─── Event-Zeile ──────────────────────────────────────────
 function EventRow({ activity, onClick }) {
-  const when = formatEventDate(activity.starts_at)
+  const recurring = isRecurring(activity)
+  const nextDate = nextOccurrence(activity)
+  const when = nextDate ? formatEventDate(nextDate.toISOString()) : (recurring ? 'Serie beendet' : null)
   const participantCount = (activity.participants || []).length
   return (
     <button
@@ -497,11 +500,20 @@ function EventRow({ activity, onClick }) {
       }}
     >
       <div style={{
-        width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+        width: 42, height: 42, borderRadius: '50%', flexShrink: 0, position: 'relative',
         background: C.bgSec, border: `2px solid ${C.accent}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19,
       }}>
         {activity.activity_emoji || '📍'}
+        {recurring && (
+          <span style={{
+            position: 'absolute', bottom: -3, right: -3, width: 17, height: 17, borderRadius: '50%',
+            background: C.accent, border: `1.5px solid ${C.bg}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }} title={formatRecurrenceLabel(activity)}>
+            <Repeat size={10} color="#fff" />
+          </span>
+        )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
