@@ -1151,7 +1151,7 @@ export default function CommunityDetail() {
                   </p>
                 </div>
               ) : (
-                <PrayerCardList prayers={prayers} onChanged={reloadPrayers} />
+                <PrayerCardList prayers={prayers} onChanged={reloadPrayers} showContext={false} />
               )}
             </div>
           )}

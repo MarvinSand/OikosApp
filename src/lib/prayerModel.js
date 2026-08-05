@@ -61,12 +61,53 @@ export function normalizePrayer(row, { kind = null, source = null } = {}) {
     isPublic: isOikos ? row.is_public !== false : row.visibility !== 'private',
     visibility: isOikos ? (row.is_public === false ? 'private' : 'public') : (row.visibility || 'private'),
     category: row.category || null,
+    // ── Herkunft ──────────────────────────────────────────────────────────
+    // Oikos-Anliegen: für welche Person, aus welcher Map, wem gehört die Map.
+    // Community-Anliegen: aus welcher Community.
+    // Die Namen werden nachträglich von attachPrayerContext() eingesetzt
+    // (usePrayerFeed) – ohne sie bleibt nur die ID, die Karte lässt die
+    // Kontext-Zeile dann weg.
     communityId: row.visibility_community_id || null,
+    communityName: null,
     personId: row.person_id || null,
     personName: row.oikos_people?.name || null,
+    mapId: row.oikos_people?.map_id || null,
+    mapName: null,
+    mapOwnerId: null,
+    mapOwnerName: null,
+    isOwnMap: false,
     source: source || (isOikos ? 'oikos' : 'personal'),
     raw: row,
   }
+}
+
+// Herkunfts-Zeile für die Gebets-Karte: Text + Ziel-Route.
+// Gibt null zurück, wenn die Herkunft nicht auflösbar ist (z.B. private Map
+// eines Geschwisters) – dann zeigt die Karte einfach keine Zeile.
+export function prayerContext(prayer) {
+  if (!prayer) return null
+
+  if (prayer.kind === KIND_OIKOS) {
+    if (!prayer.personName && !prayer.mapName) return null
+    const parts = []
+    if (prayer.personName) parts.push(`Für ${prayer.personName}`)
+    if (prayer.mapName) parts.push(prayer.mapName)
+    parts.push(prayer.isOwnMap ? 'von dir' : (prayer.mapOwnerName ? `von ${prayer.mapOwnerName}` : 'von Geschwistern'))
+    return {
+      icon: '🗺️',
+      text: parts.join(' · '),
+      // Eigene Map direkt öffnen, fremde über das Profil des Besitzers.
+      to: prayer.mapId
+        ? (prayer.isOwnMap ? `/map/${prayer.mapId}` : (prayer.mapOwnerId ? `/user/${prayer.mapOwnerId}/map/${prayer.mapId}` : null))
+        : null,
+    }
+  }
+
+  if (prayer.communityId && prayer.communityName) {
+    return { icon: '🏠', text: prayer.communityName, to: `/community/${prayer.communityId}` }
+  }
+
+  return null
 }
 
 // Liste normalisieren und Dubletten entfernen (dasselbe Gebet kann über

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   MoreVertical, Pencil, Check, Trash2, Pin, Lock, Globe,
   MessageCircle, BookmarkPlus, Forward, ChevronDown, ChevronUp,
@@ -12,6 +13,7 @@ import { useToast } from '../../context/ToastContext'
 import { summarizeLogs } from '../../hooks/usePrayerEngagement'
 import {
   timeAgo, formatLastPrayed, getInitials, authorName as displayName, KIND_OIKOS,
+  prayerContext,
 } from '../../lib/prayerModel'
 
 // ════════════════════════════════════════════════════════════════════════
@@ -87,6 +89,9 @@ export default function PrayerCard({
   currentUserId,
   goal = null,
   showSourceBadge = false,
+  // Herkunfts-Zeile (Oikos-Person/Map bzw. Community). Dort ausschalten, wo
+  // die Herkunft schon der Bildschirm selbst ist – Oikos-Person, Community.
+  showContext = true,
   extraBadge = null,
   extraMenuItems = [],
   onPray,
@@ -100,6 +105,7 @@ export default function PrayerCard({
   onOpenGoal,
 }) {
   const { showToast } = useToast()
+  const navigate = useNavigate()
   const [showPrayedBy, setShowPrayedBy] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
@@ -121,6 +127,7 @@ export default function PrayerCard({
 
   const sourceLabel = showSourceBadge ? SOURCE_LABELS[prayer.source] : null
   const cat = CATEGORIES.find(c => c.key === prayer.category)
+  const context = showContext ? prayerContext(prayer) : null
 
   async function handlePray() {
     try {
@@ -214,6 +221,24 @@ export default function PrayerCard({
               </button>
             )}
           </div>
+        )}
+
+        {/* Herkunft: für wen / aus welcher Map / von wem – bzw. Community */}
+        {context && (
+          <button
+            onClick={() => context.to && navigate(context.to)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
+              border: 'none', background: 'none', padding: 0, textAlign: 'left',
+              cursor: context.to ? 'pointer' : 'default',
+              fontFamily: 'Lora, serif', fontSize: 12.5, color: 'var(--color-text-secondary)',
+            }}
+          >
+            <span style={{ flexShrink: 0 }}>{context.icon}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {context.text}
+            </span>
+          </button>
         )}
 
         {/* Gebetsziel */}

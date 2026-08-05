@@ -23,6 +23,7 @@ export default function PrayerCardList({
   prayers,
   goalByKey = null,
   showSourceBadge = false,
+  showContext = true,
   // Zusatz-Einträge im ⋯-Menü bzw. Badge je Gebet – z.B. „Aus Liste
   // entfernen" in einer Gebetsliste oder die Ampel-Markierung.
   extraMenuItems = null,
@@ -108,6 +109,7 @@ export default function PrayerCardList({
               currentUserId={user?.id}
               goal={goalByKey?.get(prayer.key) || null}
               showSourceBadge={showSourceBadge}
+              showContext={showContext}
               extraMenuItems={extraMenuItems?.(prayer) || []}
               extraBadge={extraBadge?.(prayer) || null}
               onPray={handlePray}

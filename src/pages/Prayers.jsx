@@ -42,6 +42,49 @@ const VISIBILITY_OPTIONS = [
   { key: 'specific', label: 'Ausgewählte Geschwister', icon: Users },
 ]
 
+const sourceChipStyle = active => ({
+  flexShrink: 0, padding: '6px 13px', borderRadius: 999,
+  border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+  backgroundColor: active ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
+  color: active ? '#fff' : 'var(--color-text-secondary)',
+  fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+})
+
+// Pillen-Auswahlfeld für die Feinfilter unter den Quellen-Chips.
+function FilterSelect({ value, onChange, allLabel, options }) {
+  const active = value !== 'all'
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      aria-label={allLabel}
+      style={{
+        flexShrink: 0, padding: '6px 10px', borderRadius: 999,
+        border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+        backgroundColor: active ? 'var(--color-accent-light)' : 'var(--color-bg-secondary)',
+        color: active ? 'var(--color-accent-dark)' : 'var(--color-text-secondary)',
+        fontSize: 12.5, fontWeight: 600, cursor: 'pointer', maxWidth: 190,
+      }}
+    >
+      <option value="all">{allLabel}</option>
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  )
+}
+
+// Aus einer Gebets-Liste eindeutige Auswahl-Optionen bauen.
+// pick(prayer) liefert [value, label] oder etwas Falsches zum Überspringen.
+function uniqueOptions(prayers, pick) {
+  const byValue = new Map()
+  for (const p of prayers) {
+    const entry = pick(p)
+    if (!entry) continue
+    const [value, label] = entry
+    if (value && !byValue.has(value)) byValue.set(value, { value, label })
+  }
+  return [...byValue.values()].sort((a, b) => a.label.localeCompare(b.label, 'de'))
+}
+
 // ─── Neues Gebet erstellen ────────────────────────────────────
 
 const GOAL_TYPES = [
@@ -317,6 +360,20 @@ export default function Prayers() {
   // Quelle des Feeds: 'foryou' (Standard) … 'all' zeigt jedes Gebet, das für
   // den Nutzer sichtbar ist – auch Oikos-, Community- und geteilte Gebete.
   const [sourceFilter, setSourceFilter] = useState('foryou')
+  // Feinfilter innerhalb einer Quelle: Oikos (Map/Person/Besitzer) bzw.
+  // Community. Wird beim Wechsel der Quelle zurückgesetzt.
+  const [mapFilter, setMapFilter] = useState('all')
+  const [personFilter, setPersonFilter] = useState('all')
+  const [ownerFilter, setOwnerFilter] = useState('all')   // 'all' | 'mine' | 'siblings'
+  const [communityFilter, setCommunityFilter] = useState('all')
+
+  function selectSource(key) {
+    setSourceFilter(key)
+    setMapFilter('all')
+    setPersonFilter('all')
+    setOwnerFilter('all')
+    setCommunityFilter('all')
+  }
   const { prayers, loading, reload } = usePrayerFeed(sourceFilter, statusFilter)
   const { createRequest } = usePersonalPrayer()
   const { createGoal, publicGoals, myGoals, communityGoals, sharedGoals } = usePrayerGoals()
@@ -405,7 +462,30 @@ export default function Prayers() {
 
   const dateActive = isDateFilterActive(dateFilter)
   const q = searchQuery.trim().toLowerCase()
+
+  // Auswahlmöglichkeiten aus den geladenen Gebeten ableiten – so stehen nur
+  // Maps/Personen/Communities zur Wahl, zu denen es auch Anliegen gibt.
+  const showOikosFilters = sourceFilter === 'oikos'
+  const showCommunityFilter = sourceFilter === 'communities'
+
+  const mapOptions = uniqueOptions(prayers, p => p.mapId && [p.mapId, p.mapName || 'Unbenannte Map'])
+  const personOptions = uniqueOptions(
+    prayers.filter(p => mapFilter === 'all' || p.mapId === mapFilter),
+    p => p.personId && [p.personId, p.personName || 'Unbekannt'],
+  )
+  const communityOptions = uniqueOptions(prayers, p => p.communityId && [p.communityId, p.communityName || 'Community'])
+
+  const oikosFilterActive = showOikosFilters && (mapFilter !== 'all' || personFilter !== 'all' || ownerFilter !== 'all')
+  const communityFilterActive = showCommunityFilter && communityFilter !== 'all'
+
   const filteredPrayers = prayers.filter(p => {
+    if (showOikosFilters) {
+      if (mapFilter !== 'all' && p.mapId !== mapFilter) return false
+      if (personFilter !== 'all' && p.personId !== personFilter) return false
+      if (ownerFilter === 'mine' && !p.isOwnMap) return false
+      if (ownerFilter === 'siblings' && p.isOwnMap) return false
+    }
+    if (showCommunityFilter && communityFilter !== 'all' && p.communityId !== communityFilter) return false
     if (activeCategories.length > 0 && !activeCategories.includes(p.category)) return false
     if (!matchesDateFilter(p.createdAt, dateFilter)) return false
     if (!q) return true
@@ -435,7 +515,14 @@ export default function Prayers() {
 
   // Count of non-default filter facets (status counts when not the default "open")
   const filterFacetCount = activeCategories.length + (dateActive ? 1 : 0) + (statusFilter !== 'open' ? 1 : 0)
-  const hasActiveFilter = filterFacetCount > 0 || q.length > 0
+  const hasActiveFilter = filterFacetCount > 0 || q.length > 0 || oikosFilterActive || communityFilterActive
+
+  // Passt die gewählte Person nicht mehr zur gewählten Map, Auswahl lösen.
+  useEffect(() => {
+    if (personFilter === 'all') return
+    if (!personOptions.some(o => o.value === personFilter)) setPersonFilter('all')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapFilter, personOptions.length])
 
   // Vom Profil verlinktes Gebet anspringen + kurz hervorheben
   useEffect(() => {
@@ -645,20 +732,46 @@ export default function Prayers() {
           return (
             <button
               key={src.key}
-              onClick={() => setSourceFilter(src.key)}
-              style={{
-                flexShrink: 0, padding: '6px 13px', borderRadius: 999,
-                border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                backgroundColor: active ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
-                color: active ? '#fff' : 'var(--color-text-secondary)',
-                fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-              }}
+              onClick={() => selectSource(src.key)}
+              style={sourceChipStyle(active)}
             >
               {src.label}
             </button>
           )
         })}
       </div>
+
+      {/* Feinfilter der gewählten Quelle */}
+      {(showOikosFilters || showCommunityFilter) && (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '10px 16px', borderBottom: '1px solid var(--color-border)' }}>
+          {showOikosFilters && (
+            <>
+              <FilterSelect
+                value={mapFilter} onChange={setMapFilter}
+                allLabel="Alle Maps" options={mapOptions}
+              />
+              <FilterSelect
+                value={personFilter} onChange={setPersonFilter}
+                allLabel="Alle Personen" options={personOptions}
+              />
+              <FilterSelect
+                value={ownerFilter} onChange={setOwnerFilter}
+                allLabel="Alle Besitzer"
+                options={[
+                  { value: 'mine', label: 'Meine Maps' },
+                  { value: 'siblings', label: 'Von Geschwistern' },
+                ]}
+              />
+            </>
+          )}
+          {showCommunityFilter && (
+            <FilterSelect
+              value={communityFilter} onChange={setCommunityFilter}
+              allLabel="Alle Communities" options={communityOptions}
+            />
+          )}
+        </div>
+      )}
 
       {/* Gebetslisten (kompakt) + Gebetsmodus */}
       <div style={{ padding: '14px 0 4px', borderBottom: '1px solid var(--color-border)' }}>

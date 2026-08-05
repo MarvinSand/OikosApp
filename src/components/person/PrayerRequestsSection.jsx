@@ -188,7 +188,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
         <div style={skeleton} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <PrayerCardList prayers={active} onChanged={handleChanged} />
+          <PrayerCardList prayers={active} onChanged={handleChanged} showContext={false} />
 
           {showAddForm && (
             <AddRequestForm onSave={handleAdd} onCancel={() => setShowAddForm(false)} />
@@ -197,7 +197,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
           {answered.length > 0 && (
             <div style={{ marginTop: 4 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)', fontStyle: 'italic', marginBottom: 8 }}>Erhört ✓</p>
-              <PrayerCardList prayers={answered} onChanged={handleChanged} />
+              <PrayerCardList prayers={answered} onChanged={handleChanged} showContext={false} />
             </div>
           )}
 

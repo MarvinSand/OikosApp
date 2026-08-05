@@ -52,51 +52,64 @@ async function fetchForYou(statusFilter, limit) {
   return (data || []).map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'personal' }))
 }
 
+// Öffentliche Oikos-Anliegen verbundener Geschwister.
+async function fetchSiblingOikos(siblingIds, statusFilter, limit, source) {
+  if (siblingIds.length === 0) return []
+  const { data } = await applyStatus(
+    supabase.from('prayer_requests').select(`*, ${PROFILE_SELECT}`),
+    statusFilter,
+  ).in('owner_id', siblingIds).not('person_id', 'is', null).eq('is_public', true)
+    .order('created_at', { ascending: false }).limit(limit)
+  return (data || []).map(r => normalizePrayer(r, { kind: KIND_OIKOS, source }))
+}
+
 // Anliegen verbundener Geschwister – persönliche und Oikos-Anliegen.
 async function fetchSiblings(userId, statusFilter, limit) {
   const siblingIds = await fetchSiblingIds(userId)
   if (siblingIds.length === 0) return []
 
-  const [{ data: personal }, { data: oikos }] = await Promise.all([
+  const [{ data: personal }, oikos] = await Promise.all([
     applyStatus(
       supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`),
       statusFilter,
     ).in('owner_id', siblingIds).in('visibility', ['public', 'siblings'])
       .order('created_at', { ascending: false }).limit(limit),
-    applyStatus(
-      supabase.from('prayer_requests')
-        .select(`*, ${PROFILE_SELECT}, oikos_people!person_id(name, is_christian, map_id)`),
-      statusFilter,
-    ).in('owner_id', siblingIds).not('person_id', 'is', null).eq('is_public', true)
-      .order('created_at', { ascending: false }).limit(limit),
+    fetchSiblingOikos(siblingIds, statusFilter, limit, 'sibling'),
   ])
 
   return [
     ...(personal || []).map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'sibling' })),
-    ...(oikos || []).map(r => normalizePrayer(r, { kind: KIND_OIKOS, source: 'sibling' })),
+    ...oikos,
   ]
 }
 
-// Eigene Oikos-Anliegen über alle eigenen Maps.
+// Eigene Oikos-Anliegen (alle eigenen Maps) UND die öffentlichen Oikos-
+// Anliegen verbundener Geschwister. Welche Map wem gehört, steht danach auf
+// der Karte und lässt sich im Feed filtern.
 async function fetchOikos(userId, statusFilter, limit) {
+  const [ownPrayers, siblingIds] = await Promise.all([
+    fetchOwnOikos(userId, statusFilter, limit),
+    fetchSiblingIds(userId),
+  ])
+  const siblingPrayers = await fetchSiblingOikos(siblingIds, statusFilter, limit, 'oikos')
+  return [...ownPrayers, ...siblingPrayers]
+}
+
+async function fetchOwnOikos(userId, statusFilter, limit) {
   const { data: maps } = await supabase.from('oikos_maps').select('id').eq('user_id', userId)
   const mapIds = (maps || []).map(m => m.id)
   if (mapIds.length === 0) return []
 
-  const { data: people } = await supabase.from('oikos_people').select('id, name').in('map_id', mapIds)
+  const { data: people } = await supabase.from('oikos_people').select('id').in('map_id', mapIds)
   const peopleIds = (people || []).map(p => p.id)
   if (peopleIds.length === 0) return []
-  const nameById = Object.fromEntries((people || []).map(p => [p.id, p.name]))
 
   const { data } = await applyStatus(
-    supabase.from('prayer_requests').select('*'),
+    supabase.from('prayer_requests').select(`*, ${PROFILE_SELECT}`),
     statusFilter,
   ).in('person_id', peopleIds).order('created_at', { ascending: false }).limit(limit)
 
-  return (data || []).map(r => normalizePrayer(
-    { ...r, oikos_people: { name: nameById[r.person_id] || 'Person' } },
-    { kind: KIND_OIKOS, source: 'oikos' },
-  ))
+  return (data || []).map(r => normalizePrayer(r, { kind: KIND_OIKOS, source: 'oikos' }))
 }
 
 // Anliegen aus allen Communities, in denen der Nutzer Mitglied ist.
@@ -150,13 +163,74 @@ async function fetchShared(userId, statusFilter, limit) {
   ]
 }
 
+// ── Herkunft nachladen ──────────────────────────────────────────────────
+// Person → Map → Map-Besitzer bzw. Community-Name. Bewusst als eigene
+// .in()-Queries statt verschachtelter Embeds: ein nicht auflösbarer Join
+// würde die ganze Liste still leeren (siehe CLAUDE.md). Schlägt hier etwas
+// fehl, fehlt nur die Kontext-Zeile.
+async function attachPrayerContext(prayers, userId) {
+  const personIds = [...new Set(prayers.map(p => p.personId).filter(Boolean))]
+  const communityIds = [...new Set(prayers.map(p => p.communityId).filter(Boolean))]
+  if (personIds.length === 0 && communityIds.length === 0) return prayers
+
+  const [{ data: people }, { data: communities }] = await Promise.all([
+    personIds.length
+      ? supabase.from('oikos_people').select('id, name, map_id').in('id', personIds)
+      : Promise.resolve({ data: [] }),
+    communityIds.length
+      ? supabase.from('communities').select('id, name').in('id', communityIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const personById = Object.fromEntries((people || []).map(p => [p.id, p]))
+  const communityById = Object.fromEntries((communities || []).map(c => [c.id, c]))
+
+  // Maps der gefundenen Personen + deren Besitzer
+  const mapIds = [...new Set((people || []).map(p => p.map_id).filter(Boolean))]
+  let mapById = {}
+  let ownerById = {}
+  if (mapIds.length > 0) {
+    const { data: maps } = await supabase.from('oikos_maps').select('id, name, user_id').in('id', mapIds)
+    mapById = Object.fromEntries((maps || []).map(m => [m.id, m]))
+    const ownerIds = [...new Set((maps || []).map(m => m.user_id).filter(id => id && id !== userId))]
+    if (ownerIds.length > 0) {
+      const { data: owners } = await supabase
+        .from('profiles').select('id, full_name, username').in('id', ownerIds)
+      ownerById = Object.fromEntries((owners || []).map(o => [o.id, o]))
+    }
+  }
+
+  return prayers.map(p => {
+    if (p.communityId) {
+      const community = communityById[p.communityId]
+      return community ? { ...p, communityName: community.name } : p
+    }
+    const person = p.personId ? personById[p.personId] : null
+    if (!person) return p
+    const map = person.map_id ? mapById[person.map_id] : null
+    const owner = map?.user_id ? ownerById[map.user_id] : null
+    return {
+      ...p,
+      personName: p.personName || person.name,
+      mapId: map?.id || person.map_id || null,
+      mapName: map?.name || null,
+      mapOwnerId: map?.user_id || null,
+      mapOwnerName: owner ? (owner.full_name || owner.username) : null,
+      isOwnMap: !!map && map.user_id === userId,
+    }
+  })
+}
+
 // Alle Gebete einer Quelle (oder aller Quellen) laden.
 export async function fetchPrayersBySource(source, userId, statusFilter = 'open', limit = 100) {
-  if (source === 'foryou') return sortByCreatedDesc(dedupePrayers(await fetchForYou(statusFilter, limit)))
-  if (source === 'siblings') return sortByCreatedDesc(dedupePrayers(await fetchSiblings(userId, statusFilter, limit)))
-  if (source === 'oikos') return sortByCreatedDesc(dedupePrayers(await fetchOikos(userId, statusFilter, limit)))
-  if (source === 'communities') return sortByCreatedDesc(dedupePrayers(await fetchCommunities(userId, statusFilter, limit)))
-  if (source === 'shared') return sortByCreatedDesc(dedupePrayers(await fetchShared(userId, statusFilter, limit)))
+  const finish = async prayers =>
+    sortByCreatedDesc(await attachPrayerContext(dedupePrayers(prayers), userId))
+
+  if (source === 'foryou') return finish(await fetchForYou(statusFilter, limit))
+  if (source === 'siblings') return finish(await fetchSiblings(userId, statusFilter, limit))
+  if (source === 'oikos') return finish(await fetchOikos(userId, statusFilter, limit))
+  if (source === 'communities') return finish(await fetchCommunities(userId, statusFilter, limit))
+  if (source === 'shared') return finish(await fetchShared(userId, statusFilter, limit))
 
   // 'all' – alles zusammen, dedupliziert. Ein Gebet kann über mehrere Wege
   // sichtbar sein (z.B. Community-Anliegen, das jemand im Chat geteilt hat).
@@ -167,7 +241,7 @@ export async function fetchPrayersBySource(source, userId, statusFilter = 'open'
     fetchCommunities(userId, statusFilter, limit),
     fetchShared(userId, statusFilter, limit),
   ])
-  return sortByCreatedDesc(dedupePrayers(groups.flat()))
+  return finish(groups.flat())
 }
 
 export function usePrayerFeed(source = 'foryou', statusFilter = 'open') {
