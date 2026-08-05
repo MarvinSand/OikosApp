@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, UserCheck, UserPlus, Clock, X, MessageCircle, Bell,
   MapPin, Church, Map as MapIcon, Newspaper, HandHeart, Repeat2,
@@ -11,6 +11,7 @@ import { useToast } from '../context/ToastContext'
 import { useNotificationPrefs } from '../hooks/useNotificationPrefs'
 import { useProfileTabs } from '../hooks/useProfileTabs'
 import { countryToFlag, COUNTRIES } from '../lib/countries'
+import { NOTIFICATION_PREF_FIELDS } from '../lib/notificationPrefFields'
 import { Avatar, MapsTab, PostsTab, RepostsTab, PrayersTab } from '../components/profile/ProfileTabs'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
 
@@ -46,6 +47,7 @@ function formatBirthdayDisplay(dateStr) {
 export default function UserProfile() {
   const { id: targetId } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { showToast } = useToast()
   const { getFriendshipStatus, getFriendship, sendRequest, acceptRequest, declineRequest } = useFriendships()
@@ -64,6 +66,14 @@ export default function UserProfile() {
   const { prefs, updatePref } = useNotificationPrefs(targetId)
   const birthdayBannerKey = `birthday_banner_${targetId}_${new Date().toDateString()}`
   const [bannerDismissed, setBannerDismissed] = useState(() => !!localStorage.getItem(birthdayBannerKey))
+
+  // Deep-link: ?openNotifPrefs=1 → Glocke-Sheet direkt öffnen (aus der
+  // Benachrichtigungs-Einstellungsübersicht)
+  useEffect(() => {
+    if (searchParams.get('openNotifPrefs') !== '1') return
+    setShowNotifPrefs(true)
+    setSearchParams(prev => { prev.delete('openNotifPrefs'); return prev }, { replace: true })
+  }, [searchParams])
 
   useEffect(() => {
     if (user && targetId === user.id) navigate('/profile', { replace: true })
@@ -458,13 +468,7 @@ export default function UserProfile() {
                 Benachrichtigungen für {displayName}
               </h3>
             </div>
-            {[
-              { field: 'notify_prayer_requests', label: 'Neue Gebetsanliegen', desc: 'Wenn neue Anliegen hinzugefügt werden' },
-              { field: 'notify_feed_posts', label: 'Neue Feed-Beiträge', desc: 'Wenn im Feed etwas Neues gepostet wird' },
-              { field: 'notify_oikos_entries', label: 'Neue OIKOS-Einträge', desc: 'Wenn Personen zur OIKOS-Map hinzugefügt werden' },
-              { field: 'notify_prayers_for_oikos', label: 'Gebetsanliegen für OIKOS', desc: 'Wenn ein neues Gebetsanliegen für eine Person im OIKOS gepostet wird' },
-              { field: 'notify_storyline_entries', label: 'Neue Story-Line Einträge', desc: 'Wenn ein neuer Story-Line Eintrag für eine OIKOS-Person hinzugefügt wird' },
-            ].map(({ field, label, desc }) => (
+            {NOTIFICATION_PREF_FIELDS.map(({ field, label, desc }) => (
               <div key={field} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--color-border)' }}>
                 <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>{label}</p>

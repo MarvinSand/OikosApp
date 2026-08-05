@@ -36,6 +36,7 @@ const Prayers = lazy(() => import('./pages/Prayers'))
 const MapView = lazy(() => import('./pages/MapView'))
 const ConversationView = lazy(() => import('./pages/ConversationView'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const NotificationSettingsView = lazy(() => import('./pages/NotificationSettingsView'))
 
 // Der Start lief bisher streng seriell: Entry-Bundle → Session prüfen →
 // *dann erst* den Chunk der Landing-Route holen → dann die Daten laden.
@@ -113,6 +114,7 @@ function AppShellInner() {
           <Route path="/chat/:conversationId" element={<ConversationView />} />
           <Route path="/friends" element={<FriendsView />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/notifications/settings" element={<NotificationSettingsView />} />
           <Route path="/community/:id" element={<CommunityDetail />} />
           <Route path="/user/:id" element={<UserProfile />} />
           <Route path="/user/:id/map/:mapId" element={<PublicMapView />} />
