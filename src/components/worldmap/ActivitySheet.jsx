@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { X, Calendar, Clock, MapPin, Users, Trash2, Pencil, MessageCircle, ChevronRight, Check } from 'lucide-react'
+import { X, Calendar, Clock, MapPin, Users, Trash2, Pencil, MessageCircle, ChevronRight, Check, Repeat } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
+import { nextOccurrence, formatRecurrenceLabel, isRecurring, RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -129,7 +130,21 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
   const isFull = activity.max_participants > 0 && participants.length >= activity.max_participants
 
   const previewParticipants = participants.slice(0, 3)
-  const timeRange = formatRange(activity.starts_at, activity.ends_at)
+
+  // Bei wiederkehrenden Events den nächsten Termin statt des (evtl. längst
+  // vergangenen) Anker-Starttermins anzeigen, mit gleicher Dauer wie ursprünglich.
+  const recurring = isRecurring(activity)
+  const nextDate = recurring ? nextOccurrence(activity) : null
+  const seriesEnded = recurring && !nextDate
+  const durationMs = activity.starts_at && activity.ends_at
+    ? new Date(activity.ends_at).getTime() - new Date(activity.starts_at).getTime()
+    : null
+  const displayStart = recurring ? (nextDate ? nextDate.toISOString() : null) : activity.starts_at
+  const displayEnd = recurring
+    ? (nextDate && durationMs != null ? new Date(nextDate.getTime() + durationMs).toISOString() : null)
+    : activity.ends_at
+  const timeRange = formatRange(displayStart, displayEnd)
+  const recurrenceLabel = formatRecurrenceLabel(activity)
 
   async function handleToggleJoin() {
     setJoining(true)
@@ -241,10 +256,21 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
                 </p>
               </div>
             )}
-            {!timeRange && activity.starts_at && (
+            {!timeRange && !recurring && activity.starts_at && (
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <Clock size={15} color={C.accentDark} style={{ flexShrink: 0 }} />
                 <p style={{ fontSize: 13, color: C.text, margin: 0 }}>{formatDateTime(activity.starts_at)}</p>
+              </div>
+            )}
+            {recurring && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <Repeat size={15} color={C.accentDark} style={{ flexShrink: 0 }} />
+                <p style={{ fontSize: 13, color: C.text, margin: 0 }}>
+                  {seriesEnded ? 'Serie beendet' : recurrenceLabel}
+                  {!seriesEnded && activity.recurrence_end_date && (
+                    <span style={{ color: C.textTer }}> · bis {new Date(activity.recurrence_end_date).toLocaleDateString('de-DE')}</span>
+                  )}
+                </p>
               </div>
             )}
             {activity.location_name && (
@@ -376,7 +402,26 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
   const [description, setDescription] = useState(activity.description || '')
   const [startsAt, setStartsAt] = useState(toLocalInput(activity.starts_at))
   const [endsAt, setEndsAt] = useState(toLocalInput(activity.ends_at))
+  const [recurrenceFreq, setRecurrenceFreq] = useState(activity.recurrence_freq || null)
+  const [recurrenceInterval, setRecurrenceInterval] = useState(activity.recurrence_interval || 1)
+  const [recurrenceWeekdays, setRecurrenceWeekdays] = useState(activity.recurrence_weekdays || [])
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState(activity.recurrence_end_date || '')
   const [saving, setSaving] = useState(false)
+
+  function selectRecurrenceFreq(key) {
+    if (!key) {
+      setRecurrenceFreq(null); setRecurrenceInterval(1); setRecurrenceWeekdays([]); setRecurrenceEndDate('')
+      return
+    }
+    setRecurrenceFreq(key)
+    if (key === 'weekly' && recurrenceWeekdays.length === 0 && startsAt) {
+      setRecurrenceWeekdays([new Date(startsAt).getDay()])
+    }
+  }
+
+  function toggleRecurrenceWeekday(value) {
+    setRecurrenceWeekdays(prev => prev.includes(value) ? prev.filter(d => d !== value) : [...prev, value])
+  }
 
   async function handleSave() {
     if (!title.trim()) { showToast('Bitte eine Überschrift angeben', 'error'); return }
@@ -390,6 +435,10 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
       description: description.trim() || null,
       starts_at: startsAt ? new Date(startsAt).toISOString() : null,
       ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+      recurrence_freq: recurrenceFreq || null,
+      recurrence_interval: recurrenceFreq ? (Number(recurrenceInterval) || 1) : null,
+      recurrence_weekdays: recurrenceFreq === 'weekly' ? recurrenceWeekdays : null,
+      recurrence_end_date: recurrenceFreq ? (recurrenceEndDate || null) : null,
     })
     setSaving(false)
     if (ok !== false) onCancel()
@@ -400,6 +449,19 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
     width: '100%', padding: '10px 12px', borderRadius: 10, boxSizing: 'border-box',
     border: `1.5px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 14, outline: 'none',
   }
+  const stepBtnS = {
+    width: 26, height: 26, borderRadius: 8, cursor: 'pointer',
+    border: `1.5px solid ${C.border}`, background: C.bg, color: C.text,
+    fontSize: 16, fontWeight: 700, lineHeight: 1,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }
+  const smallToggleS = (active) => ({
+    flex: 1, padding: '8px 0', borderRadius: 10, cursor: 'pointer',
+    border: `1.5px solid ${active ? C.accent : C.border}`,
+    background: active ? C.accent : C.bg,
+    color: active ? '#fff' : C.textSec,
+    fontSize: 12, fontWeight: active ? 700 : 500,
+  })
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 10001 }}>
@@ -432,7 +494,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
         <label style={lblS}>Infos</label>
         <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Was sollten andere wissen?" style={{ ...inpS, resize: 'vertical', marginBottom: 14 }} />
 
-        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
           <div style={{ flex: 1 }}>
             <label style={lblS}>Beginn</label>
             <input type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)} style={inpS} />
@@ -442,6 +504,88 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
             <input type="datetime-local" value={endsAt} onChange={e => setEndsAt(e.target.value)} style={inpS} />
           </div>
         </div>
+
+        <label style={lblS}>Wiederholung</label>
+        <div className="hide-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: recurrenceFreq ? 10 : 20 }}>
+          {RECURRENCE_FREQ_OPTIONS.map(opt => {
+            const active = recurrenceFreq === opt.key
+            return (
+              <button
+                key={opt.key ?? 'none'}
+                onClick={() => selectRecurrenceFreq(opt.key)}
+                style={{
+                  padding: '8px 14px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
+                  border: `1.5px solid ${active ? C.accent : C.border}`,
+                  background: active ? C.accent : C.bg,
+                  color: active ? '#fff' : C.text,
+                  fontSize: 13, fontWeight: active ? 700 : 500,
+                }}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {recurrenceFreq && (
+          <div style={{ marginBottom: 20, padding: 12, borderRadius: 12, background: C.bgSec, border: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, color: C.text }}>Alle</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={() => setRecurrenceInterval(v => Math.max(1, (Number(v) || 1) - 1))} style={stepBtnS}>−</button>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.text, minWidth: 18, textAlign: 'center' }}>
+                  {recurrenceInterval || 1}
+                </span>
+                <button onClick={() => setRecurrenceInterval(v => Math.min(30, (Number(v) || 1) + 1))} style={stepBtnS}>+</button>
+              </div>
+              <span style={{ fontSize: 13, color: C.text }}>{intervalUnitLabel(recurrenceFreq, recurrenceInterval)}</span>
+            </div>
+
+            {recurrenceFreq === 'weekly' && (
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 12 }}>
+                {WEEKDAY_OPTIONS.map(w => {
+                  const sel = recurrenceWeekdays.includes(w.value)
+                  return (
+                    <button
+                      key={w.value}
+                      onClick={() => toggleRecurrenceWeekday(w.value)}
+                      style={{
+                        width: 34, height: 34, borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        border: `1.5px solid ${sel ? C.accent : C.border}`,
+                        background: sel ? C.accent : C.bg,
+                        color: sel ? '#fff' : C.textSec,
+                      }}
+                    >
+                      {w.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            <div style={{ marginTop: 12 }}>
+              <span style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Endet</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setRecurrenceEndDate('')} style={smallToggleS(!recurrenceEndDate)}>Nie</button>
+                <button
+                  onClick={() => setRecurrenceEndDate(recurrenceEndDate || (startsAt ? startsAt.slice(0, 10) : ''))}
+                  style={smallToggleS(!!recurrenceEndDate)}
+                >
+                  An einem Datum
+                </button>
+              </div>
+              {recurrenceEndDate && (
+                <input
+                  type="date"
+                  value={recurrenceEndDate}
+                  min={startsAt ? startsAt.slice(0, 10) : undefined}
+                  onChange={e => setRecurrenceEndDate(e.target.value)}
+                  style={{ ...inpS, marginTop: 8 }}
+                />
+              )}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onCancel} disabled={saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${C.border}`, background: 'none', color: C.textSec, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
