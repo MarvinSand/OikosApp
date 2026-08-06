@@ -158,7 +158,8 @@ function PrayerCard({ item, swipeDelta }) {
   )
 }
 
-// ─── Follow-up-Anliegen + Notizen (unter der aktuellen Karte) ────
+// ─── Follow-up-Anliegen + Kommentar (unter der aktuellen Karte) ──
+// Immer nur EIN Panel gleichzeitig offen (activePanel: null | 'followup' | 'comment').
 function FollowupAndNotes({ item }) {
   const { user } = useAuth()
   const request = item?.request
@@ -166,33 +167,40 @@ function FollowupAndNotes({ item }) {
   const kind = type === 'oikos' ? KIND_OIKOS : type === 'personal' ? KIND_PERSONAL : null
   const personName = request?.profiles?.full_name || request?.profiles?.username || 'diese Person'
 
-  const [showFollowup, setShowFollowup] = useState(false)
+  const [activePanel, setActivePanel] = useState(null)
+
+  // Neues Anliegen – gleiche Felder wie beim Anlegen über die Oikos-Map
+  // (PrayerRequestsSection/AddRequestForm): Überschrift + Anliegen + Sichtbarkeit.
   const [followupTitle, setFollowupTitle] = useState('')
+  const [followupDesc, setFollowupDesc] = useState('')
+  const [followupPublic, setFollowupPublic] = useState(true)
   const [followupSaving, setFollowupSaving] = useState(false)
   const [followupDone, setFollowupDone] = useState(false)
 
-  const [showNotes, setShowNotes] = useState(false)
-  const [notes, setNotes] = useState([])
-  const [notesLoading, setNotesLoading] = useState(false)
-  const [noteText, setNoteText] = useState('')
-  const [noteSaving, setNoteSaving] = useState(false)
+  const [comments, setComments] = useState([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [commentPublic, setCommentPublic] = useState(true)
+  const [commentSaving, setCommentSaving] = useState(false)
 
   // Bei Kartenwechsel alles zurücksetzen – die Panels gehören zur jeweiligen Karte.
   useEffect(() => {
-    setShowFollowup(false)
+    setActivePanel(null)
     setFollowupTitle('')
+    setFollowupDesc('')
+    setFollowupPublic(true)
     setFollowupSaving(false)
     setFollowupDone(false)
-    setShowNotes(false)
-    setNotes([])
-    setNoteText('')
-    setNoteSaving(false)
+    setComments([])
+    setCommentText('')
+    setCommentPublic(true)
+    setCommentSaving(false)
   }, [request?.id])
 
   useEffect(() => {
-    if (!showNotes || !kind || !request?.id) return
+    if (activePanel !== 'comment' || !kind || !request?.id) return
     let cancelled = false
-    setNotesLoading(true)
+    setCommentsLoading(true)
     supabase
       .from('prayer_notes')
       .select('id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
@@ -200,11 +208,15 @@ function FollowupAndNotes({ item }) {
       .order('created_at', { ascending: true })
       .then(({ data }) => {
         if (cancelled) return
-        setNotes(data || [])
-        setNotesLoading(false)
+        setComments(data || [])
+        setCommentsLoading(false)
       })
     return () => { cancelled = true }
-  }, [showNotes, kind, request?.id])
+  }, [activePanel, kind, request?.id])
+
+  function togglePanel(panel) {
+    setActivePanel(p => (p === panel ? null : panel))
+  }
 
   async function handleAddFollowup() {
     if (!followupTitle.trim() || !user || !request?.person_id || followupSaving) return
@@ -214,33 +226,34 @@ function FollowupAndNotes({ item }) {
         person_id: request.person_id,
         owner_id: user.id,
         title: followupTitle.trim(),
-        description: `Aus: „${request.title}"`,
-        is_public: request.is_public !== false,
+        description: followupDesc.trim() || null,
+        is_public: followupPublic,
       })
       if (!error) {
         setFollowupDone(true)
         setFollowupTitle('')
+        setFollowupDesc('')
       }
     } finally {
       setFollowupSaving(false)
     }
   }
 
-  async function handleAddNote() {
-    if (!noteText.trim() || !user || !kind || noteSaving) return
-    setNoteSaving(true)
+  async function handleAddComment() {
+    if (!commentText.trim() || !user || !kind || commentSaving) return
+    setCommentSaving(true)
     try {
       const { data, error } = await supabase
         .from('prayer_notes')
-        .insert({ [noteColumn(kind)]: request.id, author_id: user.id, text: noteText.trim(), is_public: true })
+        .insert({ [noteColumn(kind)]: request.id, author_id: user.id, text: commentText.trim(), is_public: commentPublic })
         .select('id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
         .single()
       if (!error && data) {
-        setNotes(n => [...n, data])
-        setNoteText('')
+        setComments(c => [...c, data])
+        setCommentText('')
       }
     } finally {
-      setNoteSaving(false)
+      setCommentSaving(false)
     }
   }
 
@@ -250,48 +263,75 @@ function FollowupAndNotes({ item }) {
     <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
         {type === 'oikos' && request?.person_id && (
-          <button onClick={() => setShowFollowup(v => !v)} style={pillBtn(showFollowup)}>
+          <button onClick={() => togglePanel('followup')} style={pillBtn(activePanel === 'followup')}>
             ➕ Neues Anliegen für {personName}
           </button>
         )}
-        <button onClick={() => setShowNotes(v => !v)} style={pillBtn(showNotes)}>
-          📝 Notiz{notes.length > 0 ? ` · ${notes.length}` : ''}
+        <button onClick={() => togglePanel('comment')} style={pillBtn(activePanel === 'comment')}>
+          💬 Kommentar{comments.length > 0 ? ` · ${comments.length}` : ''}
         </button>
       </div>
 
-      {showFollowup && (
+      {activePanel === 'followup' && (
         <div style={panelStyle}>
           {followupDone ? (
             <p style={{ ...noticeText, color: '#8FBF6E' }}>✓ Neues Anliegen für {personName} hinzugefügt</p>
           ) : (
             <>
-              <textarea
+              <input
                 autoFocus
+                type="text"
                 value={followupTitle}
                 onChange={e => setFollowupTitle(e.target.value)}
-                placeholder={`Neues Anliegen für ${personName}…`}
+                placeholder="Überschrift des Anliegens *"
+                style={{ ...textareaStyle, marginBottom: 8 }}
+              />
+              <textarea
+                value={followupDesc}
+                onChange={e => setFollowupDesc(e.target.value)}
+                placeholder="Dein Anliegen (optional)"
                 rows={2}
                 style={textareaStyle}
               />
-              <button onClick={handleAddFollowup} disabled={!followupTitle.trim() || followupSaving} style={saveBtn(!followupTitle.trim())}>
-                {followupSaving ? 'Speichern…' : 'Anliegen speichern'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[{ val: true, label: 'Öffentlich' }, { val: false, label: 'Privat' }].map(o => (
+                    <button
+                      key={String(o.val)}
+                      onClick={() => setFollowupPublic(o.val)}
+                      style={visToggleBtn(followupPublic === o.val)}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={handleAddFollowup} disabled={!followupTitle.trim() || followupSaving} style={saveBtn(!followupTitle.trim())}>
+                  {followupSaving ? 'Speichern…' : 'Speichern'}
+                </button>
+              </div>
             </>
           )}
         </div>
       )}
 
-      {showNotes && (
+      {activePanel === 'comment' && (
         <div style={panelStyle}>
-          {notesLoading ? (
+          {commentsLoading ? (
             <p style={noticeText}>Lade…</p>
-          ) : notes.length > 0 ? (
+          ) : comments.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-              {notes.map(n => (
+              {comments.map(n => (
                 <div key={n.id} style={{ textAlign: 'left' }}>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)', margin: '0 0 2px' }}>
-                    {n.author_id === user?.id ? 'Du' : (n.profiles?.full_name || n.profiles?.username || 'Unbekannt')}
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)', margin: '0 0 2px' }}>
+                      {n.author_id === user?.id ? 'Du' : (n.profiles?.full_name || n.profiles?.username || 'Unbekannt')}
+                    </p>
+                    {n.is_public === false && (
+                      <span style={{ fontSize: 9, color: 'rgba(240,237,230,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4, padding: '1px 5px' }}>
+                        nur Ersteller
+                      </span>
+                    )}
+                  </div>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'rgba(240,237,230,0.75)', margin: 0, lineHeight: 1.5 }}>
                     {n.text}
                   </p>
@@ -299,19 +339,32 @@ function FollowupAndNotes({ item }) {
               ))}
             </div>
           ) : (
-            <p style={noticeText}>Noch keine Notizen zu diesem Anliegen.</p>
+            <p style={noticeText}>Noch keine Kommentare zu diesem Anliegen.</p>
           )}
           <textarea
             autoFocus
-            value={noteText}
-            onChange={e => setNoteText(e.target.value)}
-            placeholder="Notiz schreiben…"
+            value={commentText}
+            onChange={e => setCommentText(e.target.value)}
+            placeholder="Kommentar schreiben…"
             rows={2}
             style={textareaStyle}
           />
-          <button onClick={handleAddNote} disabled={!noteText.trim() || noteSaving} style={{ ...saveBtn(!noteText.trim()), marginTop: 8 }}>
-            {noteSaving ? 'Speichern…' : 'Notiz speichern'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[{ val: true, label: 'Für alle' }, { val: false, label: 'Nur Ersteller' }].map(o => (
+                <button
+                  key={String(o.val)}
+                  onClick={() => setCommentPublic(o.val)}
+                  style={visToggleBtn(commentPublic === o.val)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={handleAddComment} disabled={!commentText.trim() || commentSaving} style={saveBtn(!commentText.trim())}>
+              {commentSaving ? 'Speichern…' : 'Kommentieren'}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -324,6 +377,13 @@ const pillBtn = active => ({
   backgroundColor: active ? 'rgba(212,168,83,0.15)' : 'transparent',
   fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 600,
   color: active ? '#D4A853' : 'rgba(240,237,230,0.65)',
+})
+const visToggleBtn = active => ({
+  padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
+  border: `1px solid ${active ? '#D4A853' : 'rgba(255,255,255,0.15)'}`,
+  backgroundColor: active ? 'rgba(212,168,83,0.18)' : 'transparent',
+  fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600,
+  color: active ? '#D4A853' : 'rgba(240,237,230,0.5)',
 })
 const panelStyle = {
   background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
