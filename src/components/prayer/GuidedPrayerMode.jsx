@@ -3,6 +3,8 @@ import { X } from 'lucide-react'
 import { usePrayerSession } from '../../hooks/usePrayerSession'
 import { useAuth } from '../../hooks/useAuth'
 import { fetchPrayerModeItems } from '../../hooks/usePrayerModeSource'
+import { supabase } from '../../lib/supabase'
+import { noteColumn, KIND_OIKOS, KIND_PERSONAL } from '../../lib/prayerModel'
 
 const TIMER_OPTIONS = [
   { label: '30 Sek', seconds: 30 },
@@ -154,6 +156,194 @@ function PrayerCard({ item, swipeDelta }) {
       )}
     </div>
   )
+}
+
+// ─── Follow-up-Anliegen + Notizen (unter der aktuellen Karte) ────
+function FollowupAndNotes({ item }) {
+  const { user } = useAuth()
+  const request = item?.request
+  const type = item?.type
+  const kind = type === 'oikos' ? KIND_OIKOS : type === 'personal' ? KIND_PERSONAL : null
+  const personName = request?.profiles?.full_name || request?.profiles?.username || 'diese Person'
+
+  const [showFollowup, setShowFollowup] = useState(false)
+  const [followupTitle, setFollowupTitle] = useState('')
+  const [followupSaving, setFollowupSaving] = useState(false)
+  const [followupDone, setFollowupDone] = useState(false)
+
+  const [showNotes, setShowNotes] = useState(false)
+  const [notes, setNotes] = useState([])
+  const [notesLoading, setNotesLoading] = useState(false)
+  const [noteText, setNoteText] = useState('')
+  const [noteSaving, setNoteSaving] = useState(false)
+
+  // Bei Kartenwechsel alles zurücksetzen – die Panels gehören zur jeweiligen Karte.
+  useEffect(() => {
+    setShowFollowup(false)
+    setFollowupTitle('')
+    setFollowupSaving(false)
+    setFollowupDone(false)
+    setShowNotes(false)
+    setNotes([])
+    setNoteText('')
+    setNoteSaving(false)
+  }, [request?.id])
+
+  useEffect(() => {
+    if (!showNotes || !kind || !request?.id) return
+    let cancelled = false
+    setNotesLoading(true)
+    supabase
+      .from('prayer_notes')
+      .select('id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
+      .eq(noteColumn(kind), request.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (cancelled) return
+        setNotes(data || [])
+        setNotesLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [showNotes, kind, request?.id])
+
+  async function handleAddFollowup() {
+    if (!followupTitle.trim() || !user || !request?.person_id || followupSaving) return
+    setFollowupSaving(true)
+    try {
+      const { error } = await supabase.from('prayer_requests').insert({
+        person_id: request.person_id,
+        owner_id: user.id,
+        title: followupTitle.trim(),
+        description: `Aus: „${request.title}"`,
+        is_public: request.is_public !== false,
+      })
+      if (!error) {
+        setFollowupDone(true)
+        setFollowupTitle('')
+      }
+    } finally {
+      setFollowupSaving(false)
+    }
+  }
+
+  async function handleAddNote() {
+    if (!noteText.trim() || !user || !kind || noteSaving) return
+    setNoteSaving(true)
+    try {
+      const { data, error } = await supabase
+        .from('prayer_notes')
+        .insert({ [noteColumn(kind)]: request.id, author_id: user.id, text: noteText.trim(), is_public: true })
+        .select('id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
+        .single()
+      if (!error && data) {
+        setNotes(n => [...n, data])
+        setNoteText('')
+      }
+    } finally {
+      setNoteSaving(false)
+    }
+  }
+
+  if (!kind || !request?.id) return null
+
+  return (
+    <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {type === 'oikos' && request?.person_id && (
+          <button onClick={() => setShowFollowup(v => !v)} style={pillBtn(showFollowup)}>
+            ➕ Neues Anliegen für {personName}
+          </button>
+        )}
+        <button onClick={() => setShowNotes(v => !v)} style={pillBtn(showNotes)}>
+          📝 Notiz{notes.length > 0 ? ` · ${notes.length}` : ''}
+        </button>
+      </div>
+
+      {showFollowup && (
+        <div style={panelStyle}>
+          {followupDone ? (
+            <p style={{ ...noticeText, color: '#8FBF6E' }}>✓ Neues Anliegen für {personName} hinzugefügt</p>
+          ) : (
+            <>
+              <textarea
+                autoFocus
+                value={followupTitle}
+                onChange={e => setFollowupTitle(e.target.value)}
+                placeholder={`Neues Anliegen für ${personName}…`}
+                rows={2}
+                style={textareaStyle}
+              />
+              <button onClick={handleAddFollowup} disabled={!followupTitle.trim() || followupSaving} style={saveBtn(!followupTitle.trim())}>
+                {followupSaving ? 'Speichern…' : 'Anliegen speichern'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {showNotes && (
+        <div style={panelStyle}>
+          {notesLoading ? (
+            <p style={noticeText}>Lade…</p>
+          ) : notes.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+              {notes.map(n => (
+                <div key={n.id} style={{ textAlign: 'left' }}>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)', margin: '0 0 2px' }}>
+                    {n.author_id === user?.id ? 'Du' : (n.profiles?.full_name || n.profiles?.username || 'Unbekannt')}
+                  </p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'rgba(240,237,230,0.75)', margin: 0, lineHeight: 1.5 }}>
+                    {n.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={noticeText}>Noch keine Notizen zu diesem Anliegen.</p>
+          )}
+          <textarea
+            autoFocus
+            value={noteText}
+            onChange={e => setNoteText(e.target.value)}
+            placeholder="Notiz schreiben…"
+            rows={2}
+            style={textareaStyle}
+          />
+          <button onClick={handleAddNote} disabled={!noteText.trim() || noteSaving} style={{ ...saveBtn(!noteText.trim()), marginTop: 8 }}>
+            {noteSaving ? 'Speichern…' : 'Notiz speichern'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const pillBtn = active => ({
+  padding: '8px 14px', borderRadius: 20, cursor: 'pointer',
+  border: `1.5px solid ${active ? '#D4A853' : 'rgba(255,255,255,0.15)'}`,
+  backgroundColor: active ? 'rgba(212,168,83,0.15)' : 'transparent',
+  fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 600,
+  color: active ? '#D4A853' : 'rgba(240,237,230,0.65)',
+})
+const panelStyle = {
+  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 16, padding: '14px 16px',
+}
+const textareaStyle = {
+  width: '100%', resize: 'none', border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: 10, padding: '9px 11px', fontFamily: 'Lora, serif', fontSize: 13,
+  backgroundColor: 'rgba(0,0,0,0.2)', color: '#F0EDE6', outline: 'none',
+  lineHeight: 1.5, boxSizing: 'border-box',
+}
+const saveBtn = disabled => ({
+  marginTop: 8, padding: '9px 18px', borderRadius: 20, border: 'none',
+  backgroundColor: disabled ? 'rgba(212,168,83,0.3)' : '#D4A853',
+  color: '#1A1208', fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 700,
+  cursor: disabled ? 'default' : 'pointer',
+})
+const noticeText = {
+  fontFamily: 'Lora, serif', fontSize: 12.5, color: 'rgba(240,237,230,0.5)',
+  margin: '0 0 6px', textAlign: 'center',
 }
 
 // ─── Background Orbs ─────────────────────────────────────────
@@ -403,6 +593,8 @@ function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
             )}
           </div>
         )}
+
+        <FollowupAndNotes key={'fn-' + cardKey} item={currentCard} />
       </div>
 
       {/* Navigation */}
