@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext'
 
 // Kommentar-Eingabe unter einer Gebets-Karte. „Nur Ersteller" schreibt den
 // Kommentar als nicht-öffentliche Notiz (prayer_notes.is_public = false).
-export default function CommentInput({ onSubmit }) {
+export default function CommentInput({ onSubmit, placeholder = 'Kommentar schreiben…' }) {
   const { showToast } = useToast()
   const [text, setText] = useState('')
   const [isPublic, setIsPublic] = useState(true)
@@ -48,7 +48,7 @@ export default function CommentInput({ onSubmit }) {
         <textarea
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="Kommentar schreiben…"
+          placeholder={placeholder}
           rows={2}
           style={{
             flex: 1, resize: 'none', border: '1px solid var(--color-border)',

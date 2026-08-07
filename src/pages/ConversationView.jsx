@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -1184,8 +1184,8 @@ function EmojiPicker({ onSelect }) {
 }
 
 // ─── Input Bar ────────────────────────────────────────────────
-function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyTo, onCancelReply }) {
-  const [text, setText] = useState('')
+function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyTo, onCancelReply, initialText = '' }) {
+  const [text, setText] = useState(initialText)
   const [showAttach, setShowAttach] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const textareaRef = useRef(null)
@@ -1391,7 +1391,18 @@ function MessageSkeleton() {
 export default function ConversationView() {
   const { conversationId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
+  // Private Antwort auf einen Gebets-Kommentar: Text kommt einmalig über
+  // location.state herein, danach den History-State bereinigen, damit ein
+  // späteres Zurücknavigieren das Feld nicht erneut befüllt.
+  const quoteTextRef = useRef(location.state?.quoteText || '')
+  useEffect(() => {
+    if (location.state?.quoteText) {
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const { showToast } = useToast()
   const {
     messages, loading, hasMore, loadMore,
@@ -1813,6 +1824,7 @@ export default function ConversationView() {
         onOpenPhotoPicker={() => photoInputRef.current?.click()}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
+        initialText={quoteTextRef.current}
       />
 
       {/* Verstecktes Datei-Feld + Foto-Compose-Sheet (Top-Level, damit nicht im

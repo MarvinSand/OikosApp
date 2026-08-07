@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import PrayerCard from './PrayerCard'
 import AddToListSheet from './AddToListSheet'
 import ForwardSheet from './ForwardSheet'
@@ -34,7 +35,8 @@ export default function PrayerCardList({
 }) {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const { logsMap, notesMap, pushLog, pushNote } = usePrayerEngagement(prayers)
+  const navigate = useNavigate()
+  const { logsMap, notesMap, pushLog, pushNote, removeNote } = usePrayerEngagement(prayers)
   const actions = usePrayerActions()
   const [listPrayer, setListPrayer] = useState(null)
   const [forwardPrayer, setForwardPrayer] = useState(null)
@@ -55,9 +57,33 @@ export default function PrayerCardList({
     }
   }
 
-  async function handleComment(prayer, text, isPublic) {
-    const note = await actions.comment(prayer, text, isPublic)
+  async function handleComment(prayer, text, isPublic, replyToId = null) {
+    const note = await actions.comment(prayer, text, isPublic, replyToId)
     pushNote(prayer.key, note)
+  }
+
+  async function handleDeleteComment(prayer, note) {
+    if (!window.confirm('Diesen Kommentar wirklich löschen?')) return
+    try {
+      await actions.deleteComment(note.id)
+      removeNote(prayer.key, note.id)
+    } catch {
+      showToast('Fehler beim Löschen', 'error')
+    }
+  }
+
+  // Privat antworten: Chat mit dem Kommentar-Autor öffnen und den Kommentar
+  // als Zitat vorausfüllen – im Chat wird dann einfach weitergeschrieben.
+  async function handlePrivateReply(prayer, note) {
+    if (!note.author_id || note.author_id === user?.id) return
+    try {
+      const { data: convId, error } = await supabase.rpc('start_direct_chat', { other_user_id: note.author_id })
+      if (error) throw error
+      const quoteText = `Zu deinem Kommentar „${note.text}": `
+      navigate(`/chat/${convId}`, { state: { quoteText } })
+    } catch {
+      showToast('Chat konnte nicht geöffnet werden', 'error')
+    }
   }
 
   async function handleUpdate(prayer, updates) {
@@ -114,6 +140,8 @@ export default function PrayerCardList({
               extraBadge={extraBadge?.(prayer) || null}
               onPray={handlePray}
               onComment={handleComment}
+              onDeleteComment={handleDeleteComment}
+              onPrivateReply={handlePrivateReply}
               onUpdate={handleUpdate}
               onToggleAnswered={handleToggleAnswered}
               onDelete={handleDelete}

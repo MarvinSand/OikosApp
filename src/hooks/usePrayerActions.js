@@ -76,7 +76,8 @@ export function usePrayerActions() {
   }
 
   // Kommentar zu einem Gebet. isPublic=false → nur der Ersteller sieht ihn.
-  async function comment(prayer, text, isPublic = true) {
+  // replyToId gesetzt → öffentliche Antwort auf einen anderen Kommentar.
+  async function comment(prayer, text, isPublic = true, replyToId = null) {
     const { data, error } = await supabase
       .from('prayer_notes')
       .insert({
@@ -84,11 +85,18 @@ export function usePrayerActions() {
         author_id: user.id,
         text,
         is_public: isPublic,
+        reply_to_id: replyToId,
       })
-      .select('id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
+      .select('id, text, is_public, author_id, created_at, reply_to_id, profiles!author_id(id, username, full_name)')
       .single()
     if (error) throw error
     return data
+  }
+
+  // Eigenen Kommentar löschen (RLS erlaubt nur author_id = auth.uid()).
+  async function deleteComment(noteId) {
+    const { error } = await supabase.from('prayer_notes').delete().eq('id', noteId).eq('author_id', user.id)
+    if (error) throw error
   }
 
   async function updatePrayer(prayer, updates) {
@@ -131,5 +139,5 @@ export function usePrayerActions() {
     showToast(`Zu „${LATER_LIST_NAME}" hinzugefügt ✓`)
   }
 
-  return { pray, comment, updatePrayer, toggleAnswered, remove, laterPray }
+  return { pray, comment, deleteComment, updatePrayer, toggleAnswered, remove, laterPray }
 }

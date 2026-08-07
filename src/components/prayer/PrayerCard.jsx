@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   MoreVertical, Pencil, Check, Trash2, Pin, Lock, Globe,
   MessageCircle, BookmarkPlus, Forward, ChevronDown, ChevronUp,
+  CornerUpLeft,
 } from 'lucide-react'
 import Confetti from '../ui/Confetti'
 import ProgressBar from './ProgressBar'
@@ -82,6 +83,72 @@ const SOURCE_LABELS = {
   sibling: 'Geschwister',
 }
 
+// Ein Kommentar + seine öffentlichen Antworten. Nur eine Ebene tief –
+// „direkt unter dem Gebet im Kommentarbereich" reicht für Antworten.
+function CommentThread({ note, replies, currentUserId, replyingTo, setReplyingTo, onSubmitReply, onDelete, onPrivateReply }) {
+  const isReplying = replyingTo === note.id
+
+  function Row({ n, isReply }) {
+    const isOwn = n.author_id === currentUserId
+    return (
+      <div style={{ display: 'flex', gap: 8 }}>
+        <AvatarBubble name={n.profiles?.full_name || n.profiles?.username || 'Du'} size={isReply ? 24 : 28} avatarUrl={n.profiles?.avatar_url} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderRadius: 10, padding: '8px 10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
+                {isOwn ? 'Du' : (n.profiles?.full_name || n.profiles?.username || 'Unbekannt')}
+              </span>
+              {n.is_public === false && (
+                <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)', border: '1px solid var(--color-border)', borderRadius: 4, padding: '1px 5px' }}>
+                  nur Ersteller
+                </span>
+              )}
+            </div>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{n.text}</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, paddingLeft: 2 }}>
+            {!isReply && (
+              <button onClick={() => setReplyingTo(isReplying ? null : n.id)} style={commentActionLink}>
+                <CornerUpLeft size={11} /> Antworten
+              </button>
+            )}
+            {!isOwn && (
+              <button onClick={() => onPrivateReply(n)} style={commentActionLink}>
+                Privat antworten
+              </button>
+            )}
+            {isOwn && (
+              <button onClick={() => onDelete(n)} style={{ ...commentActionLink, color: 'var(--color-error)' }}>
+                <Trash2 size={11} /> Löschen
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Row n={note} isReply={false} />
+      {replies.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginLeft: 22, paddingLeft: 10, borderLeft: '2px solid var(--color-border)' }}>
+          {replies.map(r => <Row key={r.id} n={r} isReply />)}
+        </div>
+      )}
+      {isReplying && (
+        <div style={{ marginLeft: 22 }}>
+          <CommentInput
+            onSubmit={(text, isPublic) => { onSubmitReply(text, isPublic); setReplyingTo(null) }}
+            placeholder="Antworten…"
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function PrayerCard({
   prayer,
   logs,
@@ -96,6 +163,8 @@ export default function PrayerCard({
   extraMenuItems = [],
   onPray,
   onComment,
+  onDeleteComment,
+  onPrivateReply,
   onUpdate,
   onToggleAnswered,
   onDelete,
@@ -112,6 +181,7 @@ export default function PrayerCard({
   const [expanded, setExpanded] = useState(false)
   const [confetti, setConfetti] = useState(false)
   const [showComments, setShowComments] = useState(false)
+  const [replyingTo, setReplyingTo] = useState(null)
 
   const isOwner = !!currentUserId && prayer.ownerId === currentUserId
   const isAnswered = prayer.isAnswered
@@ -376,24 +446,19 @@ export default function PrayerCard({
         {showComments && (
           <div style={{ marginTop: 10 }}>
             {commentList.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 10 }}>
-                {commentList.map(n => (
-                  <div key={n.id} style={{ display: 'flex', gap: 8 }}>
-                    <AvatarBubble name={n.profiles?.full_name || n.profiles?.username || 'Du'} size={28} avatarUrl={n.profiles?.avatar_url} />
-                    <div style={{ flex: 1, backgroundColor: 'var(--color-bg-secondary)', borderRadius: 10, padding: '8px 10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
-                          {n.author_id === currentUserId ? 'Du' : (n.profiles?.full_name || n.profiles?.username || 'Unbekannt')}
-                        </span>
-                        {n.is_public === false && (
-                          <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)', border: '1px solid var(--color-border)', borderRadius: 4, padding: '1px 5px' }}>
-                            nur Ersteller
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{n.text}</p>
-                    </div>
-                  </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 10 }}>
+                {commentList.filter(n => !n.reply_to_id).map(n => (
+                  <CommentThread
+                    key={n.id}
+                    note={n}
+                    replies={commentList.filter(r => r.reply_to_id === n.id)}
+                    currentUserId={currentUserId}
+                    replyingTo={replyingTo}
+                    setReplyingTo={setReplyingTo}
+                    onSubmitReply={(text, isPublic) => onComment?.(prayer, text, isPublic, n.id)}
+                    onDelete={note => onDeleteComment?.(prayer, note)}
+                    onPrivateReply={note => onPrivateReply?.(prayer, note)}
+                  />
                 ))}
               </div>
             )}
@@ -444,6 +509,11 @@ const actionBtn = {
   display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 999,
   border: '1px solid var(--color-border)', background: 'var(--color-bg)',
   color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+}
+const commentActionLink = {
+  display: 'flex', alignItems: 'center', gap: 3, border: 'none', background: 'none',
+  cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 11.5, fontWeight: 600,
+  color: 'var(--color-text-tertiary)', padding: 0,
 }
 const menuItem = {
   display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 16px',

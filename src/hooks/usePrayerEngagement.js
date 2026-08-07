@@ -50,12 +50,12 @@ export function usePrayerEngagement(prayers) {
         : Promise.resolve({ data: [] }),
       oIds.length
         ? supabase.from('prayer_notes')
-            .select('id, prayer_request_id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
+            .select('id, prayer_request_id, text, is_public, author_id, created_at, reply_to_id, profiles!author_id(id, username, full_name)')
             .in('prayer_request_id', oIds).order('created_at', { ascending: false })
         : Promise.resolve({ data: [] }),
       pIds.length
         ? supabase.from('prayer_notes')
-            .select('id, request_id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
+            .select('id, request_id, text, is_public, author_id, created_at, reply_to_id, profiles!author_id(id, username, full_name)')
             .in('request_id', pIds).order('created_at', { ascending: false })
         : Promise.resolve({ data: [] }),
     ])
@@ -100,8 +100,11 @@ export function usePrayerEngagement(prayers) {
   function pushNote(prayerKey, note) {
     setNotesMap(prev => ({ ...prev, [prayerKey]: [note, ...(prev[prayerKey] || [])] }))
   }
+  function removeNote(prayerKey, noteId) {
+    setNotesMap(prev => ({ ...prev, [prayerKey]: (prev[prayerKey] || []).filter(n => n.id !== noteId) }))
+  }
 
-  return { logsMap, notesMap, loading, reload: load, pushLog, pushNote }
+  return { logsMap, notesMap, loading, reload: load, pushLog, pushNote, removeNote }
 }
 
 // Aus den Logs eines Gebets die Anzeigewerte der Karte ableiten:
