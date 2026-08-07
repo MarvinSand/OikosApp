@@ -424,24 +424,49 @@ export default function Prayers() {
       if (scroller.scrollTop <= 2 && e.deltaY < -6) setSearchRevealed(true)
       else if (e.deltaY > 6) setSearchRevealed(false)
     }
+    let touchStartX = 0
     let touchStartY = 0
-    function onTouchStart(e) { touchStartY = e.touches[0].clientY }
+    let swipeBlocked = false
+    function onTouchStart(e) {
+      touchStartX = e.touches[0].clientX
+      touchStartY = e.touches[0].clientY
+      // Geste über einem horizontal scrollbaren Bereich (Quellen-Chips, Karussells)
+      // soll dort scrollen dürfen statt zum Feed zu navigieren.
+      let node = e.target
+      swipeBlocked = false
+      while (node && node !== scroller && node !== document.body) {
+        if (node.scrollWidth > node.clientWidth + 2) {
+          const overflowX = window.getComputedStyle(node).overflowX
+          if (overflowX === 'auto' || overflowX === 'scroll') { swipeBlocked = true; break }
+        }
+        node = node.parentElement
+      }
+    }
     function onTouchMove(e) {
       const dy = e.touches[0].clientY - touchStartY
       if (scroller.scrollTop <= 2 && dy > 40) setSearchRevealed(true)
       else if (dy < -40) setSearchRevealed(false)
     }
+    function onTouchEnd(e) {
+      if (swipeBlocked) return
+      const t = e.changedTouches[0]
+      const dx = t.clientX - touchStartX
+      const dy = t.clientY - touchStartY
+      if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigate('/friends?tab=feed')
+    }
     scroller.addEventListener('scroll', onScroll, { passive: true })
     scroller.addEventListener('wheel', onWheel, { passive: true })
     scroller.addEventListener('touchstart', onTouchStart, { passive: true })
     scroller.addEventListener('touchmove', onTouchMove, { passive: true })
+    scroller.addEventListener('touchend', onTouchEnd, { passive: true })
     return () => {
       scroller.removeEventListener('scroll', onScroll)
       scroller.removeEventListener('wheel', onWheel)
       scroller.removeEventListener('touchstart', onTouchStart)
       scroller.removeEventListener('touchmove', onTouchMove)
+      scroller.removeEventListener('touchend', onTouchEnd)
     }
-  }, [])
+  }, [navigate])
 
   // Gebetsmodus / Bookmark / Weiterleiten / Gebetsziel
   const [showPrayerModeSetup, setShowPrayerModeSetup] = useState(false)
