@@ -78,6 +78,8 @@ export function usePrayerActions() {
   // Kommentar zu einem Gebet. isPublic=false → nur der Ersteller sieht ihn.
   // replyToId gesetzt → öffentliche Antwort auf einen anderen Kommentar.
   async function comment(prayer, text, isPublic = true, replyToId = null) {
+    // Kein profiles-Embed im .select() – prayer_notes hat keine für PostgREST
+    // auflösbare FK-Beziehung zu profiles (siehe usePrayerEngagement.js).
     const { data, error } = await supabase
       .from('prayer_notes')
       .insert({
@@ -87,10 +89,17 @@ export function usePrayerActions() {
         is_public: isPublic,
         reply_to_id: replyToId,
       })
-      .select('id, text, is_public, author_id, created_at, reply_to_id, profiles!author_id(id, username, full_name)')
+      .select('id, text, is_public, author_id, created_at, reply_to_id')
       .single()
     if (error) throw error
-    return data
+    return {
+      ...data,
+      profiles: {
+        id: user.id,
+        full_name: user.user_metadata?.full_name || null,
+        username: user.email?.split('@')[0] || null,
+      },
+    }
   }
 
   // Eigenen Kommentar löschen (RLS erlaubt nur author_id = auth.uid()).
