@@ -39,7 +39,12 @@ async function load(force = false) {
   const user = getCurrentUser()
   if (!user) {
     loadedForUserId = null
-    if (state.ids !== EMPTY || state.loading) emit({ ids: EMPTY, loading: false })
+    // Der Aufruf kommt aus dem Render heraus. Ein synchrones emit() würde
+    // hier mitten im Rendern einer anderen Komponente deren State setzen –
+    // React warnt davor zu Recht. Deshalb in einen Microtask verschieben.
+    if (state.ids !== EMPTY || state.loading) {
+      queueMicrotask(() => emit({ ids: EMPTY, loading: false }))
+    }
     return EMPTY
   }
   if (!force && loadedForUserId === user.id) return state.ids
