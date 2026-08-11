@@ -15,6 +15,7 @@ import LegalView from './pages/LegalView'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { isNative, listenToDeepLinks } from './lib/native'
 // All authenticated pages load lazily: each route becomes its own chunk and
 // shared heavy deps (Google Maps SDK bindings) end up in async chunks instead
 // of the entry bundle
@@ -144,7 +145,10 @@ function AppShell() {
   }, [user?.id])
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    // Der Service Worker ist nur für Web Push da. In der nativen Hülle
+    // laufen Benachrichtigungen über APNs/FCM – dort würde er nur ein
+    // zweites, konkurrierendes Caching einziehen.
+    if (!isNative && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
   }, [])
@@ -156,6 +160,15 @@ function AppShell() {
 // welcher Route der Link landet) und meldet den User über die Recovery-Session
 // an. Ohne diese Weiche würde man dadurch einfach in der normalen App landen,
 // statt die Seite zum Passwort-Ändern zu sehen.
+// In der nativen App öffnen Bestätigungs- und Reset-Links über einen
+// App-/Universal-Link. Ohne diesen Listener landet man immer auf der
+// Startseite und der Token in der URL geht verloren.
+function DeepLinkHandler() {
+  const navigate = useNavigate()
+  useEffect(() => listenToDeepLinks(path => navigate(path, { replace: true })), [navigate])
+  return null
+}
+
 function RecoveryRedirect() {
   const navigate = useNavigate()
 
@@ -266,6 +279,7 @@ export default function App() {
           <div className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg">
             <BrowserRouter>
               <RecoveryRedirect />
+              <DeepLinkHandler />
               <Routes>
                 <Route
                   path="/auth"

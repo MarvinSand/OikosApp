@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { isNative, nativePlatform } from '../lib/native'
 
 const DEFAULT_PREFS = {
   long_not_prayed: true,
@@ -19,6 +20,13 @@ export function usePushNotifications() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // In der nativen App laufen Benachrichtigungen über APNs bzw. FCM.
+    // Web Push (PushManager) existiert im WKWebView von iOS gar nicht –
+    // die alte Prüfung hätte dort immer "nicht unterstützt" ergeben.
+    if (isNative) {
+      setIsSupported(true)
+      return
+    }
     setIsSupported('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window)
   }, [])
 
@@ -41,40 +49,81 @@ export function usePushNotifications() {
 
   useEffect(() => { loadPrefs() }, [loadPrefs])
 
-  async function subscribe() {
-    if (!isSupported) return false
+  // ─── Nativ: APNs / FCM ────────────────────────────────────────
+  async function subscribeNative() {
+    const { PushNotifications } = await import('@capacitor/push-notifications')
 
+    let status = await PushNotifications.checkPermissions()
+    if (status.receive === 'prompt' || status.receive === 'prompt-with-rationale') {
+      status = await PushNotifications.requestPermissions()
+    }
+    if (status.receive !== 'granted') return false
+
+    // Das Token kommt asynchron über ein Event, nicht als Rückgabewert.
+    const token = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(null), 10000)
+      PushNotifications.addListener('registration', ({ value }) => {
+        clearTimeout(timeout)
+        resolve(value)
+      })
+      PushNotifications.addListener('registrationError', () => {
+        clearTimeout(timeout)
+        resolve(null)
+      })
+      PushNotifications.register()
+    })
+
+    if (!token) return false
+
+    await supabase.from('profiles').update({
+      push_subscription: { type: 'native', platform: nativePlatform, token },
+    }).eq('id', user.id)
+
+    setIsSubscribed(true)
+    return true
+  }
+
+  // ─── Web: VAPID / PushManager ─────────────────────────────────
+  async function subscribeWeb() {
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') return false
 
+    const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
+    // Früher wurde der Nutzer hier ohne Key als "subscribed" markiert.
+    // Die Einstellung zeigte dann an, Benachrichtigungen seien aktiv,
+    // obwohl nie eine ankommen konnte.
+    if (!vapidKey) return false
+
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
+    })
+
+    await supabase.from('profiles').update({
+      push_subscription: sub.toJSON(),
+    }).eq('id', user.id)
+
+    setIsSubscribed(true)
+    return true
+  }
+
+  async function subscribe() {
+    if (!isSupported || !user) return false
     try {
-      const reg = await navigator.serviceWorker.ready
-      const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
-      if (!vapidKey) {
-        // No VAPID key configured – still mark as "subscribed" locally for settings UI
-        await supabase.from('profiles').update({ push_subscription: { type: 'local' } }).eq('id', user.id)
-        setIsSubscribed(true)
-        return true
-      }
-
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      })
-
-      await supabase.from('profiles').update({
-        push_subscription: sub.toJSON(),
-      }).eq('id', user.id)
-
-      setIsSubscribed(true)
-      return true
+      return isNative ? await subscribeNative() : await subscribeWeb()
     } catch {
       return false
     }
   }
 
   async function unsubscribe() {
-    if (isSupported) {
+    if (isNative) {
+      try {
+        const { PushNotifications } = await import('@capacitor/push-notifications')
+        await PushNotifications.removeAllListeners()
+      } catch { /* non-critical */ }
+    } else if (isSupported) {
       try {
         const reg = await navigator.serviceWorker.ready
         const sub = await reg.pushManager.getSubscription()

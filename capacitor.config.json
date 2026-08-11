@@ -1,0 +1,22 @@
+{
+  "appId": "app.oikos.mobile",
+  "appName": "OIKOS",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#000000",
+    "limitsNavigationsToAppBoundDomains": true
+  },
+  "android": {
+    "backgroundColor": "#000000"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Keyboard": {
+      "resize": "native",
+      "resizeOnFullScreen": true
+    }
+  }
+}

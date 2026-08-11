@@ -3,7 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="description" content="OIKOS – behalte dein persönliches Umfeld im Blick und bete für die Menschen darin." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="OIKOS" />
+    <!--
+      viewport-fit=cover ist in der nativen App Pflicht: ohne diesen Wert
+      liefert env(safe-area-inset-*) in der WKWebView immer 0, und die
+      Safe-Area-Berechnungen in index.css und BottomNav.jsx laufen ins Leere –
+      die Bottom-Nav rutscht dann unter den Home-Indicator.
+      user-scalable=no wurde entfernt: Apple wertet unterdrückten Zoom als
+      Accessibility-Mangel.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#FFFFFF" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

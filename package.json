@@ -9,6 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/keyboard": "^6.0.4",
+    "@capacitor/push-notifications": "^6.0.5",
+    "@capacitor/status-bar": "^6.0.3",
     "@googlemaps/markerclusterer": "^2.6.2",
     "@react-google-maps/api": "^2.20.8",
     "@supabase/supabase-js": "^2.45.0",
@@ -19,6 +24,9 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/ios": "^6.2.1",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",

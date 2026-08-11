@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { syncStatusBar } from '../lib/native'
 
 const ThemeContext = createContext({ theme: 'light', toggleTheme: () => {}, setTheme: () => {} })
 
@@ -17,6 +18,9 @@ function applyTheme(theme) {
   else root.removeAttribute('data-theme')
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#FFFFFF')
+  // In der nativen App zieht die Statusleiste nicht automatisch nach:
+  // ohne das steht im Dark Mode schwarze Schrift auf schwarzem Grund.
+  syncStatusBar(theme)
 }
 
 export function ThemeProvider({ children }) {

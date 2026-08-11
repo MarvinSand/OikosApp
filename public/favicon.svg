@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="OIKOS">
+  <!--
+    OIKOS-Zeichen: ein Haus (griech. oikos = Haus/Hausgemeinschaft) mit
+    einem Kreuz darin. Bewusst nur zwei Formen und kräftige Striche, damit
+    das Motiv auch als 16-px-Favicon noch lesbar bleibt.
+  -->
+  <defs>
+    <linearGradient id="oikosBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7FD8FF"/>
+      <stop offset="100%" stop-color="#5AC8FA"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#oikosBg)"/>
+
+  <!-- Haus als durchgehender Umriss: Dach und Wände in einem Zug -->
+  <path d="M120 246 L256 132 L392 246 L392 392 L120 392 Z"
+        fill="none" stroke="#FFFFFF" stroke-width="34"
+        stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Kreuz -->
+  <rect x="241" y="236" width="30" height="126" rx="8" fill="#FFFFFF"/>
+  <rect x="200" y="277" width="112" height="30" rx="8" fill="#FFFFFF"/>
+</svg>

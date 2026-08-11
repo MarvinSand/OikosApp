@@ -10,3 +10,20 @@ tmp_query.js
 # Python caches (skill tooling)
 __pycache__/
 *.pyc
+
+# Capacitor: native Build-Artefakte und Abhängigkeiten.
+# Die Projektdateien selbst (ios/App, android/app) gehören ins Repo,
+# damit Signierung, Berechtigungstexte und Icons versioniert sind.
+ios/App/Pods/
+ios/App/App/public/
+ios/App/output/
+ios/DerivedData/
+android/app/src/main/assets/public/
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/release/
+*.apk
+*.aab
+*.ipa

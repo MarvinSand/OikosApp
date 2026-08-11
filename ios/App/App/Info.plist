@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+        <string>OIKOS</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+	<!-- Berechtigungstexte. Apple lehnt fehlende oder generische
+	     Begründungen ab; sie müssen konkret sagen, wofür die App
+	     die Funktion in genau diesem Fall braucht. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>OIKOS nutzt deinen Standort nur, wenn du ihn freigibst – um Orte und Aktivitäten auf deiner Karte zu platzieren, ohne dass du die Adresse eintippen musst.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>OIKOS braucht die Kamera, damit du Fotos direkt in einen Beitrag, einen Chat oder dein Profilbild aufnehmen kannst.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>OIKOS greift auf deine Fotos zu, damit du ein Profilbild, ein Community-Banner oder ein Bild für einen Beitrag auswählen kannst.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>OIKOS speichert Fotos in deiner Mediathek, wenn du ein Bild aus einem Chat sicherst.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>OIKOS verfolgt dich nicht über andere Apps oder Websites hinweg.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+</dict>
+</plist>
