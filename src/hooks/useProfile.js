@@ -76,7 +76,11 @@ export function useProfile() {
   }
 
   async function deleteAccount() {
-    await supabase.rpc('delete_user')
+    // `rpc()` wirft nicht, sondern liefert { error }. Ohne diese Prüfung
+    // schlägt das Löschen still fehl und der Nutzer wird nur ausgeloggt –
+    // genau das war bis Phase 58 der Fall.
+    const { error } = await supabase.rpc('delete_user')
+    if (error) throw error
     await supabase.auth.signOut()
   }
 

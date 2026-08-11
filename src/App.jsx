@@ -9,6 +9,9 @@ import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
 import ResetPassword from './pages/ResetPassword'
 import AuthCallback from './pages/AuthCallback'
+// Rechtstexte müssen auch ohne Login erreichbar sein – die Registrierung
+// verlinkt darauf, und die Stores prüfen die Datenschutz-URL.
+import LegalView from './pages/LegalView'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -270,6 +273,7 @@ export default function App() {
                 />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/legal/:doc" element={<LegalView />} />
                 <Route
                   path="/*"
                   element={user ? <AppShell /> : <Navigate to="/auth" replace />}

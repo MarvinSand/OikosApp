@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { useModeration } from './useModeration'
 import { compressImage } from '../lib/image'
 
 const PAGE_SIZE = 20
@@ -14,10 +15,15 @@ const POST_SELECT = `
 
 export function useFeed(filter = 'all') {
   const { user } = useAuth()
+  const { blockedIds, loading: blockedLoading } = useModeration()
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
+
+  // Serialisiert, damit die Query-Callback-Identität nur wechselt, wenn sich
+  // die Liste inhaltlich ändert – ein Set ist bei jedem Reload eine neue Referenz.
+  const blockedKey = [...blockedIds].sort().join(',')
 
   const buildQuery = useCallback((from = 0) => {
     let q = supabase
@@ -26,6 +32,11 @@ export function useFeed(filter = 'all') {
       .order('created_at', { ascending: false })
       .range(from, from + PAGE_SIZE - 1)
 
+    // Beiträge blockierter Nutzer (und derer, die einen blockiert haben)
+    // gar nicht erst laden – App Store Guideline 1.2.
+    const blocked = blockedKey ? blockedKey.split(',') : []
+    if (blocked.length > 0) q = q.not('author_id', 'in', `(${blocked.join(',')})`)
+
     if (filter === 'bibelstelle')  q = q.eq('category', 'bibelstelle')
     else if (filter === 'zeugnis')      q = q.eq('category', 'zeugnis')
     else if (filter === 'frage')        q = q.eq('category', 'frage')
@@ -33,10 +44,13 @@ export function useFeed(filter = 'all') {
     else if (filter === 'ermutigung')   q = q.eq('category', 'ermutigung')
 
     return q
-  }, [filter])
+  }, [filter, blockedKey])
 
   const loadPosts = useCallback(async () => {
     if (!user) return
+    // Warten, bis die Blockierliste da ist – sonst blitzen die Beiträge
+    // blockierter Nutzer beim ersten Laden kurz auf.
+    if (blockedLoading) return
     setLoading(true)
     setOffset(0)
     const { data, error } = await buildQuery(0)
@@ -46,7 +60,7 @@ export function useFeed(filter = 'all') {
       setHasMore((data || []).length === PAGE_SIZE)
     }
     setLoading(false)
-  }, [user?.id, buildQuery])
+  }, [user?.id, buildQuery, blockedLoading])
 
   useEffect(() => { loadPosts() }, [loadPosts])
 

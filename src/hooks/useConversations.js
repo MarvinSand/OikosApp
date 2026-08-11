@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { subscribeShared } from '../lib/realtime'
 import { useAuth } from './useAuth'
+import { getBlockedIds } from './useModeration'
 
 export function useConversations() {
   const { user } = useAuth()
@@ -129,7 +130,14 @@ export function useConversations() {
       )
 
       // 7. Build direct chats list
+      // Chats mit blockierten Nutzern verschwinden aus der Liste – sonst
+      // bleibt der Gesprächsfaden trotz Blockierung sichtbar.
+      const blocked = await getBlockedIds()
       const builtDirectChats = directConvs
+        .filter(conv => {
+          const other = otherUserByConv[conv.id]
+          return !other || !blocked.has(other.id)
+        })
         .map(conv => {
           const lastMessage = lastMessageMap[conv.id] || null
           const lastReadAt = lastReadMap[conv.id] || '1970-01-01'

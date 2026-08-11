@@ -3,7 +3,10 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, UserCheck, UserPlus, Clock, X, MessageCircle, Bell,
   MapPin, Church, Map as MapIcon, Newspaper, HandHeart, Repeat2,
+  MoreVertical, Flag, Ban,
 } from 'lucide-react'
+import ReportSheet from '../components/common/ReportSheet'
+import { useModeration } from '../hooks/useModeration'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
@@ -63,6 +66,9 @@ export default function UserProfile() {
   const [showNotifPrefs, setShowNotifPrefs] = useState(false)
   const [activeTab, setActiveTab] = useState('maps')
   const [overlay, setOverlay] = useState(null) // 'communities' | null
+  const [showOptions, setShowOptions] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const { blockedIds, blockUser, unblockUser } = useModeration()
   const { prefs, updatePref } = useNotificationPrefs(targetId)
   const birthdayBannerKey = `birthday_banner_${targetId}_${new Date().toDateString()}`
   const [bannerDismissed, setBannerDismissed] = useState(() => !!localStorage.getItem(birthdayBannerKey))
@@ -123,6 +129,26 @@ export default function UserProfile() {
       showToast(e.message || 'Fehler', 'error')
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  const isOwnProfile = user?.id === targetId
+  const isBlocked = blockedIds.has(targetId)
+
+  async function handleToggleBlock() {
+    setShowOptions(false)
+    try {
+      if (isBlocked) {
+        await unblockUser(targetId)
+        showToast('Blockierung aufgehoben')
+      } else {
+        // Blockieren löst serverseitig auch eine bestehende Verbindung auf –
+        // sonst tauchen die beiden weiter in den Geschwister-Listen auf.
+        await blockUser(targetId)
+        showToast('Nutzer blockiert')
+      }
+    } catch {
+      showToast('Aktion fehlgeschlagen', 'error')
     }
   }
 
@@ -207,18 +233,63 @@ export default function UserProfile() {
             @{profile.username || '…'}
           </h2>
         </div>
-        <button
-          onClick={() => setShowNotifPrefs(true)}
-          aria-label="Benachrichtigungen"
-          title="Benachrichtigungen"
-          style={{ ...iconBtnStyle, position: 'relative', color: hasNotifPrefs ? 'var(--color-accent)' : 'var(--color-text)' }}
-        >
-          <Bell size={20} />
-          {hasNotifPrefs && (
-            <div style={{ position: 'absolute', top: 8, right: 8, width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-accent)' }} />
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <button
+            onClick={() => setShowNotifPrefs(true)}
+            aria-label="Benachrichtigungen"
+            title="Benachrichtigungen"
+            style={{ ...iconBtnStyle, position: 'relative', color: hasNotifPrefs ? 'var(--color-accent)' : 'var(--color-text)' }}
+          >
+            <Bell size={20} />
+            {hasNotifPrefs && (
+              <div style={{ position: 'absolute', top: 8, right: 8, width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-accent)' }} />
+            )}
+          </button>
+
+          {/* Melden/Blockieren – Pflicht für UGC (App Store Guideline 1.2).
+              Am eigenen Profil sinnlos, deshalb nur bei fremden. */}
+          {!isOwnProfile && (
+            <div style={{ position: 'relative' }}>
+              <button onClick={() => setShowOptions(v => !v)} aria-label="Optionen" style={iconBtnStyle}>
+                <MoreVertical size={20} />
+              </button>
+              {showOptions && (
+                <>
+                  <div onClick={() => setShowOptions(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                  <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.16)', border: '1px solid var(--color-border)', zIndex: 50, minWidth: 190, overflow: 'hidden' }}>
+                    <button
+                      onClick={() => { setShowOptions(false); setShowReport(true) }}
+                      style={optionRowStyle}
+                    >
+                      <Flag size={15} /> Profil melden
+                    </button>
+                    <button
+                      onClick={handleToggleBlock}
+                      style={optionRowStyle}
+                    >
+                      <Ban size={15} /> {isBlocked ? 'Blockierung aufheben' : 'Nutzer blockieren'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
-        </button>
+        </div>
       </header>
+
+      {/* Blockiert-Hinweis: sonst wundert man sich, warum die Inhalte
+          dieses Profils überall verschwunden sind. */}
+      {isBlocked && (
+        <div style={{ margin: '12px 16px 0', padding: '13px 15px', borderRadius: 14, backgroundColor: 'var(--color-error-bg, rgba(192,57,43,0.08))', border: '1px solid var(--color-error)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Ban size={17} color="var(--color-error)" style={{ flexShrink: 0 }} />
+          <p style={{ flex: 1, fontSize: 13, color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
+            Du hast {displayName} blockiert. Ihr seht die Beiträge des jeweils anderen nicht mehr.
+          </p>
+          <button onClick={handleToggleBlock} style={{ border: 'none', background: 'none', fontSize: 13, fontWeight: 600, color: 'var(--color-accent)', cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+            Aufheben
+          </button>
+        </div>
+      )}
 
       {/* Geburtstags-Banner */}
       {showBirthdayBanner && (
@@ -486,6 +557,16 @@ export default function UserProfile() {
         </>
       )}
 
+      {showReport && (
+        <ReportSheet
+          targetType="profile"
+          targetId={targetId}
+          targetUserId={targetId}
+          targetName={displayName}
+          onClose={() => setShowReport(false)}
+        />
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
@@ -499,6 +580,19 @@ const headerBarStyle = {
   position: 'sticky',
   top: 0,
   zIndex: 10,
+}
+const optionRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 9,
+  width: '100%',
+  padding: '11px 14px',
+  border: 'none',
+  background: 'none',
+  fontSize: 14,
+  color: 'var(--color-error)',
+  cursor: 'pointer',
+  textAlign: 'left',
 }
 const iconBtnStyle = {
   width: 40,

@@ -16,6 +16,10 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [emailNotConfirmed, setEmailNotConfirmed] = useState(false)
+  // Ausdrückliche Zustimmung zu AGB und Datenschutz vor der Registrierung.
+  // Beide Stores verlangen, dass die Dokumente vor Kontoerstellung
+  // erreichbar sind; Apple prüft das im Review.
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   const { login, register } = useAuth()
   const { showToast } = useToast()
@@ -294,9 +298,31 @@ export default function Auth() {
                 </div>
               )}
 
+              {view === 'register' && (
+                <label className="flex items-start gap-2.5 mt-1 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={e => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 flex-shrink-0 accent-accent cursor-pointer"
+                  />
+                  <span className="text-xs leading-relaxed text-dark-muted">
+                    Ich akzeptiere die{' '}
+                    <a href="/legal/terms" target="_blank" rel="noreferrer" className="font-semibold text-accent underline">
+                      Nutzungsbedingungen
+                    </a>{' '}
+                    und habe die{' '}
+                    <a href="/legal/privacy" target="_blank" rel="noreferrer" className="font-semibold text-accent underline">
+                      Datenschutzerklärung
+                    </a>{' '}
+                    gelesen.
+                  </span>
+                </label>
+              )}
+
               <button
                 type="submit" 
-                disabled={isLoading || (view === 'register' && (!gender || !username.trim()))}
+                disabled={isLoading || (view === 'register' && (!gender || !username.trim() || !acceptedTerms))}
                 className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}

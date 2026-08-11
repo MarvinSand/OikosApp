@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark, Flag } from 'lucide-react'
+import ReportSheet from '../components/common/ReportSheet'
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
@@ -1050,6 +1051,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
+  const [showReport, setShowReport] = useState(false)
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
   const TypeIcon = cfg.icon
   // Klares Kategorie-Badge aus dem echten category-Feld (Frage, Bibelstelle, …)
@@ -1098,26 +1100,35 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
               <TypeIcon size={11} /> {cfg.label}
             </span>
           )}
-          {isOwn && (
-            <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
-                <MoreHorizontal size={16} />
-              </button>
-              {showMenu && (
-                <>
-                  <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
+          {/* Eigene Beiträge: löschen. Fremde: melden/blockieren –
+              Pflicht für UGC nach App Store Guideline 1.2. */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowMenu(v => !v)} aria-label="Optionen" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+              <MoreHorizontal size={16} />
+            </button>
+            {showMenu && (
+              <>
+                <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
+                  {isOwn ? (
                     <button
                       onClick={() => { setShowMenu(false); onDelete?.(post.id) }}
                       style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
                     >
                       <Trash2 size={14} /> Löschen
                     </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+                  ) : (
+                    <button
+                      onClick={() => { setShowMenu(false); setShowReport(true) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
+                    >
+                      <Flag size={14} /> Melden
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1177,6 +1188,16 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
           postId={post.id}
           onClose={() => setShowSaveSheet(false)}
           onSaved={() => onBookmarkSaved?.(post.id)}
+        />
+      )}
+
+      {showReport && (
+        <ReportSheet
+          targetType="post"
+          targetId={post.id}
+          targetUserId={post.author_id}
+          targetName={author?.full_name || author?.username || 'diesen Nutzer'}
+          onClose={() => setShowReport(false)}
         />
       )}
     </FeedCardFrame>

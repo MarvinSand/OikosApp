@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
-  Moon, Globe, Navigation, KeyRound,
+  Moon, Globe, Navigation, KeyRound, Ban, FileText, Scale, Building2,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
+import { useModeration } from '../hooks/useModeration'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import AddressAutocomplete from '../components/common/AddressAutocomplete'
+import { LEGAL_CONTACT_EMAIL } from '../lib/legalTexts'
 
 function validateUsername(val) {
   if (!val || val.trim().length < 3) return 'Mindestens 3 Zeichen'
@@ -140,9 +142,15 @@ function DeleteModal({ onCancel, onConfirm, loading }) {
         <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
           Bist du sicher?
         </h3>
-        <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, marginBottom: 20 }}>
-          Dein Account und alle deine Daten werden unwiderruflich gelöscht.
+        <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, marginBottom: 12 }}>
+          Dein Account wird unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen.
         </p>
+        <ul style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 20, paddingLeft: 18 }}>
+          <li>Profil, Oikos-Karten und alle Personen darauf</li>
+          <li>Gebete, Gebetslisten, Notizen und deine Statistik</li>
+          <li>Beiträge, Kommentare, Chats und gesendete Fotos</li>
+          <li>Deine Mitgliedschaften in Communities</li>
+        </ul>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onCancel} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
             Abbrechen
@@ -156,16 +164,99 @@ function DeleteModal({ onCancel, onConfirm, loading }) {
   )
 }
 
+// Übersicht der blockierten Nutzer. Apple verlangt für UGC-Apps nicht nur
+// das Blockieren selbst, sondern auch, dass es rückgängig gemacht werden kann.
+function BlockedSection() {
+  const { blockedIds, unblockUser } = useModeration()
+  const { showToast } = useToast()
+  const [profiles, setProfiles] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const ids = [...blockedIds]
+    if (ids.length === 0) { setProfiles([]); setLoading(false); return }
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url')
+        .in('id', ids)
+      if (!cancelled) { setProfiles(data || []); setLoading(false) }
+    })()
+    return () => { cancelled = true }
+  }, [blockedIds])
+
+  async function handleUnblock(id) {
+    try {
+      await unblockUser(id)
+      showToast('Blockierung aufgehoben')
+    } catch {
+      showToast('Fehler', 'error')
+    }
+  }
+
+  if (loading) {
+    return <div style={{ padding: 24, color: 'var(--color-text-tertiary)', fontSize: 14 }}>Lade…</div>
+  }
+
+  if (profiles.length === 0) {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <Ban size={30} color="var(--color-text-tertiary)" style={{ marginBottom: 12 }} />
+        <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.55 }}>
+          Du hast niemanden blockiert. Blockierte Nutzer können dir nicht schreiben
+          und ihr seht die Beiträge des jeweils anderen nicht mehr.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '20px 16px' }}>
+      {profiles.map(p => (
+        <div
+          key={p.id}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+            borderRadius: 14, border: '1px solid var(--color-border)', marginBottom: 10,
+          }}
+        >
+          <div style={{
+            width: 38, height: 38, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+            backgroundColor: 'var(--color-bg-secondary)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700,
+            color: 'var(--color-text-secondary)',
+          }}>
+            {p.avatar_url
+              ? <img src={p.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : (p.full_name || p.username || '?').trim().charAt(0).toUpperCase()}
+          </div>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+            {p.full_name || p.username || 'Unbekannt'}
+          </span>
+          <button
+            onClick={() => handleUnblock(p.id)}
+            style={{ border: '1px solid var(--color-border)', background: 'none', borderRadius: 9, padding: '7px 13px', fontSize: 13, fontWeight: 600, color: 'var(--color-accent)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            Aufheben
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function SettingsView() {
   const navigate = useNavigate()
   const { profile, updateProfile, deleteAccount, loading: profileLoading } = useProfile()
   const { user, resendVerificationEmail } = useAuth()
   const { showToast } = useToast()
   const { theme, toggleTheme } = useTheme()
+  const { blockedIds } = useModeration()
 
   // 'hub' | 'profile' | 'privacy' – Deep-Link via ?section=privacy
   const [searchParams] = useSearchParams()
-  const initialSection = ['profile', 'privacy'].includes(searchParams.get('section'))
+  const initialSection = ['profile', 'privacy', 'blocked'].includes(searchParams.get('section'))
     ? searchParams.get('section')
     : 'hub'
   const [section, setSection] = useState(initialSection)
@@ -330,6 +421,7 @@ export default function SettingsView() {
   const emailNotVerified = profile && !profile.email_verified
   const title = section === 'profile' ? 'Profil bearbeiten'
     : section === 'privacy' ? 'Ansicht & Datenschutz'
+    : section === 'blocked' ? 'Blockierte Nutzer'
     : 'Einstellungen'
 
   function handleBack() {
@@ -388,6 +480,12 @@ export default function SettingsView() {
               title="Ansicht & Datenschutz"
               onClick={() => setSection('privacy')}
             />
+            <MenuRow
+              icon={Ban}
+              title="Blockierte Nutzer"
+              desc={blockedIds.size > 0 ? `${blockedIds.size} blockiert` : 'Niemand blockiert'}
+              onClick={() => setSection('blocked')}
+            />
           </div>
 
           {/* Account */}
@@ -408,6 +506,37 @@ export default function SettingsView() {
             <button onClick={() => setShowDelete(true)} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: 'none', fontSize: 14, color: 'var(--color-error)', cursor: 'pointer' }}>
               Account löschen
             </button>
+          </div>
+
+          {/* Rechtliches – von beiden Stores verlangt, in Deutschland
+              zusätzlich die Impressumspflicht nach § 5 DDG. */}
+          <div style={{ padding: '0 16px 40px' }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>
+              Rechtliches
+            </h3>
+            <MenuRow
+              icon={ShieldCheck}
+              title="Datenschutzerklärung"
+              desc="Welche Daten wir verarbeiten und warum"
+              onClick={() => navigate('/legal/privacy')}
+            />
+            <MenuRow
+              icon={Scale}
+              title="Nutzungsbedingungen"
+              desc="Die Regeln für das Miteinander in OIKOS"
+              onClick={() => navigate('/legal/terms')}
+            />
+            <MenuRow
+              icon={Building2}
+              title="Impressum"
+              onClick={() => navigate('/legal/imprint')}
+            />
+            <MenuRow
+              icon={FileText}
+              title="Support kontaktieren"
+              desc={LEGAL_CONTACT_EMAIL}
+              onClick={() => { window.location.href = `mailto:${LEGAL_CONTACT_EMAIL}` }}
+            />
           </div>
         </>
       )}
@@ -560,6 +689,9 @@ export default function SettingsView() {
           />
         </div>
       )}
+
+      {/* ─── BLOCKIERTE NUTZER ─── */}
+      {section === 'blocked' && <BlockedSection />}
 
       {showDelete && (
         <DeleteModal loading={deleting} onCancel={() => setShowDelete(false)} onConfirm={handleDelete} />

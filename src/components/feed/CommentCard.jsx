@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MoreHorizontal, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Trash2, Flag } from 'lucide-react'
 import PostEngagementBar from './PostEngagementBar'
 import ShareSheet from './ShareSheet'
 import SavePostSheet from './SavePostSheet'
 import FeedCardFrame, { CONTENT_INSET } from './FeedCardFrame'
+import ReportSheet from '../common/ReportSheet'
 
 function timeAgo(iso) {
   const d = new Date(iso)
@@ -45,6 +46,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
   const [showMenu, setShowMenu] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const [showShareSheet, setShowShareSheet] = useState(false)
+  const [showReport, setShowReport] = useState(false)
   const isOwn = comment.author_id === currentUserId
   const author = comment.profiles
 
@@ -75,26 +77,35 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
             {timeAgo(comment.created_at)}
           </span>
         </div>
-        {isOwn && (
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
-              <MoreHorizontal size={16} />
-            </button>
-            {showMenu && (
-              <>
-                <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
+        {/* Eigene Kommentare: löschen. Fremde: melden – ohne diese Option
+            verstößt die App gegen App Store Guideline 1.2. */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setShowMenu(v => !v)} aria-label="Optionen" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+            <MoreHorizontal size={16} />
+          </button>
+          {showMenu && (
+            <>
+              <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+              <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
+                {isOwn ? (
                   <button
                     onClick={() => { setShowMenu(false); onDelete?.(comment.id) }}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
                   >
                     <Trash2 size={14} /> Löschen
                   </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                ) : (
+                  <button
+                    onClick={() => { setShowMenu(false); setShowReport(true) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
+                  >
+                    <Flag size={14} /> Melden
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Content */}
@@ -133,6 +144,16 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
 
       {showShareSheet && (
         <ShareSheet comment={comment} onClose={() => setShowShareSheet(false)} />
+      )}
+
+      {showReport && (
+        <ReportSheet
+          targetType="comment"
+          targetId={comment.id}
+          targetUserId={comment.author_id}
+          targetName={author?.full_name || author?.username || 'diesen Nutzer'}
+          onClose={() => setShowReport(false)}
+        />
       )}
     </FeedCardFrame>
   )

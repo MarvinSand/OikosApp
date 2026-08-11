@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useModeration, filterBlocked } from '../hooks/useModeration'
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
@@ -68,6 +69,7 @@ export default function FeedPostView() {
   const { id: postId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { blockedIds } = useModeration()
 
   const [post, setPost] = useState(null)
   const [reactions, setReactions] = useState([])
@@ -82,7 +84,7 @@ export default function FeedPostView() {
   const bottomRef = useRef(null)
   const draftRef = useRef(null)
 
-  useEffect(() => { load() }, [postId, user?.id])
+  useEffect(() => { load() }, [postId, user?.id, blockedIds])
 
   async function load() {
     setLoading(true)
@@ -97,7 +99,8 @@ export default function FeedPostView() {
     ])
     setPost(postData || null)
     setReactions(reactData || [])
-    setComments(await attachCommentEngagement(commentData || [], user?.id))
+    // Kommentare blockierter Nutzer ausblenden (App Store Guideline 1.2)
+    setComments(await attachCommentEngagement(filterBlocked(commentData, blockedIds), user?.id))
     setReposts(repostData || [])
     setBookmarked((bookmarkData || []).length > 0)
     setLoading(false)

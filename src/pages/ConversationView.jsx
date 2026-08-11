@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye } from 'lucide-react'
+import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye, Flag } from 'lucide-react'
+import ReportSheet from '../components/common/ReportSheet'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChat } from '../hooks/useChat'
@@ -555,6 +556,8 @@ function MessageContextMenu({ msg, isOwn, anchorRect, onClose, onAction }) {
     { key: 'copy',    icon: Copy,         label: 'Kopieren', show: !!(msg.text || msg.bible_verse_text) },
     { key: msg.is_pinned ? 'unpin' : 'pin', icon: msg.is_pinned ? PinOff : Pin, label: msg.is_pinned ? 'Lösen' : 'Pinnen', show: true },
     { key: 'delete',  icon: Trash2,       label: 'Löschen', show: isOwn, danger: true },
+    // Fremde Nachrichten müssen meldbar sein (App Store Guideline 1.2)
+    { key: 'report',  icon: Flag,         label: 'Melden', show: !isOwn && !msg.is_deleted, danger: true },
   ].filter(a => a.show)
 
   return (
@@ -1444,6 +1447,7 @@ export default function ConversationView() {
   const [menuRect, setMenuRect] = useState(null)
   const [replyTo, setReplyTo] = useState(null)
   const [forwardMsg, setForwardMsg] = useState(null)
+  const [reportMsg, setReportMsg] = useState(null)
   const [highlightedId, setHighlightedId] = useState(null)
 
   const messagesEndRef = useRef(null)
@@ -1621,6 +1625,10 @@ export default function ConversationView() {
     }
     if (action === 'forward') {
       setForwardMsg(m)
+      return
+    }
+    if (action === 'report') {
+      setReportMsg(m)
       return
     }
     if (action === 'copy') {
@@ -1968,6 +1976,17 @@ export default function ConversationView() {
           currentConversationId={conversationId}
           onClose={() => setForwardMsg(null)}
           onSubmit={handleForwardSubmit}
+        />
+      )}
+
+      {reportMsg && (
+        <ReportSheet
+          targetType="message"
+          targetId={reportMsg.id}
+          targetUserId={reportMsg.sender_id}
+          targetName={convInfo?.name || 'diesen Nutzer'}
+          onClose={() => setReportMsg(null)}
+          onBlocked={() => navigate('/chats', { replace: true })}
         />
       )}
     </div>
