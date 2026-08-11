@@ -42,7 +42,7 @@ export function useWorldMap() {
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, city, country, church_name, bio, bio_text, show_bio')
+        .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
         .eq('id', user.id)
         .single()
       setMyProfile(profile)
@@ -60,7 +60,7 @@ export function useWorldMap() {
       if (friendIds.length > 0) {
         const { data: users } = await supabase
           .from('profiles')
-          .select('id, full_name, username, avatar_url, latitude, longitude, is_christian, city, country, church_name, bio, bio_text, show_bio')
+          .select('id, full_name, username, avatar_url, latitude, longitude, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
           .in('id', friendIds)
           .eq('show_on_world_map', true)
           .not('latitude', 'is', null)
