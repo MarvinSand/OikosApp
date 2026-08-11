@@ -15,12 +15,11 @@ import {
 // geteilte Gebete – dedupliziert und nach Datum sortiert.
 
 export const PRAYER_SOURCES = [
-  { key: 'foryou',      label: 'Für dich' },
+  { key: 'all',         label: 'Alle' },
   { key: 'siblings',    label: 'Geschwister' },
   { key: 'oikos',       label: 'Oikos' },
   { key: 'communities', label: 'Communities' },
   { key: 'shared',      label: 'Geteilt' },
-  { key: 'all',         label: 'Alle' },
 ]
 
 const PROFILE_SELECT = 'profiles!owner_id(id, username, full_name, gender, is_christian, avatar_url)'
@@ -258,7 +257,7 @@ export async function fetchPrayersBySource(source, userId, statusFilter = 'open'
   return finish(groups.flat())
 }
 
-export function usePrayerFeed(source = 'foryou', statusFilter = 'open') {
+export function usePrayerFeed(source = 'all', statusFilter = 'open') {
   const { user } = useAuth()
   const [prayers, setPrayers] = useState([])
   const [loading, setLoading] = useState(true)
