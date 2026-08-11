@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 const PAGE_SIZE = 50
+// Signierte Foto-URLs: eine Stunde, danach wird neu signiert.
+const SIGNED_URL_TTL = 3600
 const MSG_SELECT = 'id, conversation_id, sender_id, type, text, bible_verse_reference, bible_verse_text, personal_prayer_request_id, prayer_request_id, is_deleted, created_at, reply_to_id, forwarded_from_id, is_pinned, pinned_at, image_path, is_view_once, viewed_at'
 
 async function attachProfiles(messages) {
@@ -38,6 +40,9 @@ export function useChat(conversationId) {
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(false)
   const offsetRef = useRef(0)
+  // path → { url, expiresAt }; verhindert, dass jedes Render neu signiert.
+  const [signedUrls, setSignedUrls] = useState({})
+  const pendingSignatures = useRef(new Set())
 
   const markAsRead = useCallback(async () => {
     if (!user || !conversationId) return
@@ -348,10 +353,50 @@ export function useChat(conversationId) {
     return { error }
   }
 
-  // Öffentliche URL eines Chat-Fotos
+  // Signierte URL eines Chat-Fotos.
+  //
+  // Der Bucket war früher public – jedes private Chat-Foto war damit für
+  // jeden abrufbar, der die URL kannte, und „einmal ansehen" war wirkungslos,
+  // weil die Datei unter ihrer öffentlichen URL erreichbar blieb. Seit
+  // phase60 ist der Bucket privat; Zugriff nur noch über kurzlebige
+  // signierte URLs.
+  //
+  // Render-Aufrufe brauchen einen synchronen Rückgabewert, deshalb der
+  // Cache: der erste Aufruf stößt das Signieren an und liefert null, der
+  // Re-Render nach dem Auflösen liefert die URL.
   function photoUrl(path) {
     if (!path) return null
-    return supabase.storage.from('chat-photos').getPublicUrl(path).data?.publicUrl || null
+    const cached = signedUrls[path]
+    if (cached && cached.expiresAt > Date.now()) return cached.url
+    signPhoto(path)
+    return null
+  }
+
+  function signPhoto(path) {
+    if (!path || pendingSignatures.current.has(path)) return
+    pendingSignatures.current.add(path)
+    supabase.storage
+      .from('chat-photos')
+      .createSignedUrl(path, SIGNED_URL_TTL)
+      .then(({ data }) => {
+        pendingSignatures.current.delete(path)
+        if (!data?.signedUrl) return
+        setSignedUrls(prev => ({
+          ...prev,
+          // Etwas vor Ablauf neu signieren, damit ein lange offener Chat
+          // nicht plötzlich kaputte Bilder zeigt.
+          [path]: { url: data.signedUrl, expiresAt: Date.now() + (SIGNED_URL_TTL - 60) * 1000 },
+        }))
+      }, () => { pendingSignatures.current.delete(path) })
+  }
+
+  // Für Stellen, die die URL sofort brauchen (view-once-Foto beim Antippen).
+  async function getPhotoUrl(path) {
+    if (!path) return null
+    const cached = signedUrls[path]
+    if (cached && cached.expiresAt > Date.now()) return cached.url
+    const { data } = await supabase.storage.from('chat-photos').createSignedUrl(path, SIGNED_URL_TTL)
+    return data?.signedUrl || null
   }
 
   // Foto als angesehen markieren: aus Storage löschen + in DB entwerten.
@@ -392,6 +437,7 @@ export function useChat(conversationId) {
     sendBibleVerse,
     sendPhoto,
     photoUrl,
+    getPhotoUrl,
     markPhotoViewed,
     deleteMessage,
     updateMessage,

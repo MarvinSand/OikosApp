@@ -78,7 +78,7 @@ function PhotoMessage({ msg, isOwn, photoUrl, onView }) {
   if (msg.is_view_once && !isOwn) {
     return (
       <button
-        onClick={() => onView(msg, photoUrl(msg.image_path))}
+        onClick={() => onView(msg, null)}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
           border: 'none', borderRadius: 12, cursor: 'pointer',
@@ -94,6 +94,13 @@ function PhotoMessage({ msg, isOwn, photoUrl, onView }) {
   // Normales Foto: inline anzeigen
   const url = photoUrl(msg.image_path)
   if (!url) {
+    // Solange ein Pfad da ist, wird gerade nur die signierte URL geholt –
+    // das ist kein Fehler, sondern ein kurzer Ladezustand.
+    if (msg.image_path) {
+      return (
+        <div style={{ width: 220, height: 160, borderRadius: 12, backgroundColor: 'rgba(127,127,127,0.14)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      )
+    }
     return <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: labelColor, fontStyle: 'italic' }}>📷 Foto nicht verfügbar</span>
   }
   return (
@@ -1410,7 +1417,7 @@ export default function ConversationView() {
   const {
     messages, loading, hasMore, loadMore,
     sendMessage, sendPrayerRequest, sendBibleVerse, deleteMessage,
-    sendPhoto, photoUrl, markPhotoViewed,
+    sendPhoto, photoUrl, getPhotoUrl, markPhotoViewed,
     toggleReaction, pinMessage, unpinMessage, forwardMessage,
   } = useChat(conversationId)
 
@@ -1815,7 +1822,12 @@ export default function ConversationView() {
                 showToast={showToast}
                 registerRef={registerRef}
                 photoUrl={photoUrl}
-                onViewPhoto={(m, url) => setViewerPhoto({ msg: m, url })}
+                onViewPhoto={async (m, url) => {
+                  // Bei view-once-Fotos liegt noch keine signierte URL vor –
+                  // die wird erst beim Antippen geholt.
+                  const resolved = url || await getPhotoUrl(m.image_path)
+                  setViewerPhoto({ msg: m, url: resolved })
+                }}
               />
             </div>
           )
