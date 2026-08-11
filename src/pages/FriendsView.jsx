@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark, ArrowLeft } from 'lucide-react'
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
@@ -10,6 +10,8 @@ import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
 import { useCommunityMembersPreview } from '../hooks/useCommunityMembersPreview'
 import CommunityCard from '../components/community/CommunityCard'
+import MutualAvatars from '../components/common/MutualAvatars'
+import { fetchMutualFriendsMap } from '../lib/mutualFriends'
 import { Compass } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { useConversations } from '../hooks/useConversations'
@@ -156,12 +158,25 @@ function FriendsTab() {
   const [nearbyUsers, setNearbyUsers] = useState([])
   const [upcomingBirthdays, setUpcomingBirthdays] = useState([])
   const [notConnected, setNotConnected] = useState([])
+  const [mutuals, setMutuals] = useState({}) // userId -> { count, people }
 
   useEffect(() => {
     if (!user || loading) return
     loadMyCity()
     loadNotConnected()
   }, [user?.id, loading, friends.length])
+
+  // Gemeinsame Freunde für die "noch nicht connected"-Liste laden
+  useEffect(() => {
+    if (!user || notConnected.length === 0) { setMutuals({}); return }
+    const myFriendIds = friends.map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
+    if (myFriendIds.length === 0) { setMutuals({}); return }
+    fetchMutualFriendsMap({
+      myFriendIds,
+      excludeIds: [user.id],
+      candidateIds: notConnected.map(u => u.id),
+    }).then(setMutuals)
+  }, [user?.id, notConnected, friends])
 
   async function loadMyCity() {
     const { data } = await supabase.from('profiles').select('city').eq('id', user.id).single()
@@ -508,11 +523,15 @@ function FriendsTab() {
           </p>
           {filteredNotConnected.map(u => (
             <div key={u.id} style={personRow}>
-              <button onClick={() => navigate(`/user/${u.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+              <button onClick={() => navigate(`/user/${u.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
                 <Avatar name={u.full_name || u.username} isChristian={u.is_christian} avatarUrl={u.avatar_url} />
                 <div style={{ minWidth: 0 }}>
                   <p style={nameText}>{u.full_name || u.username}</p>
-                  <p style={usernameText}>@{u.username}{u.city ? ` · ${u.city}` : ''}</p>
+                  {mutuals[u.id]?.count > 0 ? (
+                    <MutualAvatars people={mutuals[u.id].people} count={mutuals[u.id].count} size={16} />
+                  ) : (
+                    <p style={usernameText}>@{u.username}{u.city ? ` · ${u.city}` : ''}</p>
+                  )}
                 </div>
               </button>
               {getFriendshipStatus(u.id) === 'sent' ? (
@@ -2052,6 +2071,7 @@ function FeedTab() {
 
 // ─── FriendsView (Main) ──────────────────────────────────────
 export default function FriendsView() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const location = useLocation()
   // Eigene Route /chats → Chats als eigenständige Seite (nicht unter „For You").
@@ -2066,7 +2086,16 @@ export default function FriendsView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {activeTab !== 'feed' && (
-        <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10" style={{ paddingTop: 16, paddingBottom: 14 }}>
+        <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10 flex items-center gap-2" style={{ paddingTop: 16, paddingBottom: 14 }}>
+          {activeTab === 'friends' && (
+            <button
+              onClick={() => navigate(-1)}
+              aria-label="Zurück"
+              style={{ width: 32, height: 32, marginLeft: -6, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            >
+              <ArrowLeft size={22} />
+            </button>
+          )}
           <h2 className="text-[22px] font-bold text-dark m-0">
             {headerTitle}
           </h2>

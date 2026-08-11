@@ -4,6 +4,8 @@ import { X, UserPlus, Check } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useFriendships } from '../../hooks/useFriendships'
 import { supabase } from '../../lib/supabase'
+import { fetchMutualFriendsMap } from '../../lib/mutualFriends'
+import ProfileListOverlay from '../feed/ProfileListOverlay'
 
 function Avatar({ name, size, avatarUrl, isChristian }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -27,9 +29,9 @@ function Avatar({ name, size, avatarUrl, isChristian }) {
   )
 }
 
-// „Neue Geschwister, die du vielleicht kennst" – ähnlich einer klassischen
-// „People you may know"-Leiste, aber im Oikos-Design. Bevorzugt Vorschläge
-// mit gemeinsamen Verbindungen, füllt sonst mit weiteren Nicht-Verbundenen auf.
+// „Neue Geschwister, die du vielleicht kennst" – bevorzugt Freunde von
+// Freunden (mit Anzeige der gemeinsamen Kontakte), füllt sonst mit weiteren
+// Nicht-Verbundenen auf.
 export default function PeopleYouMayKnow() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -39,31 +41,22 @@ export default function PeopleYouMayKnow() {
   const [dismissed, setDismissed] = useState(new Set())
   const [sentIds, setSentIds] = useState(new Set())
   const [sendingId, setSendingId] = useState(null)
+  const [mutualSheetFor, setMutualSheetFor] = useState(null)
+
+  // Stabiler Schlüssel statt der Freundes-Liste selbst als Dependency –
+  // sonst würde jede neue Array-Referenz einen erneuten Ladevorgang auslösen.
+  const friendIdsKey = friends.map(f => f.requester_id === user?.id ? f.addressee_id : f.requester_id).sort().join(',')
 
   const load = useCallback(async () => {
     if (!user || friendsLoading) return
     setLoading(true)
 
-    const myFriendIds = friends.map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
+    const myFriendIds = friendIdsKey ? friendIdsKey.split(',') : []
     const connectedIds = new Set([user.id, ...myFriendIds])
 
-    // Gemeinsame Verbindungen: Freunde meiner Freunde zählen
-    const mutualCount = {}
-    if (myFriendIds.length > 0) {
-      const { data: fof } = await supabase
-        .from('friendships')
-        .select('requester_id, addressee_id')
-        .eq('status', 'accepted')
-        .or(`requester_id.in.(${myFriendIds.join(',')}),addressee_id.in.(${myFriendIds.join(',')})`)
+    const mutualMap = await fetchMutualFriendsMap({ myFriendIds, excludeIds: [user.id] })
+    const candidateIds = Object.keys(mutualMap)
 
-      for (const row of fof || []) {
-        const candidate = myFriendIds.includes(row.requester_id) ? row.addressee_id : row.requester_id
-        if (connectedIds.has(candidate)) continue
-        mutualCount[candidate] = (mutualCount[candidate] || 0) + 1
-      }
-    }
-
-    const candidateIds = Object.keys(mutualCount)
     let profiles = []
     if (candidateIds.length > 0) {
       const { data } = await supabase
@@ -87,10 +80,14 @@ export default function PeopleYouMayKnow() {
       }
     }
 
-    profiles.sort((a, b) => (mutualCount[b.id] || 0) - (mutualCount[a.id] || 0))
-    setSuggestions(profiles.slice(0, 10).map(p => ({ ...p, mutual: mutualCount[p.id] || 0 })))
+    profiles.sort((a, b) => (mutualMap[b.id]?.count || 0) - (mutualMap[a.id]?.count || 0))
+    setSuggestions(profiles.slice(0, 10).map(p => ({
+      ...p,
+      mutualCount: mutualMap[p.id]?.count || 0,
+      mutualPeople: mutualMap[p.id]?.people || [],
+    })))
     setLoading(false)
-  }, [user, friendsLoading, friends])
+  }, [user, friendsLoading, friendIdsKey])
 
   useEffect(() => { load() }, [load])
 
@@ -159,17 +156,23 @@ export default function PeopleYouMayKnow() {
                   style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%' }}
                 >
                   <Avatar name={name} size={56} avatarUrl={p.avatar_url} isChristian={p.is_christian} />
-                  <div style={{ width: '100%' }}>
-                    <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {name}
-                    </p>
-                    <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>
-                      {p.mutual > 0
-                        ? `${p.mutual} gemeinsame${p.mutual === 1 ? 'r' : ''} Kontakt${p.mutual === 1 ? '' : 'e'}`
-                        : (p.city || 'Neu hier')}
-                    </p>
-                  </div>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)', margin: 0, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {name}
+                  </p>
                 </button>
+
+                {p.mutualCount > 0 ? (
+                  <button
+                    onClick={() => setMutualSheetFor(p)}
+                    style={{ background: 'none', border: 'none', padding: 0, margin: '2px 0 0', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-accent)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                  >
+                    {p.mutualCount} gemeinsame{p.mutualCount === 1 ? 'r' : ''} Freund{p.mutualCount === 1 ? '' : 'e'}
+                  </button>
+                ) : (
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                    {p.city || 'Neu hier'}
+                  </p>
+                )}
 
                 <button
                   onClick={() => handleAdd(p.id)}
@@ -190,6 +193,20 @@ export default function PeopleYouMayKnow() {
             )
           })}
         </div>
+      )}
+
+      {mutualSheetFor && (
+        <ProfileListOverlay
+          title={`Gemeinsame Freunde mit ${mutualSheetFor.full_name || mutualSheetFor.username}`}
+          items={mutualSheetFor.mutualPeople.map(p => ({
+            id: p.id,
+            title: p.full_name || p.username,
+            subtitle: p.username ? `@${p.username}` : undefined,
+            avatarUrl: p.avatar_url,
+          }))}
+          onClose={() => setMutualSheetFor(null)}
+          onSelect={item => { setMutualSheetFor(null); navigate(`/user/${item.id}`) }}
+        />
       )}
     </div>
   )
