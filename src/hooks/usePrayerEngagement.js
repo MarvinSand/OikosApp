@@ -38,43 +38,68 @@ export function usePrayerEngagement(prayers) {
     setLoading(true)
 
     const [{ data: oikosLogs }, { data: personalLogs }, { data: oikosNotes }, { data: personalNotes }] = await Promise.all([
+      // Kein profiles-Embed hier: prayer_logs/prayer_notes wurden außerhalb der
+      // getrackten Migrationen angelegt und haben keine für PostgREST auflösbare
+      // FK-Beziehung zu profiles. Ein unauflösbarer Embed lässt die GESAMTE Query
+      // fehlschlagen (nicht nur das Profilfeld) – dieselbe Falle, die schon in
+      // usePrayerRequests.js dokumentiert ist. Profile deshalb separat laden.
       oIds.length
         ? supabase.from('prayer_logs')
-            .select('id, prayer_request_id, user_id, created_at, profiles!user_id(id, username, full_name, is_christian)')
+            .select('id, prayer_request_id, user_id, created_at')
             .in('prayer_request_id', oIds).order('created_at', { ascending: false })
         : Promise.resolve({ data: [] }),
       pIds.length
         ? supabase.from('personal_prayer_logs')
-            .select('id, request_id, user_id, created_at, profiles!user_id(id, username, full_name, is_christian)')
+            .select('id, request_id, user_id, created_at')
             .in('request_id', pIds).order('created_at', { ascending: false })
         : Promise.resolve({ data: [] }),
       oIds.length
         ? supabase.from('prayer_notes')
-            .select('id, prayer_request_id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
+            .select('id, prayer_request_id, text, is_public, author_id, created_at, reply_to_id')
             .in('prayer_request_id', oIds).order('created_at', { ascending: false })
         : Promise.resolve({ data: [] }),
       pIds.length
         ? supabase.from('prayer_notes')
-            .select('id, request_id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
+            .select('id, request_id, text, is_public, author_id, created_at, reply_to_id')
             .in('request_id', pIds).order('created_at', { ascending: false })
         : Promise.resolve({ data: [] }),
     ])
 
+    // Profile für alle beteiligten User in einem Rutsch nachladen und einmischen.
+    const userIds = new Set()
+    for (const l of (oikosLogs || [])) userIds.add(l.user_id)
+    for (const l of (personalLogs || [])) userIds.add(l.user_id)
+    for (const n of (oikosNotes || [])) userIds.add(n.author_id)
+    for (const n of (personalNotes || [])) userIds.add(n.author_id)
+    let profilesById = {}
+    if (userIds.size > 0) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, is_christian, avatar_url')
+        .in('id', [...userIds])
+      profilesById = Object.fromEntries((profs || []).map(p => [p.id, p]))
+    }
+    const withProfile = (rows, idKey) => (rows || []).map(r => ({ ...r, profiles: profilesById[r[idKey]] || null }))
+    const oikosLogsWithProfile = withProfile(oikosLogs, 'user_id')
+    const personalLogsWithProfile = withProfile(personalLogs, 'user_id')
+    const oikosNotesWithProfile = withProfile(oikosNotes, 'author_id')
+    const personalNotesWithProfile = withProfile(personalNotes, 'author_id')
+
     const nextLogs = {}
-    for (const l of (oikosLogs || [])) {
+    for (const l of oikosLogsWithProfile) {
       const key = `${KIND_OIKOS}:${l.prayer_request_id}`
       ;(nextLogs[key] ||= []).push(l)
     }
-    for (const l of (personalLogs || [])) {
+    for (const l of personalLogsWithProfile) {
       const key = `${KIND_PERSONAL}:${l.request_id}`
       ;(nextLogs[key] ||= []).push(l)
     }
     const nextNotes = {}
-    for (const n of (oikosNotes || [])) {
+    for (const n of oikosNotesWithProfile) {
       const key = `${KIND_OIKOS}:${n.prayer_request_id}`
       ;(nextNotes[key] ||= []).push(n)
     }
-    for (const n of (personalNotes || [])) {
+    for (const n of personalNotesWithProfile) {
       const key = `${KIND_PERSONAL}:${n.request_id}`
       ;(nextNotes[key] ||= []).push(n)
     }
@@ -100,8 +125,11 @@ export function usePrayerEngagement(prayers) {
   function pushNote(prayerKey, note) {
     setNotesMap(prev => ({ ...prev, [prayerKey]: [note, ...(prev[prayerKey] || [])] }))
   }
+  function removeNote(prayerKey, noteId) {
+    setNotesMap(prev => ({ ...prev, [prayerKey]: (prev[prayerKey] || []).filter(n => n.id !== noteId) }))
+  }
 
-  return { logsMap, notesMap, loading, reload: load, pushLog, pushNote }
+  return { logsMap, notesMap, loading, reload: load, pushLog, pushNote, removeNote }
 }
 
 // Aus den Logs eines Gebets die Anzeigewerte der Karte ableiten:

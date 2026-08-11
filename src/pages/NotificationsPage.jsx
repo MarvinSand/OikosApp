@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trash2, Check, X, User } from 'lucide-react'
+import { ArrowLeft, Trash2, Check, X, User, Settings } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
+import { NOTIFICATION_TYPE_META } from '../lib/notificationTypeMeta'
 
 // Derive the best navigation target for a notification
 function resolveDestination(n, currentUserId) {
@@ -12,7 +13,7 @@ function resolveDestination(n, currentUserId) {
   const { map_id, person_id, map_owner_id, request_id, requester_id, post_id } = n.data || {}
 
   if (n.type === 'feed_post' && post_id) return `/feed/post/${post_id}`
-  if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log')) {
+  if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log' || n.type === 'prayer_reminder')) {
     const base = map_owner_id && map_owner_id !== currentUserId
       ? `/user/${map_owner_id}/map/${map_id}`
       : `/map/${map_id}`
@@ -43,7 +44,10 @@ function resolveDestination(n, currentUserId) {
       return '/friends'
     case 'prayer_shared':
     case 'prayer_log':
+    case 'sibling_requests_reminder':
       return '/prayers'
+    case 'weekly_digest':
+      return '/prayer/stats'
     case 'oikos_entry':
       return '/'
     default:
@@ -65,18 +69,6 @@ function formatTime(iso) {
   return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-const ICONS = {
-  friend_request: '👤',
-  friend_accepted: '🤝',
-  community_invite: '👥',
-  community_event: '📅',
-  prayer_shared: '🙏',
-  prayer_log: '🙏',
-  oikos_entry: '🗺',
-  birthday: '🎂',
-  feed_post: '📝',
-}
-
 // ─── NotificationItem ─────────────────────────────────────────
 
 function NotificationItem({ n, onClick, onDelete, onViewProfile, onAccept, onDecline }) {
@@ -91,7 +83,7 @@ function NotificationItem({ n, onClick, onDelete, onViewProfile, onAccept, onDec
     >
       {/* Icon bubble */}
       <div className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-warm-4 to-warm-3 shadow-sm border border-warm-2/20 flex items-center justify-center text-xl relative">
-        {ICONS[n.type] || '🔔'}
+        {NOTIFICATION_TYPE_META[n.type]?.icon || '🔔'}
       </div>
 
       {/* Text */}
@@ -242,19 +234,6 @@ export default function NotificationsPage() {
     deleteNotification(n.id)
   }
 
-  // Group notifications by type label
-  const typeLabel = {
-    friend_request: 'Freundschaftsanfragen',
-    friend_accepted: 'Verbindungen',
-    community_invite: 'Gemeinschaft',
-    community_event: 'Veranstaltungen',
-    prayer_shared: 'Gebete',
-    prayer_log: 'Gebetsprotokolle',
-    oikos_entry: 'Oikos-Karte',
-    birthday: 'Geburtstage',
-    feed_post: 'Feed',
-  }
-
   // Build ordered groups: preserve insertion order of first occurrence
   const groupOrder = []
   const groups = {}
@@ -275,7 +254,13 @@ export default function NotificationsPage() {
           <ArrowLeft size={20} />
         </button>
         <span style={headerTitle}>Benachrichtigungen</span>
-        <div style={{ width: 36 }} />
+        <button
+          onClick={() => navigate('/notifications/settings')}
+          style={backBtn}
+          aria-label="Benachrichtigungs-Einstellungen"
+        >
+          <Settings size={20} />
+        </button>
       </div>
 
       {/* Loading */}
@@ -311,7 +296,7 @@ export default function NotificationsPage() {
             margin: 0,
             padding: '14px 16px 6px',
           }}>
-            {typeLabel[key] || 'Sonstiges'}
+            {NOTIFICATION_TYPE_META[key]?.label || 'Sonstiges'}
           </p>
 
           {/* Items */}

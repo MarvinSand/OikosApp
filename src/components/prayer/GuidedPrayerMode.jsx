@@ -3,6 +3,8 @@ import { X } from 'lucide-react'
 import { usePrayerSession } from '../../hooks/usePrayerSession'
 import { useAuth } from '../../hooks/useAuth'
 import { fetchPrayerModeItems } from '../../hooks/usePrayerModeSource'
+import { supabase } from '../../lib/supabase'
+import { noteColumn, KIND_OIKOS, KIND_PERSONAL } from '../../lib/prayerModel'
 
 const TIMER_OPTIONS = [
   { label: '30 Sek', seconds: 30 },
@@ -154,6 +156,254 @@ function PrayerCard({ item, swipeDelta }) {
       )}
     </div>
   )
+}
+
+// ─── Follow-up-Anliegen + Kommentar (unter der aktuellen Karte) ──
+// Immer nur EIN Panel gleichzeitig offen (activePanel: null | 'followup' | 'comment').
+function FollowupAndNotes({ item }) {
+  const { user } = useAuth()
+  const request = item?.request
+  const type = item?.type
+  const kind = type === 'oikos' ? KIND_OIKOS : type === 'personal' ? KIND_PERSONAL : null
+  const personName = request?.profiles?.full_name || request?.profiles?.username || 'diese Person'
+
+  const [activePanel, setActivePanel] = useState(null)
+
+  // Neues Anliegen – gleiche Felder wie beim Anlegen über die Oikos-Map
+  // (PrayerRequestsSection/AddRequestForm): Überschrift + Anliegen + Sichtbarkeit.
+  const [followupTitle, setFollowupTitle] = useState('')
+  const [followupDesc, setFollowupDesc] = useState('')
+  const [followupPublic, setFollowupPublic] = useState(true)
+  const [followupSaving, setFollowupSaving] = useState(false)
+  const [followupDone, setFollowupDone] = useState(false)
+
+  const [comments, setComments] = useState([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [commentPublic, setCommentPublic] = useState(true)
+  const [commentSaving, setCommentSaving] = useState(false)
+
+  // Bei Kartenwechsel alles zurücksetzen – die Panels gehören zur jeweiligen Karte.
+  useEffect(() => {
+    setActivePanel(null)
+    setFollowupTitle('')
+    setFollowupDesc('')
+    setFollowupPublic(true)
+    setFollowupSaving(false)
+    setFollowupDone(false)
+    setComments([])
+    setCommentText('')
+    setCommentPublic(true)
+    setCommentSaving(false)
+  }, [request?.id])
+
+  useEffect(() => {
+    if (activePanel !== 'comment' || !kind || !request?.id) return
+    let cancelled = false
+    setCommentsLoading(true)
+    supabase
+      .from('prayer_notes')
+      .select('id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
+      .eq(noteColumn(kind), request.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (cancelled) return
+        setComments(data || [])
+        setCommentsLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [activePanel, kind, request?.id])
+
+  function togglePanel(panel) {
+    setActivePanel(p => (p === panel ? null : panel))
+  }
+
+  async function handleAddFollowup() {
+    if (!followupTitle.trim() || !user || !request?.person_id || followupSaving) return
+    setFollowupSaving(true)
+    try {
+      const { error } = await supabase.from('prayer_requests').insert({
+        person_id: request.person_id,
+        owner_id: user.id,
+        title: followupTitle.trim(),
+        description: followupDesc.trim() || null,
+        is_public: followupPublic,
+      })
+      if (!error) {
+        setFollowupDone(true)
+        setFollowupTitle('')
+        setFollowupDesc('')
+      }
+    } finally {
+      setFollowupSaving(false)
+    }
+  }
+
+  async function handleAddComment() {
+    if (!commentText.trim() || !user || !kind || commentSaving) return
+    setCommentSaving(true)
+    try {
+      const { data, error } = await supabase
+        .from('prayer_notes')
+        .insert({ [noteColumn(kind)]: request.id, author_id: user.id, text: commentText.trim(), is_public: commentPublic })
+        .select('id, text, is_public, author_id, created_at, profiles!author_id(id, username, full_name)')
+        .single()
+      if (!error && data) {
+        setComments(c => [...c, data])
+        setCommentText('')
+      }
+    } finally {
+      setCommentSaving(false)
+    }
+  }
+
+  if (!kind || !request?.id) return null
+
+  return (
+    <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {type === 'oikos' && request?.person_id && (
+          <button onClick={() => togglePanel('followup')} style={pillBtn(activePanel === 'followup')}>
+            ➕ Neues Anliegen für {personName}
+          </button>
+        )}
+        <button onClick={() => togglePanel('comment')} style={pillBtn(activePanel === 'comment')}>
+          💬 Kommentar{comments.length > 0 ? ` · ${comments.length}` : ''}
+        </button>
+      </div>
+
+      {activePanel === 'followup' && (
+        <div style={panelStyle}>
+          {followupDone ? (
+            <p style={{ ...noticeText, color: '#8FBF6E' }}>✓ Neues Anliegen für {personName} hinzugefügt</p>
+          ) : (
+            <>
+              <input
+                autoFocus
+                type="text"
+                value={followupTitle}
+                onChange={e => setFollowupTitle(e.target.value)}
+                placeholder="Überschrift des Anliegens *"
+                style={{ ...textareaStyle, marginBottom: 8 }}
+              />
+              <textarea
+                value={followupDesc}
+                onChange={e => setFollowupDesc(e.target.value)}
+                placeholder="Dein Anliegen (optional)"
+                rows={2}
+                style={textareaStyle}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[{ val: true, label: 'Öffentlich' }, { val: false, label: 'Privat' }].map(o => (
+                    <button
+                      key={String(o.val)}
+                      onClick={() => setFollowupPublic(o.val)}
+                      style={visToggleBtn(followupPublic === o.val)}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={handleAddFollowup} disabled={!followupTitle.trim() || followupSaving} style={saveBtn(!followupTitle.trim())}>
+                  {followupSaving ? 'Speichern…' : 'Speichern'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activePanel === 'comment' && (
+        <div style={panelStyle}>
+          {commentsLoading ? (
+            <p style={noticeText}>Lade…</p>
+          ) : comments.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+              {comments.map(n => (
+                <div key={n.id} style={{ textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)', margin: '0 0 2px' }}>
+                      {n.author_id === user?.id ? 'Du' : (n.profiles?.full_name || n.profiles?.username || 'Unbekannt')}
+                    </p>
+                    {n.is_public === false && (
+                      <span style={{ fontSize: 9, color: 'rgba(240,237,230,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4, padding: '1px 5px' }}>
+                        nur Ersteller
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'rgba(240,237,230,0.75)', margin: 0, lineHeight: 1.5 }}>
+                    {n.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={noticeText}>Noch keine Kommentare zu diesem Anliegen.</p>
+          )}
+          <textarea
+            autoFocus
+            value={commentText}
+            onChange={e => setCommentText(e.target.value)}
+            placeholder="Kommentar schreiben…"
+            rows={2}
+            style={textareaStyle}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[{ val: true, label: 'Für alle' }, { val: false, label: 'Nur Ersteller' }].map(o => (
+                <button
+                  key={String(o.val)}
+                  onClick={() => setCommentPublic(o.val)}
+                  style={visToggleBtn(commentPublic === o.val)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={handleAddComment} disabled={!commentText.trim() || commentSaving} style={saveBtn(!commentText.trim())}>
+              {commentSaving ? 'Speichern…' : 'Kommentieren'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const pillBtn = active => ({
+  padding: '8px 14px', borderRadius: 20, cursor: 'pointer',
+  border: `1.5px solid ${active ? '#D4A853' : 'rgba(255,255,255,0.15)'}`,
+  backgroundColor: active ? 'rgba(212,168,83,0.15)' : 'transparent',
+  fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 600,
+  color: active ? '#D4A853' : 'rgba(240,237,230,0.65)',
+})
+const visToggleBtn = active => ({
+  padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
+  border: `1px solid ${active ? '#D4A853' : 'rgba(255,255,255,0.15)'}`,
+  backgroundColor: active ? 'rgba(212,168,83,0.18)' : 'transparent',
+  fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600,
+  color: active ? '#D4A853' : 'rgba(240,237,230,0.5)',
+})
+const panelStyle = {
+  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 16, padding: '14px 16px',
+}
+const textareaStyle = {
+  width: '100%', resize: 'none', border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: 10, padding: '9px 11px', fontFamily: 'Lora, serif', fontSize: 13,
+  backgroundColor: 'rgba(0,0,0,0.2)', color: '#F0EDE6', outline: 'none',
+  lineHeight: 1.5, boxSizing: 'border-box',
+}
+const saveBtn = disabled => ({
+  marginTop: 8, padding: '9px 18px', borderRadius: 20, border: 'none',
+  backgroundColor: disabled ? 'rgba(212,168,83,0.3)' : '#D4A853',
+  color: '#1A1208', fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 700,
+  cursor: disabled ? 'default' : 'pointer',
+})
+const noticeText = {
+  fontFamily: 'Lora, serif', fontSize: 12.5, color: 'rgba(240,237,230,0.5)',
+  margin: '0 0 6px', textAlign: 'center',
 }
 
 // ─── Background Orbs ─────────────────────────────────────────
@@ -403,6 +653,8 @@ function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
             )}
           </div>
         )}
+
+        <FollowupAndNotes key={'fn-' + cardKey} item={currentCard} />
       </div>
 
       {/* Navigation */}

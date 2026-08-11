@@ -4,7 +4,7 @@ import { Home, BookOpen, Globe, BookMarked, User } from 'lucide-react'
 
 const tabs = [
   { path: '/',                   icon: Home,       label: 'Home',         match: ['/']                          },
-  { path: '/friends?tab=feed',   icon: BookOpen,   label: 'For You',      match: ['/friends', '/prayer', '/prayers'] },
+  { path: '/prayers',            icon: BookOpen,   label: 'For You',      match: ['/friends', '/prayer', '/prayers'] },
   { path: '/worldmap',           icon: Globe,      label: 'Weltkarte',    match: ['/worldmap'], featured: true  },
   { path: '/discipleship',       icon: BookMarked, label: 'Jüngerschaft', match: ['/discipleship']              },
   { path: '/profile',            icon: User,       label: 'Profil',       match: ['/profile']                   },

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Plus, Compass, Hash, ArrowRight } from 'lucide-react'
+import { Users, Plus, Compass, Hash } from 'lucide-react'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useCommunityMembersPreview } from '../../hooks/useCommunityMembersPreview'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import CommunityCard from '../community/CommunityCard'
+import PeopleYouMayKnow from './PeopleYouMayKnow'
 import { CreateCommunitySheet, JoinCommunityModal } from '../../pages/FriendsView'
 
 const sectionLabel = {
@@ -68,28 +69,21 @@ export default function HomeCommunityTab() {
       <button
         onClick={() => navigate('/friends?tab=friends')}
         style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '16px',
-          borderRadius: 18, border: '1px solid var(--color-accent)', cursor: 'pointer', textAlign: 'left',
-          background: 'linear-gradient(135deg, var(--color-accent-light) 0%, var(--color-bg) 90%)',
-          boxShadow: '0 4px 14px rgba(58,46,36,0.06)',
+          display: 'inline-flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
+          padding: '10px 18px', borderRadius: 999, border: 'none', cursor: 'pointer',
+          backgroundColor: 'var(--color-accent)', color: '#fff',
+          fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700,
+          boxShadow: '0 4px 14px rgba(58,46,36,0.1)',
         }}
       >
-        <div style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: 'var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Users size={22} color="#fff" />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 2px' }}>
-            Geschwister finden
-          </p>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
-            Vernetze dich mit anderen Christen & chatte
-          </p>
-        </div>
-        <ArrowRight size={18} color="var(--color-accent)" style={{ flexShrink: 0 }} />
+        <Users size={17} /> Geschwister
       </button>
 
+      {/* Neue Geschwister, die man vielleicht kennt */}
+      <PeopleYouMayKnow />
+
       {/* Erstellen / Beitreten */}
-      <div style={{ display: 'flex', gap: 10, marginTop: -16 }}>
+      <div style={{ display: 'flex', gap: 10 }}>
         <button
           onClick={() => setShowCreate(true)}
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
