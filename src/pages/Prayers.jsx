@@ -359,9 +359,9 @@ export default function Prayers() {
   const { showToast } = useToast()
   const { user } = useAuth()
   const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
-  // Quelle des Feeds: 'foryou' (Standard) … 'all' zeigt jedes Gebet, das für
-  // den Nutzer sichtbar ist – auch Oikos-, Community- und geteilte Gebete.
-  const [sourceFilter, setSourceFilter] = useState('foryou')
+  // Quelle des Feeds: 'all' (Standard) zeigt jedes Gebet, das für den Nutzer
+  // sichtbar ist – eigene, Oikos-, Community- und geteilte Gebete.
+  const [sourceFilter, setSourceFilter] = useState('all')
   // Feinfilter innerhalb einer Quelle. Community bleibt eine einfache
   // Einfachauswahl; Oikos hat einen eigenen mehrstufigen Filter (von wem →
   // welche Maps → welche Personen, siehe useOikosFilterSource) mit eigenem
@@ -390,7 +390,6 @@ export default function Prayers() {
   // Kollabierender Header (wie im Feed-Tab)
   const rootRef = useRef(null)
   const [collapsed, setCollapsed] = useState(false)
-  const [searchRevealed, setSearchRevealed] = useState(false)
   const collapsedRef = useRef(false)
   const lockUntilRef = useRef(0)
   const tickingRef = useRef(false)
@@ -411,7 +410,6 @@ export default function Prayers() {
       const st = scroller.scrollTop
       const dy = st - lastY
       lastY = st
-      if (st > 8) setSearchRevealed(false)
       if (Date.now() < lockUntilRef.current) return
       if (st <= 8) { setCollapsedSafe(false); return }
       if (dy > 8 && st > 90) setCollapsedSafe(true)
@@ -419,10 +417,6 @@ export default function Prayers() {
     }
     function onScroll() {
       if (!tickingRef.current) { tickingRef.current = true; requestAnimationFrame(update) }
-    }
-    function onWheel(e) {
-      if (scroller.scrollTop <= 2 && e.deltaY < -6) setSearchRevealed(true)
-      else if (e.deltaY > 6) setSearchRevealed(false)
     }
     let touchStartX = 0
     let touchStartY = 0
@@ -442,11 +436,6 @@ export default function Prayers() {
         node = node.parentElement
       }
     }
-    function onTouchMove(e) {
-      const dy = e.touches[0].clientY - touchStartY
-      if (scroller.scrollTop <= 2 && dy > 40) setSearchRevealed(true)
-      else if (dy < -40) setSearchRevealed(false)
-    }
     function onTouchEnd(e) {
       if (swipeBlocked) return
       const t = e.changedTouches[0]
@@ -455,15 +444,11 @@ export default function Prayers() {
       if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigate('/friends?tab=feed')
     }
     scroller.addEventListener('scroll', onScroll, { passive: true })
-    scroller.addEventListener('wheel', onWheel, { passive: true })
     scroller.addEventListener('touchstart', onTouchStart, { passive: true })
-    scroller.addEventListener('touchmove', onTouchMove, { passive: true })
     scroller.addEventListener('touchend', onTouchEnd, { passive: true })
     return () => {
       scroller.removeEventListener('scroll', onScroll)
-      scroller.removeEventListener('wheel', onWheel)
       scroller.removeEventListener('touchstart', onTouchStart)
-      scroller.removeEventListener('touchmove', onTouchMove)
       scroller.removeEventListener('touchend', onTouchEnd)
     }
   }, [navigate])
@@ -575,16 +560,9 @@ export default function Prayers() {
 
   return (
     <div ref={rootRef} className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full" style={{ position: 'relative' }}>
-      {/* Sticky-Header: Suche/Filter (oben, Overscroll) + Switcher */}
+      {/* Sticky-Header: Suche/Filter (immer sichtbar) + Switcher */}
       <div style={{ position: 'sticky', top: 0, zIndex: 30, backgroundColor: 'var(--color-bg)' }}>
-        {/* Suche + Filter – ÜBER der Bar, nur per Overscroll am oberen Rand sichtbar */}
-        <div style={{
-          maxHeight: searchRevealed ? (showFilters ? 640 : 64) : 0,
-          opacity: searchRevealed ? 1 : 0,
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease, opacity 0.25s ease',
-        }}>
-      {/* Search + filter */}
+      {/* Search + filter – direkt über den Gebetsanliegen, immer sichtbar */}
       <div style={{
         backgroundColor: 'var(--color-bg)',
         padding: '12px 16px 8px',
@@ -709,7 +687,6 @@ export default function Prayers() {
           </div>
         )}
       </div>
-        </div>{/* /Suche-Reveal */}
 
         {/* Feed/Gebete-Switcher – darunter; kollabiert beim Runterscrollen */}
         {collapsed && (
@@ -803,7 +780,7 @@ export default function Prayers() {
               Noch keine Gebete
             </p>
             <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: 0 }}>
-              {sourceFilter === 'foryou'
+              {sourceFilter === 'all'
                 ? 'Sei der Erste, der ein Anliegen teilt.'
                 : 'Aus dieser Quelle ist gerade nichts sichtbar.'}
             </p>
