@@ -1253,7 +1253,7 @@ export default function MapCanvas({
           x={cx} y={cy}
           textAnchor="middle"
           dy="0.35em"
-          fill="#FFFDF8"
+          fill="var(--color-bg)"
           fontSize={13}
           fontFamily="Lora, Georgia, serif"
           fontWeight="600"
@@ -1492,7 +1492,7 @@ export default function MapCanvas({
                     height={8}
                     style={{ pointerEvents: 'none' }}
                   >
-                    <User size={8} color="var(--color-text)" />
+                    <User size={8} color="#3A2E24" />
                   </foreignObject>
                 </g>
               )}
