@@ -40,19 +40,39 @@ export function useWorldMap() {
     if (!user) return
     setLoading(true)
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
-        .eq('id', user.id)
-        .single()
-      setMyProfile(profile)
+      const now = new Date().toISOString()
 
-      // Gegenseitige (akzeptierte) Freundschaften → nur diese Geschwister erscheinen auf der Karte
-      const { data: friendships } = await supabase
-        .from('friendships')
-        .select('requester_id, addressee_id')
-        .eq('status', 'accepted')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+      // Profil, Freundschaften und Aktivitäten hängen nicht voneinander ab –
+      // vorher liefen sie seriell (3 Round-Trips), obwohl nur die
+      // Sichtbare-Nutzer-Abfrage wirklich von den Freundschaften abhängt.
+      const [{ data: profile }, { data: friendships }, { data: acts }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
+          .eq('id', user.id)
+          .single(),
+        // Gegenseitige (akzeptierte) Freundschaften → nur diese Geschwister erscheinen auf der Karte
+        supabase
+          .from('friendships')
+          .select('requester_id, addressee_id')
+          .eq('status', 'accepted')
+          .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
+        // Kein is_public-Filter mehr – Row Level Security entscheidet, welche Events
+        // (öffentlich / Geschwister / Gemeinde / eigene) der Nutzer sehen darf.
+        supabase
+          .from('world_map_activities')
+          .select(`
+            *,
+            author:profiles!author_id(id, full_name, username, avatar_url),
+            participants:activity_participants(user_id, joined_at, profile:profiles!user_id(id, full_name, username, avatar_url, is_christian))
+          `)
+          .or(`expires_at.is.null,expires_at.gt.${now}`)
+          .order('created_at', { ascending: false })
+          .limit(500),
+      ])
+      setMyProfile(profile)
+      setActivities(acts || [])
+
       const friendIds = [...new Set(
         (friendships || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
       )]
@@ -69,21 +89,6 @@ export function useWorldMap() {
       } else {
         setVisibleUsers([])
       }
-
-      const now = new Date().toISOString()
-      // Kein is_public-Filter mehr – Row Level Security entscheidet, welche Events
-      // (öffentlich / Geschwister / Gemeinde / eigene) der Nutzer sehen darf.
-      const { data: acts } = await supabase
-        .from('world_map_activities')
-        .select(`
-          *,
-          author:profiles!author_id(id, full_name, username, avatar_url),
-          participants:activity_participants(user_id, joined_at, profile:profiles!user_id(id, full_name, username, avatar_url, is_christian))
-        `)
-        .or(`expires_at.is.null,expires_at.gt.${now}`)
-        .order('created_at', { ascending: false })
-        .limit(500)
-      setActivities(acts || [])
     } finally {
       setLoading(false)
     }

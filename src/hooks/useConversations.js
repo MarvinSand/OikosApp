@@ -1,19 +1,117 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { subscribeShared } from '../lib/realtime'
 import { useAuth } from './useAuth'
 
+// Modul-Cache + In-Flight-Dedupe wie in useNotifications.js: Home, FriendsView
+// und ConversationView nutzen diesen Hook gleichzeitig bzw. kurz nacheinander.
+// Ohne Cache lief die komplette 4-Runden-Abfragekette (Mitgliedschaften →
+// Konversationen → Nachrichten/Profile) bei jedem Mount erneut – u. a. auf
+// Home nur, um das `hasUnread`-Badge zu berechnen.
+let cache = { userId: null, lists: null }
+let inFlight = null
+
 export function useConversations() {
   const { user } = useAuth()
-  const [directChats, setDirectChats] = useState([])
-  const [communityChats, setCommunityChats] = useState([])
-  const [activityChats, setActivityChats] = useState([])
-  const [loading, setLoading] = useState(true)
+  const userId = user?.id ?? null
+  const cached = cache.userId === userId ? cache.lists : null
+  const [directChats, setDirectChats] = useState(cached?.directChats || [])
+  const [communityChats, setCommunityChats] = useState(cached?.communityChats || [])
+  const [activityChats, setActivityChats] = useState(cached?.activityChats || [])
+  const [loading, setLoading] = useState(!cached)
+  const mounted = useRef(true)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
 
   const load = useCallback(async () => {
     if (!user) return
+
+    if (inFlight && cache.userId === user.id) {
+      setLoading(true)
+      const lists = await inFlight
+      if (!mounted.current) return
+      setDirectChats(lists.directChats)
+      setCommunityChats(lists.communityChats)
+      setActivityChats(lists.activityChats)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
+    cache = { userId: user.id, lists: null }
+    inFlight = fetchConversations(user).finally(() => { inFlight = null })
     try {
+      const lists = await inFlight
+      cache = { userId: user.id, lists }
+      if (!mounted.current) return
+      setDirectChats(lists.directChats)
+      setCommunityChats(lists.communityChats)
+      setActivityChats(lists.activityChats)
+    } finally {
+      setLoading(false)
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user) return
+    load()
+  }, [user?.id])
+
+  // Realtime: subscribe to new messages to trigger reload
+  useEffect(() => {
+    if (!user) return
+    // Ein geteilter Kanal für alle Instanzen (Home, FriendsView,
+    // ConversationView) statt einem Abo pro Mount. Reload zusätzlich
+    // gebündelt – bei einem Schwall Inserts lief sonst die komplette
+    // Query-Kette pro einzelnem Event.
+    let timer = null
+    const unsubscribe = subscribeShared(
+      'messages-insert',
+      [{ event: 'INSERT', schema: 'public', table: 'messages' }],
+      () => {
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(() => { timer = null; load() }, 400)
+      }
+    )
+
+    return () => {
+      if (timer) clearTimeout(timer)
+      unsubscribe()
+    }
+  }, [user?.id, load])
+
+  async function startDirectChat(otherUserId) {
+    const { data, error } = await supabase.rpc('start_direct_chat', {
+      other_user_id: otherUserId,
+    })
+    if (error) throw error
+    await load()
+    return data
+  }
+
+  const hasUnread =
+    directChats.some(c => c.unread) ||
+    communityChats.some(c => c.unread) ||
+    activityChats.some(c => c.unread)
+
+  return {
+    directChats,
+    communityChats,
+    activityChats,
+    hasUnread,
+    loading,
+    startDirectChat,
+    reload: load,
+  }
+}
+
+// Die komplette Ladekette ausgelagert, damit `load()` sie nur noch aufrufen
+// und cachen muss – gleichzeitige Aufrufe (Home + FriendsView im selben
+// Sekundenbruchteil) teilen sich dieselbe `inFlight`-Promise.
+async function fetchConversations(user) {
       // 1./2. Eigene conversation_members + community_members parallel laden –
       // die beiden Abfragen hängen nicht voneinander ab.
       const [{ data: memberRows }, { data: communityMemberRows }] = await Promise.all([
@@ -196,63 +294,5 @@ export function useConversations() {
           return tb.localeCompare(ta)
         })
 
-      setDirectChats(builtDirectChats)
-      setCommunityChats(builtCommunityChats)
-      setActivityChats(builtActivityChats)
-    } finally {
-      setLoading(false)
-    }
-  }, [user?.id])
-
-  useEffect(() => {
-    if (!user) return
-    load()
-  }, [user?.id])
-
-  // Realtime: subscribe to new messages to trigger reload
-  useEffect(() => {
-    if (!user) return
-    // Ein geteilter Kanal für alle Instanzen (Home, FriendsView,
-    // ConversationView) statt einem Abo pro Mount. Reload zusätzlich
-    // gebündelt – bei einem Schwall Inserts lief sonst die komplette
-    // Query-Kette pro einzelnem Event.
-    let timer = null
-    const unsubscribe = subscribeShared(
-      'messages-insert',
-      [{ event: 'INSERT', schema: 'public', table: 'messages' }],
-      () => {
-        if (timer) clearTimeout(timer)
-        timer = setTimeout(() => { timer = null; load() }, 400)
-      }
-    )
-
-    return () => {
-      if (timer) clearTimeout(timer)
-      unsubscribe()
-    }
-  }, [user?.id, load])
-
-  async function startDirectChat(otherUserId) {
-    const { data, error } = await supabase.rpc('start_direct_chat', {
-      other_user_id: otherUserId,
-    })
-    if (error) throw error
-    await load()
-    return data
-  }
-
-  const hasUnread =
-    directChats.some(c => c.unread) ||
-    communityChats.some(c => c.unread) ||
-    activityChats.some(c => c.unread)
-
-  return {
-    directChats,
-    communityChats,
-    activityChats,
-    hasUnread,
-    loading,
-    startDirectChat,
-    reload: load,
-  }
+  return { directChats: builtDirectChats, communityChats: builtCommunityChats, activityChats: builtActivityChats }
 }
