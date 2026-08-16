@@ -377,7 +377,7 @@ export default function ProfileView() {
               onSettings={setSettingsMap}
               onCreateMap={async () => {
                 try {
-                  const newMap = await createMap('Meine Map')
+                  const newMap = await createMap({ name: 'Meine Map' })
                   if (newMap?.id) navigate(`/map/${newMap.id}`)
                 } catch {
                   showToast('Fehler beim Erstellen', 'error')
