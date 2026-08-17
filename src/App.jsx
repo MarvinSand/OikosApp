@@ -258,10 +258,22 @@ async function checkBirthdays(userId) {
   }
 }
 
+// Recovery-Links tragen `type=recovery` im URL-Hash (implicit flow) oder in
+// der Query (falls Supabase mal auf PKCE zurückfällt). Das synchron beim
+// ersten Rendern zu prüfen – statt erst auf das asynchrone PASSWORD_RECOVERY-
+// Event zu warten – verhindert, dass Geräte mit bereits bestehender Session
+// (z. B. ein Handy, auf dem man schon eingeloggt ist) kurz Home/AppShell
+// rendern, bevor die Weiche zu /reset-password greift.
+function isRecoveryLink() {
+  return /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search)
+}
+
 export default function App() {
   const { user, loading } = useAuth()
 
   if (loading) return <LoadingSpinner />
+
+  const recovery = isRecoveryLink() && window.location.pathname !== '/reset-password'
 
   return (
     <ErrorBoundary>
@@ -273,13 +285,13 @@ export default function App() {
               <Routes>
                 <Route
                   path="/auth"
-                  element={user ? <Navigate to="/" replace /> : <Auth />}
+                  element={recovery ? <Navigate to="/reset-password" replace /> : (user ? <Navigate to="/" replace /> : <Auth />)}
                 />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route
                   path="/*"
-                  element={user ? <AppShell /> : <Navigate to="/auth" replace />}
+                  element={recovery ? <Navigate to="/reset-password" replace /> : (user ? <AppShell /> : <Navigate to="/auth" replace />)}
                 />
               </Routes>
             </BrowserRouter>
