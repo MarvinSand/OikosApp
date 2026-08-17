@@ -15,11 +15,12 @@ const AVATAR_BOTTOM = AVATAR_TOP + AVATAR_SIZE
 export default function FeedCardFrame({ threadLineBefore, threadLineAfter, children, style }) {
   return (
     <div
+      // Links/rechts-Rand nur auf dem Desktop (siehe .feed-card-frame in index.css) –
+      // in der Handyansicht sollen Posts randlos, volle Breite wirken.
+      className="feed-card-frame"
       style={{
         position: 'relative',
         backgroundColor: 'var(--color-bg)',
-        borderLeft: '1px solid var(--color-warm-3)',
-        borderRight: '1px solid var(--color-warm-3)',
         // Innerhalb einer Thread-Kette entfällt der Trennstrich, damit die
         // Linie ohne Unterbrechung in die nächste Karte weiterläuft.
         borderBottom: threadLineAfter ? 'none' : '1px solid var(--color-warm-3)',

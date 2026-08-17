@@ -238,11 +238,9 @@ export default function CommentDetailView() {
         </FeedCardFrame>
 
         {/* ── Abschnittsüberschrift für die Antworten ── */}
-        <div style={{
+        <div className="feed-card-frame" style={{
           padding: '10px 16px',
           backgroundColor: 'var(--color-warm-4)',
-          borderLeft: '1px solid var(--color-warm-3)',
-          borderRight: '1px solid var(--color-warm-3)',
           borderBottom: '1px solid var(--color-warm-3)',
         }}>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: 0.2 }}>
@@ -252,10 +250,8 @@ export default function CommentDetailView() {
 
         {/* ── Antworten ── */}
         {replies.length === 0 && (
-          <div style={{
+          <div className="feed-card-frame" style={{
             textAlign: 'center', padding: '24px 16px',
-            borderLeft: '1px solid var(--color-warm-3)',
-            borderRight: '1px solid var(--color-warm-3)',
             borderBottom: '1px solid var(--color-warm-3)',
           }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', margin: 0 }}>
