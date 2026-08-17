@@ -7,6 +7,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
+import { useChangePassword } from '../hooks/useChangePassword'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import AddressAutocomplete from '../components/common/AddressAutocomplete'
@@ -156,6 +157,108 @@ function DeleteModal({ onCancel, onConfirm, loading }) {
   )
 }
 
+function ChangePasswordModal({ email, onClose }) {
+  const { showToast } = useToast()
+  const flow = useChangePassword('loggedIn')
+
+  useEffect(() => {
+    flow.sendCode(email)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    const ok = await flow.submit(email)
+    if (ok) {
+      showToast('Passwort geändert ✓')
+      setTimeout(onClose, 1200)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 14, padding: 24, maxWidth: 380, width: '100%' }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
+          Passwort ändern
+        </h3>
+
+        {flow.step === 'request' && (
+          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, marginBottom: 20 }}>
+            {flow.isLoading ? 'Code wird gesendet…' : 'Einen Moment…'}
+          </p>
+        )}
+
+        {flow.step === 'code' && (
+          <form onSubmit={handleSubmit}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
+              Wir haben zur Sicherheit einen Code an <strong>{email}</strong> geschickt. Gib ihn zusammen mit deinem neuen Passwort ein.
+            </p>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Code</label>
+              <input
+                autoFocus
+                type="text"
+                inputMode="numeric"
+                value={flow.code}
+                onChange={e => flow.setCode(e.target.value)}
+                placeholder="6-stelliger Code"
+                required
+                style={{ ...inputStyle, letterSpacing: '0.1em' }}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Neues Passwort</label>
+              <input
+                type="password"
+                value={flow.password}
+                onChange={e => flow.setPassword(e.target.value)}
+                placeholder="Mindestens 8 Zeichen"
+                required
+                minLength={8}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Passwort bestätigen</label>
+              <input
+                type="password"
+                value={flow.confirm}
+                onChange={e => flow.setConfirm(e.target.value)}
+                placeholder="Passwort wiederholen"
+                required
+                style={inputStyle}
+              />
+            </div>
+
+            {flow.error && (
+              <p style={{ fontSize: 13, color: 'var(--color-error)', marginBottom: 16 }}>{flow.error}</p>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                Abbrechen
+              </button>
+              <button type="submit" disabled={flow.isLoading} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                {flow.isLoading ? 'Speichere…' : 'Ändern'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {flow.step === 'done' && (
+          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Passwort geändert ✓</p>
+        )}
+
+        {flow.step === 'request' && (
+          <button onClick={onClose} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+            Abbrechen
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsView() {
   const navigate = useNavigate()
   const { profile, updateProfile, deleteAccount, loading: profileLoading } = useProfile()
@@ -182,7 +285,7 @@ export default function SettingsView() {
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [resending, setResending] = useState(false)
-  const [sendingPasswordReset, setSendingPasswordReset] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
 
   // Datenschutz-Toggles
   const [showOnMap, setShowOnMap] = useState(false)
@@ -296,22 +399,6 @@ export default function SettingsView() {
     }
   }
 
-  async function handleChangePassword() {
-    if (!user?.email) return
-    setSendingPasswordReset(true)
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: window.location.origin + '/reset-password',
-      })
-      if (error) throw error
-      showToast('E-Mail zum Passwort-Ändern gesendet ✓')
-    } catch {
-      showToast('Fehler beim Senden', 'error')
-    } finally {
-      setSendingPasswordReset(false)
-    }
-  }
-
   async function handleDelete() {
     setDeleting(true)
     try {
@@ -398,9 +485,8 @@ export default function SettingsView() {
             <MenuRow
               icon={KeyRound}
               title="Passwort ändern"
-              desc={sendingPasswordReset ? 'Sende E-Mail…' : 'Link zum Ändern per E-Mail erhalten'}
-              onClick={handleChangePassword}
-              disabled={sendingPasswordReset}
+              desc="Code per E-Mail erhalten"
+              onClick={() => setShowChangePassword(true)}
             />
             <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
               Ausloggen
@@ -563,6 +649,10 @@ export default function SettingsView() {
 
       {showDelete && (
         <DeleteModal loading={deleting} onCancel={() => setShowDelete(false)} onConfirm={handleDelete} />
+      )}
+
+      {showChangePassword && (
+        <ChangePasswordModal email={user?.email} onClose={() => setShowChangePassword(false)} />
       )}
     </div>
   )

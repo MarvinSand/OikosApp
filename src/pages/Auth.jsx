@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Cross, MailCheck, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useChangePassword } from '../hooks/useChangePassword'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 
@@ -19,8 +20,9 @@ export default function Auth() {
 
   const { login, register } = useAuth()
   const { showToast } = useToast()
+  const resetFlow = useChangePassword('loggedOut')
 
-  function goToReset() { setError(''); setView('reset') }
+  function goToReset() { setError(''); resetFlow.reset(); setView('reset') }
   function goToLogin() { setError(''); setView('login') }
   function goToRegister() { localStorage.setItem('oikos_welcome_seen', 'true'); setError(''); setView('register') }
   function goFromWelcomeToLogin() { localStorage.setItem('oikos_welcome_seen', 'true'); setError(''); setView('login') }
@@ -74,32 +76,24 @@ export default function Auth() {
 
   async function handleSendReset(e) {
     e?.preventDefault()
-    setError('')
-    setIsLoading(true)
+    await resetFlow.sendCode(email)
+  }
+
+  async function handleResendCode() {
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/reset-password',
-      })
-      if (err) throw err
-      setView('reset-sent')
-    } catch (err) {
-      setError(err.message || 'Ein Fehler ist aufgetreten.')
-    } finally {
-      setIsLoading(false)
+      await resetFlow.sendCode(email)
+      showToast('Code erneut gesendet ✓')
+    } catch {
+      showToast('Fehler beim Senden', 'error')
     }
   }
 
-  async function handleResend() {
-    setIsLoading(true)
-    try {
-      await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/reset-password',
-      })
-      showToast('E-Mail erneut gesendet ✓')
-    } catch {
-      showToast('Fehler beim Senden', 'error')
-    } finally {
-      setIsLoading(false)
+  async function handleResetSubmit(e) {
+    e.preventDefault()
+    const ok = await resetFlow.submit(email)
+    if (ok) {
+      showToast('Passwort geändert ✓')
+      setTimeout(goToLogin, 1500)
     }
   }
 
@@ -305,43 +299,121 @@ export default function Auth() {
           </>
         )}
 
-        {/* Password Reset Logic */}
-        {view === 'reset' && (
+        {/* Password Reset Logic – Code statt Link, funktioniert immer auf dem
+            Gerät, auf dem man gerade ist */}
+        {view === 'reset' && resetFlow.step === 'request' && (
           <div className="animate-fade-in">
             <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-accent transition-colors mb-6">
               ← Zurück
             </button>
             <h3 className="text-2xl font-bold text-dark mb-2">Passwort zurücksetzen</h3>
             <p className="text-sm text-dark-muted mb-6 leading-relaxed">
-              Gib deine E-Mail-Adresse ein, und wir senden dir einen Link zum Zurücksetzen deines Passworts.
+              Gib deine E-Mail-Adresse ein, und wir senden dir einen Code zum Zurücksetzen deines Passworts.
             </p>
 
             <form onSubmit={handleSendReset} className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-dark-muted ml-1">E-Mail</label>
-                <input 
-                  autoFocus 
-                  type="email" 
-                  value={email} 
-                  onChange={e => setEmail(e.target.value)} 
-                  placeholder="name@beispiel.de" 
-                  required 
+                <input
+                  autoFocus
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="name@beispiel.de"
+                  required
                   className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
-              
-              {error && (
+
+              {resetFlow.error && (
                 <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20">
-                  {error}
+                  {resetFlow.error}
                 </div>
               )}
-              
-              <button 
-                type="submit" 
-                disabled={isLoading || !email.trim()} 
+
+              <button
+                type="submit"
+                disabled={resetFlow.isLoading || !email.trim()}
                 className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
-                {isLoading ? 'Sende…' : 'Link senden'}
+                {resetFlow.isLoading ? 'Sende…' : 'Code senden'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Code + neues Passwort */}
+        {view === 'reset' && resetFlow.step === 'code' && (
+          <div className="animate-fade-in">
+            <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-accent transition-colors mb-6">
+              ← Zurück
+            </button>
+            <h3 className="text-2xl font-bold text-dark mb-2">Code eingeben</h3>
+            <p className="text-sm text-dark-muted mb-6 leading-relaxed">
+              Wir haben einen Code an <strong className="text-dark">{email}</strong> geschickt. Gib ihn hier zusammen mit deinem neuen Passwort ein.
+            </p>
+
+            <form onSubmit={handleResetSubmit} className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-dark-muted ml-1">Code</label>
+                <input
+                  autoFocus
+                  type="text"
+                  inputMode="numeric"
+                  value={resetFlow.code}
+                  onChange={e => resetFlow.setCode(e.target.value)}
+                  placeholder="6-stelliger Code"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light tracking-widest"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-dark-muted ml-1">Neues Passwort</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={resetFlow.password}
+                  onChange={e => resetFlow.setPassword(e.target.value)}
+                  placeholder="Mindestens 8 Zeichen"
+                  required
+                  minLength={8}
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-dark-muted ml-1">Passwort bestätigen</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={resetFlow.confirm}
+                  onChange={e => resetFlow.setConfirm(e.target.value)}
+                  placeholder="Passwort wiederholen"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                />
+              </div>
+
+              {resetFlow.error && (
+                <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20">
+                  {resetFlow.error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={resetFlow.isLoading}
+                className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+              >
+                {resetFlow.isLoading ? 'Speichere…' : 'Passwort ändern'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={resetFlow.isLoading}
+                className="text-sm font-medium text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
+              >
+                Code erneut senden
               </button>
             </form>
           </div>
@@ -367,36 +439,6 @@ export default function Auth() {
           </div>
         )}
 
-        {/* Reset Confirmation Logic */}
-        {view === 'reset-sent' && (
-          <div className="text-center animate-fade-in py-4">
-            <div className="w-20 h-20 bg-gold-light/30 rounded-full flex items-center justify-center mx-auto mb-6">
-              <MailCheck size={40} className="text-gold" strokeWidth={2} />
-            </div>
-            <h3 className="text-2xl font-bold text-dark mb-3">Schau in dein Postfach</h3>
-            <p className="text-sm text-dark-muted leading-relaxed mb-6">
-              Wir haben dir einen Link an <strong className="text-dark">{email}</strong> geschickt. Klicke darauf, um ein neues Passwort zu setzen.
-            </p>
-            
-            <div className="bg-warm-4/40 p-4 rounded-xl mb-6">
-              <p className="text-xs text-dark-muted mb-1">Keine Mail erhalten?</p>
-              <button 
-                onClick={handleResend} 
-                disabled={isLoading} 
-                className="text-sm font-bold text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
-              >
-                Erneut senden
-              </button>
-            </div>
-            
-            <button 
-              onClick={goToLogin} 
-              className="w-full py-3.5 rounded-xl font-semibold text-dark border-1.5 border-warm-3 hover:bg-warm-4/50 transition-colors"
-            >
-              Zurück zum Login
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )
