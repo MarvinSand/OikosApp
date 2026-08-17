@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
-  Moon, Globe, Navigation, KeyRound,
+  Moon, Globe, Navigation, KeyRound, Link2, Unlink,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -10,6 +10,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import AddressAutocomplete from '../components/common/AddressAutocomplete'
+import { GoogleIcon, AppleIcon } from '../components/common/OAuthIcons'
 
 function validateUsername(val) {
   if (!val || val.trim().length < 3) return 'Mindestens 3 Zeichen'
@@ -159,7 +160,7 @@ function DeleteModal({ onCancel, onConfirm, loading }) {
 export default function SettingsView() {
   const navigate = useNavigate()
   const { profile, updateProfile, deleteAccount, loading: profileLoading } = useProfile()
-  const { user, resendVerificationEmail } = useAuth()
+  const { user, resendVerificationEmail, linkProviderIdentity, unlinkProviderIdentity, getLinkedIdentities } = useAuth()
   const { showToast } = useToast()
   const { theme, toggleTheme } = useTheme()
 
@@ -183,6 +184,8 @@ export default function SettingsView() {
   const [deleting, setDeleting] = useState(false)
   const [resending, setResending] = useState(false)
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false)
+  const [identities, setIdentities] = useState([])
+  const [identityLoading, setIdentityLoading] = useState(null)
 
   // Datenschutz-Toggles
   const [showOnMap, setShowOnMap] = useState(false)
@@ -296,6 +299,35 @@ export default function SettingsView() {
     }
   }
 
+  useEffect(() => {
+    if (!user) return
+    getLinkedIdentities().then(setIdentities).catch(() => {})
+  }, [user, getLinkedIdentities])
+
+  async function handleLinkProvider(provider) {
+    setIdentityLoading(provider)
+    try {
+      await linkProviderIdentity(provider)
+      // Weiterleitung übernimmt der Provider
+    } catch (err) {
+      showToast(err.message || 'Verknüpfung fehlgeschlagen', 'error')
+      setIdentityLoading(null)
+    }
+  }
+
+  async function handleUnlinkProvider(identity) {
+    setIdentityLoading(identity.provider)
+    try {
+      await unlinkProviderIdentity(identity)
+      setIdentities(prev => prev.filter(i => i.identity_id !== identity.identity_id))
+      showToast('Verknüpfung entfernt ✓')
+    } catch (err) {
+      showToast(err.message || 'Entfernen fehlgeschlagen', 'error')
+    } finally {
+      setIdentityLoading(null)
+    }
+  }
+
   async function handleChangePassword() {
     if (!user?.email) return
     setSendingPasswordReset(true)
@@ -402,6 +434,45 @@ export default function SettingsView() {
               onClick={handleChangePassword}
               disabled={sendingPasswordReset}
             />
+
+            {/* Verbundene Konten (Google/Apple) */}
+            {['google', 'apple'].map(provider => {
+              const identity = identities.find(i => i.provider === provider)
+              const isLinked = !!identity
+              const busy = identityLoading === provider
+              const Icon = provider === 'google' ? GoogleIcon : AppleIcon
+              const label = provider === 'google' ? 'Google' : 'Apple'
+              return (
+                <button
+                  key={provider}
+                  onClick={() => (isLinked ? handleUnlinkProvider(identity) : handleLinkProvider(provider))}
+                  disabled={busy}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                    padding: '16px', borderRadius: 14, cursor: busy ? 'wait' : 'pointer', textAlign: 'left',
+                    border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
+                    marginBottom: 10, opacity: busy ? 0.6 : 1,
+                  }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 11, flexShrink: 0,
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--color-accent)',
+                  }}>
+                    <Icon size={20} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }}>{label}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                      {busy ? 'Einen Moment…' : isLinked ? 'Verbunden – zum Trennen tippen' : 'Nicht verbunden – zum Verbinden tippen'}
+                    </p>
+                  </div>
+                  {isLinked ? <Unlink size={18} color="var(--color-text-tertiary)" /> : <Link2 size={18} color="var(--color-text-tertiary)" />}
+                </button>
+              )
+            })}
+
             <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
               Ausloggen
             </button>

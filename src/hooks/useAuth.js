@@ -104,6 +104,43 @@ async function logout() {
   if (error) throw error
 }
 
+async function loginWithProvider(provider) {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: window.location.origin + '/auth/callback' },
+  })
+  if (error) throw error
+}
+
+async function loginWithGoogle() {
+  return loginWithProvider('google')
+}
+
+async function loginWithApple() {
+  return loginWithProvider('apple')
+}
+
+// Verknüpft ein weiteres Login-Verfahren (Google/Apple) mit dem bereits
+// eingeloggten Account. Erfordert in Supabase aktiviertes "Manual Linking".
+async function linkProviderIdentity(provider) {
+  const { error } = await supabase.auth.linkIdentity({
+    provider,
+    options: { redirectTo: window.location.origin + '/settings' },
+  })
+  if (error) throw error
+}
+
+async function unlinkProviderIdentity(identity) {
+  const { error } = await supabase.auth.unlinkIdentity(identity)
+  if (error) throw error
+}
+
+async function getLinkedIdentities() {
+  const { data, error } = await supabase.auth.getUserIdentities()
+  if (error) throw error
+  return data?.identities ?? []
+}
+
 async function resendVerificationEmail() {
   const { error } = await supabase.auth.resend({
     type: 'signup',
@@ -122,6 +159,11 @@ export function useAuth() {
     register,
     logout,
     resendVerificationEmail,
+    loginWithGoogle,
+    loginWithApple,
+    linkProviderIdentity,
+    unlinkProviderIdentity,
+    getLinkedIdentities,
   }
 }
 

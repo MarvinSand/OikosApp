@@ -3,6 +3,7 @@ import { Cross, MailCheck, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
+import { GoogleIcon, AppleIcon } from '../components/common/OAuthIcons'
 
 export default function Auth() {
   const hasSeenWelcome = typeof window !== 'undefined' && localStorage.getItem('oikos_welcome_seen')
@@ -17,8 +18,22 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false)
   const [emailNotConfirmed, setEmailNotConfirmed] = useState(false)
 
-  const { login, register } = useAuth()
+  const { login, register, loginWithGoogle, loginWithApple } = useAuth()
   const { showToast } = useToast()
+  const [oauthLoading, setOauthLoading] = useState(null)
+
+  async function handleOAuth(provider) {
+    setError('')
+    setOauthLoading(provider)
+    try {
+      if (provider === 'google') await loginWithGoogle()
+      else await loginWithApple()
+      // Weiterleitung übernimmt der Provider – Loading-State bleibt bis zum Reload bestehen.
+    } catch (err) {
+      setError(err.message || 'Anmeldung fehlgeschlagen.')
+      setOauthLoading(null)
+    }
+  }
 
   function goToReset() { setError(''); setView('reset') }
   function goToLogin() { setError(''); setView('login') }
@@ -177,6 +192,32 @@ export default function Auth() {
                   {label}
                 </button>
               ))}
+            </div>
+
+            <div className="flex flex-col gap-2.5 mb-6">
+              <button
+                type="button"
+                onClick={() => handleOAuth('google')}
+                disabled={!!oauthLoading}
+                className="w-full flex items-center justify-center gap-3 py-3 rounded-xl font-medium text-sm text-dark border-1.5 border-warm-3 bg-bg hover:bg-warm-4/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                <GoogleIcon size={18} />
+                {oauthLoading === 'google' ? 'Weiterleitung…' : 'Mit Google fortfahren'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOAuth('apple')}
+                disabled={!!oauthLoading}
+                className="w-full flex items-center justify-center gap-3 py-3 rounded-xl font-medium text-sm text-white bg-black hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                <AppleIcon size={18} />
+                {oauthLoading === 'apple' ? 'Weiterleitung…' : 'Mit Apple fortfahren'}
+              </button>
+              <div className="flex items-center gap-3 my-1">
+                <div className="flex-1 h-px bg-warm-3" />
+                <span className="text-xs font-medium text-dark-light">oder</span>
+                <div className="flex-1 h-px bg-warm-3" />
+              </div>
             </div>
 
             <form onSubmit={handleLoginOrRegister} className="flex flex-col gap-4">
