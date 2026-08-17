@@ -7,11 +7,12 @@ import MemberAvatarStack from './MemberAvatarStack'
 // variant="discover" → Beitreten-Button rechts
 export default function CommunityCard({
   community, members = [], variant = 'member',
-  onOpen, onJoin, joining = false,
+  onOpen, onJoin, joining = false, requested = false,
 }) {
   const cover = communityCover(community.id || community.name)
   const memberCount = community.memberCount ?? community.member_count ?? 0
   const isMember = variant === 'member'
+  const needsRequest = community.join_mode === 'request'
 
   const body = (
     <>
@@ -20,13 +21,14 @@ export default function CommunityCard({
         <div style={{
           position: 'absolute', left: 14, bottom: -20,
           width: 52, height: 52, borderRadius: 15,
-          background: cover.gradient,
+          background: community.avatar_url ? `url(${community.avatar_url})` : cover.gradient,
+          backgroundSize: 'cover', backgroundPosition: 'center',
           border: '3px solid var(--color-white)',
           boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 800,
         }}>
-          {getInitials(community.name)}
+          {!community.avatar_url && getInitials(community.name)}
         </div>
         {/* Sichtbarkeits-Chip auf dem Cover */}
         <span style={{
@@ -81,17 +83,18 @@ export default function CommunityCard({
           </div>
           {!isMember && (
             <button
-              onClick={(e) => { e.stopPropagation(); onJoin?.(community) }}
-              disabled={joining}
+              onClick={(e) => { e.stopPropagation(); if (!requested) onJoin?.(community) }}
+              disabled={joining || requested}
               style={{
                 flexShrink: 0, padding: '9px 18px', borderRadius: 999, border: 'none',
-                backgroundColor: 'var(--color-accent)', color: '#fff',
+                backgroundColor: requested ? 'var(--color-bg-secondary)' : 'var(--color-accent)',
+                color: requested ? 'var(--color-text-secondary)' : '#fff',
                 fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700,
-                cursor: joining ? 'default' : 'pointer', opacity: joining ? 0.6 : 1,
+                cursor: (joining || requested) ? 'default' : 'pointer', opacity: joining ? 0.6 : 1,
                 transition: 'opacity 0.15s, transform 0.15s',
               }}
             >
-              {joining ? '…' : 'Beitreten'}
+              {joining ? '…' : requested ? 'Angefragt' : needsRequest ? 'Anfrage senden' : 'Beitreten'}
             </button>
           )}
         </div>

@@ -77,8 +77,11 @@ function sameDay(a, b) {
 }
 
 // ─── Avatar ───────────────────────────────────────────────────
-function Avatar({ name, size = 38, isChristian }) {
+function Avatar({ name, size = 38, isChristian, avatarUrl }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
@@ -602,16 +605,74 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
   )
 }
 
-function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, onUpdate }) {
+function SettingsSheet({
+  community, isAdmin, isOwner, currentUserId, onClose, onLeave, onUpdate, onDelete,
+  joinRequests, onRespondJoinRequest,
+}) {
   const { showToast } = useToast()
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteTyped, setDeleteTyped] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const [name, setName] = useState(community.name || '')
   const [description, setDescription] = useState(community.description || '')
   const [isPublic, setIsPublic] = useState(community.is_public || false)
+  const [joinMode, setJoinMode] = useState(community.join_mode || 'open')
   const [saving, setSaving] = useState(false)
   const [bannerBusy, setBannerBusy] = useState(false)
+  const [avatarBusy, setAvatarBusy] = useState(false)
   const bannerInputRef = useRef(null)
-  const isChanged = name !== community.name || description !== (community.description || '') || isPublic !== community.is_public
+  const avatarInputRef = useRef(null)
+  const isChanged =
+    name !== community.name || description !== (community.description || '') ||
+    isPublic !== community.is_public || joinMode !== (community.join_mode || 'open')
+
+  // Avatar-Upload: <community_id>/avatar.jpg im Bucket community-avatars.
+  // Nur Admins dürfen schreiben (RLS, siehe phase58_community_admin.sql).
+  async function handleAvatarPick(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setAvatarBusy(true)
+    try {
+      const compressed = await compressImage(file, 600, 0.85)
+      const path = `${community.id}/avatar.jpg`
+      const { error: upErr } = await supabase.storage
+        .from('community-avatars')
+        .upload(path, compressed, { contentType: 'image/jpeg', upsert: true })
+      if (upErr) throw upErr
+      const { data } = supabase.storage.from('community-avatars').getPublicUrl(path)
+      await onUpdate({ avatar_url: `${data.publicUrl}?t=${Date.now()}` })
+      showToast('Profilbild aktualisiert ✓')
+    } catch (err) {
+      console.error('[CommunityDetail] Avatar-Upload fehlgeschlagen:', err)
+      showToast('Fehler beim Hochladen', 'error')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarBusy(true)
+    try {
+      await supabase.storage.from('community-avatars').remove([`${community.id}/avatar.jpg`])
+      await onUpdate({ avatar_url: null })
+      showToast('Profilbild entfernt')
+    } catch {
+      showToast('Fehler beim Entfernen', 'error')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  async function handleDeleteCommunity() {
+    setDeleting(true)
+    try {
+      await onDelete()
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   // Banner-Upload: <community_id>/banner.jpg im Bucket community-banners.
   // Nur Admins dürfen schreiben (RLS, siehe phase57_community_prayers.sql).
@@ -654,7 +715,9 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
 
   async function handleSave() {
     setSaving(true)
-    await onUpdate({ name, description, is_public: isPublic })
+    // Beitritt-nur-mit-Anfrage ergibt nur bei öffentlichen Communities Sinn –
+    // wird die Community privat gemacht, fällt der Modus automatisch zurück.
+    await onUpdate({ name, description, is_public: isPublic, join_mode: isPublic ? joinMode : 'open' })
     setSaving(false)
     showToast('Community gespeichert ✓')
     onClose()
@@ -691,6 +754,38 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
             <div>
               <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Beschreibung</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] resize-none focus:outline-none focus:border-warm-1" />
+            </div>
+
+            {/* Profilbild */}
+            <div>
+              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Profilbild</label>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-16 h-16 rounded-2xl border border-warm-3 bg-warm-4 overflow-hidden flex-shrink-0 flex items-center justify-center"
+                  style={community.avatar_url ? { backgroundImage: `url(${community.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                >
+                  {!community.avatar_url && <span className="text-[10px] text-dark-light italic px-1 text-center">Kein Bild</span>}
+                </div>
+                <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarPick} className="hidden" />
+                <div className="flex gap-2 flex-1">
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={avatarBusy}
+                    className="flex-1 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark disabled:opacity-50"
+                  >
+                    {avatarBusy ? 'Lädt…' : community.avatar_url ? 'Ändern' : 'Hochladen'}
+                  </button>
+                  {community.avatar_url && (
+                    <button
+                      onClick={handleAvatarRemove}
+                      disabled={avatarBusy}
+                      className="px-4 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark-muted disabled:opacity-50"
+                    >
+                      Entfernen
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Banner */}
@@ -734,6 +829,55 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${isPublic ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
             </div>
+
+            {isPublic && (
+              <div className="flex items-center justify-between bg-warm-4 border border-warm-3 rounded-xl p-4">
+                <div>
+                  <p className="font-serif text-[14px] font-bold text-dark m-0">Beitritt nur mit Anfrage</p>
+                  <p className="font-serif text-[12px] text-dark-muted m-0 leading-tight mt-0.5">
+                    Community wird bei „Entdecken" angezeigt, ein Beitritt braucht aber deine Freigabe.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setJoinMode(m => m === 'request' ? 'open' : 'request')}
+                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${joinMode === 'request' ? 'bg-warm-1' : 'bg-warm-3'}`}
+                >
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${joinMode === 'request' ? 'left-[22px]' : 'left-0.5'}`} />
+                </button>
+              </div>
+            )}
+
+            {/* Offene Beitrittsanfragen */}
+            {joinRequests.length > 0 && (
+              <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4">
+                <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3">
+                  Beitrittsanfragen ({joinRequests.length})
+                </p>
+                <div className="flex flex-col gap-3">
+                  {joinRequests.map(r => {
+                    const reqName = r.profile?.full_name || r.profile?.username || 'Unbekannt'
+                    return (
+                      <div key={r.id} className="flex items-center gap-3">
+                        <Avatar name={reqName} size={36} isChristian={r.profile?.is_christian} avatarUrl={r.profile?.avatar_url} />
+                        <p className="flex-1 min-w-0 font-serif text-[14px] font-semibold text-dark m-0 truncate">{reqName}</p>
+                        <button
+                          onClick={() => onRespondJoinRequest(r.id, false)}
+                          className="px-3 py-2 rounded-lg border border-warm-3 text-dark-muted font-serif text-[13px] font-semibold"
+                        >
+                          Ablehnen
+                        </button>
+                        <button
+                          onClick={() => onRespondJoinRequest(r.id, true)}
+                          className="px-3 py-2 rounded-lg bg-warm-1 text-white font-serif text-[13px] font-semibold"
+                        >
+                          Annehmen
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {!isPublic && community.invite_code && (
               <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4 mt-2">
@@ -779,6 +923,49 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
             </div>
           )}
         </div>
+
+        {/* Nur der Ersteller darf die Community löschen. */}
+        {isOwner && (
+          <div className="mt-4 pt-4 border-t border-warm-3">
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-1.5 border-red-300 bg-red-50 text-red-700 font-serif text-[15px] font-bold hover:bg-red-100 transition-colors"
+              >
+                <Trash2 size={18} /> Community löschen
+              </button>
+            ) : (
+              <div className="bg-red-50 rounded-xl p-5 border border-red-300">
+                <p className="font-serif text-[15px] text-red-900 mb-2">
+                  Löscht <strong>{community.name}</strong> endgültig – Chat, Beiträge, Events und Gebete aller Mitglieder gehen unwiderruflich verloren.
+                </p>
+                <p className="font-serif text-[13px] text-red-800 mb-3">
+                  Gib zum Bestätigen den Namen <strong>{community.name}</strong> ein:
+                </p>
+                <input
+                  type="text" value={deleteTyped} onChange={e => setDeleteTyped(e.target.value)}
+                  placeholder={community.name}
+                  className="w-full bg-surface border-1.5 border-red-300 rounded-xl px-4 py-2.5 font-serif text-[15px] mb-3 focus:outline-none"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setShowDeleteConfirm(false); setDeleteTyped('') }}
+                    className="flex-1 py-3 rounded-xl bg-surface border border-red-300 text-dark-muted font-bold font-serif"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={handleDeleteCommunity}
+                    disabled={deleteTyped !== community.name || deleting}
+                    className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold font-serif shadow-sm disabled:opacity-40"
+                  >
+                    {deleting ? 'Löscht…' : 'Endgültig löschen'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   )
@@ -795,14 +982,14 @@ export default function CommunityDetail() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { showToast } = useToast()
-  const { leaveCommunity } = useCommunities()
+  const { leaveCommunity, deleteCommunity } = useCommunities()
 
   const {
-    community, members, myMembership, isAdmin, adminCount,
+    community, members, myMembership, isAdmin, isOwner, adminCount,
     loading, conversationId, changeRole, removeMember,
     posts, createPost, deletePost, togglePinPost,
     events, myRsvps, createEvent, deleteEvent, rsvpEvent,
-    updateCommunity,
+    updateCommunity, joinRequests, respondToJoinRequest,
   } = useCommunityDetail(id)
   const { messages, loading: chatLoading, sendMessage, deleteMessage, updateMessage } = useChat(conversationId)
   const { prayers, loading: prayersLoading, createPrayer, reload: reloadPrayers } = useCommunityPrayers(id, conversationId)
@@ -869,6 +1056,32 @@ export default function CommunityDetail() {
       navigate('/friends', { replace: true })
     } catch {
       showToast('Fehler beim Austreten', 'error')
+    }
+  }
+
+  // Nur der Ersteller sieht diese Aktion (SettingsSheet blendet sie sonst aus).
+  async function handleDeleteCommunity() {
+    try {
+      // Storage-Objekte vorab entfernen (best effort – die Community-Zeile
+      // fällt gleich per DELETE weg, verwaiste Dateien blieben sonst liegen).
+      await Promise.allSettled([
+        supabase.storage.from('community-banners').remove([`${id}/banner.jpg`]),
+        supabase.storage.from('community-avatars').remove([`${id}/avatar.jpg`]),
+      ])
+      await deleteCommunity(id)
+      showToast('Community gelöscht')
+      navigate('/friends', { replace: true })
+    } catch {
+      showToast('Fehler beim Löschen', 'error')
+    }
+  }
+
+  async function handleRespondJoinRequest(requestId, approve) {
+    try {
+      await respondToJoinRequest(requestId, approve)
+      showToast(approve ? 'Beigetreten ✓' : 'Anfrage abgelehnt')
+    } catch {
+      showToast('Fehler beim Bearbeiten', 'error')
     }
   }
 
@@ -958,8 +1171,18 @@ export default function CommunityDetail() {
             <button onClick={() => navigate(-1)} aria-label="Zurück" style={hasBanner ? glassBtn : plainHeaderBtn}>
               <ArrowLeft size={20} color={hasBanner ? '#fff' : 'var(--color-text)'} />
             </button>
-            <button onClick={() => setShowSettings(true)} aria-label="Einstellungen" style={hasBanner ? glassBtn : plainHeaderBtn}>
+            <button onClick={() => setShowSettings(true)} aria-label="Einstellungen" style={{ ...(hasBanner ? glassBtn : plainHeaderBtn), position: 'relative' }}>
               <Settings size={19} color={hasBanner ? '#fff' : 'var(--color-text)'} />
+              {isAdmin && joinRequests.length > 0 && (
+                <span style={{
+                  position: 'absolute', top: 2, right: 2, minWidth: 15, height: 15, padding: '0 3px',
+                  borderRadius: 999, backgroundColor: 'var(--color-accent)', color: '#fff',
+                  fontSize: 9.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1.5px solid var(--color-bg)',
+                }}>
+                  {joinRequests.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -969,12 +1192,14 @@ export default function CommunityDetail() {
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginTop: hasBanner ? -32 : 12 }}>
             <div style={{
               width: 72, height: 72, borderRadius: 20, flexShrink: 0,
-              background: cover.gradient, border: '4px solid var(--color-bg)',
+              background: community.avatar_url ? `url(${community.avatar_url})` : cover.gradient,
+              backgroundSize: 'cover', backgroundPosition: 'center',
+              border: '4px solid var(--color-bg)',
               boxShadow: '0 8px 20px rgba(0,0,0,0.22)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#fff', fontFamily: 'Lora, serif', fontSize: 27, fontWeight: 800,
             }}>
-              {initials}
+              {!community.avatar_url && initials}
             </div>
           </div>
 
@@ -1169,9 +1394,11 @@ export default function CommunityDetail() {
       )}
 
       {showSettings && (
-        <SettingsSheet 
-          community={community} isAdmin={isAdmin} currentUserId={user?.id} 
-          onClose={() => setShowSettings(false)} onLeave={handleLeave} onUpdate={updateCommunity} 
+        <SettingsSheet
+          community={community} isAdmin={isAdmin} isOwner={isOwner} currentUserId={user?.id}
+          onClose={() => setShowSettings(false)} onLeave={handleLeave} onUpdate={updateCommunity}
+          onDelete={handleDeleteCommunity}
+          joinRequests={joinRequests} onRespondJoinRequest={handleRespondJoinRequest}
         />
       )}
       {selectedMember && (

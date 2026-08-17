@@ -12,6 +12,7 @@ import { usePublicMap } from '../hooks/usePublicMap'
 import { useToast } from '../context/ToastContext'
 import MapCanvas from '../components/map/MapCanvas'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
+import NewMapModal from '../components/map/NewMapModal'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
 import ConnectionsOverlay from '../components/feed/ConnectionsOverlay'
 import { Avatar, MapsTab, PostsTab, RepostsTab, PrayersTab } from '../components/profile/ProfileTabs'
@@ -111,6 +112,7 @@ export default function ProfileView() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [settingsMap, setSettingsMap] = useState(null)
   const [overlay, setOverlay] = useState(null) // 'siblings' | 'communities' | null
+  const [showNewMap, setShowNewMap] = useState(false)
 
   async function handleAvatarChange(e) {
     const file = e.target.files?.[0]
@@ -375,14 +377,7 @@ export default function ProfileView() {
               maps={maps}
               onOpen={(m) => navigate(`/map/${m.id}`)}
               onSettings={setSettingsMap}
-              onCreateMap={async () => {
-                try {
-                  const newMap = await createMap('Meine Map')
-                  if (newMap?.id) navigate(`/map/${newMap.id}`)
-                } catch {
-                  showToast('Fehler beim Erstellen', 'error')
-                }
-              }}
+              onCreateMap={() => setShowNewMap(true)}
             />
           )}
           {activeTab === 'posts' && (
@@ -425,6 +420,16 @@ export default function ProfileView() {
           updateMap={updateMap}
           deleteMap={async (id) => { await deleteMap(id); setSettingsMap(null); reload() }}
           onClose={() => { setSettingsMap(null); reload() }}
+        />
+      )}
+
+      {showNewMap && (
+        <NewMapModal
+          onClose={() => setShowNewMap(false)}
+          onCreate={async (opts) => {
+            const newMap = await createMap(opts)
+            if (newMap?.id) navigate(`/map/${newMap.id}`)
+          }}
         />
       )}
 

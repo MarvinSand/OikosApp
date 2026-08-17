@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
@@ -40,9 +40,12 @@ export function useFriendships() {
     setLoading(false)
   }
 
-  const friends = allFriendships.filter(f => f.status === 'accepted')
-  const pendingReceived = allFriendships.filter(f => f.status === 'pending' && f.addressee_id === user?.id)
-  const pendingSent = allFriendships.filter(f => f.status === 'pending' && f.requester_id === user?.id)
+  // useMemo hält die Arrays referenzstabil, solange sich allFriendships nicht
+  // ändert – sonst würde jeder Aufrufer, der friends/pendingReceived/pendingSent
+  // in einem useEffect-Dependency-Array hat, bei jedem Render neu feuern.
+  const friends = useMemo(() => allFriendships.filter(f => f.status === 'accepted'), [allFriendships])
+  const pendingReceived = useMemo(() => allFriendships.filter(f => f.status === 'pending' && f.addressee_id === user?.id), [allFriendships, user?.id])
+  const pendingSent = useMemo(() => allFriendships.filter(f => f.status === 'pending' && f.requester_id === user?.id), [allFriendships, user?.id])
 
   function getFriendshipStatus(userId) {
     const f = allFriendships.find(f =>

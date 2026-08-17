@@ -22,6 +22,13 @@ export default function UserPinSheet({ user, onClose }) {
   const isChristian = user.is_christian !== false
   const bioVisible = user.show_bio !== false && (user.bio_text || user.bio)
   const bioText = user.bio_text || user.bio
+  const identityLabel = !isChristian
+    ? 'Noch nicht Christ/in'
+    : user.gender === 'brother'
+      ? 'Bruder in Christus'
+      : user.gender === 'sister'
+        ? 'Schwester in Christus'
+        : 'Bruder/Schwester in Christus'
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
@@ -75,7 +82,7 @@ export default function UserPinSheet({ user, onClose }) {
               </p>
             )}
             <p style={{ fontSize: 12, color: C.accentDark, margin: '5px 0 0', fontWeight: 600 }}>
-              {isChristian ? 'Bruder/Schwester in Christus' : 'Noch nicht Christ/in'}
+              {identityLabel}
             </p>
           </div>
         </div>
