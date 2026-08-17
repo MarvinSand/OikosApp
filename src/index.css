@@ -224,6 +224,19 @@
   }
 }
 
+/* Feed-Karten (Posts/Kommentare): in der Handyansicht randlos (volle Breite,
+   nur oben/unten getrennt), auf dem Desktop mit Rand links/rechts. */
+.feed-card-frame {
+  border-left: none;
+  border-right: none;
+}
+@media (min-width: 768px) {
+  .feed-card-frame {
+    border-left: 1px solid var(--color-warm-3);
+    border-right: 1px solid var(--color-warm-3);
+  }
+}
+
 /* Bodenfreiheit im Chat, damit die Eingabeleiste direkt über der Bottom-Nav
    sitzt (Höhe der Nav inkl. Safe-Area). Auf Desktop keine Nav -> 0. */
 .chat-nav-clearance {
@@ -247,9 +260,13 @@
   z-index: 35;
 }
 @media (min-width: 768px) {
-  /* Auf Desktop gibt es keine Bottom-Nav */
+  /* Auf Desktop gibt es keine Bottom-Nav, aber eine 220px breite SideNav
+     (siehe SideNav.jsx, w-[220px]), die links echten Platz einnimmt.
+     "left: 50%" würde sonst am gesamten Viewport zentrieren statt am
+     Content-Bereich rechts der SideNav -> Leiste wirkt nach links verschoben. */
   .chat-input-bar {
     bottom: 0;
+    left: calc(50% + 110px);
   }
 }
 

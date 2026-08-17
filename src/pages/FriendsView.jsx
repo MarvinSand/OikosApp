@@ -1,14 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark, ArrowLeft } from 'lucide-react'
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
+import FeedCardFrame, { CONTENT_INSET } from '../components/feed/FeedCardFrame'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
 import { useCommunityMembersPreview } from '../hooks/useCommunityMembersPreview'
 import CommunityCard from '../components/community/CommunityCard'
+import MutualAvatars from '../components/common/MutualAvatars'
+import { fetchMutualFriendsMap } from '../lib/mutualFriends'
 import { Compass } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { useConversations } from '../hooks/useConversations'
@@ -155,12 +158,25 @@ function FriendsTab() {
   const [nearbyUsers, setNearbyUsers] = useState([])
   const [upcomingBirthdays, setUpcomingBirthdays] = useState([])
   const [notConnected, setNotConnected] = useState([])
+  const [mutuals, setMutuals] = useState({}) // userId -> { count, people }
 
   useEffect(() => {
     if (!user || loading) return
     loadMyCity()
     loadNotConnected()
   }, [user?.id, loading, friends.length])
+
+  // Gemeinsame Freunde für die "noch nicht connected"-Liste laden
+  useEffect(() => {
+    if (!user || notConnected.length === 0) { setMutuals({}); return }
+    const myFriendIds = friends.map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
+    if (myFriendIds.length === 0) { setMutuals({}); return }
+    fetchMutualFriendsMap({
+      myFriendIds,
+      excludeIds: [user.id],
+      candidateIds: notConnected.map(u => u.id),
+    }).then(setMutuals)
+  }, [user?.id, notConnected, friends])
 
   async function loadMyCity() {
     const { data } = await supabase.from('profiles').select('city').eq('id', user.id).single()
@@ -507,11 +523,15 @@ function FriendsTab() {
           </p>
           {filteredNotConnected.map(u => (
             <div key={u.id} style={personRow}>
-              <button onClick={() => navigate(`/user/${u.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+              <button onClick={() => navigate(`/user/${u.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
                 <Avatar name={u.full_name || u.username} isChristian={u.is_christian} avatarUrl={u.avatar_url} />
                 <div style={{ minWidth: 0 }}>
                   <p style={nameText}>{u.full_name || u.username}</p>
-                  <p style={usernameText}>@{u.username}{u.city ? ` · ${u.city}` : ''}</p>
+                  {mutuals[u.id]?.count > 0 ? (
+                    <MutualAvatars people={mutuals[u.id].people} count={mutuals[u.id].count} size={16} />
+                  ) : (
+                    <p style={usernameText}>@{u.username}{u.city ? ` · ${u.city}` : ''}</p>
+                  )}
                 </div>
               </button>
               {getFriendshipStatus(u.id) === 'sent' ? (
@@ -539,6 +559,8 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
   const { showToast } = useToast()
   const [publicCommunities, setPublicCommunities] = useState([])
   const [loadingPublic, setLoadingPublic] = useState(false)
+  const [requestedIds, setRequestedIds] = useState(new Set())
+  const [joiningId, setJoiningId] = useState(null)
   const previews = useCommunityMembersPreview([...myCommunities.map(c => c.id), ...publicCommunities.map(c => c.id)])
 
   useEffect(() => {
@@ -550,23 +572,49 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
     const myIds = myCommunities.map(c => c.id)
     const { data } = await supabase
       .from('communities')
-      .select('id, name, description, is_public')
+      .select('id, name, description, is_public, join_mode, avatar_url')
       .eq('is_public', true)
       .limit(20)
     const filtered = (data || []).filter(c => !myIds.includes(c.id))
     setPublicCommunities(filtered)
     setLoadingPublic(false)
+
+    // Eigene offene Anfragen laden, damit "Angefragt" statt "Anfrage senden"
+    // angezeigt wird – auch nach einem Reload der Seite.
+    const requestIds = filtered.filter(c => c.join_mode === 'request').map(c => c.id)
+    if (requestIds.length > 0) {
+      const { data: myRequests } = await supabase
+        .from('community_join_requests')
+        .select('community_id')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .in('community_id', requestIds)
+      setRequestedIds(new Set((myRequests || []).map(r => r.community_id)))
+    }
   }
 
-  async function handleJoinPublic(communityId, communityName) {
-    const { error } = await supabase
-      .from('community_members')
-      .insert({ community_id: communityId, user_id: user.id, role: 'member' })
-    if (!error) {
-      showToast(`Willkommen in ${communityName}!`)
-      navigate(`/community/${communityId}`)
-    } else {
+  async function handleJoinPublic(community) {
+    setJoiningId(community.id)
+    try {
+      if (community.join_mode === 'request') {
+        const { error } = await supabase
+          .from('community_join_requests')
+          .insert({ community_id: community.id, user_id: user.id })
+        if (error) throw error
+        setRequestedIds(prev => new Set(prev).add(community.id))
+        showToast('Beitrittsanfrage gesendet ✓')
+        return
+      }
+      const { error } = await supabase
+        .from('community_members')
+        .insert({ community_id: community.id, user_id: user.id, role: 'member' })
+      if (error) throw error
+      showToast(`Willkommen in ${community.name}!`)
+      navigate(`/community/${community.id}`)
+    } catch {
       showToast('Fehler beim Beitreten', 'error')
+    } finally {
+      setJoiningId(null)
     }
   }
 
@@ -623,7 +671,9 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
                 community={c}
                 members={previews[c.id] || []}
                 variant="discover"
-                onJoin={(comm) => handleJoinPublic(comm.id, comm.name)}
+                onJoin={handleJoinPublic}
+                joining={joiningId === c.id}
+                requested={requestedIds.has(c.id)}
               />
             ))}
           </div>
@@ -1045,7 +1095,7 @@ function FeedAvatar({ profile, size = 36 }) {
 }
 
 // ─── Post Card ───────────────────────────────────────────────
-export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare }) {
+export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
@@ -1066,12 +1116,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   const displayBody = bodyLong && !expanded ? post.body.slice(0, 240) + '…' : post.body
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--color-white)',
-        borderBottom: '1px solid var(--color-warm-3)',
-      }}
-    >
+    <FeedCardFrame threadLineAfter={threadLineAfter}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${post.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
@@ -1125,8 +1170,8 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         </div>
       </div>
 
-      {/* Content */}
-      <div onClick={() => onClick(post)} style={{ padding: '0 16px 10px', cursor: 'pointer' }}>
+      {/* Content – links auf Höhe des Namens eingerückt (Avatar-Spalte bleibt für die Linie frei) */}
+      <div onClick={() => onClick(post)} style={{ padding: `0 16px 10px ${CONTENT_INSET}px`, cursor: 'pointer' }}>
         {post.title && (
           <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{post.title}</p>
         )}
@@ -1183,7 +1228,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
           onSaved={() => onBookmarkSaved?.(post.id)}
         />
       )}
-    </div>
+    </FeedCardFrame>
   )
 }
 
@@ -1706,24 +1751,49 @@ function FeedTab() {
       if (scroller.scrollTop <= 2 && e.deltaY < -6) setSearchRevealed(true)
       else if (e.deltaY > 6) setSearchRevealed(false)
     }
+    let touchStartX = 0
     let touchStartY = 0
-    function onTouchStart(e) { touchStartY = e.touches[0].clientY }
+    let swipeBlocked = false
+    function onTouchStart(e) {
+      touchStartX = e.touches[0].clientX
+      touchStartY = e.touches[0].clientY
+      // Geste über einem horizontal scrollbaren Bereich (Karussells, Chips)
+      // soll dort scrollen dürfen statt zu den Gebeten zu navigieren.
+      let node = e.target
+      swipeBlocked = false
+      while (node && node !== scroller && node !== document.body) {
+        if (node.scrollWidth > node.clientWidth + 2) {
+          const overflowX = window.getComputedStyle(node).overflowX
+          if (overflowX === 'auto' || overflowX === 'scroll') { swipeBlocked = true; break }
+        }
+        node = node.parentElement
+      }
+    }
     function onTouchMove(e) {
       const dy = e.touches[0].clientY - touchStartY
       if (scroller.scrollTop <= 2 && dy > 40) setSearchRevealed(true)
       else if (dy < -40) setSearchRevealed(false)
     }
+    function onTouchEnd(e) {
+      if (swipeBlocked) return
+      const t = e.changedTouches[0]
+      const dx = t.clientX - touchStartX
+      const dy = t.clientY - touchStartY
+      if (dx > 60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigate('/prayers')
+    }
     scroller.addEventListener('scroll', onScroll, { passive: true })
     scroller.addEventListener('wheel', onWheel, { passive: true })
     scroller.addEventListener('touchstart', onTouchStart, { passive: true })
     scroller.addEventListener('touchmove', onTouchMove, { passive: true })
+    scroller.addEventListener('touchend', onTouchEnd, { passive: true })
     return () => {
       scroller.removeEventListener('scroll', onScroll)
       scroller.removeEventListener('wheel', onWheel)
       scroller.removeEventListener('touchstart', onTouchStart)
       scroller.removeEventListener('touchmove', onTouchMove)
+      scroller.removeEventListener('touchend', onTouchEnd)
     }
-  }, [])
+  }, [navigate])
 
   // Direkt den Composer öffnen, wenn man vom Profil "+ Beitrag" kommt
   useEffect(() => {
@@ -1957,20 +2027,24 @@ function FeedTab() {
         </div>
       )}
 
-      {!loading && filteredPosts.map(post => (
-        <PostCard
-          key={post.id}
-          post={post}
-          currentUserId={user?.id}
-          onReact={reactToPost}
-          onDelete={handleDelete}
-          onClick={p => navigate(`/feed/post/${p.id}`)}
-          onRepost={toggleRepost}
-          onBookmark={removeBookmark}
-          onBookmarkSaved={markBookmarked}
-          onShare={setSharePost}
-        />
-      ))}
+      {!loading && filteredPosts.length > 0 && (
+        <div style={{ borderTop: '1px solid var(--color-warm-3)' }}>
+          {filteredPosts.map(post => (
+            <PostCard
+              key={post.id}
+              post={post}
+              currentUserId={user?.id}
+              onReact={reactToPost}
+              onDelete={handleDelete}
+              onClick={p => navigate(`/feed/post/${p.id}`)}
+              onRepost={toggleRepost}
+              onBookmark={removeBookmark}
+              onBookmarkSaved={markBookmarked}
+              onShare={setSharePost}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Infinite scroll sentinel */}
       {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}
@@ -2027,6 +2101,7 @@ function FeedTab() {
 
 // ─── FriendsView (Main) ──────────────────────────────────────
 export default function FriendsView() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const location = useLocation()
   // Eigene Route /chats → Chats als eigenständige Seite (nicht unter „For You").
@@ -2041,7 +2116,16 @@ export default function FriendsView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {activeTab !== 'feed' && (
-        <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10" style={{ paddingTop: 16, paddingBottom: 14 }}>
+        <div className="bg-bg border-b border-warm-3 px-4 sticky top-0 z-10 flex items-center gap-2" style={{ paddingTop: 16, paddingBottom: 14 }}>
+          {activeTab === 'friends' && (
+            <button
+              onClick={() => navigate(-1)}
+              aria-label="Zurück"
+              style={{ width: 32, height: 32, marginLeft: -6, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            >
+              <ArrowLeft size={22} />
+            </button>
+          )}
           <h2 className="text-[22px] font-bold text-dark m-0">
             {headerTitle}
           </h2>

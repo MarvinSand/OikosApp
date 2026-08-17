@@ -1,16 +1,31 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, HandHeart, Users, Globe, ChevronRight } from 'lucide-react'
+import {
+  MapPin, HandHeart, ListChecks, Target, Users, Globe,
+  Newspaper, MessageCircle, Moon, ChevronRight, ChevronDown, ChevronUp,
+} from 'lucide-react'
 
+// Alle Kernfunktionen der App – eine Karte, ein Überblick, direkt navigierbar.
 const FEATURES = [
-  { icon: MapPin,    title: 'OIKOS Map',    text: 'Begleite Menschen aus deinem Umfeld im Gebet.', target: '/profile' },
-  { icon: HandHeart, title: 'Gebete & Ziele', text: 'Teile Anliegen, bete mit und setzt euch Gebetsziele.', target: '/prayers' },
-  { icon: Users,     title: 'Community',     text: 'Finde Geschwister und betet gemeinsam.', target: '/?tab=community' },
-  { icon: Globe,     title: 'Weltkarte',     text: 'Sieh Events und wo deine Geschwister sind.', target: '/worldmap' },
+  { icon: MapPin,      title: 'Oikos Map',                   text: 'Begleite Menschen aus deinem Umfeld im Gebet – dein persönliches Beziehungsnetz.', target: '/profile' },
+  { icon: HandHeart,   title: 'Geführter Gebetsmodus',        text: 'Bete fokussiert durch Listen, Ziele & die Oikos Map.', target: '/prayers' },
+  { icon: ListChecks,  title: 'Gebetslisten',                 text: 'Anliegen merken und in eigenen Listen sammeln.', target: '/prayers' },
+  { icon: Target,      title: 'Gebetsziele & Gruppengebete',  text: 'Setzt euch gemeinsame Ziele und betet miteinander.', target: '/prayers' },
+  { icon: Users,       title: 'Community',                    text: 'Finde Geschwister, tritt Communities bei und betet gemeinsam.', target: '/?tab=community' },
+  { icon: Globe,       title: 'Weltkarte',                    text: 'Sieh Events und wo deine Geschwister weltweit unterwegs sind.', target: '/worldmap' },
+  { icon: Newspaper,   title: 'For-You-Feed',                 text: 'Anliegen teilen, kommentieren, reagieren & weiterleiten.', target: '/friends?tab=feed' },
+  { icon: MessageCircle, title: 'Chats & Benachrichtigungen', text: 'Direkt mit Geschwistern austauschen und nichts verpassen.', target: '/chats' },
+  { icon: Moon,        title: 'Dark Mode',                    text: 'Augenschonendes dunkles Design, umschaltbar in den Einstellungen.', target: '/settings' },
 ]
 
-// Dauerhaft eingeblendeter Willkommens-Banner auf der Home-Startseite.
+const INITIAL_COUNT = 4
+
+// Dauerhaft eingeblendete Willkommens- & Funktionsübersicht auf der Home-Startseite.
 export default function WelcomeBanner() {
   const navigate = useNavigate()
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? FEATURES : FEATURES.slice(0, INITIAL_COUNT)
+  const hiddenCount = FEATURES.length - INITIAL_COUNT
 
   return (
     <div
@@ -32,7 +47,7 @@ export default function WelcomeBanner() {
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {FEATURES.map(({ icon: Icon, title, text, target }) => (
+        {visible.map(({ icon: Icon, title, text, target }) => (
           <button
             key={title}
             onClick={() => navigate(target)}
@@ -66,6 +81,20 @@ export default function WelcomeBanner() {
           </button>
         ))}
       </div>
+
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setExpanded(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+            width: '100%', marginTop: 12, padding: '8px 0', borderRadius: 10,
+            border: 'none', background: 'none', cursor: 'pointer',
+            fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-accent)',
+          }}
+        >
+          {expanded ? <>Weniger anzeigen <ChevronUp size={15} /></> : <>Alle Funktionen anzeigen <ChevronDown size={15} /></>}
+        </button>
+      )}
     </div>
   )
 }

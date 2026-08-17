@@ -4,6 +4,7 @@ import { useAuth } from './useAuth'
 
 const DEFAULT_PREFS = {
   notify_prayer_requests: true,
+  notify_feed_posts: false,
   notify_oikos_entries: false,
   notify_prayers_for_oikos: false,
   notify_storyline_entries: false,
@@ -26,7 +27,7 @@ export function useNotificationPrefs(targetUserId) {
     setLoading(true)
     const { data } = await supabase
       .from('notification_preferences')
-      .select('notify_prayer_requests, notify_oikos_entries, notify_prayers_for_oikos, notify_storyline_entries')
+      .select('notify_prayer_requests, notify_feed_posts, notify_oikos_entries, notify_prayers_for_oikos, notify_storyline_entries')
       .eq('user_id', user.id)
       .eq('target_user_id', targetUserId)
       .maybeSingle()
@@ -34,6 +35,7 @@ export function useNotificationPrefs(targetUserId) {
     if (data) {
       setPrefs({
         notify_prayer_requests: data.notify_prayer_requests,
+        notify_feed_posts: data.notify_feed_posts ?? false,
         notify_oikos_entries: data.notify_oikos_entries,
         notify_prayers_for_oikos: data.notify_prayers_for_oikos,
         notify_storyline_entries: data.notify_storyline_entries ?? false,

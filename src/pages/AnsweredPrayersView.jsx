@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { useAnsweredPrayers } from '../hooks/useAnsweredPrayers'
+import PrayerCardList from '../components/prayer/PrayerCardList'
+import { normalizePrayer, KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
 
 function formatAnsweredDate(dateStr) {
   if (!dateStr) return ''
@@ -18,69 +20,8 @@ function Skeleton() {
   )
 }
 
-// ─── Answered Card ────────────────────────────────────────────
-function AnsweredCard({ req }) {
-  const dateLabel = formatAnsweredDate(req.answered_at)
-
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'stretch',
-      backgroundColor: 'var(--color-white)', borderRadius: 14,
-      marginBottom: 10, overflow: 'hidden',
-      boxShadow: '0 2px 8px rgba(58,46,36,0.07)',
-      border: '1px solid var(--color-warm-3)',
-    }}>
-      {/* Green left border */}
-      <div style={{ width: 4, flexShrink: 0, backgroundColor: '#27AE60' }} />
-
-      <div style={{ flex: 1, padding: '14px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-          <CheckCircle size={15} style={{ color: '#27AE60', flexShrink: 0, marginTop: 1 }} />
-          <p style={{
-            fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700,
-            color: 'var(--color-text)', margin: 0, lineHeight: 1.35,
-            flex: 1,
-          }}>
-            {req.title}
-          </p>
-        </div>
-
-        {dateLabel && (
-          <p style={{
-            fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)',
-            margin: '0 0 6px 23px',
-          }}>
-            Erhört am {dateLabel}
-          </p>
-        )}
-
-        {req.answered_note && (
-          <p style={{
-            fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)',
-            fontStyle: 'italic', lineHeight: 1.55,
-            margin: '0 0 0 23px',
-          }}>
-            „{req.answered_note}"
-          </p>
-        )}
-      </div>
-
-      {/* Green Erhört badge */}
-      <div style={{ padding: '14px 12px', display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
-        <span style={{
-          fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 700,
-          padding: '3px 8px', borderRadius: 20,
-          backgroundColor: '#DFF5E8', color: '#1E8449',
-        }}>
-          ✓ Erhört
-        </span>
-      </div>
-    </div>
-  )
-}
-
 // ─── Month Group ──────────────────────────────────────────────
-function MonthGroup({ monthLabel, requests }) {
+function MonthGroup({ monthLabel, requests, onChanged }) {
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', marginBottom: 10 }}>
@@ -100,7 +41,11 @@ function MonthGroup({ monthLabel, requests }) {
         </span>
       </div>
       <div style={{ padding: '0 16px' }}>
-        {requests.map(req => <AnsweredCard key={req.id} req={req} />)}
+        <PrayerCardList
+          prayers={requests.map(r => normalizePrayer(r, { kind: r._type === 'oikos' ? KIND_OIKOS : KIND_PERSONAL }))}
+          extraBadge={p => p.raw?.answered_at ? { label: `Erhört am ${formatAnsweredDate(p.raw.answered_at)}` } : null}
+          onChanged={onChanged}
+        />
       </div>
     </div>
   )
@@ -109,7 +54,7 @@ function MonthGroup({ monthLabel, requests }) {
 // ─── Main ─────────────────────────────────────────────────────
 export default function AnsweredPrayersView() {
   const navigate = useNavigate()
-  const { answeredRequests, byMonth, totalCount, loading } = useAnsweredPrayers()
+  const { byMonth, totalCount, loading, reload } = useAnsweredPrayers()
 
   const monthKeys = Object.keys(byMonth).sort((a, b) => b.localeCompare(a))
 
@@ -192,6 +137,7 @@ export default function AnsweredPrayersView() {
               key={key}
               monthLabel={byMonth[key].label}
               requests={byMonth[key].requests}
+              onChanged={reload}
             />
           ))}
         </div>

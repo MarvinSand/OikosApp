@@ -28,21 +28,24 @@ export async function fetchPrayerModeItems({ source, userId, listId = null, comm
     items = items.filter(i => categories.includes(i.request?.category))
   }
 
-  // Sortierung
-  if (sort === 'random') {
-    for (let i = items.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[items[i], items[j]] = [items[j], items[i]]
-    }
-  } else {
-    items.sort((a, b) => {
-      const da = new Date(a.request?.created_at || 0).getTime()
-      const db = new Date(b.request?.created_at || 0).getTime()
-      return sort === 'oldest' ? da - db : db - da
-    })
-  }
+  return sortItems(items, sort)
+}
 
-  return items
+// Gebetsmodus-Items sortieren ('random' | 'oldest' | 'newest').
+export function sortItems(items, sort = 'random') {
+  const list = [...(items || [])]
+  if (sort === 'random') {
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[list[i], list[j]] = [list[j], list[i]]
+    }
+    return list
+  }
+  return list.sort((a, b) => {
+    const da = new Date(a.request?.created_at || 0).getTime()
+    const db = new Date(b.request?.created_at || 0).getTime()
+    return sort === 'oldest' ? da - db : db - da
+  })
 }
 
 // Offene Anliegen der eigenen Oikos-Personen. Ohne mapId über alle Maps des
@@ -126,12 +129,14 @@ async function fetchListItems(listId) {
   const personalIds = listItems.filter(i => i.personal_prayer_request_id).map(i => i.personal_prayer_request_id)
   const oikosIds = listItems.filter(i => i.prayer_request_id).map(i => i.prayer_request_id)
 
+  // Kein profiles!owner_id-Embed auf prayer_requests: owner_id verweist auf
+  // auth.users, nicht auf profiles – der Join scheitert und liefert nichts.
   const [{ data: personalReqs }, { data: oikosReqs }] = await Promise.all([
     personalIds.length > 0
       ? supabase.from('personal_prayer_requests').select('*, profiles!owner_id(id, username, full_name, is_christian)').in('id', personalIds)
       : Promise.resolve({ data: [] }),
     oikosIds.length > 0
-      ? supabase.from('prayer_requests').select('*, profiles!owner_id(id, username, full_name, is_christian)').in('id', oikosIds)
+      ? supabase.from('prayer_requests').select('*').in('id', oikosIds)
       : Promise.resolve({ data: [] }),
   ])
 

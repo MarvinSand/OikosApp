@@ -1,4 +1,5 @@
 import { MessageSquare, Repeat2, Heart, Bookmark, Share } from 'lucide-react'
+import { CONTENT_INSET } from './FeedCardFrame'
 
 function fmtCount(n) {
   if (!n) return ''
@@ -22,6 +23,9 @@ export default function PostEngagementBar({
   bookmarkCount = 0,
   onBookmark,
   onShare,
+  // Linke Einrückung: in Listen fluchtet die Leiste mit dem Text neben dem
+  // Avatar, bei fokussierten Beiträgen läuft sie über die volle Breite.
+  inset = CONTENT_INSET,
 }) {
   const item = (active, activeColor) => ({
     display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none',
@@ -30,7 +34,7 @@ export default function PostEngagementBar({
   })
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px 12px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: `8px 16px 12px ${inset}px` }}>
       <button onClick={e => { e.stopPropagation(); onComment?.() }} style={{ ...item(false), flex: 1 }} aria-label="Kommentieren">
         <MessageSquare size={15} />
         {commentCount > 0 && <span>{fmtCount(commentCount)}</span>}

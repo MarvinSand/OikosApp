@@ -87,9 +87,12 @@ export function usePushNotifications() {
   }
 
   async function updatePreferences(newPrefs) {
-    setPreferences(prev => ({ ...prev, ...newPrefs }))
+    const merged = { ...preferences, ...newPrefs }
+    setPreferences(merged)
+    // Use the freshly merged object (not the `preferences` closure) so two
+    // quick successive calls don't clobber each other's changes.
     await supabase.from('profiles').update({
-      prayer_reminder_types: { ...preferences, ...newPrefs },
+      prayer_reminder_types: merged,
     }).eq('id', user.id)
   }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { subscribeShared } from '../lib/realtime'
 import { useAuth } from './useAuth'
 
 export function useConversations() {
@@ -13,60 +14,57 @@ export function useConversations() {
     if (!user) return
     setLoading(true)
     try {
-      // 1. Load user's conversation_members
-      const { data: memberRows } = await supabase
-        .from('conversation_members')
-        .select('conversation_id, last_read_at')
-        .eq('user_id', user.id)
+      // 1./2. Eigene conversation_members + community_members parallel laden –
+      // die beiden Abfragen hängen nicht voneinander ab.
+      const [{ data: memberRows }, { data: communityMemberRows }] = await Promise.all([
+        supabase
+          .from('conversation_members')
+          .select('conversation_id, last_read_at')
+          .eq('user_id', user.id),
+        supabase
+          .from('community_members')
+          .select('community_id, communities(id, name)')
+          .eq('user_id', user.id),
+      ])
 
       const convIds = (memberRows || []).map(r => r.conversation_id)
       const lastReadMap = Object.fromEntries((memberRows || []).map(r => [r.conversation_id, r.last_read_at]))
-
-      // 2. Load user's community_members
-      const { data: communityMemberRows } = await supabase
-        .from('community_members')
-        .select('community_id, communities(id, name)')
-        .eq('user_id', user.id)
 
       const communityIds = (communityMemberRows || []).map(r => r.community_id)
       const communityMap = Object.fromEntries(
         (communityMemberRows || []).map(r => [r.community_id, r.communities])
       )
 
-      // 3. Fetch direct conversations where user is a member
-      let directConvs = []
-      if (convIds.length > 0) {
-        const { data: directData } = await supabase
-          .from('conversations')
-          .select('id, type, community_id')
-          .in('id', convIds)
-          .eq('type', 'direct')
-        directConvs = directData || []
-      }
+      // 3./4./4b. Direkt-, Community- und Aktivitäts-Konversationen parallel.
+      const [directRes, communityRes, activityRes] = await Promise.all([
+        convIds.length > 0
+          ? supabase
+              .from('conversations')
+              .select('id, type, community_id')
+              .in('id', convIds)
+              .eq('type', 'direct')
+          : Promise.resolve({ data: [] }),
+        communityIds.length > 0
+          ? supabase
+              .from('conversations')
+              .select('id, type, community_id')
+              .in('community_id', communityIds)
+              .eq('type', 'community')
+          : Promise.resolve({ data: [] }),
+        convIds.length > 0
+          ? supabase
+              .from('conversations')
+              .select('id, type, activity_id, activity:world_map_activities!activity_id(id, title, activity_emoji, activity_type)')
+              .in('id', convIds)
+              .eq('type', 'activity')
+              // activity_id-Spalte existiert evtl. noch nicht – dann leer statt Fehler
+              .then(res => res, () => ({ data: [], error: true }))
+          : Promise.resolve({ data: [] }),
+      ])
 
-      // 4. Fetch community conversations
-      let communityConvs = []
-      if (communityIds.length > 0) {
-        const { data: commData } = await supabase
-          .from('conversations')
-          .select('id, type, community_id')
-          .in('community_id', communityIds)
-          .eq('type', 'community')
-        communityConvs = commData || []
-      }
-
-      // 4b. Fetch activity conversations (user is member)
-      let activityConvs = []
-      if (convIds.length > 0) {
-        try {
-          const { data: actData, error: actErr } = await supabase
-            .from('conversations')
-            .select('id, type, activity_id, activity:world_map_activities!activity_id(id, title, activity_emoji, activity_type)')
-            .in('id', convIds)
-            .eq('type', 'activity')
-          if (!actErr) activityConvs = actData || []
-        } catch { /* activity_id column may not exist yet */ }
-      }
+      const directConvs = directRes.data || []
+      const communityConvs = communityRes.data || []
+      const activityConvs = activityRes.error ? [] : (activityRes.data || [])
 
       // 5. Fetch last messages for all conversations
       const allConvIds = [
@@ -75,32 +73,46 @@ export function useConversations() {
         ...activityConvs.map(c => c.id),
       ]
 
-      let lastMessageMap = {}
-      if (allConvIds.length > 0) {
-        const { data: msgs } = await supabase
-          .from('messages')
-          .select('id, conversation_id, sender_id, type, text, is_deleted, created_at')
-          .in('conversation_id', allConvIds)
-          .order('created_at', { ascending: false })
-          .limit(200)
+      const communityConvIds = communityConvs.map(c => c.id)
 
-        for (const msg of (msgs || [])) {
-          if (!lastMessageMap[msg.conversation_id]) {
-            lastMessageMap[msg.conversation_id] = msg
-          }
+      // 5./6./8. Letzte Nachrichten, Gegenüber der Direkt-Chats und
+      // last_read_at der Community-Chats parallel laden.
+      const [msgRes, otherMembersRes, commMembersRes] = await Promise.all([
+        allConvIds.length > 0
+          ? supabase
+              .from('messages')
+              .select('id, conversation_id, sender_id, type, text, is_deleted, created_at')
+              .in('conversation_id', allConvIds)
+              .order('created_at', { ascending: false })
+              .limit(200)
+          : Promise.resolve({ data: [] }),
+        directConvs.length > 0
+          ? supabase
+              .from('conversation_members')
+              .select('conversation_id, user_id')
+              .in('conversation_id', directConvs.map(c => c.id))
+              .neq('user_id', user.id)
+          : Promise.resolve({ data: [] }),
+        communityConvIds.length > 0
+          ? supabase
+              .from('conversation_members')
+              .select('conversation_id, last_read_at')
+              .in('conversation_id', communityConvIds)
+              .eq('user_id', user.id)
+          : Promise.resolve({ data: [] }),
+      ])
+
+      const lastMessageMap = {}
+      for (const msg of (msgRes.data || [])) {
+        if (!lastMessageMap[msg.conversation_id]) {
+          lastMessageMap[msg.conversation_id] = msg
         }
       }
 
-      // 6. For direct chats: find the other user's profile
-      const otherMemberRows = []
-      if (directConvs.length > 0) {
-        const { data: allMembers } = await supabase
-          .from('conversation_members')
-          .select('conversation_id, user_id')
-          .in('conversation_id', directConvs.map(c => c.id))
-          .neq('user_id', user.id)
-        otherMemberRows.push(...(allMembers || []))
-      }
+      const otherMemberRows = otherMembersRes.data || []
+      const communityLastReadMap = Object.fromEntries(
+        (commMembersRes.data || []).map(r => [r.conversation_id, r.last_read_at])
+      )
 
       const otherUserIds = [...new Set(otherMemberRows.map(r => r.user_id))]
       let profileMap = {}
@@ -139,20 +151,7 @@ export function useConversations() {
           return tb.localeCompare(ta)
         })
 
-      // 8. For community chats: get last_read_at from conversation_members
-      const communityConvIds = communityConvs.map(c => c.id)
-      let communityLastReadMap = {}
-      if (communityConvIds.length > 0) {
-        const { data: commMembers } = await supabase
-          .from('conversation_members')
-          .select('conversation_id, last_read_at')
-          .in('conversation_id', communityConvIds)
-          .eq('user_id', user.id)
-        communityLastReadMap = Object.fromEntries(
-          (commMembers || []).map(r => [r.conversation_id, r.last_read_at])
-        )
-      }
-
+      // 8. Community-Chats bauen (last_read_at kam bereits oben parallel mit)
       const builtCommunityChats = communityConvs
         .map(conv => {
           const lastMessage = lastMessageMap[conv.id] || null
@@ -213,16 +212,24 @@ export function useConversations() {
   // Realtime: subscribe to new messages to trigger reload
   useEffect(() => {
     if (!user) return
-    const channel = supabase
-      .channel('conversations-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        () => { load() }
-      )
-      .subscribe()
+    // Ein geteilter Kanal für alle Instanzen (Home, FriendsView,
+    // ConversationView) statt einem Abo pro Mount. Reload zusätzlich
+    // gebündelt – bei einem Schwall Inserts lief sonst die komplette
+    // Query-Kette pro einzelnem Event.
+    let timer = null
+    const unsubscribe = subscribeShared(
+      'messages-insert',
+      [{ event: 'INSERT', schema: 'public', table: 'messages' }],
+      () => {
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(() => { timer = null; load() }, 400)
+      }
+    )
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      if (timer) clearTimeout(timer)
+      unsubscribe()
+    }
   }, [user?.id, load])
 
   async function startDirectChat(otherUserId) {

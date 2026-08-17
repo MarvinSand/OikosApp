@@ -14,6 +14,21 @@ export function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+// Ablaufzeit einer Aktivität berechnen. Wiederkehrende Events ohne Enddatum
+// laufen nie ab (bleiben dauerhaft in der "kommende Events"-Liste); mit
+// Enddatum der Serie läuft die Karten-Sichtbarkeit an diesem Tag aus.
+// Einmalige Events verschwinden wie bisher kurz nach ihrem Ende.
+function computeExpiresAt(data) {
+  if (data.recurrence_freq) {
+    return data.recurrence_end_date
+      ? new Date(`${data.recurrence_end_date}T23:59:59`).toISOString()
+      : null
+  }
+  if (data.ends_at) return new Date(new Date(data.ends_at).getTime() + 60 * 60 * 1000).toISOString()
+  if (data.starts_at) return new Date(new Date(data.starts_at).getTime() + 3 * 60 * 60 * 1000).toISOString()
+  return null
+}
+
 export function useWorldMap() {
   const { user } = useAuth()
   const [visibleUsers, setVisibleUsers] = useState([])
@@ -27,7 +42,7 @@ export function useWorldMap() {
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, city, country, church_name')
+        .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
         .eq('id', user.id)
         .single()
       setMyProfile(profile)
@@ -45,7 +60,7 @@ export function useWorldMap() {
       if (friendIds.length > 0) {
         const { data: users } = await supabase
           .from('profiles')
-          .select('id, full_name, username, avatar_url, latitude, longitude, is_christian, city, country, church_name')
+          .select('id, full_name, username, avatar_url, latitude, longitude, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
           .in('id', friendIds)
           .eq('show_on_world_map', true)
           .not('latitude', 'is', null)
@@ -90,12 +105,6 @@ export function useWorldMap() {
 
   async function createActivity(data) {
     const visibility = data.visibility_mode || 'public'
-    // Event verschwindet kurz nach Ende von der Karte (Ende, sonst Start +3h)
-    const expiresAt = data.ends_at
-      ? new Date(new Date(data.ends_at).getTime() + 60 * 60 * 1000).toISOString()
-      : (data.starts_at
-          ? new Date(new Date(data.starts_at).getTime() + 3 * 60 * 60 * 1000).toISOString()
-          : null)
     const { data: act, error } = await supabase
       .from('world_map_activities')
       .insert({
@@ -115,7 +124,13 @@ export function useWorldMap() {
           ? data.visibility_user_ids
           : [],
         is_public: visibility === 'public',
-        expires_at: data.expires_at || expiresAt,
+        recurrence_freq: data.recurrence_freq || null,
+        recurrence_interval: data.recurrence_freq ? (Number(data.recurrence_interval) || 1) : null,
+        recurrence_weekdays: data.recurrence_freq === 'weekly' && Array.isArray(data.recurrence_weekdays) && data.recurrence_weekdays.length > 0
+          ? data.recurrence_weekdays
+          : null,
+        recurrence_end_date: data.recurrence_freq ? (data.recurrence_end_date || null) : null,
+        expires_at: data.expires_at || computeExpiresAt(data),
       })
       .select(`
         *,
@@ -189,16 +204,14 @@ export function useWorldMap() {
     setActivities(prev => prev.filter(a => a.id !== activityId))
   }
 
-  // Eigenes Event bearbeiten (Titel, Beschreibung, Emoji, Zeiten)
+  // Eigenes Event bearbeiten (Titel, Beschreibung, Emoji, Zeiten, Wiederholung)
   async function updateActivity(activityId, updates) {
     const patch = { ...updates }
-    // Ablaufzeit neu berechnen, wenn sich die Zeiten ändern
-    if ('ends_at' in updates || 'starts_at' in updates) {
-      patch.expires_at = updates.ends_at
-        ? new Date(new Date(updates.ends_at).getTime() + 60 * 60 * 1000).toISOString()
-        : (updates.starts_at
-            ? new Date(new Date(updates.starts_at).getTime() + 3 * 60 * 60 * 1000).toISOString()
-            : null)
+    // Ablaufzeit neu berechnen, wenn sich Zeiten oder Wiederholung ändern
+    const RECOMPUTE_KEYS = ['ends_at', 'starts_at', 'recurrence_freq', 'recurrence_end_date']
+    if (RECOMPUTE_KEYS.some(k => k in updates)) {
+      const current = activities.find(a => a.id === activityId) || {}
+      patch.expires_at = computeExpiresAt({ ...current, ...updates })
     }
     const { data, error } = await supabase
       .from('world_map_activities')

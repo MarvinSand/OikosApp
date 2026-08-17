@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { X, Globe, UserCheck, Home as HomeIcon, ListChecks, MapPin, Shuffle, ArrowDownNarrowWide, ArrowUpNarrowWide } from 'lucide-react'
+import { X, Globe, UserCheck, Home as HomeIcon, ListChecks, MapPin, Eye, Shuffle, ArrowDownNarrowWide, ArrowUpNarrowWide } from 'lucide-react'
 import { usePrayerLists } from '../../hooks/usePrayerLists'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
-import { fetchPrayerModeItems } from '../../hooks/usePrayerModeSource'
+import { fetchPrayerModeItems, sortItems } from '../../hooks/usePrayerModeSource'
 
 const CATEGORIES = [
   { key: 'heilung',    label: 'Heilung',    emoji: '🌿' },
@@ -32,13 +32,19 @@ const SORTS = [
 
 // Konfiguration vor dem Start des Gebetsmodus.
 // onStart(items): übergibt die geladenen Anliegen zum Durchbeten.
-export default function PrayerModeSetupSheet({ onClose, onStart }) {
+// visibleItems: die im Feed gerade sichtbaren Gebete – damit man ohne Umweg
+//   aus der aktuellen Quellen-/Filterauswahl heraus beten kann.
+export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = null, visibleLabel = null }) {
   const { user } = useAuth()
   const { showToast } = useToast()
   const { lists } = usePrayerLists()
   const { myCommunities } = useCommunities()
 
-  const [source, setSource] = useState('all')
+  const hasVisible = Array.isArray(visibleItems) && visibleItems.length > 0
+  const sourceOptions = hasVisible
+    ? [{ key: 'visible', label: visibleLabel ? `Auswahl: ${visibleLabel}` : 'Sichtbare Gebete', icon: Eye }, ...SOURCES]
+    : SOURCES
+  const [source, setSource] = useState(hasVisible ? 'visible' : 'all')
   const [listId, setListId] = useState('')
   const [communityId, setCommunityId] = useState('')
   const [mapId, setMapId] = useState('')
@@ -67,7 +73,10 @@ export default function PrayerModeSetupSheet({ onClose, onStart }) {
     if (!canStart) return
     setLoading(true)
     try {
-      const items = await fetchPrayerModeItems({ source, userId: user.id, listId, communityId, mapId: mapId === '__all__' ? null : mapId, categories, sort })
+      // 'visible' kommt direkt aus dem Feed – kein erneutes Laden nötig.
+      const items = source === 'visible'
+        ? sortItems(visibleItems, sort).filter(i => categories.length === 0 || categories.includes(i.request?.category))
+        : await fetchPrayerModeItems({ source, userId: user.id, listId, communityId, mapId: mapId === '__all__' ? null : mapId, categories, sort })
       if (!items.length) {
         showToast('Keine passenden Gebete gefunden', 'error')
         setLoading(false)
@@ -101,7 +110,7 @@ export default function PrayerModeSetupSheet({ onClose, onStart }) {
         {/* Quelle */}
         <label style={lbl}>Woraus möchtest du beten?</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-          {SOURCES.map(s => {
+          {sourceOptions.map(s => {
             const Icon = s.icon
             const active = source === s.key
             return (

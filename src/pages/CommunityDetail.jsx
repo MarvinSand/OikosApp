@@ -14,8 +14,11 @@ import { useAuth } from '../hooks/useAuth'
 import { useCommunityDetail } from '../hooks/useCommunityDetail'
 import { useCommunities } from '../hooks/useCommunities'
 import { useChat } from '../hooks/useChat'
+import { useCommunityPrayers } from '../hooks/useCommunityPrayers'
+import PrayerCardList from '../components/prayer/PrayerCardList'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
+import { compressImage } from '../lib/image'
 
 // ─── Shared header styles ─────────────────────────────────────
 const glassBtn = {
@@ -23,6 +26,11 @@ const glassBtn = {
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   border: 'none', cursor: 'pointer',
   backgroundColor: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(6px)',
+}
+const plainHeaderBtn = {
+  width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  border: 'none', cursor: 'pointer', backgroundColor: 'transparent',
 }
 const metaChip = {
   display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -69,8 +77,11 @@ function sameDay(a, b) {
 }
 
 // ─── Avatar ───────────────────────────────────────────────────
-function Avatar({ name, size = 38, isChristian }) {
+function Avatar({ name, size = 38, isChristian, avatarUrl }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
@@ -98,6 +109,7 @@ function DaySeparator({ label }) {
 
 // ─── Message Bubble ───────────────────────────────────────────
 function MessageBubble({ msg, isOwn }) {
+  const navigate = useNavigate()
   if (msg.is_deleted) {
     return (
       <div style={{ display: 'flex', justifyContent: isOwn ? 'flex-end' : 'flex-start', marginBottom: 4 }}>
@@ -128,6 +140,21 @@ function MessageBubble({ msg, isOwn }) {
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)', margin: 0 }}>{msg.text}</p>
             {msg.bible_verse_text && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.4 }}>{msg.bible_verse_text}</p>
+            )}
+            {/* Zur vollen Gebets-Karte (Beten, Kommentare, Liste, Weiterleiten) */}
+            {(msg.personal_prayer_request_id || msg.prayer_request_id) && (
+              <button
+                onClick={() => navigate(`/prayer/${msg.personal_prayer_request_id || msg.prayer_request_id}`)}
+                style={{
+                  marginTop: 8, padding: '4px 11px', borderRadius: 8,
+                  border: `1.5px solid ${isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-border)'}`,
+                  background: 'transparent',
+                  color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text-secondary)',
+                  fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                }}
+              >
+                Öffnen
+              </button>
             )}
           </div>
         ) : msg.type === 'bible_verse' ? (
@@ -467,365 +494,6 @@ function CreateEventForm({ onClose, onSubmit }) {
   )
 }
 
-// ─── Community Prayer Detail Sheet ────────────────────────────
-function CommunityPrayerDetailSheet({ msg, onClose, onDelete, onUpdate }) {
-  const [editMode, setEditMode] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [title, setTitle] = useState(msg.text || '')
-  const [description, setDescription] = useState(msg.bible_verse_text || '')
-  const [saving, setSaving] = useState(false)
-  const { showToast } = useToast()
-
-  async function handleSaveEdit() {
-    if (!title.trim()) return
-    setSaving(true)
-    await onUpdate(msg.id, { text: title.trim(), bible_verse_text: description.trim() || null })
-    setSaving(false)
-    setEditMode(false)
-    showToast('Gebet aktualisiert ✓')
-  }
-
-  async function handleDelete() {
-    await onDelete(msg.id)
-    showToast('Gebet gelöscht')
-    onClose()
-  }
-
-  return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }} />
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 70, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.25s ease-out', maxHeight: '80vh', overflowY: 'auto' }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
-
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {!editMode ? (
-              <>
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>{msg.text}</p>
-                {msg.bible_verse_text && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.6 }}>{msg.bible_verse_text}</p>}
-              </>
-            ) : (
-              <>
-                <input value={title} onChange={e => setTitle(e.target.value)} autoFocus style={{ width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block', marginBottom: 8 }} />
-                <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={3} placeholder="Beschreibung (optional)" style={{ width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block', resize: 'none' }} />
-              </>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 4, marginLeft: 8, flexShrink: 0 }}>
-            {!editMode && (
-              <button onClick={() => setEditMode(true)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><Pencil size={16} /></button>
-            )}
-            <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><X size={18} /></button>
-          </div>
-        </div>
-
-        {!editMode && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 20 }}>
-            🙏 {timeAgo(msg.created_at)}
-          </p>
-        )}
-
-        {editMode ? (
-          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
-            <button onClick={handleSaveEdit} disabled={!title.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
-              {saving ? 'Speichere…' : 'Speichern'}
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {!confirmDelete ? (
-              <button onClick={() => setConfirmDelete(true)} style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: '1.5px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer' }}>
-                Löschen
-              </button>
-            ) : (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '13px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
-                <button onClick={handleDelete} style={{ flex: 1, padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Ja, löschen</button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </>
-  )
-}
-
-// ─── Lokale Helfer für Community-Gebete (localStorage) ───────────────────────
-function getCommPrayed() {
-  try { return JSON.parse(localStorage.getItem('comm_prayed') || '{}') } catch { return {} }
-}
-function saveCommPrayed(map) {
-  try { localStorage.setItem('comm_prayed', JSON.stringify(map)) } catch {}
-}
-function getCommNotes() {
-  try { return JSON.parse(localStorage.getItem('comm_notes') || '{}') } catch { return {} }
-}
-function saveCommNotes(map) {
-  try { localStorage.setItem('comm_notes', JSON.stringify(map)) } catch {}
-}
-
-// ─── Overlapping Avatars (Community) ─────────────────────────────────────────
-function CommOverlappingAvatars({ prayedByMe, myName, onClick }) {
-  if (!prayedByMe) return null
-  return (
-    <button
-      onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
-    >
-      <div style={{ border: '2px solid var(--color-white)', borderRadius: '50%' }}>
-        <Avatar name={myName || 'Du'} size={24} isChristian={false} />
-      </div>
-    </button>
-  )
-}
-
-// ─── Who Prayed Sheet (Community) ────────────────────────────────────────────
-function CommWhoPrayedSheet({ prayedByMe, myName, onClose }) {
-  return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }} />
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 70, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.25s ease-out', maxHeight: '70vh', overflowY: 'auto' }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            {prayedByMe ? '1 Person hat' : '0 Personen haben'} gebetet
-          </h3>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
-            <X size={18} />
-          </button>
-        </div>
-
-        {prayedByMe ? (
-          <div style={{ padding: '12px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Avatar name={myName || 'Du'} size={36} isChristian={false} />
-              <div>
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Du</p>
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>gerade eben</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
-            Noch keine Gebete.
-          </p>
-        )}
-      </div>
-    </>
-  )
-}
-
-// ─── Note Modal (Community) ───────────────────────────────────────────────────
-function CommNoteModal({ msgId, onSave, onClose }) {
-  const [text, setText] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  async function handleSave() {
-    if (!text.trim()) return
-    setSaving(true)
-    const notes = getCommNotes()
-    notes[msgId] = { text: text.trim(), created_at: new Date().toISOString() }
-    saveCommNotes(notes)
-    onSave(notes[msgId])
-    setSaving(false)
-    onClose()
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(58,46,36,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-      <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 400, boxShadow: '0 8px 32px rgba(58,46,36,0.15)' }}>
-        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>Was hat Gott dir gezeigt?</h3>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 16, lineHeight: 1.5 }}>
-          Du kannst teilen, was du beim Beten empfangen hast.
-        </p>
-        <div style={{ position: 'relative' }}>
-          <textarea autoFocus value={text} onChange={e => setText(e.target.value.slice(0, 500))} placeholder="Schreib deine Notiz..." rows={4} style={{ width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', resize: 'none', display: 'block' }} />
-          <span style={{ position: 'absolute', bottom: 8, right: 12, fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)' }}>{text.length}/500</span>
-        </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Überspringen</button>
-          <button onClick={handleSave} disabled={!text.trim() || saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}>
-            {saving ? 'Speichere…' : 'Notiz speichern'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Prayer Card (exakt wie Beten-Tab) ───────────────────────────────────────
-function PrayerCard({ msg, currentUserId, currentUserName, onSelect }) {
-  const [expanded, setExpanded] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
-  const [hasPrayed, setHasPrayed] = useState(() => !!getCommPrayed()[msg.id])
-  const [prayCount, setPrayCount] = useState(() => getCommPrayed()[msg.id] ? 1 : 0)
-  const [justPrayed, setJustPrayed] = useState(false)
-  const [showNoteModal, setShowNoteModal] = useState(false)
-  const [showWhoPrayed, setShowWhoPrayed] = useState(false)
-  const [myNote, setMyNote] = useState(() => getCommNotes()[msg.id] || null)
-  const timerRef = useRef(null)
-
-  const name = msg.profiles?.full_name || msg.profiles?.username || 'Unbekannt'
-  const username = msg.profiles?.username
-  const isOwn = msg.sender_id === currentUserId
-  const desc = msg.bible_verse_text || ''
-  const shortDesc = desc.length > 120 ? desc.slice(0, 120) + '…' : desc
-
-  function handlePray() {
-    if (hasPrayed || isOwn) return
-    const map = getCommPrayed()
-    map[msg.id] = true
-    saveCommPrayed(map)
-    setHasPrayed(true)
-    setPrayCount(c => c + 1)
-    setJustPrayed(true)
-    timerRef.current = setTimeout(() => setJustPrayed(false), 6000)
-  }
-
-  function handleNoteSaved(note) {
-    setMyNote(note)
-    setJustPrayed(false)
-  }
-
-  return (
-    <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 mb-4 shadow-glass-sm border border-white/60 hover:shadow-glass hover:bg-white/95 transition-all duration-300">
-      {/* Header */}
-      <div className="flex items-start gap-3 mb-4">
-        <div className="flex gap-3 items-center flex-1 min-w-0">
-          <Avatar name={name} size={42} isChristian={msg.profiles?.is_christian} />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-0.5">
-              <p className="font-serif text-[15px] font-bold text-dark m-0 leading-tight">
-                {isOwn ? 'Du' : name}
-              </p>
-              {msg.profiles?.gender === 'brother' && !isOwn && (
-                <span className="font-serif text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100/50">Bruder</span>
-              )}
-              {msg.profiles?.gender === 'sister' && !isOwn && (
-                <span className="font-serif text-[10px] px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 font-semibold border border-pink-100/50">Schwester</span>
-              )}
-            </div>
-            <p className="font-sans text-[11px] font-medium text-dark-muted/80 uppercase tracking-wide m-0">
-              {!isOwn && username && `@${username} · `}{timeAgo(msg.created_at)}
-            </p>
-          </div>
-        </div>
-
-        {/* Menü für eigene Gebete */}
-        {isOwn && (
-          <div className="relative">
-            <button onClick={() => setShowMenu(v => !v)} className="border-none bg-transparent cursor-pointer p-1.5 text-dark-muted hover:bg-black/5 rounded-full transition-colors">
-              <MoreVertical size={18} />
-            </button>
-            {showMenu && (
-              <>
-                <div onClick={() => setShowMenu(false)} className="fixed inset-0 z-10" />
-                <div className="absolute right-0 top-full mt-1 bg-white/95 backdrop-blur-md rounded-xl shadow-glass border border-warm-3 z-20 min-w-[180px] overflow-hidden">
-                  <button
-                    onClick={() => { setShowMenu(false); onSelect(msg) }}
-                    className="w-full px-4 py-3 text-left border-none bg-transparent hover:bg-black/5 font-serif text-[14px] text-dark cursor-pointer flex items-center gap-2"
-                  >
-                    <Pencil size={16} className="text-warm-1" /> Bearbeiten / Löschen
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Inhalt */}
-      <h3 className={`font-serif text-[17px] font-bold text-dark leading-tight ${desc ? 'mb-2' : 'mb-0'}`}>
-        {msg.text}
-      </h3>
-      {desc && (
-        <div className="mb-2">
-          <p className="font-serif text-[14.5px] text-dark-muted leading-relaxed m-0 whitespace-pre-wrap">
-            {expanded ? desc : shortDesc}
-          </p>
-          {desc.length > 120 && (
-            <button onClick={() => setExpanded(v => !v)} className="border-none bg-transparent cursor-pointer font-serif text-[13px] text-warm-1 font-semibold py-1 mt-1 hover:opacity-80 transition-opacity">
-              {expanded ? 'Weniger anzeigen' : 'Mehr anzeigen'}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Gebets-Zeile – exakt wie Beten-Tab */}
-      <div className="flex items-center justify-between mt-5 pt-4 border-t border-warm-3/60">
-        <button
-          onClick={() => prayCount > 0 && setShowWhoPrayed(true)}
-          className={`flex items-center gap-2.5 border-none bg-transparent p-0 ${prayCount > 0 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
-        >
-          {prayCount > 0 ? (
-            <>
-              <CommOverlappingAvatars prayedByMe={hasPrayed} myName={currentUserName} onClick={() => setShowWhoPrayed(true)} />
-              <span className="font-serif text-[13.5px] font-medium text-dark-muted pt-[1px]">
-                {prayCount} {prayCount === 1 ? 'Gebet' : 'Gebete'}
-              </span>
-            </>
-          ) : (
-            <span className="font-serif text-[13.5px] text-dark-light italic bg-warm-5/50 px-3 py-1 rounded-full border border-warm-3/30">
-              Noch keine Gebete
-            </span>
-          )}
-        </button>
-
-        {!isOwn && (
-          <button
-            onClick={handlePray}
-            disabled={hasPrayed}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 20,
-              border: hasPrayed ? 'none' : '1.5px solid var(--color-warm-1)',
-              backgroundColor: hasPrayed ? 'var(--color-gold-light)' : 'transparent',
-              color: hasPrayed ? 'var(--color-gold-text)' : 'var(--color-warm-1)',
-              fontFamily: 'Lora, serif', fontSize: 13, fontWeight: hasPrayed ? 700 : 500,
-              cursor: hasPrayed ? 'default' : 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            🙏 {hasPrayed ? 'Gebetet ✓' : 'Beten'}
-          </button>
-        )}
-      </div>
-
-      {/* Notiz-Prompt nach Beten */}
-      {justPrayed && !isOwn && (
-        <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 12, backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', margin: 0 }}>
-            Möchtest du eine Notiz hinterlassen?
-          </p>
-          <button onClick={() => { setJustPrayed(false); setShowNoteModal(true) }} style={{ border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', borderRadius: 8, padding: '6px 12px', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            Ja
-          </button>
-        </div>
-      )}
-
-      {/* Notiz-Vorschau */}
-      {myNote && (
-        <div style={{ marginTop: 10, borderTop: '1px solid var(--color-warm-3)', paddingTop: 10 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Avatar name={currentUserName || 'Du'} size={22} isChristian={false} />
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.5, margin: 0 }}>
-              <span style={{ fontWeight: 600, fontStyle: 'normal' }}>{currentUserName || 'Du'}</span>{' '}
-              „{myNote.text}"
-            </p>
-          </div>
-        </div>
-      )}
-
-      {showNoteModal && (
-        <CommNoteModal msgId={msg.id} onSave={handleNoteSaved} onClose={() => setShowNoteModal(false)} />
-      )}
-      {showWhoPrayed && (
-        <CommWhoPrayedSheet prayedByMe={hasPrayed} myName={currentUserName} onClose={() => setShowWhoPrayed(false)} />
-      )}
-    </div>
-  )
-}
 
 // ─── Add Prayer Sheet ─────────────────────────────────────────
 function AddPrayerSheet({ onClose, onSubmit }) {
@@ -869,7 +537,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
   return (
     <>
       <div onClick={onClose} className="fixed inset-0 bg-dark/20 backdrop-blur-[1px] z-50 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white rounded-t-[28px] z-50 p-6 pb-12 shadow-[0_-8px_30px_rgba(44,36,22,0.15)] animate-[sheetSlideUp_0.25s_ease-out]">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[28px] z-50 p-6 pb-12 shadow-[0_-8px_30px_rgba(44,36,22,0.15)] animate-[sheetSlideUp_0.25s_ease-out]">
         <div className="w-10 h-1.5 bg-warm-3 rounded-full mx-auto mb-6" />
         
         <div className="flex items-center gap-4 mb-5">
@@ -937,18 +605,119 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
   )
 }
 
-function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, onUpdate }) {
+function SettingsSheet({
+  community, isAdmin, isOwner, currentUserId, onClose, onLeave, onUpdate, onDelete,
+  joinRequests, onRespondJoinRequest,
+}) {
   const { showToast } = useToast()
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteTyped, setDeleteTyped] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const [name, setName] = useState(community.name || '')
   const [description, setDescription] = useState(community.description || '')
   const [isPublic, setIsPublic] = useState(community.is_public || false)
+  const [joinMode, setJoinMode] = useState(community.join_mode || 'open')
   const [saving, setSaving] = useState(false)
-  const isChanged = name !== community.name || description !== (community.description || '') || isPublic !== community.is_public
+  const [bannerBusy, setBannerBusy] = useState(false)
+  const [avatarBusy, setAvatarBusy] = useState(false)
+  const bannerInputRef = useRef(null)
+  const avatarInputRef = useRef(null)
+  const isChanged =
+    name !== community.name || description !== (community.description || '') ||
+    isPublic !== community.is_public || joinMode !== (community.join_mode || 'open')
+
+  // Avatar-Upload: <community_id>/avatar.jpg im Bucket community-avatars.
+  // Nur Admins dürfen schreiben (RLS, siehe phase58_community_admin.sql).
+  async function handleAvatarPick(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setAvatarBusy(true)
+    try {
+      const compressed = await compressImage(file, 600, 0.85)
+      const path = `${community.id}/avatar.jpg`
+      const { error: upErr } = await supabase.storage
+        .from('community-avatars')
+        .upload(path, compressed, { contentType: 'image/jpeg', upsert: true })
+      if (upErr) throw upErr
+      const { data } = supabase.storage.from('community-avatars').getPublicUrl(path)
+      await onUpdate({ avatar_url: `${data.publicUrl}?t=${Date.now()}` })
+      showToast('Profilbild aktualisiert ✓')
+    } catch (err) {
+      console.error('[CommunityDetail] Avatar-Upload fehlgeschlagen:', err)
+      showToast('Fehler beim Hochladen', 'error')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarBusy(true)
+    try {
+      await supabase.storage.from('community-avatars').remove([`${community.id}/avatar.jpg`])
+      await onUpdate({ avatar_url: null })
+      showToast('Profilbild entfernt')
+    } catch {
+      showToast('Fehler beim Entfernen', 'error')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  async function handleDeleteCommunity() {
+    setDeleting(true)
+    try {
+      await onDelete()
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  // Banner-Upload: <community_id>/banner.jpg im Bucket community-banners.
+  // Nur Admins dürfen schreiben (RLS, siehe phase57_community_prayers.sql).
+  async function handleBannerPick(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBannerBusy(true)
+    try {
+      const compressed = await compressImage(file, 1600, 0.85)
+      const path = `${community.id}/banner.jpg`
+      const { error: upErr } = await supabase.storage
+        .from('community-banners')
+        .upload(path, compressed, { contentType: 'image/jpeg', upsert: true })
+      if (upErr) throw upErr
+      const { data } = supabase.storage.from('community-banners').getPublicUrl(path)
+      // Cache-Buster, damit das neue Bild sofort erscheint
+      await onUpdate({ banner_url: `${data.publicUrl}?t=${Date.now()}` })
+      showToast('Banner aktualisiert ✓')
+    } catch (err) {
+      console.error('[CommunityDetail] Banner-Upload fehlgeschlagen:', err)
+      showToast('Fehler beim Hochladen', 'error')
+    } finally {
+      setBannerBusy(false)
+    }
+  }
+
+  async function handleBannerRemove() {
+    setBannerBusy(true)
+    try {
+      await supabase.storage.from('community-banners').remove([`${community.id}/banner.jpg`])
+      await onUpdate({ banner_url: null })
+      showToast('Banner entfernt')
+    } catch {
+      showToast('Fehler beim Entfernen', 'error')
+    } finally {
+      setBannerBusy(false)
+    }
+  }
 
   async function handleSave() {
     setSaving(true)
-    await onUpdate({ name, description, is_public: isPublic })
+    // Beitritt-nur-mit-Anfrage ergibt nur bei öffentlichen Communities Sinn –
+    // wird die Community privat gemacht, fällt der Modus automatisch zurück.
+    await onUpdate({ name, description, is_public: isPublic, join_mode: isPublic ? joinMode : 'open' })
     setSaving(false)
     showToast('Community gespeichert ✓')
     onClose()
@@ -968,7 +737,7 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
   return (
     <>
       <div onClick={onClose} className="fixed inset-0 bg-dark/40 backdrop-blur-[2px] z-50 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-xl rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface/95 backdrop-blur-xl rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
         <div className="w-9 h-1 bg-warm-3 rounded-full mx-auto mb-5" />
         
         <div className="flex items-center justify-between mb-6">
@@ -987,6 +756,70 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] resize-none focus:outline-none focus:border-warm-1" />
             </div>
 
+            {/* Profilbild */}
+            <div>
+              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Profilbild</label>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-16 h-16 rounded-2xl border border-warm-3 bg-warm-4 overflow-hidden flex-shrink-0 flex items-center justify-center"
+                  style={community.avatar_url ? { backgroundImage: `url(${community.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                >
+                  {!community.avatar_url && <span className="text-[10px] text-dark-light italic px-1 text-center">Kein Bild</span>}
+                </div>
+                <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarPick} className="hidden" />
+                <div className="flex gap-2 flex-1">
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={avatarBusy}
+                    className="flex-1 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark disabled:opacity-50"
+                  >
+                    {avatarBusy ? 'Lädt…' : community.avatar_url ? 'Ändern' : 'Hochladen'}
+                  </button>
+                  {community.avatar_url && (
+                    <button
+                      onClick={handleAvatarRemove}
+                      disabled={avatarBusy}
+                      className="px-4 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark-muted disabled:opacity-50"
+                    >
+                      Entfernen
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Banner */}
+            <div>
+              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Banner</label>
+              <div
+                className="w-full h-[104px] rounded-xl border border-warm-3 bg-warm-4 overflow-hidden flex items-center justify-center"
+                style={community.banner_url ? { backgroundImage: `url(${community.banner_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+              >
+                {!community.banner_url && (
+                  <p className="font-serif text-[13px] text-dark-light italic m-0">Kein Banner – der Kopf bleibt schlicht.</p>
+                )}
+              </div>
+              <input ref={bannerInputRef} type="file" accept="image/*" onChange={handleBannerPick} className="hidden" />
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => bannerInputRef.current?.click()}
+                  disabled={bannerBusy}
+                  className="flex-1 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark disabled:opacity-50"
+                >
+                  {bannerBusy ? 'Lädt…' : community.banner_url ? 'Banner ändern' : 'Banner hochladen'}
+                </button>
+                {community.banner_url && (
+                  <button
+                    onClick={handleBannerRemove}
+                    disabled={bannerBusy}
+                    className="px-4 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark-muted disabled:opacity-50"
+                  >
+                    Entfernen
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="flex items-center justify-between bg-warm-4 border border-warm-3 rounded-xl p-4">
               <div>
                 <p className="font-serif text-[14px] font-bold text-dark m-0">Öffentliche Community</p>
@@ -997,8 +830,57 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
               </button>
             </div>
 
+            {isPublic && (
+              <div className="flex items-center justify-between bg-warm-4 border border-warm-3 rounded-xl p-4">
+                <div>
+                  <p className="font-serif text-[14px] font-bold text-dark m-0">Beitritt nur mit Anfrage</p>
+                  <p className="font-serif text-[12px] text-dark-muted m-0 leading-tight mt-0.5">
+                    Community wird bei „Entdecken" angezeigt, ein Beitritt braucht aber deine Freigabe.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setJoinMode(m => m === 'request' ? 'open' : 'request')}
+                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${joinMode === 'request' ? 'bg-warm-1' : 'bg-warm-3'}`}
+                >
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${joinMode === 'request' ? 'left-[22px]' : 'left-0.5'}`} />
+                </button>
+              </div>
+            )}
+
+            {/* Offene Beitrittsanfragen */}
+            {joinRequests.length > 0 && (
+              <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4">
+                <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3">
+                  Beitrittsanfragen ({joinRequests.length})
+                </p>
+                <div className="flex flex-col gap-3">
+                  {joinRequests.map(r => {
+                    const reqName = r.profile?.full_name || r.profile?.username || 'Unbekannt'
+                    return (
+                      <div key={r.id} className="flex items-center gap-3">
+                        <Avatar name={reqName} size={36} isChristian={r.profile?.is_christian} avatarUrl={r.profile?.avatar_url} />
+                        <p className="flex-1 min-w-0 font-serif text-[14px] font-semibold text-dark m-0 truncate">{reqName}</p>
+                        <button
+                          onClick={() => onRespondJoinRequest(r.id, false)}
+                          className="px-3 py-2 rounded-lg border border-warm-3 text-dark-muted font-serif text-[13px] font-semibold"
+                        >
+                          Ablehnen
+                        </button>
+                        <button
+                          onClick={() => onRespondJoinRequest(r.id, true)}
+                          className="px-3 py-2 rounded-lg bg-warm-1 text-white font-serif text-[13px] font-semibold"
+                        >
+                          Annehmen
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {!isPublic && community.invite_code && (
-              <div className="bg-white border-1.5 border-warm-3 rounded-xl p-4 mt-2">
+              <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4 mt-2">
                 <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
                   <Shield size={12} /> Einladungscode
                 </p>
@@ -1035,12 +917,55 @@ function SettingsSheet({ community, isAdmin, currentUserId, onClose, onLeave, on
             <div className="bg-red-50 rounded-xl p-5 border border-red-200">
               <p className="font-serif text-[15px] text-red-900 text-center mb-4">Wirklich <strong>{community.name}</strong> verlassen?</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 py-3 rounded-xl bg-white border border-red-200 text-dark-muted font-bold font-serif">Abbrechen</button>
+                <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 py-3 rounded-xl bg-surface border border-red-200 text-dark-muted font-bold font-serif">Abbrechen</button>
                 <button onClick={onLeave} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold font-serif shadow-sm">Verlassen</button>
               </div>
             </div>
           )}
         </div>
+
+        {/* Nur der Ersteller darf die Community löschen. */}
+        {isOwner && (
+          <div className="mt-4 pt-4 border-t border-warm-3">
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-1.5 border-red-300 bg-red-50 text-red-700 font-serif text-[15px] font-bold hover:bg-red-100 transition-colors"
+              >
+                <Trash2 size={18} /> Community löschen
+              </button>
+            ) : (
+              <div className="bg-red-50 rounded-xl p-5 border border-red-300">
+                <p className="font-serif text-[15px] text-red-900 mb-2">
+                  Löscht <strong>{community.name}</strong> endgültig – Chat, Beiträge, Events und Gebete aller Mitglieder gehen unwiderruflich verloren.
+                </p>
+                <p className="font-serif text-[13px] text-red-800 mb-3">
+                  Gib zum Bestätigen den Namen <strong>{community.name}</strong> ein:
+                </p>
+                <input
+                  type="text" value={deleteTyped} onChange={e => setDeleteTyped(e.target.value)}
+                  placeholder={community.name}
+                  className="w-full bg-surface border-1.5 border-red-300 rounded-xl px-4 py-2.5 font-serif text-[15px] mb-3 focus:outline-none"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setShowDeleteConfirm(false); setDeleteTyped('') }}
+                    className="flex-1 py-3 rounded-xl bg-surface border border-red-300 text-dark-muted font-bold font-serif"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={handleDeleteCommunity}
+                    disabled={deleteTyped !== community.name || deleting}
+                    className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold font-serif shadow-sm disabled:opacity-40"
+                  >
+                    {deleting ? 'Löscht…' : 'Endgültig löschen'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   )
@@ -1057,23 +982,23 @@ export default function CommunityDetail() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { showToast } = useToast()
-  const { leaveCommunity } = useCommunities()
+  const { leaveCommunity, deleteCommunity } = useCommunities()
 
   const {
-    community, members, myMembership, isAdmin, adminCount,
+    community, members, myMembership, isAdmin, isOwner, adminCount,
     loading, conversationId, changeRole, removeMember,
     posts, createPost, deletePost, togglePinPost,
     events, myRsvps, createEvent, deleteEvent, rsvpEvent,
-    updateCommunity,
+    updateCommunity, joinRequests, respondToJoinRequest,
   } = useCommunityDetail(id)
   const { messages, loading: chatLoading, sendMessage, deleteMessage, updateMessage } = useChat(conversationId)
+  const { prayers, loading: prayersLoading, createPrayer, reload: reloadPrayers } = useCommunityPrayers(id, conversationId)
 
   const [activeTab, setActiveTab] = useState('chat')
   const [showSettings, setShowSettings] = useState(false)
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [showCreatePost, setShowCreatePost] = useState(false)
   const [showAddPrayer, setShowAddPrayer] = useState(false)
-  const [selectedPrayer, setSelectedPrayer] = useState(null)
   const [showPastEvents, setShowPastEvents] = useState(false)
   const [selectedMember, setSelectedMember] = useState(null)
   const [showMembers, setShowMembers] = useState(false)
@@ -1082,7 +1007,6 @@ export default function CommunityDetail() {
   const messagesContainerRef = useRef(null)
   const isAtBottomRef = useRef(true)
 
-  const prayerMessages = messages.filter(m => m.type === 'prayer_request' && !m.is_deleted)
   const upcomingEvents = events.filter(e => new Date(e.starts_at) >= new Date())
   const pastEvents = events.filter(e => new Date(e.starts_at) < new Date())
 
@@ -1135,6 +1059,32 @@ export default function CommunityDetail() {
     }
   }
 
+  // Nur der Ersteller sieht diese Aktion (SettingsSheet blendet sie sonst aus).
+  async function handleDeleteCommunity() {
+    try {
+      // Storage-Objekte vorab entfernen (best effort – die Community-Zeile
+      // fällt gleich per DELETE weg, verwaiste Dateien blieben sonst liegen).
+      await Promise.allSettled([
+        supabase.storage.from('community-banners').remove([`${id}/banner.jpg`]),
+        supabase.storage.from('community-avatars').remove([`${id}/avatar.jpg`]),
+      ])
+      await deleteCommunity(id)
+      showToast('Community gelöscht')
+      navigate('/friends', { replace: true })
+    } catch {
+      showToast('Fehler beim Löschen', 'error')
+    }
+  }
+
+  async function handleRespondJoinRequest(requestId, approve) {
+    try {
+      await respondToJoinRequest(requestId, approve)
+      showToast(approve ? 'Beigetreten ✓' : 'Anfrage abgelehnt')
+    } catch {
+      showToast('Fehler beim Bearbeiten', 'error')
+    }
+  }
+
   async function handleDeletePost(postId) {
     await deletePost(postId)
     showToast('Beitrag gelöscht')
@@ -1147,15 +1097,13 @@ export default function CommunityDetail() {
   }
 
   async function handleAddPrayer(title, description) {
-    if (!conversationId) return
-    await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_id: user.id,
-      type: 'prayer_request',
-      text: title,
-      bible_verse_text: description || null,
-    })
-    showToast('Gebetsanliegen geteilt 🙏')
+    try {
+      await createPrayer(title, description)
+      showToast('Gebetsanliegen geteilt 🙏')
+    } catch (err) {
+      console.error('[CommunityDetail] Gebet anlegen fehlgeschlagen:', err)
+      showToast('Fehler beim Teilen', 'error')
+    }
   }
 
   const tabs = [
@@ -1196,36 +1144,62 @@ export default function CommunityDetail() {
   const cover = communityCover(community.id || community.name)
   const memberPreview = members.map(m => ({ avatar_url: m.profile?.avatar_url || null, full_name: m.profile?.full_name || m.profile?.username })).slice(0, 6)
   const isAdminRole = myMembership?.role === 'admin'
+  const hasBanner = !!community.banner_url
 
   return (
     <div className="flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full" style={{ height: '100dvh', paddingBottom: 'var(--bottom-nav-h, 64px)' }}>
 
-      {/* ── Header mit Cover-Banner ──────────────────────────── */}
+      {/* ── Header ───────────────────────────────────────────── */}
+      {/* Ohne eigenes Bannerbild bleibt der Kopf ruhig und theme-abhängig –
+          kein bunter Verlaufsbalken. Admins können in den Einstellungen ein
+          Banner hochladen; dann trägt es den Kopf. */}
       <div style={{ flexShrink: 0, backgroundColor: 'var(--color-bg)' }}>
-        {/* Cover */}
-        <div style={{ position: 'relative', height: 116, background: cover.gradient, paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.16), transparent 45%, rgba(0,0,0,0.22))', pointerEvents: 'none' }} />
-          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 12px' }}>
-            <button onClick={() => navigate(-1)} aria-label="Zurück" style={glassBtn}>
-              <ArrowLeft size={20} color="#fff" />
+        <div style={{
+          position: 'relative',
+          height: hasBanner ? 132 : 56,
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          backgroundColor: hasBanner ? 'transparent' : 'var(--color-header-wash)',
+          backgroundImage: hasBanner ? `url(${community.banner_url})` : 'none',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          borderBottom: hasBanner ? 'none' : '1px solid var(--color-border)',
+        }}>
+          {hasBanner && (
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.30), transparent 55%, rgba(0,0,0,0.22))', pointerEvents: 'none' }} />
+          )}
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: hasBanner ? '12px 12px' : '9px 10px' }}>
+            <button onClick={() => navigate(-1)} aria-label="Zurück" style={hasBanner ? glassBtn : plainHeaderBtn}>
+              <ArrowLeft size={20} color={hasBanner ? '#fff' : 'var(--color-text)'} />
             </button>
-            <button onClick={() => setShowSettings(true)} aria-label="Einstellungen" style={glassBtn}>
-              <Settings size={19} color="#fff" />
+            <button onClick={() => setShowSettings(true)} aria-label="Einstellungen" style={{ ...(hasBanner ? glassBtn : plainHeaderBtn), position: 'relative' }}>
+              <Settings size={19} color={hasBanner ? '#fff' : 'var(--color-text)'} />
+              {isAdmin && joinRequests.length > 0 && (
+                <span style={{
+                  position: 'absolute', top: 2, right: 2, minWidth: 15, height: 15, padding: '0 3px',
+                  borderRadius: 999, backgroundColor: 'var(--color-accent)', color: '#fff',
+                  fontSize: 9.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1.5px solid var(--color-bg)',
+                }}>
+                  {joinRequests.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
 
         {/* Info */}
         <div style={{ padding: '0 16px 4px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginTop: -32 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginTop: hasBanner ? -32 : 12 }}>
             <div style={{
               width: 72, height: 72, borderRadius: 20, flexShrink: 0,
-              background: cover.gradient, border: '4px solid var(--color-bg)',
+              background: community.avatar_url ? `url(${community.avatar_url})` : cover.gradient,
+              backgroundSize: 'cover', backgroundPosition: 'center',
+              border: '4px solid var(--color-bg)',
               boxShadow: '0 8px 20px rgba(0,0,0,0.22)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#fff', fontFamily: 'Lora, serif', fontSize: 27, fontWeight: 800,
             }}>
-              {initials}
+              {!community.avatar_url && initials}
             </div>
           </div>
 
@@ -1385,22 +1359,24 @@ export default function CommunityDetail() {
                 </h4>
                 <button
                   onClick={() => setShowAddPrayer(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-accent)', color: '#fff', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                 >
                   <Plus size={12} /> Gebet hinzufügen
                 </button>
               </div>
 
-              {prayerMessages.length === 0 ? (
+              {prayersLoading ? (
+                <div style={{ height: 120, borderRadius: 16, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              ) : prayers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 16px' }}>
                   <p style={{ fontSize: 36, margin: '0 0 10px' }}>🙏</p>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>Noch keine Gebetsanliegen</p>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: 0 }}>
                     Teile ein Anliegen mit der Community.
                   </p>
                 </div>
               ) : (
-                prayerMessages.map(m => <PrayerCard key={m.id} msg={m} currentUserId={user?.id} currentUserName={myMembership?.profile?.full_name || myMembership?.profile?.username || 'Du'} onSelect={setSelectedPrayer} />)
+                <PrayerCardList prayers={prayers} onChanged={reloadPrayers} showContext={false} />
               )}
             </div>
           )}
@@ -1418,9 +1394,11 @@ export default function CommunityDetail() {
       )}
 
       {showSettings && (
-        <SettingsSheet 
-          community={community} isAdmin={isAdmin} currentUserId={user?.id} 
-          onClose={() => setShowSettings(false)} onLeave={handleLeave} onUpdate={updateCommunity} 
+        <SettingsSheet
+          community={community} isAdmin={isAdmin} isOwner={isOwner} currentUserId={user?.id}
+          onClose={() => setShowSettings(false)} onLeave={handleLeave} onUpdate={updateCommunity}
+          onDelete={handleDeleteCommunity}
+          joinRequests={joinRequests} onRespondJoinRequest={handleRespondJoinRequest}
         />
       )}
       {selectedMember && (
@@ -1442,14 +1420,6 @@ export default function CommunityDetail() {
       )}
       {showAddPrayer && (
         <AddPrayerSheet onClose={() => setShowAddPrayer(false)} onSubmit={handleAddPrayer} />
-      )}
-      {selectedPrayer && (
-        <CommunityPrayerDetailSheet
-          msg={selectedPrayer}
-          onClose={() => setSelectedPrayer(null)}
-          onDelete={deleteMessage}
-          onUpdate={updateMessage}
-        />
       )}
 
       <style>{`

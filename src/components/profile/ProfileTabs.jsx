@@ -4,10 +4,9 @@ import {
   Settings, Lock, Globe, Users as UsersIcon, Home as HomeIcon, Loader2,
 } from 'lucide-react'
 import { PostCard } from '../../pages/FriendsView'
-import { PrayerCard } from '../../pages/Prayers'
+import PrayerCardList from '../prayer/PrayerCardList'
+import { normalizePrayer, KIND_OIKOS, KIND_PERSONAL } from '../../lib/prayerModel'
 import ShareSheet from '../feed/ShareSheet'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../hooks/useAuth'
 
 // ─── Helpers ──────────────────────────────────────────────────
 export function getInitials(name) {
@@ -291,8 +290,6 @@ export function RepostsTab({ reposts, currentUserId, onReact, onDelete, onRepost
 
 // ─── Prayers tab ──────────────────────────────────────────────
 export function PrayersTab({ prayers, profile, onChanged, onCreatePrayer }) {
-  const { user } = useAuth()
-
   if (prayers.length === 0) {
     return onCreatePrayer ? (
       <TabEmptyState
@@ -309,38 +306,16 @@ export function PrayersTab({ prayers, profile, onChanged, onCreatePrayer }) {
     )
   }
 
-  async function handlePray(requestId, source) {
-    if (source === 'person') {
-      await supabase.from('prayer_logs').insert({ prayer_request_id: requestId, user_id: user.id })
-    } else {
-      await supabase.from('personal_prayer_logs').insert({ request_id: requestId, user_id: user.id })
-    }
-  }
-
-  async function handleComment(requestId, text, isPublic) {
-    await supabase.from('prayer_notes').insert({ request_id: requestId, author_id: user.id, text, is_public: isPublic })
-  }
-
-  async function handleDelete(req) {
-    if (!window.confirm('Dieses Gebet wirklich löschen?')) return
-    const table = req.source === 'person' ? 'prayer_requests' : 'personal_prayer_requests'
-    await supabase.from(table).delete().eq('id', req.id)
-    onChanged?.()
-  }
+  // useProfileTabs liefert `source: 'personal' | 'person'` – daraus die
+  // gemeinsame Gebets-Form bauen.
+  const normalized = prayers.map(p => normalizePrayer(
+    { ...p, owner_id: profile?.id, profiles: profile },
+    { kind: p.source === 'person' ? KIND_OIKOS : KIND_PERSONAL },
+  ))
 
   return (
     <div className="flex flex-col px-3 py-3">
-      {prayers.map(p => (
-        <PrayerCard
-          key={p.id}
-          request={{ ...p, owner_id: profile?.id, profiles: profile }}
-          logs={[]}
-          notes={[]}
-          onPray={(id) => handlePray(id, p.source)}
-          onComment={handleComment}
-          onDelete={handleDelete}
-        />
-      ))}
+      <PrayerCardList prayers={normalized} onChanged={onChanged} />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -134,7 +134,9 @@ function Avatar({ name, size = 36, isChristian, avatarUrl }) {
 
 // ─── Prayer Request Card ──────────────────────────────────────
 function PrayerCard({ msg, isOwn, user, showToast }) {
+  const navigate = useNavigate()
   const [logging, setLogging] = useState(false)
+  const linkedId = msg.personal_prayer_request_id || msg.prayer_request_id
 
   async function handlePray() {
     setLogging(true)
@@ -208,6 +210,22 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
       >
         {logging ? '…' : 'Beten 🙏'}
       </button>
+      {/* Zur vollen Gebets-Karte – dort gibt es Kommentare, Gebetsliste und
+          Weiterleiten, genau wie überall sonst. */}
+      {linkedId && (
+        <button
+          onClick={() => navigate(`/prayer/${linkedId}`)}
+          style={{
+            marginLeft: 8, padding: '5px 12px', borderRadius: 8,
+            border: `1.5px solid ${isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-border)'}`,
+            backgroundColor: 'transparent',
+            color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text-secondary)',
+            fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}
+        >
+          Öffnen
+        </button>
+      )}
     </div>
   )
 }
@@ -390,17 +408,20 @@ function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJump
       onTouchCancel={msg.is_deleted ? undefined : longPress.onTouchCancel}
       onClick={handleClick}
     >
-      {/* Sender name for community chats (non-own) */}
+      {/* Sender name + avatar for community/activity chats (non-own) */}
       {isCommunity && !isOwn && (
-        <p style={{
-          fontFamily: 'Lora, serif',
-          fontSize: 11,
-          color: 'var(--color-text-muted)',
-          margin: '0 0 2px 4px',
-          fontStyle: 'italic',
-        }}>
-          {senderName}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, margin: '0 0 2px 4px' }}>
+          <Avatar name={senderName} size={16} isChristian={msg.profiles?.is_christian} avatarUrl={msg.profiles?.avatar_url} />
+          <p style={{
+            fontFamily: 'Lora, serif',
+            fontSize: 11,
+            color: 'var(--color-text-muted)',
+            margin: 0,
+            fontStyle: 'italic',
+          }}>
+            {senderName}
+          </p>
+        </div>
       )}
 
       <div
@@ -1163,8 +1184,8 @@ function EmojiPicker({ onSelect }) {
 }
 
 // ─── Input Bar ────────────────────────────────────────────────
-function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyTo, onCancelReply }) {
-  const [text, setText] = useState('')
+function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyTo, onCancelReply, initialText = '' }) {
+  const [text, setText] = useState(initialText)
   const [showAttach, setShowAttach] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const textareaRef = useRef(null)
@@ -1232,7 +1253,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
   }
 
   return (
-    <div className="chat-input-bar" style={{ position: 'sticky', bottom: 0, backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)', zIndex: 20 }}>
+    <div className="chat-input-bar" style={{ backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)' }}>
       {/* Reply preview */}
       {replyTo && <ReplyComposerPreview msg={replyTo} onCancel={onCancelReply} />}
 
@@ -1370,7 +1391,18 @@ function MessageSkeleton() {
 export default function ConversationView() {
   const { conversationId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
+  // Private Antwort auf einen Gebets-Kommentar: Text kommt einmalig über
+  // location.state herein, danach den History-State bereinigen, damit ein
+  // späteres Zurücknavigieren das Feld nicht erneut befüllt.
+  const quoteTextRef = useRef(location.state?.quoteText || '')
+  useEffect(() => {
+    if (location.state?.quoteText) {
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const { showToast } = useToast()
   const {
     messages, loading, hasMore, loadMore,
@@ -1626,7 +1658,7 @@ export default function ConversationView() {
     showToast(`Weitergeleitet an ${targetConvIds.length}`)
   }
 
-  const isCommunity = convInfo?.type === 'community'
+  const isCommunity = convInfo?.type === 'community' || convInfo?.type === 'activity'
   const pinnedMessages = messages.filter(m => m.is_pinned && !m.is_deleted)
   const messageById = new Map(messages.map(m => [m.id, m]))
 
@@ -1792,6 +1824,7 @@ export default function ConversationView() {
         onOpenPhotoPicker={() => photoInputRef.current?.click()}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
+        initialText={quoteTextRef.current}
       />
 
       {/* Verstecktes Datei-Feld + Foto-Compose-Sheet (Top-Level, damit nicht im

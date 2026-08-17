@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Search, SlidersHorizontal, Users, CalendarDays, X, MapPin } from 'lucide-react'
+import { Search, SlidersHorizontal, Users, CalendarDays, X, MapPin, Repeat } from 'lucide-react'
+import { nextOccurrence, formatRecurrenceLabel, isRecurring } from '../../lib/recurrence'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -18,6 +19,9 @@ const C = {
 // stehen; im eingeklappten Zustand bleibt nur er sichtbar (Rest des Sheets
 // rutscht dahinter weg).
 export const DRAWER_PEEK = 74
+
+// Zusätzliche Panel-Höhe im 'half'-Zustand (nur Suchzeile, keine Liste)
+const HALF_PANEL_H = 66
 
 // Umkreis-Stufen in km – null = Weltweit (kein Filter)
 const RADIUS_STEPS = [5, 10, 25, 50, 100, 250, 500, 1000, null]
@@ -61,28 +65,41 @@ export default function MapDrawer({
   tab, showGeschwister, showEvents, onPillTap,
   users, activities, myProfile, hasOwnLocation,
   radiusKm, onRadiusChange,
-  onSelectUser, onSelectActivity,
+  onSelectUser, onSelectActivity, reopenListKey,
 }) {
-  const [expanded, setExpanded] = useState(false)
+  // 'closed' = nur Kopf sichtbar · 'half' = + Suchleiste (Tap auf Geschwister/
+  // Events landet hier) · 'full' = komplettes Sheet mit Liste (Tap in die
+  // Suche, Filter öffnen oder weiter hochziehen)
+  const [level, setLevel] = useState('closed')
   const [dragY, setDragY] = useState(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('alle')
   const [showFilters, setShowFilters] = useState(false)
   const dragRef = useRef({ active: false, moved: false, startY: 0, startTranslate: 0, lastT: 0, max: 0 })
+  const didMountReopen = useRef(false)
 
   // Sheet-Geometrie: feste Eigenhöhe, Kopf (Griff+Buttons) ist Teil davon.
-  // Kollaps verschiebt das Sheet um (Höhe - Kopfhöhe) nach unten, sodass nur
-  // noch der Kopf sichtbar bleibt; beim Hochziehen wandert der Kopf an die
+  // 'closed' zeigt nur den Kopf, 'half' zusätzlich die Suchzeile, 'full' das
+  // komplette Sheet inkl. Liste. Beim Hochziehen wandert der Kopf an die
   // Oberkante des Sheets und bleibt dort stehen.
   const expandedH = Math.min(Math.round(window.innerHeight * 0.72), 620)
-  const collapsedTranslate = expandedH - DRAWER_PEEK
-  const currentTranslate = dragY != null ? dragY : (expanded ? 0 : collapsedTranslate)
+  const closedTranslate = expandedH - DRAWER_PEEK
+  const halfTranslate = Math.max(0, expandedH - (DRAWER_PEEK + HALF_PANEL_H))
+  const LEVEL_TRANSLATE = { closed: closedTranslate, half: halfTranslate, full: 0 }
+  const currentTranslate = dragY != null ? dragY : LEVEL_TRANSLATE[level]
 
   // Beim Tab-Wechsel Suche/Filter zurücksetzen
   useEffect(() => {
     setSearch('')
     setFilter('alle')
   }, [tab])
+
+  // Nach Schließen eines Event-/Personen-Details (X-Button), das von der
+  // Liste aus geöffnet wurde, wieder zur vollen Liste zurückspringen.
+  useEffect(() => {
+    if (!didMountReopen.current) { didMountReopen.current = true; return }
+    setLevel('full')
+  }, [reopenListKey])
 
   useEffect(() => {
     function move(e) {
@@ -99,7 +116,15 @@ export default function MapDrawer({
       const d = dragRef.current
       if (!d.active) return
       d.active = false
-      if (d.moved) setExpanded(d.lastT < d.max / 2)
+      if (d.moved) {
+        // Nächstgelegene der drei Raststufen nach dem Loslassen
+        let best = 'closed', bestDist = Infinity
+        for (const key of ['closed', 'half', 'full']) {
+          const dist = Math.abs(d.lastT - LEVEL_TRANSLATE[key])
+          if (dist < bestDist) { bestDist = dist; best = key }
+        }
+        setLevel(best)
+      }
       setDragY(null)
     }
     window.addEventListener('mousemove', move)
@@ -112,21 +137,22 @@ export default function MapDrawer({
       window.removeEventListener('touchmove', move)
       window.removeEventListener('touchend', end)
     }
-  }, [])
+  }, [LEVEL_TRANSLATE])
 
   function onDragStart(e) {
     const y = e.touches ? e.touches[0].clientY : e.clientY
+    const start = LEVEL_TRANSLATE[level]
     dragRef.current = {
       active: true, moved: false,
       startY: y,
-      startTranslate: expanded ? 0 : collapsedTranslate,
-      lastT: expanded ? 0 : collapsedTranslate,
-      max: collapsedTranslate,
+      startTranslate: start,
+      lastT: start,
+      max: closedTranslate,
     }
   }
 
   function onHandleClick() {
-    if (!dragRef.current.moved) setExpanded(v => !v)
+    if (!dragRef.current.moved) setLevel(l => (l === 'closed' ? 'full' : 'closed'))
   }
 
   const radiusIdx = RADIUS_STEPS.indexOf(radiusKm)
@@ -167,7 +193,7 @@ export default function MapDrawer({
     }
     return [...arr].sort((a, b) =>
       (a.distance ?? Infinity) - (b.distance ?? Infinity) ||
-      new Date(a.starts_at || 0) - new Date(b.starts_at || 0)
+      (nextOccurrence(a)?.getTime() ?? 0) - (nextOccurrence(b)?.getTime() ?? 0)
     )
   }, [tab, users, activities, search, filter, myProfile?.city, myProfile?.church_name])
 
@@ -182,9 +208,9 @@ export default function MapDrawer({
       overflow: 'hidden', pointerEvents: 'none', zIndex: 520,
     }}>
       {/* Klick auf die Karte bei ausgeklapptem Menü schließt es wieder */}
-      {expanded && (
+      {level !== 'closed' && (
         <div
-          onClick={() => setExpanded(false)}
+          onClick={() => setLevel('closed')}
           style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}
         />
       )}
@@ -226,7 +252,7 @@ export default function MapDrawer({
           <div style={{ width: 34, height: 4.5, borderRadius: 3, background: C.surfaceBlur, boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }} />
         </div>
         <div
-          onClick={() => { if (!dragRef.current.moved) setExpanded(true) }}
+          onClick={() => { if (!dragRef.current.moved) setLevel(l => (l === 'closed' ? 'half' : l)) }}
           style={{
             display: 'flex', gap: 8,
             background: C.surfaceBlur, padding: 5, borderRadius: 999,
@@ -271,6 +297,7 @@ export default function MapDrawer({
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
+            onFocus={() => setLevel('full')}
             placeholder={tab === 'siblings' ? 'Geschwister suchen…' : 'Events suchen…'}
             style={{
               flex: 1, border: 'none', outline: 'none', background: 'transparent',
@@ -284,7 +311,7 @@ export default function MapDrawer({
           )}
         </div>
         <button
-          onClick={() => setShowFilters(v => !v)}
+          onClick={() => setShowFilters(v => { const next = !v; if (next) setLevel('full'); return next })}
           style={{
             position: 'relative', width: 40, borderRadius: 12, flexShrink: 0,
             border: `1px solid ${showFilters ? C.accent : C.border}`,
@@ -377,10 +404,10 @@ export default function MapDrawer({
 
         {tab === 'siblings'
           ? list.map(u => (
-              <SiblingRow key={u.id} user={u} onClick={() => { setExpanded(false); onSelectUser(u) }} />
+              <SiblingRow key={u.id} user={u} onClick={() => { setLevel('closed'); onSelectUser(u) }} />
             ))
           : list.map(a => (
-              <EventRow key={a.id} activity={a} onClick={() => { setExpanded(false); onSelectActivity(a) }} />
+              <EventRow key={a.id} activity={a} onClick={() => { setLevel('closed'); onSelectActivity(a) }} />
             ))}
       </div>
       </div>
@@ -459,7 +486,9 @@ function SiblingRow({ user, onClick }) {
 
 // ─── Event-Zeile ──────────────────────────────────────────
 function EventRow({ activity, onClick }) {
-  const when = formatEventDate(activity.starts_at)
+  const recurring = isRecurring(activity)
+  const nextDate = nextOccurrence(activity)
+  const when = nextDate ? formatEventDate(nextDate.toISOString()) : (recurring ? 'Serie beendet' : null)
   const participantCount = (activity.participants || []).length
   return (
     <button
@@ -471,11 +500,20 @@ function EventRow({ activity, onClick }) {
       }}
     >
       <div style={{
-        width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+        width: 42, height: 42, borderRadius: '50%', flexShrink: 0, position: 'relative',
         background: C.bgSec, border: `2px solid ${C.accent}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19,
       }}>
         {activity.activity_emoji || '📍'}
+        {recurring && (
+          <span style={{
+            position: 'absolute', bottom: -3, right: -3, width: 17, height: 17, borderRadius: '50%',
+            background: C.accent, border: `1.5px solid ${C.bg}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }} title={formatRecurrenceLabel(activity)}>
+            <Repeat size={10} color="#fff" />
+          </span>
+        )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -489,25 +527,21 @@ function EventRow({ activity, onClick }) {
               <MapPin size={11} style={{ flexShrink: 0 }} />{activity.location_name}
             </span>
           )}
-          {!when && !activity.location_name && <span>{participantCount} Teilnehmer</span>}
+          {(when || activity.location_name) && <span>·</span>}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+            <Users size={11} />{participantCount}
+          </span>
         </p>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-        {activity.distance != null && (
-          <span style={{
-            fontSize: 11, fontWeight: 700, color: C.accentDark,
-            background: C.bgSec, border: `1px solid ${C.border}`,
-            padding: '4px 9px', borderRadius: 999,
-          }}>
-            {formatDistance(activity.distance)}
-          </span>
-        )}
-        {participantCount > 0 && (
-          <span style={{ fontSize: 10.5, color: C.textTer, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-            <Users size={10} />{participantCount}
-          </span>
-        )}
-      </div>
+      {activity.distance != null && (
+        <span style={{
+          fontSize: 11, fontWeight: 700, color: C.accentDark, flexShrink: 0,
+          background: C.bgSec, border: `1px solid ${C.border}`,
+          padding: '4px 9px', borderRadius: 999,
+        }}>
+          {formatDistance(activity.distance)}
+        </span>
+      )}
     </button>
   )
 }

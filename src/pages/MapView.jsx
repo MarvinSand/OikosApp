@@ -527,7 +527,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                 )}
               </button>
             ))}
-              <div className="border border-warm-3 border-t-0 bg-warm-5 flex">
+              <div className="border border-warm-3 border-t-0 bg-warm-4 flex">
                 <button
                   onClick={() => { setShowMapMenu(false); setShowSettings(true) }}
                   className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors flex items-center justify-center gap-1.5"

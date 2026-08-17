@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 
-const LIST_COLORS = ['#7A9E7E', '#D4A853', '#C0392B', '#2980B9', '#8E44AD', '#2C3E50', '#E0E0E0', '#E67E22']
+const LIST_COLORS = ['#7A9E7E', '#D4A853', '#C0392B', '#2980B9', '#8E44AD', '#E67E22', '#5A6B7A', '#16A085']
 const LIST_EMOJIS = ['🙏', '👨‍👩‍👧', '🌍', '🏥', '💼', '🛡️', '💔', '➕', '🌅', '⭐', '🕊️', '🔥', '💡', '🌿', '🎯', '❤️', '🌸', '📖', '🌟', '🤲']
 
 // ─── CreateListSheet ──────────────────────────────────────────
@@ -117,49 +117,47 @@ function CreateListSheet({ onClose, onCreate }) {
 }
 
 // ─── ListTile ─────────────────────────────────────────────────
+// Karten im Theme des Feeds: dunkle/helle Oberfläche + Rahmen statt grelle
+// Vollfarben; die Listenfarbe dient nur noch als dezenter Akzent am Icon.
 function ListTile({ list, onClick }) {
-  const textColor = isLightColor(list.color) ? '#2C2416' : '#ffffff'
-
   return (
     <button
       onClick={onClick}
       style={{
         flexShrink: 0, width: 130, borderRadius: 16, padding: '14px 12px',
-        backgroundColor: list.color, border: 'none', cursor: 'pointer',
-        textAlign: 'left', boxShadow: '0 3px 10px rgba(58,46,36,0.15)',
+        backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)',
+        cursor: 'pointer', textAlign: 'left',
         transition: 'transform 0.15s, box-shadow 0.15s',
       }}
       onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.96)' }}
       onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
       onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
     >
-      <div style={{ fontSize: 24, marginBottom: 6, lineHeight: 1 }}>{list.icon}</div>
+      <div style={{
+        width: 34, height: 34, borderRadius: 10, marginBottom: 8,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 17, lineHeight: 1, backgroundColor: (list.color || '#7A9E7E') + '26',
+      }}>
+        {list.icon}
+      </div>
       <p style={{
         fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700,
-        color: textColor, margin: '0 0 4px', overflow: 'hidden',
+        color: 'var(--color-text)', margin: '0 0 4px', overflow: 'hidden',
         textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {list.name}
       </p>
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: textColor + 'CC', margin: 0 }}>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-tertiary)', margin: 0 }}>
         {list.itemCount} {list.itemCount === 1 ? 'Anliegen' : 'Anliegen'}
       </p>
     </button>
   )
 }
 
-function isLightColor(hex) {
-  if (!hex) return true
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return (r * 299 + g * 587 + b * 114) / 1000 > 150
-}
-
 // ─── Skeleton für Listen ──────────────────────────────────────
 function ListSkeleton() {
   return (
-    <div style={{ flexShrink: 0, width: 130, height: 96, borderRadius: 16, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+    <div style={{ flexShrink: 0, width: 130, height: 96, borderRadius: 16, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
   )
 }
 
@@ -183,7 +181,7 @@ export default function PrayerListsSection({ variant = 'full' }) {
   }, [user?.id, compact]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ margin: compact ? 0 : '12px 0 0', borderBottom: compact ? 'none' : '1px solid var(--color-warm-3)' }}>
+    <div style={{ margin: compact ? 0 : '12px 0 0', borderBottom: compact ? 'none' : '1px solid var(--color-border)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 10px' }}>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
@@ -191,7 +189,7 @@ export default function PrayerListsSection({ variant = 'full' }) {
         </p>
         <button
           onClick={() => setShowCreate(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, padding: '4px 0' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-accent)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, padding: '4px 0' }}
         >
           <Plus size={14} /> Neue Liste
         </button>
@@ -206,13 +204,13 @@ export default function PrayerListsSection({ variant = 'full' }) {
             onClick={() => setShowCreate(true)}
             style={{
               flexShrink: 0, width: 130, height: 96, borderRadius: 16,
-              border: '2px dashed var(--color-warm-3)', background: 'none',
+              border: '2px dashed var(--color-border)', background: 'none',
               cursor: 'pointer', display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center', gap: 6,
             }}
           >
-            <Plus size={20} color="var(--color-warm-1)" />
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', fontWeight: 600 }}>
+            <Plus size={20} color="var(--color-accent)" />
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-accent)', fontWeight: 600 }}>
               Liste erstellen
             </span>
           </button>

@@ -1,0 +1,158 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from './useAuth'
+import { KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
+
+// ════════════════════════════════════════════════════════════════════════
+// Gebets-Logs + Kommentare für eine Liste normalisierter Gebete
+// ════════════════════════════════════════════════════════════════════════
+// Lädt beide Log-Tabellen (prayer_logs / personal_prayer_logs) und die
+// Kommentare (prayer_notes) in wenigen Sammel-Queries statt einer Query pro
+// Karte. Rückgabe ist nach `prayer.key` ('oikos:<id>' / 'personal:<id>')
+// indiziert, damit die Karte nichts über Tabellen wissen muss.
+
+const EMPTY = {}
+
+export function usePrayerEngagement(prayers) {
+  const { user } = useAuth()
+  const [logsMap, setLogsMap] = useState(EMPTY)
+  const [notesMap, setNotesMap] = useState(EMPTY)
+  const [loading, setLoading] = useState(false)
+
+  // Nur die IDs als Abhängigkeit – sonst lädt der Effekt bei jedem Render neu.
+  const oikosIds = prayers.filter(p => p.kind === KIND_OIKOS).map(p => p.id)
+  const personalIds = prayers.filter(p => p.kind === KIND_PERSONAL).map(p => p.id)
+  const signature = `${oikosIds.join(',')}|${personalIds.join(',')}`
+  const signatureRef = useRef(signature)
+  signatureRef.current = signature
+
+  const load = useCallback(async () => {
+    const oIds = oikosIds
+    const pIds = personalIds
+    if (oIds.length === 0 && pIds.length === 0) {
+      setLogsMap(EMPTY)
+      setNotesMap(EMPTY)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+
+    const [{ data: oikosLogs }, { data: personalLogs }, { data: oikosNotes }, { data: personalNotes }] = await Promise.all([
+      // Kein profiles-Embed hier: prayer_logs/prayer_notes wurden außerhalb der
+      // getrackten Migrationen angelegt und haben keine für PostgREST auflösbare
+      // FK-Beziehung zu profiles. Ein unauflösbarer Embed lässt die GESAMTE Query
+      // fehlschlagen (nicht nur das Profilfeld) – dieselbe Falle, die schon in
+      // usePrayerRequests.js dokumentiert ist. Profile deshalb separat laden.
+      oIds.length
+        ? supabase.from('prayer_logs')
+            .select('id, prayer_request_id, user_id, created_at')
+            .in('prayer_request_id', oIds).order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
+      pIds.length
+        ? supabase.from('personal_prayer_logs')
+            .select('id, request_id, user_id, created_at')
+            .in('request_id', pIds).order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
+      oIds.length
+        ? supabase.from('prayer_notes')
+            .select('id, prayer_request_id, text, is_public, author_id, created_at, reply_to_id')
+            .in('prayer_request_id', oIds).order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
+      pIds.length
+        ? supabase.from('prayer_notes')
+            .select('id, request_id, text, is_public, author_id, created_at, reply_to_id')
+            .in('request_id', pIds).order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
+    ])
+
+    // Profile für alle beteiligten User in einem Rutsch nachladen und einmischen.
+    const userIds = new Set()
+    for (const l of (oikosLogs || [])) userIds.add(l.user_id)
+    for (const l of (personalLogs || [])) userIds.add(l.user_id)
+    for (const n of (oikosNotes || [])) userIds.add(n.author_id)
+    for (const n of (personalNotes || [])) userIds.add(n.author_id)
+    let profilesById = {}
+    if (userIds.size > 0) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, is_christian, avatar_url')
+        .in('id', [...userIds])
+      profilesById = Object.fromEntries((profs || []).map(p => [p.id, p]))
+    }
+    const withProfile = (rows, idKey) => (rows || []).map(r => ({ ...r, profiles: profilesById[r[idKey]] || null }))
+    const oikosLogsWithProfile = withProfile(oikosLogs, 'user_id')
+    const personalLogsWithProfile = withProfile(personalLogs, 'user_id')
+    const oikosNotesWithProfile = withProfile(oikosNotes, 'author_id')
+    const personalNotesWithProfile = withProfile(personalNotes, 'author_id')
+
+    const nextLogs = {}
+    for (const l of oikosLogsWithProfile) {
+      const key = `${KIND_OIKOS}:${l.prayer_request_id}`
+      ;(nextLogs[key] ||= []).push(l)
+    }
+    for (const l of personalLogsWithProfile) {
+      const key = `${KIND_PERSONAL}:${l.request_id}`
+      ;(nextLogs[key] ||= []).push(l)
+    }
+    const nextNotes = {}
+    for (const n of oikosNotesWithProfile) {
+      const key = `${KIND_OIKOS}:${n.prayer_request_id}`
+      ;(nextNotes[key] ||= []).push(n)
+    }
+    for (const n of personalNotesWithProfile) {
+      const key = `${KIND_PERSONAL}:${n.request_id}`
+      ;(nextNotes[key] ||= []).push(n)
+    }
+
+    // Zwischenzeitlich hat sich die Liste geändert → Ergebnis verwerfen,
+    // der nächste Lauf setzt den Zustand.
+    if (signatureRef.current !== `${oIds.join(',')}|${pIds.join(',')}`) return
+    setLogsMap(nextLogs)
+    setNotesMap(nextNotes)
+    setLoading(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature])
+
+  useEffect(() => {
+    if (!user) return
+    load()
+  }, [load, user?.id])
+
+  // Optimistisch einen Log-Eintrag ergänzen (nach erfolgreichem Insert).
+  function pushLog(prayerKey, log) {
+    setLogsMap(prev => ({ ...prev, [prayerKey]: [log, ...(prev[prayerKey] || [])] }))
+  }
+  function pushNote(prayerKey, note) {
+    setNotesMap(prev => ({ ...prev, [prayerKey]: [note, ...(prev[prayerKey] || [])] }))
+  }
+  function removeNote(prayerKey, noteId) {
+    setNotesMap(prev => ({ ...prev, [prayerKey]: (prev[prayerKey] || []).filter(n => n.id !== noteId) }))
+  }
+
+  return { logsMap, notesMap, loading, reload: load, pushLog, pushNote, removeNote }
+}
+
+// Aus den Logs eines Gebets die Anzeigewerte der Karte ableiten:
+// wer hat gebetet (dedupliziert, mit Anzahl), Gesamtzahl, letztes eigenes und
+// letztes fremdes Gebet.
+export function summarizeLogs(logs, currentUserId) {
+  const list = logs || []
+  const prayersByUser = []
+  const byId = new Map()
+  for (const log of list) {
+    const existing = byId.get(log.user_id)
+    if (existing) {
+      existing.count++
+    } else {
+      const entry = { userId: log.user_id, profile: log.profiles || null, count: 1 }
+      byId.set(log.user_id, entry)
+      prayersByUser.push(entry)
+    }
+  }
+  return {
+    prayersByUser,
+    totalCount: list.length,
+    myLastPrayedAt: list.find(l => l.user_id === currentUserId)?.created_at ?? null,
+    othersLastPrayedAt: list.find(l => l.user_id !== currentUserId)?.created_at ?? null,
+  }
+}

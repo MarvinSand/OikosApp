@@ -3,6 +3,7 @@ import { X, Plus, Check } from 'lucide-react'
 import { usePrayerLists } from '../../hooks/usePrayerLists'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
+import { listColumn } from '../../lib/prayerModel'
 
 function isLightColor(hex) {
   if (!hex || hex[0] !== '#') return true
@@ -13,8 +14,8 @@ function isLightColor(hex) {
 }
 
 // Sheet zum Hinzufügen eines Anliegens zu einer Gebetsliste.
-// request: das Anliegen (aus dem Feed). Typ wird anhand person_id erkannt.
-export default function AddToListSheet({ request, onClose }) {
+// prayer: normalisiertes Gebet (siehe lib/prayerModel).
+export default function AddToListSheet({ prayer, onClose }) {
   const { lists, loading, createList } = usePrayerLists()
   const { showToast } = useToast()
   const [busyId, setBusyId] = useState(null)
@@ -22,9 +23,7 @@ export default function AddToListSheet({ request, onClose }) {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
 
-  // OIKOS-Anliegen (mit person_id) → prayer_request_id, sonst personal_prayer_request_id
-  const isOikos = !!request?.person_id
-  const idColumn = isOikos ? 'prayer_request_id' : 'personal_prayer_request_id'
+  const idColumn = listColumn(prayer?.kind)
 
   async function addToList(listId) {
     if (busyId || done.includes(listId)) return
@@ -35,7 +34,7 @@ export default function AddToListSheet({ request, onClose }) {
         .from('prayer_list_items')
         .select('id')
         .eq('list_id', listId)
-        .eq(idColumn, request.id)
+        .eq(idColumn, prayer.id)
         .maybeSingle()
 
       if (existing) {
@@ -46,7 +45,7 @@ export default function AddToListSheet({ request, onClose }) {
 
       const { error } = await supabase.from('prayer_list_items').insert({
         list_id: listId,
-        [idColumn]: request.id,
+        [idColumn]: prayer.id,
       })
       if (error) throw error
       setDone(d => [...d, listId])
@@ -89,9 +88,9 @@ export default function AddToListSheet({ request, onClose }) {
             <X size={18} />
           </button>
         </div>
-        {request?.title && (
+        {prayer?.title && (
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 16px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            „{request.title}“
+            „{prayer.title}“
           </p>
         )}
 

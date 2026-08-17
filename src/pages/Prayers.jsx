@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, Send, MessageCircle, ChevronUp, Search, SlidersHorizontal, BookmarkPlus, Forward, Play, MoreVertical, Trash2 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, SlidersHorizontal, Play } from 'lucide-react'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
-import { usePrayerFeed } from '../hooks/usePrayerFeed'
+import { usePrayerFeed, PRAYER_SOURCES } from '../hooks/usePrayerFeed'
 import { usePersonalPrayer } from '../hooks/usePersonalPrayer'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
-import { usePrayerLists, LATER_LIST_NAME } from '../hooks/usePrayerLists'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../context/ToastContext'
@@ -15,11 +13,12 @@ import ExpandableSearch from '../components/common/ExpandableSearch'
 import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
 import PrayerListsSection from '../components/prayer/PrayerListsSection'
 import PrayerModeSetupSheet from '../components/prayer/PrayerModeSetupSheet'
-import AddToListSheet from '../components/prayer/AddToListSheet'
-import ForwardSheet from '../components/prayer/ForwardSheet'
+import PrayerCardList from '../components/prayer/PrayerCardList'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
-import ProgressBar from '../components/prayer/ProgressBar'
 import SiblingPicker from '../components/prayer/SiblingPicker'
+import OikosFilterSheet from '../components/prayer/OikosFilterSheet'
+import { useOikosFilterSource } from '../hooks/useOikosFilterSource'
+import { KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
 
 // ─── Konstanten ───────────────────────────────────────────────
 
@@ -45,359 +44,47 @@ const VISIBILITY_OPTIONS = [
   { key: 'specific', label: 'Ausgewählte Geschwister', icon: Users },
 ]
 
-const menuItemStyle = {
-  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-  padding: '11px 14px', border: 'none', background: 'none',
-  fontSize: 14, fontWeight: 500, color: 'var(--color-text)',
-  cursor: 'pointer', textAlign: 'left',
-}
+const sourceChipStyle = active => ({
+  flexShrink: 0, padding: '6px 13px', borderRadius: 999,
+  border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+  backgroundColor: active ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
+  color: active ? '#fff' : 'var(--color-text-secondary)',
+  fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+})
 
-function timeAgo(iso) {
-  const d = new Date(iso)
-  const diff = (Date.now() - d.getTime()) / 1000
-  if (diff < 60) return 'Gerade eben'
-  if (diff < 3600) return `vor ${Math.floor(diff / 60)} Min`
-  if (diff < 86400) return `vor ${Math.floor(diff / 3600)} Std`
-  return `vor ${Math.floor(diff / 86400)} T`
-}
-
-function Avatar({ profile, size = 36 }) {
-  const name = profile?.full_name || profile?.username || '?'
-  const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  if (profile?.avatar_url) {
-    return <img src={profile.avatar_url} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid var(--color-border)' }} />
-  }
+// Pillen-Auswahlfeld für die Feinfilter unter den Quellen-Chips.
+function FilterSelect({ value, onChange, allLabel, options }) {
+  const active = value !== 'all'
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.36, fontWeight: 700, border: '1px solid var(--color-border)',
-    }}>
-      {initials}
-    </div>
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      aria-label={allLabel}
+      style={{
+        flexShrink: 0, padding: '6px 10px', borderRadius: 999,
+        border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+        backgroundColor: active ? 'var(--color-accent-light)' : 'var(--color-bg-secondary)',
+        color: active ? 'var(--color-accent-dark)' : 'var(--color-text-secondary)',
+        fontSize: 12.5, fontWeight: 600, cursor: 'pointer', maxWidth: 190,
+      }}
+    >
+      <option value="all">{allLabel}</option>
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
   )
 }
 
-// ─── Kommentar-Eingabe ────────────────────────────────────────
-
-function CommentInput({ onSubmit }) {
-  const [text, setText] = useState('')
-  const [isPublic, setIsPublic] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-
-  async function handleSend() {
-    if (!text.trim() || submitting) return
-    setSubmitting(true)
-    try {
-      await onSubmit(text.trim(), isPublic)
-      setText('')
-    } finally {
-      setSubmitting(false)
-    }
+// Aus einer Gebets-Liste eindeutige Auswahl-Optionen bauen.
+// pick(prayer) liefert [value, label] oder etwas Falsches zum Überspringen.
+function uniqueOptions(prayers, pick) {
+  const byValue = new Map()
+  for (const p of prayers) {
+    const entry = pick(p)
+    if (!entry) continue
+    const [value, label] = entry
+    if (value && !byValue.has(value)) byValue.set(value, { value, label })
   }
-
-  return (
-    <div style={{ borderTop: '1px solid var(--color-border)', padding: '10px 14px', backgroundColor: 'var(--color-bg-secondary)' }}>
-      {/* Sichtbarkeits-Toggle */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        {[
-          { val: true,  label: 'Für alle' },
-          { val: false, label: 'Nur Ersteller' },
-        ].map(o => (
-          <button
-            key={String(o.val)}
-            onClick={() => setIsPublic(o.val)}
-            style={{
-              padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-              cursor: 'pointer', border: '1px solid var(--color-border)',
-              background: isPublic === o.val ? 'var(--color-accent)' : 'var(--color-bg)',
-              color: isPublic === o.val ? '#fff' : 'var(--color-text-secondary)',
-            }}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-        <textarea
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder="Kommentar schreiben…"
-          rows={2}
-          style={{
-            flex: 1, resize: 'none', border: '1px solid var(--color-border)',
-            borderRadius: 10, padding: '8px 10px', fontSize: 13,
-            backgroundColor: 'var(--color-bg)', color: 'var(--color-text)',
-            outline: 'none', lineHeight: 1.4,
-          }}
-        />
-        <button
-          onClick={handleSend}
-          disabled={!text.trim() || submitting}
-          style={{
-            width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-            background: text.trim() ? 'var(--color-accent)' : 'var(--color-border)',
-            border: 'none', cursor: text.trim() ? 'pointer' : 'default',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
-          }}
-        >
-          <Send size={16} />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ─── Gebets-Karte ─────────────────────────────────────────────
-
-export function PrayerCard({ request, logs, notes, onPray, onComment, onBookmark, onForward, onDelete, onLaterPray, goal, onOpenGoal }) {
-  const { user } = useAuth()
-  const [showComments, setShowComments] = useState(false)
-  const [showCommentInput, setShowCommentInput] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
-  const [showPrayMenu, setShowPrayMenu] = useState(false)
-
-  const prayCount = (logs || []).length
-  const hasPrayed = (logs || []).some(l => l.user_id === user?.id)
-  const cat = CATEGORIES.find(c => c.key === request.category)
-  const profile = request.profiles
-  const isOwner = request.owner_id === user?.id && request._sourceType !== 'community_message'
-
-  const isCustomGoal = goal?.goal_type === 'custom'
-  const goalUnit = goal ? (goal.goal_type === 'hours' ? 'Std' : goal.goal_type === 'days' ? 'Tage' : 'Pers.') : ''
-  const goalTypeLabel = goal ? (goal.goal_type === 'hours' ? 'Stunden-Ziel' : goal.goal_type === 'days' ? 'Tage-Ziel' : isCustomGoal ? 'Individuelles Ziel' : 'Personen-Ziel') : ''
-  const [goalCurrent, setGoalCurrent] = useState(Number(goal?.current_value) || 0)
-  const [goalCount, setGoalCount] = useState(goal?.participant_count || 0)
-
-  async function handlePrayed() {
-    setShowPrayMenu(false)
-    if (!hasPrayed) onPray(request.id)
-    // Bei (nicht-individuellen) Zielen zusätzlich zum Ziel beitragen, damit der
-    // Fortschritt direkt in der Ansicht steigt.
-    if (goal && !isCustomGoal) {
-      setGoalCurrent(v => v + 1)
-      setGoalCount(v => v + 1)
-      try {
-        await supabase.rpc('contribute_to_prayer_goal', { p_goal_id: goal.id, p_minutes: 0 })
-      } catch {
-        setGoalCurrent(v => Math.max(0, v - 1))
-        setGoalCount(v => Math.max(0, v - 1))
-      }
-    }
-  }
-
-  return (
-    <div style={{
-      backgroundColor: 'var(--color-bg)',
-      border: '1px solid var(--color-border)',
-      borderRadius: 16, overflow: (showMenu || showPrayMenu) ? 'visible' : 'hidden',
-      marginBottom: 12,
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', gap: 10, padding: '14px 14px 10px', alignItems: 'flex-start' }}>
-        <Avatar profile={profile} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
-              {profile?.full_name || profile?.username || 'Anonym'}
-            </span>
-            {cat && (
-              <span style={{
-                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
-                backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)',
-              }}>
-                {cat.emoji} {cat.label}
-              </span>
-            )}
-            <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginLeft: 'auto' }}>
-              {timeAgo(request.created_at)}
-            </span>
-          </div>
-          {request.title && (
-            <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-              {request.title}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Gebetsanliegen */}
-      {request.description && (
-        <p style={{ margin: '0 14px 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-          {request.description}
-        </p>
-      )}
-
-      {/* Gebetsziel (nur wenn ein Ziel verknüpft ist) */}
-      {goal && (
-        <div
-          onClick={() => onOpenGoal?.(goal)}
-          style={{ margin: '0 14px 12px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', cursor: onOpenGoal ? 'pointer' : 'default' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: isCustomGoal ? 0 : 8 }}>
-            <span style={{ fontSize: 15 }}>{goal.icon || '🎯'}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>{goalTypeLabel}</span>
-            {!isCustomGoal && (
-              <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-                🙏 {goalCount} dabei
-              </span>
-            )}
-          </div>
-          {isCustomGoal ? (
-            <p style={{ margin: '4px 0 0', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{goal.title}</p>
-          ) : (
-            <ProgressBar value={goalCurrent} target={Number(goal.target_value)} color={goal.color || 'var(--color-accent)'} unitLabel={goalUnit} />
-          )}
-        </div>
-      )}
-
-      {/* Aktionen */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 14px', borderTop: '1px solid var(--color-border)',
-        backgroundColor: 'var(--color-bg-secondary)',
-      }}>
-        {/* Gebetet-Dropdown */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setShowPrayMenu(v => !v)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', borderRadius: 999,
-              border: `1.5px solid ${hasPrayed ? 'var(--color-accent)' : 'var(--color-border)'}`,
-              background: hasPrayed ? 'var(--color-accent)' : 'var(--color-bg)',
-              color: hasPrayed ? '#fff' : 'var(--color-text-secondary)',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            🙏 Gebetet{prayCount > 0 ? ` · ${prayCount}` : ''}
-            <ChevronDown size={13} />
-          </button>
-          {showPrayMenu && (
-            <>
-              <div onClick={() => setShowPrayMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-              <div style={{
-                position: 'absolute', left: 0, bottom: '100%', marginBottom: 6,
-                backgroundColor: 'var(--color-bg-secondary)', borderRadius: 12,
-                boxShadow: '0 8px 28px rgba(0,0,0,0.35)', border: '1px solid var(--color-border)',
-                zIndex: 20, minWidth: 210, overflow: 'hidden',
-              }}>
-                <button onClick={handlePrayed} style={menuItemStyle}>
-                  🙏 Gebetet
-                </button>
-                <button onClick={() => { setShowPrayMenu(false); onBookmark?.(request) }} style={{ ...menuItemStyle, borderTop: '1px solid var(--color-border)' }}>
-                  <BookmarkPlus size={15} /> Zur Gebetsliste hinzufügen
-                </button>
-                <button onClick={() => { setShowPrayMenu(false); onLaterPray?.(request) }} style={{ ...menuItemStyle, borderTop: '1px solid var(--color-border)' }}>
-                  ⏰ Später beten
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Kommentare */}
-        <button
-          onClick={() => { setShowComments(v => !v); setShowCommentInput(true) }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '6px 12px', borderRadius: 999,
-            border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
-            color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          <MessageCircle size={14} />
-          Kommentar{notes?.length > 0 ? ` · ${notes.length}` : ''}
-          {showComments ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        </button>
-
-        {/* 3-Punkte-Menü: Merken / Weiterleiten / Löschen */}
-        <div style={{ marginLeft: 'auto', position: 'relative', flexShrink: 0 }}>
-          <button
-            onClick={() => setShowMenu(v => !v)}
-            aria-label="Weitere Optionen"
-            style={{
-              width: 36, height: 36, borderRadius: '50%',
-              border: '1.5px solid var(--color-border)', background: 'var(--color-bg)',
-              color: 'var(--color-text-secondary)', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <MoreVertical size={16} />
-          </button>
-          {showMenu && (
-            <>
-              <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-              <div style={{
-                position: 'absolute', right: 0, bottom: '100%', marginBottom: 6,
-                backgroundColor: 'var(--color-bg-secondary)', borderRadius: 12,
-                boxShadow: '0 8px 28px rgba(0,0,0,0.35)', border: '1px solid var(--color-border)',
-                zIndex: 20, minWidth: 190, overflow: 'hidden',
-              }}>
-                <button
-                  onClick={() => { setShowMenu(false); onBookmark?.(request) }}
-                  style={menuItemStyle}
-                >
-                  <BookmarkPlus size={15} /> Zu Liste hinzufügen
-                </button>
-                <button
-                  onClick={() => { setShowMenu(false); onForward?.(request) }}
-                  style={{ ...menuItemStyle, borderTop: '1px solid var(--color-border)' }}
-                >
-                  <Forward size={15} /> Weiterleiten
-                </button>
-                {isOwner && (
-                  <button
-                    onClick={() => { setShowMenu(false); onDelete?.(request) }}
-                    style={{ ...menuItemStyle, borderTop: '1px solid var(--color-border)', color: 'var(--color-danger, #d23f3f)' }}
-                  >
-                    <Trash2 size={15} /> Löschen
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Kommentar-Bereich */}
-      {showComments && (
-        <div>
-          {(notes || []).length > 0 && (
-            <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {notes.map(n => (
-                <div key={n.id} style={{ display: 'flex', gap: 8 }}>
-                  <Avatar profile={n.profiles} size={28} />
-                  <div style={{
-                    flex: 1, backgroundColor: 'var(--color-bg-secondary)',
-                    borderRadius: 10, padding: '8px 10px',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
-                        {n.profiles?.full_name || n.profiles?.username || 'Du'}
-                      </span>
-                      {!n.is_public && (
-                        <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)', border: '1px solid var(--color-border)', borderRadius: 4, padding: '1px 5px' }}>
-                          nur Ersteller
-                        </span>
-                      )}
-                    </div>
-                    <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-                      {n.text}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {showCommentInput && (
-            <CommentInput onSubmit={(text, isPublic) => onComment(request.id, text, isPublic)} />
-          )}
-        </div>
-      )}
-    </div>
-  )
+  return [...byValue.values()].sort((a, b) => a.label.localeCompare(b.label, 'de'))
 }
 
 // ─── Neues Gebet erstellen ────────────────────────────────────
@@ -672,17 +359,30 @@ export default function Prayers() {
   const { showToast } = useToast()
   const { user } = useAuth()
   const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
-  const { requests, logsMap, notesMap, loading, hasMore, loadMore, reload, logPrayer, addNote, deleteRequest } = usePrayerFeed('all', statusFilter)
+  // Quelle des Feeds: 'all' (Standard) zeigt jedes Gebet, das für den Nutzer
+  // sichtbar ist – eigene, Oikos-, Community- und geteilte Gebete.
+  const [sourceFilter, setSourceFilter] = useState('all')
+  // Feinfilter innerhalb einer Quelle. Community bleibt eine einfache
+  // Einfachauswahl; Oikos hat einen eigenen mehrstufigen Filter (von wem →
+  // welche Maps → welche Personen, siehe useOikosFilterSource) mit eigenem
+  // Auswahlzustand, der beim Quellenwechsel bewusst NICHT zurückgesetzt wird.
+  const [communityFilter, setCommunityFilter] = useState('all')
+  const [showOikosFilterSheet, setShowOikosFilterSheet] = useState(false)
+  const oikosFilter = useOikosFilterSource({ enabled: sourceFilter === 'oikos' })
+
+  function selectSource(key) {
+    setSourceFilter(key)
+    setCommunityFilter('all')
+  }
+  const { prayers, loading, reload } = usePrayerFeed(sourceFilter, statusFilter)
   const { createRequest } = usePersonalPrayer()
-  const { createGoal, deleteGoal, publicGoals, myGoals, communityGoals, sharedGoals } = usePrayerGoals()
-  const { lists, createList } = usePrayerLists()
+  const { createGoal, publicGoals, myGoals, communityGoals, sharedGoals } = usePrayerGoals()
   const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [activeCategories, setActiveCategories] = useState([])
   const [dateFilter, setDateFilter] = useState(EMPTY_DATE_FILTER)
-  const loaderRef = useRef(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const focusId = searchParams.get('focus')
   const [highlightId, setHighlightId] = useState(null)
@@ -690,7 +390,6 @@ export default function Prayers() {
   // Kollabierender Header (wie im Feed-Tab)
   const rootRef = useRef(null)
   const [collapsed, setCollapsed] = useState(false)
-  const [searchRevealed, setSearchRevealed] = useState(false)
   const collapsedRef = useRef(false)
   const lockUntilRef = useRef(0)
   const tickingRef = useRef(false)
@@ -711,7 +410,6 @@ export default function Prayers() {
       const st = scroller.scrollTop
       const dy = st - lastY
       lastY = st
-      if (st > 8) setSearchRevealed(false)
       if (Date.now() < lockUntilRef.current) return
       if (st <= 8) { setCollapsedSafe(false); return }
       if (dy > 8 && st > 90) setCollapsedSafe(true)
@@ -720,34 +418,44 @@ export default function Prayers() {
     function onScroll() {
       if (!tickingRef.current) { tickingRef.current = true; requestAnimationFrame(update) }
     }
-    function onWheel(e) {
-      if (scroller.scrollTop <= 2 && e.deltaY < -6) setSearchRevealed(true)
-      else if (e.deltaY > 6) setSearchRevealed(false)
-    }
+    let touchStartX = 0
     let touchStartY = 0
-    function onTouchStart(e) { touchStartY = e.touches[0].clientY }
-    function onTouchMove(e) {
-      const dy = e.touches[0].clientY - touchStartY
-      if (scroller.scrollTop <= 2 && dy > 40) setSearchRevealed(true)
-      else if (dy < -40) setSearchRevealed(false)
+    let swipeBlocked = false
+    function onTouchStart(e) {
+      touchStartX = e.touches[0].clientX
+      touchStartY = e.touches[0].clientY
+      // Geste über einem horizontal scrollbaren Bereich (Quellen-Chips, Karussells)
+      // soll dort scrollen dürfen statt zum Feed zu navigieren.
+      let node = e.target
+      swipeBlocked = false
+      while (node && node !== scroller && node !== document.body) {
+        if (node.scrollWidth > node.clientWidth + 2) {
+          const overflowX = window.getComputedStyle(node).overflowX
+          if (overflowX === 'auto' || overflowX === 'scroll') { swipeBlocked = true; break }
+        }
+        node = node.parentElement
+      }
+    }
+    function onTouchEnd(e) {
+      if (swipeBlocked) return
+      const t = e.changedTouches[0]
+      const dx = t.clientX - touchStartX
+      const dy = t.clientY - touchStartY
+      if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigate('/friends?tab=feed')
     }
     scroller.addEventListener('scroll', onScroll, { passive: true })
-    scroller.addEventListener('wheel', onWheel, { passive: true })
     scroller.addEventListener('touchstart', onTouchStart, { passive: true })
-    scroller.addEventListener('touchmove', onTouchMove, { passive: true })
+    scroller.addEventListener('touchend', onTouchEnd, { passive: true })
     return () => {
       scroller.removeEventListener('scroll', onScroll)
-      scroller.removeEventListener('wheel', onWheel)
       scroller.removeEventListener('touchstart', onTouchStart)
-      scroller.removeEventListener('touchmove', onTouchMove)
+      scroller.removeEventListener('touchend', onTouchEnd)
     }
-  }, [])
+  }, [navigate])
 
   // Gebetsmodus / Bookmark / Weiterleiten / Gebetsziel
   const [showPrayerModeSetup, setShowPrayerModeSetup] = useState(false)
   const [prayerModeItems, setPrayerModeItems] = useState(null)
-  const [bookmarkRequest, setBookmarkRequest] = useState(null)
-  const [forwardRequest, setForwardRequest] = useState(null)
 
   // Direkt das Erstellen-Sheet öffnen, wenn man vom Profil "+ Gebetsanliegen" kommt
   useEffect(() => {
@@ -764,20 +472,36 @@ export default function Prayers() {
 
   const dateActive = isDateFilterActive(dateFilter)
   const q = searchQuery.trim().toLowerCase()
-  const filteredRequests = requests.filter(r => {
-    if (activeCategories.length > 0 && !activeCategories.includes(r.category)) return false
-    if (!matchesDateFilter(r.created_at, dateFilter)) return false
+
+  // Auswahlmöglichkeiten aus den geladenen Gebeten ableiten – so stehen nur
+  // Communities zur Wahl, zu denen es auch Anliegen gibt. Der Oikos-Filter
+  // hat eigene, unabhängig geladene Referenzdaten (useOikosFilterSource).
+  const showOikosFilters = sourceFilter === 'oikos'
+  const showCommunityFilter = sourceFilter === 'communities'
+
+  const communityOptions = uniqueOptions(prayers, p => p.communityId && [p.communityId, p.communityName || 'Community'])
+
+  const oikosFilterActive = showOikosFilters && oikosFilter.isActive
+  const communityFilterActive = showCommunityFilter && communityFilter !== 'all'
+
+  const filteredPrayers = prayers.filter(p => {
+    if (showOikosFilters && !oikosFilter.matchesPrayer(p)) return false
+    if (showCommunityFilter && communityFilter !== 'all' && p.communityId !== communityFilter) return false
+    if (activeCategories.length > 0 && !activeCategories.includes(p.category)) return false
+    if (!matchesDateFilter(p.createdAt, dateFilter)) return false
     if (!q) return true
     const haystack = [
-      r.title || '',
-      r.description || '',
-      r.profiles?.full_name || '',
-      r.profiles?.username || '',
+      p.title || '',
+      p.description || '',
+      p.author?.full_name || '',
+      p.author?.username || '',
+      p.personName || '',
     ].join(' ').toLowerCase()
     return haystack.includes(q)
   })
-  // Sichtbare Gebetsziele (dedupliziert) – sollen ebenfalls im Gebete-Feed
-  // erscheinen, auch Gebete mit Gebetsziel.
+
+  // Sichtbare Gebetsziele (dedupliziert). Ein Gebet MIT Ziel wird als normale
+  // Gebets-Karte gezeigt, nur mit zusätzlichem Fortschritt.
   const allGoals = (() => {
     const byId = new Map()
     for (const g of [...publicGoals, ...sharedGoals, ...communityGoals, ...myGoals]) {
@@ -785,54 +509,14 @@ export default function Prayers() {
     }
     return [...byId.values()]
   })()
-  // Ziel je verknüpftem persönlichen Anliegen – so wird ein Gebet MIT Ziel als
-  // ganz normale Gebets-Karte gezeigt, nur mit zusätzlichem Fortschritt.
-  const goalByReqId = new Map(allGoals.filter(g => g.personal_prayer_request_id).map(g => [g.personal_prayer_request_id, g]))
-  const shownReqIds = new Set(filteredRequests.map(r => r.id))
-
-  const filteredGoals = allGoals.filter(g => {
-    if (statusFilter === 'answered') return false        // Ziele haben keinen "erhört"-Status
-    if (activeCategories.length > 0) return false         // Ziele haben keine Kategorie
-    if (!matchesDateFilter(g.created_at, dateFilter)) return false
-    if (!q) return true
-    return [g.title || '', g.description || ''].join(' ').toLowerCase().includes(q)
-  })
-
-  // Ziele, deren Anliegen NICHT (oder noch nicht) im Feed steckt, als eigene
-  // Karte synthetisieren – damit jedes Ziel als Gebets-Karte erscheint.
-  const syntheticGoalEntries = filteredGoals
-    .filter(g => !g.personal_prayer_request_id || !shownReqIds.has(g.personal_prayer_request_id))
-    .map(g => ({
-      id: 'g-' + g.id,
-      created_at: g.created_at,
-      goal: g,
-      request: {
-        id: g.personal_prayer_request_id || g.id,
-        title: g.title,
-        description: g.description,
-        category: null,
-        created_at: g.created_at,
-        owner_id: g.created_by,
-        is_public: true,
-        profiles: g.profiles || null,
-      },
-    }))
-
-  const feedEntries = [
-    ...filteredRequests.map(r => ({ id: 'r-' + r.id, created_at: r.created_at, request: r, goal: goalByReqId.get(r.id) || null })),
-    ...syntheticGoalEntries,
-  ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  const goalByKey = new Map(
+    allGoals.filter(g => g.personal_prayer_request_id)
+      .map(g => [`${KIND_PERSONAL}:${g.personal_prayer_request_id}`, g]),
+  )
 
   // Count of non-default filter facets (status counts when not the default "open")
   const filterFacetCount = activeCategories.length + (dateActive ? 1 : 0) + (statusFilter !== 'open' ? 1 : 0)
-  const hasActiveFilter = filterFacetCount > 0 || q.length > 0
-
-  useEffect(() => {
-    if (!loaderRef.current) return
-    const obs = new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMore() }, { threshold: 0.1 })
-    obs.observe(loaderRef.current)
-    return () => obs.disconnect()
-  }, [loadMore])
+  const hasActiveFilter = filterFacetCount > 0 || q.length > 0 || oikosFilterActive || communityFilterActive
 
   // Vom Profil verlinktes Gebet anspringen + kurz hervorheben
   useEffect(() => {
@@ -846,7 +530,15 @@ export default function Prayers() {
     setSearchParams(searchParams, { replace: true })
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusId, loading, feedEntries.length])
+  }, [focusId, loading, filteredPrayers.length])
+
+  // Die aktuell sichtbaren Gebete im Format des Gebetsmodus – damit man aus
+  // jeder Quellen-/Filterauswahl heraus direkt losbeten kann.
+  const visiblePrayerModeItems = filteredPrayers.map(p => ({
+    type: p.kind === KIND_OIKOS ? 'oikos' : 'personal',
+    request: { ...p.raw, profiles: p.author || p.raw?.profiles || (p.personName ? { full_name: p.personName } : null) },
+    ampel: null,
+  }))
 
   async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids }) {
     // Fehler werden absichtlich NICHT geschluckt – das Sheet zeigt die echte
@@ -865,64 +557,12 @@ export default function Prayers() {
     })
   }
 
-  async function handleComment(requestId, text, isPublic) {
-    try {
-      await addNote(requestId, text, isPublic)
-    } catch {
-      showToast('Fehler beim Kommentieren', 'error')
-    }
-  }
-
-  // Löschen kennt sowohl reine Anliegen als auch Gebete mit Ziel.
-  async function handleDeleteEntry(entry) {
-    if (!window.confirm('Dieses Gebet wirklich löschen?')) return
-    try {
-      if (entry.goal) {
-        await deleteGoal(entry.goal.id)   // löscht Ziel + verknüpftes Anliegen
-        reload()
-      } else {
-        await deleteRequest(entry.request.id)
-      }
-      showToast('Gebet gelöscht')
-    } catch {
-      showToast('Fehler beim Löschen', 'error')
-    }
-  }
-
-  // "Später beten": Anliegen in die Standard-Liste legen (legt sie bei Bedarf an).
-  async function handleLaterPray(request) {
-    try {
-      let list = lists.find(l => (l.name || '').toLowerCase() === LATER_LIST_NAME.toLowerCase())
-      if (!list) {
-        // DB prüfen, um Doppel-Anlage der Standard-Liste zu vermeiden.
-        const { data: existingList } = await supabase
-          .from('prayer_lists').select('*').eq('user_id', user.id).ilike('name', LATER_LIST_NAME).maybeSingle()
-        list = existingList || await createList({ name: LATER_LIST_NAME, icon: '⏰' })
-      }
-      const idColumn = request.person_id ? 'prayer_request_id' : 'personal_prayer_request_id'
-      const { data: existing } = await supabase
-        .from('prayer_list_items').select('id').eq('list_id', list.id).eq(idColumn, request.id).maybeSingle()
-      if (existing) { showToast(`Schon in „${LATER_LIST_NAME}"`); return }
-      const { error } = await supabase.from('prayer_list_items').insert({ list_id: list.id, [idColumn]: request.id })
-      if (error) throw error
-      showToast(`Zu „${LATER_LIST_NAME}" hinzugefügt ✓`)
-    } catch {
-      showToast('Fehler beim Hinzufügen', 'error')
-    }
-  }
 
   return (
     <div ref={rootRef} className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full" style={{ position: 'relative' }}>
-      {/* Sticky-Header: Suche/Filter (oben, Overscroll) + Switcher */}
+      {/* Sticky-Header: Suche/Filter (immer sichtbar) + Switcher */}
       <div style={{ position: 'sticky', top: 0, zIndex: 30, backgroundColor: 'var(--color-bg)' }}>
-        {/* Suche + Filter – ÜBER der Bar, nur per Overscroll am oberen Rand sichtbar */}
-        <div style={{
-          maxHeight: searchRevealed ? (showFilters ? 640 : 64) : 0,
-          opacity: searchRevealed ? 1 : 0,
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease, opacity 0.25s ease',
-        }}>
-      {/* Search + filter */}
+      {/* Search + filter – direkt über den Gebetsanliegen, immer sichtbar */}
       <div style={{
         backgroundColor: 'var(--color-bg)',
         padding: '12px 16px 8px',
@@ -1047,7 +687,6 @@ export default function Prayers() {
           </div>
         )}
       </div>
-        </div>{/* /Suche-Reveal */}
 
         {/* Feed/Gebete-Switcher – darunter; kollabiert beim Runterscrollen */}
         {collapsed && (
@@ -1071,6 +710,40 @@ export default function Prayers() {
           <PrayerFeedSwitcher active="prayers" />
         </div>
       </div>{/* /Sticky-Header */}
+
+      {/* Quellen-Auswahl: welche Gebete sollen im Feed erscheinen */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '12px 16px 10px', borderBottom: '1px solid var(--color-border)' }}>
+        {PRAYER_SOURCES.map(src => {
+          const active = sourceFilter === src.key
+          return (
+            <button
+              key={src.key}
+              onClick={() => selectSource(src.key)}
+              style={sourceChipStyle(active)}
+            >
+              {src.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Feinfilter der gewählten Quelle */}
+      {(showOikosFilters || showCommunityFilter) && (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '10px 16px', borderBottom: '1px solid var(--color-border)' }}>
+          {showOikosFilters && (
+            <button onClick={() => setShowOikosFilterSheet(true)} style={sourceChipStyle(oikosFilter.isActive)}>
+              Von wem & welche Maps
+              {oikosFilter.isActive && <span style={{ marginLeft: 4 }}>●</span>}
+            </button>
+          )}
+          {showCommunityFilter && (
+            <FilterSelect
+              value={communityFilter} onChange={setCommunityFilter}
+              allLabel="Alle Communities" options={communityOptions}
+            />
+          )}
+        </div>
+      )}
 
       {/* Gebetslisten (kompakt) + Gebetsmodus */}
       <div style={{ padding: '14px 0 4px', borderBottom: '1px solid var(--color-border)' }}>
@@ -1100,55 +773,39 @@ export default function Prayers() {
           </div>
         )}
 
-        {!loading && requests.length === 0 && (
+        {!loading && prayers.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <p style={{ fontSize: 40, margin: '0 0 12px' }}>🙏</p>
             <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>
               Noch keine Gebete
             </p>
             <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: 0 }}>
-              Sei der Erste, der ein Anliegen teilt.
+              {sourceFilter === 'all'
+                ? 'Sei der Erste, der ein Anliegen teilt.'
+                : 'Aus dieser Quelle ist gerade nichts sichtbar.'}
             </p>
           </div>
         )}
 
-        {!loading && feedEntries.length === 0 && hasActiveFilter && (
+        {!loading && prayers.length > 0 && filteredPrayers.length === 0 && hasActiveFilter && (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <p style={{ fontSize: 28, margin: '0 0 10px' }}>🔍</p>
-            <p style={{ fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>
+            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: 0 }}>
               Keine Gebete gefunden. Versuche andere Filter.
             </p>
           </div>
         )}
 
-        {!loading && feedEntries.map(entry => (
-          <div
-            key={entry.id}
-            id={'prayer-' + entry.request.id}
-            style={{
-              borderRadius: 16,
-              scrollMarginTop: 80,
-              transition: 'box-shadow 0.3s ease',
-              boxShadow: String(entry.request.id) === String(highlightId) ? '0 0 0 3px var(--color-accent)' : 'none',
-            }}
-          >
-            <PrayerCard
-              request={entry.request}
-              logs={logsMap[entry.request.id]}
-              notes={notesMap[entry.request.id]}
-              onPray={logPrayer}
-              onComment={handleComment}
-              onBookmark={setBookmarkRequest}
-              onForward={setForwardRequest}
-              onDelete={() => handleDeleteEntry(entry)}
-              onLaterPray={handleLaterPray}
-              goal={entry.goal}
-              onOpenGoal={(g) => navigate(`/goals/${g.id}`)}
-            />
-          </div>
-        ))}
+        {!loading && filteredPrayers.length > 0 && (
+          <PrayerCardList
+            prayers={filteredPrayers}
+            goalByKey={goalByKey}
+            showSourceBadge={sourceFilter === 'all'}
+            onChanged={reload}
+            onOpenGoal={(g) => navigate(`/goals/${g.id}`)}
+          />
+        )}
 
-        {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}
       </div>
 
       {/* FAB */}
@@ -1168,6 +825,10 @@ export default function Prayers() {
         +
       </button>
 
+      {showOikosFilterSheet && (
+        <OikosFilterSheet source={oikosFilter} onClose={() => setShowOikosFilterSheet(false)} />
+      )}
+
       {showCreate && (
         <CreatePrayerSheet
           onClose={() => setShowCreate(false)}
@@ -1180,6 +841,8 @@ export default function Prayers() {
       {/* Gebetsmodus-Setup */}
       {showPrayerModeSetup && (
         <PrayerModeSetupSheet
+          visibleItems={visiblePrayerModeItems}
+          visibleLabel={PRAYER_SOURCES.find(x => x.key === sourceFilter)?.label}
           onClose={() => setShowPrayerModeSetup(false)}
           onStart={(items) => { setShowPrayerModeSetup(false); setPrayerModeItems(items) }}
         />
@@ -1193,28 +856,6 @@ export default function Prayers() {
         />
       )}
 
-
-      {/* Zu Liste hinzufügen */}
-      {bookmarkRequest && (
-        <AddToListSheet
-          request={bookmarkRequest}
-          onClose={() => setBookmarkRequest(null)}
-        />
-      )}
-
-      {/* Weiterleiten */}
-      {forwardRequest && (
-        <ForwardSheet
-          previewTitle={forwardRequest.title}
-          buildMessage={() => ({
-            type: 'prayer_request',
-            text: forwardRequest.title || 'Gebetsanliegen',
-            bible_verse_text: forwardRequest.description || null,
-            [forwardRequest.person_id ? 'prayer_request_id' : 'personal_prayer_request_id']: forwardRequest.id,
-          })}
-          onClose={() => setForwardRequest(null)}
-        />
-      )}
     </div>
   )
 }

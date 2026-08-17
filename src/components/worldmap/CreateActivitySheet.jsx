@@ -13,6 +13,7 @@ import {
 } from '../../lib/googleMaps'
 import AddressAutocomplete from '../common/AddressAutocomplete'
 import AdvancedMarker from './AdvancedMarker'
+import { RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -174,6 +175,10 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     longitude: null,
     starts_at: '',
     ends_at: '',
+    recurrence_freq: null,
+    recurrence_interval: 1,
+    recurrence_weekdays: [],
+    recurrence_end_date: '',
   })
   const [locTab, setLocTab] = useState('gps')
   const [locationLabel, setLocationLabel] = useState('')
@@ -202,6 +207,27 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   function applyLocation(lat, lng, label) {
     setForm(f => ({ ...f, latitude: lat, longitude: lng }))
     if (label) setLocationLabel(label)
+  }
+
+  function selectRecurrenceFreq(key) {
+    setForm(f => {
+      if (!key) return { ...f, recurrence_freq: null, recurrence_interval: 1, recurrence_weekdays: [], recurrence_end_date: '' }
+      const next = { ...f, recurrence_freq: key }
+      // Beim ersten Wechsel zu "Wöchentlich" den Starttag als Vorschlag setzen
+      if (key === 'weekly' && f.recurrence_weekdays.length === 0 && f.starts_at) {
+        next.recurrence_weekdays = [new Date(f.starts_at).getDay()]
+      }
+      return next
+    })
+  }
+
+  function toggleRecurrenceWeekday(value) {
+    setForm(f => ({
+      ...f,
+      recurrence_weekdays: f.recurrence_weekdays.includes(value)
+        ? f.recurrence_weekdays.filter(d => d !== value)
+        : [...f.recurrence_weekdays, value],
+    }))
   }
 
   const selectedCat = EVENT_CATEGORIES.find(c => c.key === form.category)
@@ -317,6 +343,10 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
       visibility_mode: form.visibility_mode,
       community_ids: form.visibility_mode === 'communities' ? form.community_ids : [],
       visibility_user_ids: form.visibility_mode === 'specific' ? form.visibility_user_ids : [],
+      recurrence_freq: form.recurrence_freq || null,
+      recurrence_interval: form.recurrence_freq ? (Number(form.recurrence_interval) || 1) : null,
+      recurrence_weekdays: form.recurrence_freq === 'weekly' ? form.recurrence_weekdays : null,
+      recurrence_end_date: form.recurrence_freq ? (form.recurrence_end_date || null) : null,
     })
     setSubmitting(false)
   }
@@ -348,6 +378,19 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     background: enabled ? C.accent : C.border,
     color: '#fff', fontSize: 15, fontWeight: 700,
     cursor: enabled ? 'pointer' : 'not-allowed',
+  })
+  const stepBtn = {
+    width: 26, height: 26, borderRadius: 8, cursor: 'pointer',
+    border: `1.5px solid ${C.border}`, background: C.bg, color: C.text,
+    fontSize: 16, fontWeight: 700, lineHeight: 1,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }
+  const smallToggle = (active) => ({
+    flex: 1, padding: '8px 0', borderRadius: 10, cursor: 'pointer',
+    border: `1.5px solid ${active ? C.accent : C.border}`,
+    background: active ? C.accent : C.bg,
+    color: active ? '#fff' : C.textSec,
+    fontSize: 12, fontWeight: active ? 700 : 500,
   })
 
   return createPortal(
@@ -600,6 +643,105 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                 />
               </div>
             </div>
+
+            {/* Wiederholung */}
+            <label style={{ ...lbl, marginTop: 18 }}>Wiederholung</label>
+            <div className="hide-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+              {RECURRENCE_FREQ_OPTIONS.map(opt => {
+                const active = form.recurrence_freq === opt.key
+                return (
+                  <button
+                    key={opt.key ?? 'none'}
+                    onClick={() => selectRecurrenceFreq(opt.key)}
+                    style={{
+                      padding: '8px 14px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
+                      border: `1.5px solid ${active ? C.accent : C.border}`,
+                      background: active ? C.accent : C.bg,
+                      color: active ? '#fff' : C.text,
+                      fontSize: 13, fontWeight: active ? 700 : 500,
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {form.recurrence_freq && (
+              <div style={{ marginTop: 10, padding: 12, borderRadius: 12, background: C.bgSec, border: `1px solid ${C.border}` }}>
+                {/* Intervall */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, color: C.text }}>Alle</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      onClick={() => set('recurrence_interval', Math.max(1, (Number(form.recurrence_interval) || 1) - 1))}
+                      style={stepBtn}
+                    >−</button>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: C.text, minWidth: 18, textAlign: 'center' }}>
+                      {form.recurrence_interval || 1}
+                    </span>
+                    <button
+                      onClick={() => set('recurrence_interval', Math.min(30, (Number(form.recurrence_interval) || 1) + 1))}
+                      style={stepBtn}
+                    >+</button>
+                  </div>
+                  <span style={{ fontSize: 13, color: C.text }}>
+                    {intervalUnitLabel(form.recurrence_freq, form.recurrence_interval)}
+                  </span>
+                </div>
+
+                {/* Wochentage – nur bei "Wöchentlich" */}
+                {form.recurrence_freq === 'weekly' && (
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 12 }}>
+                    {WEEKDAY_OPTIONS.map(w => {
+                      const sel = form.recurrence_weekdays.includes(w.value)
+                      return (
+                        <button
+                          key={w.value}
+                          onClick={() => toggleRecurrenceWeekday(w.value)}
+                          style={{
+                            width: 34, height: 34, borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                            border: `1.5px solid ${sel ? C.accent : C.border}`,
+                            background: sel ? C.accent : C.bg,
+                            color: sel ? '#fff' : C.textSec,
+                          }}
+                        >
+                          {w.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Ende der Serie */}
+                <div style={{ marginTop: 12 }}>
+                  <span style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Endet</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => set('recurrence_end_date', '')}
+                      style={smallToggle(!form.recurrence_end_date)}
+                    >
+                      Nie
+                    </button>
+                    <button
+                      onClick={() => set('recurrence_end_date', form.recurrence_end_date || (form.starts_at ? form.starts_at.slice(0, 10) : ''))}
+                      style={smallToggle(!!form.recurrence_end_date)}
+                    >
+                      An einem Datum
+                    </button>
+                  </div>
+                  {form.recurrence_end_date && (
+                    <input
+                      type="date"
+                      value={form.recurrence_end_date}
+                      min={form.starts_at ? form.starts_at.slice(0, 10) : undefined}
+                      onChange={e => set('recurrence_end_date', e.target.value)}
+                      style={{ ...inp, marginTop: 8 }}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Standort */}
             <label style={{ ...lbl, marginTop: 18 }}>Standort *</label>

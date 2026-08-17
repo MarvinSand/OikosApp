@@ -36,6 +36,29 @@ const Prayers = lazy(() => import('./pages/Prayers'))
 const MapView = lazy(() => import('./pages/MapView'))
 const ConversationView = lazy(() => import('./pages/ConversationView'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const NotificationSettingsView = lazy(() => import('./pages/NotificationSettingsView'))
+
+// Der Start lief bisher streng seriell: Entry-Bundle → Session prüfen →
+// *dann erst* den Chunk der Landing-Route holen → dann die Daten laden.
+// Schritt 3 ist ein kompletter Round-Trip, der nichts von Schritt 2 braucht.
+// Deshalb den Home-Chunk sofort beim Import anstoßen (er lädt parallel zur
+// Session-Prüfung; `lazy` greift danach auf den Modul-Cache zu) und die
+// übrigen Haupt-Tabs nachziehen, sobald der Browser Leerlauf hat.
+import('./pages/Home')
+
+const idle = typeof requestIdleCallback === 'function'
+  ? requestIdleCallback
+  : (cb) => setTimeout(cb, 1500)
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    idle(() => {
+      import('./pages/FriendsView')
+      import('./pages/Prayers')
+      import('./pages/ProfileView')
+    })
+  }, { once: true })
+}
 
 function LoadingSpinner() {
   return (
@@ -91,6 +114,7 @@ function AppShellInner() {
           <Route path="/chat/:conversationId" element={<ConversationView />} />
           <Route path="/friends" element={<FriendsView />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/notifications/settings" element={<NotificationSettingsView />} />
           <Route path="/community/:id" element={<CommunityDetail />} />
           <Route path="/user/:id" element={<UserProfile />} />
           <Route path="/user/:id/map/:mapId" element={<PublicMapView />} />
@@ -235,13 +259,16 @@ async function checkBirthdays(userId) {
 
     for (const p of todayBirthdays) {
       const name = p.full_name || p.username || 'Jemand'
+      // Note: `notifications` has no `related_url` column (never migrated) -
+      // an insert/filter referencing it fails the whole query. Use the
+      // `data` jsonb column instead, same as the DB notification triggers.
       const { data: existing } = await supabase
         .from('notifications')
         .select('id')
         .eq('user_id', userId)
         .eq('type', 'birthday')
         .gte('created_at', new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString())
-        .eq('related_url', `/user/${p.id}`)
+        .eq('data->>person_id', p.id)
         .maybeSingle()
       if (!existing) {
         await supabase.from('notifications').insert({
@@ -249,7 +276,7 @@ async function checkBirthdays(userId) {
           type: 'birthday',
           title: `🎂 ${name} hat heute Geburtstag!`,
           body: 'Schreib ihm/ihr eine Nachricht',
-          related_url: `/user/${p.id}`,
+          data: { person_id: p.id },
         })
       }
     }

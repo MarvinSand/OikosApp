@@ -1,14 +1,40 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Trash2, Check, X, User, Settings } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
+import { useAuth } from '../hooks/useAuth'
+import { useFriendships } from '../hooks/useFriendships'
+import { NOTIFICATION_TYPE_META } from '../lib/notificationTypeMeta'
 
 // Derive the best navigation target for a notification
-function resolveDestination(n) {
+function resolveDestination(n, currentUserId) {
+  // oikos_entry / prayer_shared / prayer_log carry map_id + person_id in `data`
+  // so we can deep-link straight into the map and open that person's sheet
+  const { map_id, person_id, map_owner_id, request_id, requester_id, post_id } = n.data || {}
+
+  if (n.type === 'feed_post' && post_id) return `/feed/post/${post_id}`
+  if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log' || n.type === 'prayer_reminder')) {
+    const base = map_owner_id && map_owner_id !== currentUserId
+      ? `/user/${map_owner_id}/map/${map_id}`
+      : `/map/${map_id}`
+    return person_id ? `${base}?openPerson=${person_id}` : base
+  }
+
+  // Personal (non-oikos) prayer request shared with friends
+  if (n.type === 'prayer_shared' && request_id) return `/prayer/${request_id}`
+  if (n.type === 'prayer_shared' && requester_id) return `/user/${requester_id}`
+
+  // Friend request → the requester's profile (also reachable via the
+  // dedicated "Profil ansehen" button rendered for this type)
+  if (n.type === 'friend_request' && requester_id) return `/user/${requester_id}`
+
+  // Birthday reminder → the person's profile
+  if (n.type === 'birthday' && person_id) return `/user/${person_id}`
+
   // If there's an explicit related_url, use it
   if (n.related_url) return n.related_url
 
-  // Fallback by type
+  // Fallback by type (older notifications without `data`)
   switch (n.type) {
     case 'friend_request':
     case 'friend_accepted':
@@ -18,7 +44,10 @@ function resolveDestination(n) {
       return '/friends'
     case 'prayer_shared':
     case 'prayer_log':
+    case 'sibling_requests_reminder':
       return '/prayers'
+    case 'weekly_digest':
+      return '/prayer/stats'
     case 'oikos_entry':
       return '/'
     default:
@@ -40,19 +69,11 @@ function formatTime(iso) {
   return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-const ICONS = {
-  friend_request: '👤',
-  friend_accepted: '🤝',
-  community_invite: '👥',
-  community_event: '📅',
-  prayer_shared: '🙏',
-  prayer_log: '🙏',
-  oikos_entry: '🗺',
-}
-
 // ─── NotificationItem ─────────────────────────────────────────
 
-function NotificationItem({ n, onClick }) {
+function NotificationItem({ n, onClick, onDelete, onViewProfile, onAccept, onDecline }) {
+  const isFriendRequest = n.type === 'friend_request' && n.data?.friendship_id && n.data?.requester_id
+
   return (
     <div
       onClick={onClick}
@@ -62,7 +83,7 @@ function NotificationItem({ n, onClick }) {
     >
       {/* Icon bubble */}
       <div className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-warm-4 to-warm-3 shadow-sm border border-warm-2/20 flex items-center justify-center text-xl relative">
-        {ICONS[n.type] || '🔔'}
+        {NOTIFICATION_TYPE_META[n.type]?.icon || '🔔'}
       </div>
 
       {/* Text */}
@@ -78,12 +99,45 @@ function NotificationItem({ n, onClick }) {
         <p className="font-sans text-[11px] font-medium text-warm-2/80 uppercase tracking-widest mt-0.5">
           {formatTime(n.created_at)}
         </p>
+
+        {/* Freundschaftsanfrage: Profil ansehen / Annehmen / Ablehnen */}
+        {isFriendRequest && (
+          <div className="flex items-center gap-2 mt-2.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={onViewProfile}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-warm-3 text-[12px] font-semibold text-dark hover:bg-surface active:scale-95 transition-all duration-150"
+            >
+              <User size={12} /> Profil
+            </button>
+            <button
+              onClick={onAccept}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-white text-[12px] font-semibold hover:opacity-90 active:scale-95 transition-all duration-150"
+            >
+              <Check size={12} /> Annehmen
+            </button>
+            <button
+              onClick={onDecline}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-warm-3 text-[12px] font-semibold text-warm-2/80 hover:bg-red-50 hover:text-red-600 hover:border-red-200 active:scale-95 transition-all duration-150"
+            >
+              <X size={12} /> Ablehnen
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Unread dot */}
       {!n.is_read && (
         <div className="w-2.5 h-2.5 shrink-0 rounded-full bg-accent shadow-sm mt-2 ring-4 ring-bg" />
       )}
+
+      {/* Delete box */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete() }}
+        aria-label="Benachrichtigung löschen"
+        className="w-8 h-8 shrink-0 rounded-lg border border-warm-3 flex items-center justify-center text-warm-2/70 hover:text-red-600 hover:border-red-200 hover:bg-red-50 active:scale-95 transition-all duration-150 mt-1"
+      >
+        <Trash2 size={15} />
+      </button>
     </div>
   )
 }
@@ -147,28 +201,37 @@ function LoadingSkeleton() {
 
 export default function NotificationsPage() {
   const navigate = useNavigate()
-  const { notifications, loading, markAllRead, markRead } = useNotifications()
+  const { user } = useAuth()
+  const { notifications, loading, markAllRead, markRead, deleteNotification } = useNotifications()
+  const { acceptRequest, declineRequest } = useFriendships()
+  const markedRef = useRef(false)
 
-  // Mark all as read when the page mounts
+  // Erst als gelesen markieren, wenn die Liste geladen ist. Beim Mount ist
+  // die Supabase-Session u. U. noch nicht da (markAllRead lief dann auf
+  // `user.id` von `null`), und ein optimistisches Update vor dem Laden
+  // wurde vom eintreffenden Ergebnis sofort wieder überschrieben.
   useEffect(() => {
+    if (loading || markedRef.current) return
+    markedRef.current = true
     markAllRead()
-  }, [])
+  }, [loading, markAllRead])
 
   function handleNotificationClick(n) {
     if (!n.is_read) markRead(n.id)
-    const dest = resolveDestination(n)
+    const dest = resolveDestination(n, user?.id)
     if (dest) navigate(dest)
   }
 
-  // Group notifications by type label
-  const typeLabel = {
-    friend_request: 'Freundschaftsanfragen',
-    friend_accepted: 'Verbindungen',
-    community_invite: 'Gemeinschaft',
-    community_event: 'Veranstaltungen',
-    prayer_shared: 'Gebete',
-    prayer_log: 'Gebetsprotokolle',
-    oikos_entry: 'Oikos-Karte',
+  async function handleAcceptFriendRequest(n) {
+    if (!n.is_read) markRead(n.id)
+    await acceptRequest(n.data.friendship_id)
+    deleteNotification(n.id)
+  }
+
+  async function handleDeclineFriendRequest(n) {
+    if (!n.is_read) markRead(n.id)
+    await declineRequest(n.data.friendship_id)
+    deleteNotification(n.id)
   }
 
   // Build ordered groups: preserve insertion order of first occurrence
@@ -191,7 +254,13 @@ export default function NotificationsPage() {
           <ArrowLeft size={20} />
         </button>
         <span style={headerTitle}>Benachrichtigungen</span>
-        <div style={{ width: 36 }} />
+        <button
+          onClick={() => navigate('/notifications/settings')}
+          style={backBtn}
+          aria-label="Benachrichtigungs-Einstellungen"
+        >
+          <Settings size={20} />
+        </button>
       </div>
 
       {/* Loading */}
@@ -227,7 +296,7 @@ export default function NotificationsPage() {
             margin: 0,
             padding: '14px 16px 6px',
           }}>
-            {typeLabel[key] || 'Sonstiges'}
+            {NOTIFICATION_TYPE_META[key]?.label || 'Sonstiges'}
           </p>
 
           {/* Items */}
@@ -237,6 +306,10 @@ export default function NotificationsPage() {
                 key={n.id}
                 n={n}
                 onClick={() => handleNotificationClick(n)}
+                onDelete={() => deleteNotification(n.id)}
+                onViewProfile={() => { if (!n.is_read) markRead(n.id); navigate(`/user/${n.data?.requester_id}`) }}
+                onAccept={() => handleAcceptFriendRequest(n)}
+                onDecline={() => handleDeclineFriendRequest(n)}
               />
             ))}
           </div>
