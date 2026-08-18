@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom'
 import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useAuth } from './hooks/useAuth'
 import { useSwipeNav } from './hooks/useSwipeNav'
 import { ToastProvider } from './context/ToastContext'
@@ -325,6 +326,7 @@ export default function App() {
           </div>
         </div>
         <Analytics />
+        <SpeedInsights />
       </ToastProvider>
     </ErrorBoundary>
   )
