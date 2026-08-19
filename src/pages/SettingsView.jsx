@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
-  Moon, Globe, Navigation, KeyRound,
+  Moon, Globe, Navigation, KeyRound, Camera,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -11,6 +11,7 @@ import { useChangePassword } from '../hooks/useChangePassword'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import AddressAutocomplete from '../components/common/AddressAutocomplete'
+import { Avatar } from '../components/profile/ProfileTabs'
 
 function validateUsername(val) {
   if (!val || val.trim().length < 3) return 'Mindestens 3 Zeichen'
@@ -132,6 +133,36 @@ const inputStyle = {
   width: '100%', padding: '10px 12px', borderRadius: 10,
   border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
   fontSize: 14, color: 'var(--color-text)', outline: 'none', fontFamily: 'inherit',
+}
+
+// Umhüllt einen Abschnitt mit einer ID zum Scrollen + kurzer Hervorhebung,
+// wenn er über ?anchor=… von der Home-Karte aus angesprungen wird.
+function AnchorSection({ id, activeAnchor, children }) {
+  const ref = useRef(null)
+  const [highlight, setHighlight] = useState(false)
+
+  useEffect(() => {
+    if (activeAnchor !== id || !ref.current) return
+    ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlight(true)
+    const t = setTimeout(() => setHighlight(false), 1600)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAnchor, id])
+
+  return (
+    <div
+      ref={ref}
+      id={id}
+      style={{
+        borderRadius: 14,
+        boxShadow: highlight ? '0 0 0 2px var(--color-accent)' : '0 0 0 2px transparent',
+        transition: 'box-shadow 0.4s ease',
+      }}
+    >
+      {children}
+    </div>
+  )
 }
 
 function DeleteModal({ onCancel, onConfirm, loading }) {
@@ -261,17 +292,20 @@ function ChangePasswordModal({ email, onClose }) {
 
 export default function SettingsView() {
   const navigate = useNavigate()
-  const { profile, updateProfile, deleteAccount, loading: profileLoading } = useProfile()
+  const { profile, updateProfile, uploadAvatar, deleteAccount, loading: profileLoading } = useProfile()
   const { user, resendVerificationEmail } = useAuth()
   const { showToast } = useToast()
   const { theme, toggleTheme } = useTheme()
+  const fileInputRef = useRef(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
 
-  // 'hub' | 'profile' | 'privacy' – Deep-Link via ?section=privacy
+  // 'hub' | 'profile' | 'privacy' – Deep-Link via ?section=privacy&anchor=bio
   const [searchParams] = useSearchParams()
   const initialSection = ['profile', 'privacy'].includes(searchParams.get('section'))
     ? searchParams.get('section')
     : 'hub'
   const [section, setSection] = useState(initialSection)
+  const activeAnchor = searchParams.get('anchor')
 
   const [form, setForm] = useState({
     full_name: '', username: '',
@@ -376,14 +410,30 @@ export default function SettingsView() {
   async function handleSelectLocation(loc) {
     if (!loc?.lat || !loc?.lng) return
     setLocValue({ shortName: loc.shortName, lat: loc.lat, lng: loc.lng })
+    setField('city', loc.city || loc.shortName || form.city)
     setSavingLoc(true)
     try {
-      await updateProfile({ latitude: loc.lat, longitude: loc.lng })
+      await updateProfile({ latitude: loc.lat, longitude: loc.lng, city: loc.city || loc.shortName || null })
       showToast('Standort aktualisiert ✓')
     } catch {
       showToast('Fehler beim Speichern', 'error')
     } finally {
       setSavingLoc(false)
+    }
+  }
+
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    try {
+      await uploadAvatar(file)
+      showToast('Profilbild aktualisiert ✓')
+    } catch {
+      showToast('Fehler beim Hochladen', 'error')
+    } finally {
+      setAvatarUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -502,6 +552,34 @@ export default function SettingsView() {
       {section === 'profile' && (
         <div style={{ padding: '20px 16px' }}>
 
+          {/* ── Profilbild ── */}
+          <AnchorSection id="avatar" activeAnchor={activeAnchor}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 4, marginBottom: 20 }}>
+              <div style={{ position: 'relative' }}>
+                <Avatar profile={profile} size={64} uploading={avatarUploading} />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  aria-label="Profilbild ändern"
+                  style={{
+                    position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: '50%',
+                    backgroundColor: 'var(--color-accent)', color: 'white', border: '2px solid var(--color-bg)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  }}
+                >
+                  <Camera size={11} />
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>Profilbild</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  {avatarUploading ? 'Wird hochgeladen…' : 'Tippe auf das Kamera-Symbol zum Ändern'}
+                </p>
+              </div>
+            </div>
+          </AnchorSection>
+
           {/* ── Basis ── */}
           <FieldRow label="Name">
             <input type="text" value={form.full_name} onChange={e => setField('full_name', e.target.value)} placeholder="Dein Name" style={inputStyle} />
@@ -568,29 +646,57 @@ export default function SettingsView() {
             Öffentliches Profil
           </h3>
 
-          <FieldRow label="Wohnort">
-            <input type="text" value={form.city} onChange={e => setField('city', e.target.value)} placeholder="z. B. München" style={inputStyle} />
-            <ToggleRow label="Öffentlich anzeigen" checked={form.show_city} onChange={() => setField('show_city', !form.show_city)} />
-          </FieldRow>
+          <AnchorSection id="location" activeAnchor={activeAnchor}>
+            <FieldRow label="Wohnort">
+              <AddressAutocomplete
+                value={locValue}
+                onChange={handleSelectLocation}
+                placeholder="Adresse oder Ort suchen…"
+              />
+              <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', margin: '6px 2px 0', lineHeight: 1.5 }}>
+                {savingLoc ? 'Wird gespeichert…' : 'Wird per Google-Suche automatisch erkannt und gespeichert.'}
+              </p>
+              <ToggleRow label="Öffentlich anzeigen" checked={form.show_city} onChange={() => setField('show_city', !form.show_city)} />
+            </FieldRow>
+
+            <div style={{ marginBottom: 18 }}>
+              <SettingToggle
+                icon={Globe}
+                title="Auf der Weltkarte sichtbar"
+                desc="Zeigt deinen Standort für andere auf der Weltkarte."
+                checked={showOnMap}
+                onChange={handleToggleMap}
+              />
+              <SettingToggle
+                icon={Navigation}
+                title="Standort erlauben"
+                desc="Erlaubt der App, deinen Standort zu verwenden."
+                checked={allowLocation}
+                onChange={handleToggleLocation}
+              />
+            </div>
+          </AnchorSection>
 
           <FieldRow label="Gemeinde">
             <input type="text" value={form.church_name} onChange={e => setField('church_name', e.target.value)} placeholder="z. B. Gemeinde Köln" style={inputStyle} />
             <ToggleRow label="Öffentlich anzeigen" checked={form.show_church} onChange={() => setField('show_church', !form.show_church)} />
           </FieldRow>
 
-          <FieldRow label="Über mich">
-            <textarea
-              value={form.bio_text}
-              onChange={e => setField('bio_text', e.target.value.slice(0, 150))}
-              placeholder="Erzähl etwas über dich…"
-              rows={3}
-              style={{ ...inputStyle, resize: 'vertical', minHeight: 70 }}
-            />
-            <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4, textAlign: 'right' }}>
-              {form.bio_text.length}/150
-            </p>
-            <ToggleRow label="Öffentlich anzeigen" checked={form.show_bio} onChange={() => setField('show_bio', !form.show_bio)} />
-          </FieldRow>
+          <AnchorSection id="bio" activeAnchor={activeAnchor}>
+            <FieldRow label="Über mich">
+              <textarea
+                value={form.bio_text}
+                onChange={e => setField('bio_text', e.target.value.slice(0, 150))}
+                placeholder="Erzähl etwas über dich…"
+                rows={3}
+                style={{ ...inputStyle, resize: 'vertical', minHeight: 70 }}
+              />
+              <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4, textAlign: 'right' }}>
+                {form.bio_text.length}/150
+              </p>
+              <ToggleRow label="Öffentlich anzeigen" checked={form.show_bio} onChange={() => setField('show_bio', !form.show_bio)} />
+            </FieldRow>
+          </AnchorSection>
 
           <button onClick={handleSave} disabled={saving} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', marginTop: 8, backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 15, fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
             {saving ? 'Wird gespeichert…' : 'Änderungen speichern'}
@@ -601,41 +707,10 @@ export default function SettingsView() {
       {/* ─── ANSICHT & DATENSCHUTZ ─── */}
       {section === 'privacy' && (
         <div style={{ padding: '20px 16px' }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: '0 0 16px', lineHeight: 1.5 }}>
+            Weltkarte & Standort findest du jetzt unter „Profil bearbeiten".
+          </p>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>
-            Weltkarte & Standort
-          </h3>
-          <SettingToggle
-            icon={Globe}
-            title="Auf der Weltkarte sichtbar"
-            checked={showOnMap}
-            onChange={handleToggleMap}
-          />
-
-          {/* Standort-Adresse für die Weltkarte */}
-          <div style={{ padding: '12px 4px 4px' }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
-              Mein Standort auf der Weltkarte
-            </label>
-            <AddressAutocomplete
-              value={locValue}
-              onChange={handleSelectLocation}
-              placeholder="Adresse oder Ort suchen…"
-            />
-            <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', margin: '6px 2px 0', lineHeight: 1.5 }}>
-              {locValue
-                ? (savingLoc ? 'Wird gespeichert…' : 'Dieser Ort wird anderen auf der Weltkarte angezeigt, wenn „Auf der Weltkarte sichtbar" aktiv ist.')
-                : 'Lege fest, wo du auf der Weltkarte erscheinst.'}
-            </p>
-          </div>
-
-          <SettingToggle
-            icon={Navigation}
-            title="Standort erlauben"
-            checked={allowLocation}
-            onChange={handleToggleLocation}
-          />
-
-          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '24px 0 12px' }}>
             Darstellung
           </h3>
           <SettingToggle

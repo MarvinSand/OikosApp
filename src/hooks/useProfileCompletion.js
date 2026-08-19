@@ -19,7 +19,7 @@ const STEPS = [
     weight: 15,
     title: 'Bio schreiben',
     text: 'Erzähl anderen kurz, wer du bist.',
-    target: '/settings',
+    target: '/settings?section=profile&anchor=bio',
     done: profile => !!profile?.bio_text?.trim(),
   },
   {
@@ -27,7 +27,7 @@ const STEPS = [
     weight: 15,
     title: 'Profilbild hinzufügen',
     text: 'Zeig dein Gesicht – so erkennen dich Geschwister leichter.',
-    target: '/profile',
+    target: '/settings?section=profile&anchor=avatar',
     done: profile => !!profile?.avatar_url,
   },
   {
@@ -35,7 +35,7 @@ const STEPS = [
     weight: 20,
     title: 'Standort angeben',
     text: 'Trag deinen Standort ein und zeig ihn auf der Weltkarte.',
-    target: '/settings',
+    target: '/settings?section=profile&anchor=location',
     done: profile => profile?.latitude != null && profile?.longitude != null,
   },
   {
