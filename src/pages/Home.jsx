@@ -7,6 +7,7 @@ import { usePrayerGoals } from '../hooks/usePrayerGoals'
 import { useSwipeTabs } from '../hooks/useSwipeTabs'
 import TopPrayerToday from '../components/home/TopPrayerToday'
 import WelcomeBanner from '../components/home/WelcomeBanner'
+import ProfileCompletionCard from '../components/home/ProfileCompletionCard'
 import HomeCommunityTab from '../components/home/HomeCommunityTab'
 import GoalCard from '../components/prayer/GoalCard'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
@@ -170,6 +171,9 @@ export default function Home() {
       >
         {tab === 'aktuelles' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
+            {/* Profil-Fortschritt (verschwindet, sobald das Profil vollständig ist) */}
+            <ProfileCompletionCard />
+
             {/* Willkommens- & Funktionsübersicht (dauerhaft) */}
             <WelcomeBanner />
 
