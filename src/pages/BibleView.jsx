@@ -8,11 +8,23 @@ import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
 
 const BIBLE_ID_STORAGE_KEY = 'oikos_bible_version_id'
 
+// Angelehnt an die Farbpalette der YouVersion Bible App (5 Presets).
 const HIGHLIGHT_COLORS = {
   yellow: '#fde68a',
   green: '#bbf7d0',
   blue: '#bfdbfe',
-  pink: '#fbcfe8',
+  purple: '#ddd6fe',
+  orange: '#fed7aa',
+}
+
+// Aus YouVersion synchronisierte Highlights können einen Farbnamen liefern,
+// der nicht exakt einem unserer Presets entspricht (z.B. "pink", "red",
+// Hex-Codes) - dann Rohwert/Fallback statt eines falschen Presets anzeigen.
+function resolveHighlightColor(color) {
+  if (!color) return HIGHLIGHT_COLORS.yellow
+  if (HIGHLIGHT_COLORS[color]) return HIGHLIGHT_COLORS[color]
+  if (color.startsWith('#')) return color
+  return HIGHLIGHT_COLORS.yellow
 }
 
 export default function BibleView() {
@@ -73,10 +85,10 @@ export default function BibleView() {
       const num = parseInt(el.getAttribute('data-verse'), 10)
       const hl = highlightFor(num)
       if (selectedVerses.has(num)) {
-        el.style.backgroundColor = hl ? HIGHLIGHT_COLORS[hl.color] || HIGHLIGHT_COLORS.yellow : 'var(--color-bg-secondary)'
+        el.style.backgroundColor = hl ? resolveHighlightColor(hl.color) : 'var(--color-bg-secondary)'
         el.style.boxShadow = '0 0 0 2px var(--color-accent)'
       } else if (hl) {
-        el.style.backgroundColor = HIGHLIGHT_COLORS[hl.color] || HIGHLIGHT_COLORS.yellow
+        el.style.backgroundColor = resolveHighlightColor(hl.color)
         el.style.boxShadow = 'none'
       } else {
         el.style.backgroundColor = 'transparent'

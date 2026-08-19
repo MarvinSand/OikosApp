@@ -27,6 +27,7 @@ export const YOUVERSION_CALLBACK_PATH = '/auth/youversion/callback'
 export function useYouVersionAccount() {
   const { user } = useAuth()
   const [connected, setConnected] = useState(null) // null = noch unbekannt
+  const [email, setEmail] = useState(null)
   const [connecting, setConnecting] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
@@ -36,10 +37,11 @@ export function useYouVersionAccount() {
     if (!user) return
     const { data } = await supabase
       .from('profiles')
-      .select('youversion_connected')
+      .select('youversion_connected, youversion_email')
       .eq('id', user.id)
       .maybeSingle()
     setConnected(!!data?.youversion_connected)
+    setEmail(data?.youversion_email ?? null)
   }, [user?.id])
 
   useEffect(() => { reloadStatus() }, [reloadStatus])
@@ -60,6 +62,7 @@ export function useYouVersionAccount() {
   const disconnect = useCallback(async () => {
     await disconnectYouVersion()
     setConnected(false)
+    setEmail(null)
   }, [])
 
   const sync = useCallback(async () => {
@@ -77,7 +80,7 @@ export function useYouVersionAccount() {
     }
   }, [])
 
-  return { connected, connecting, syncing, syncResult, error, connect, disconnect, sync, reloadStatus }
+  return { connected, email, connecting, syncing, syncResult, error, connect, disconnect, sync, reloadStatus }
 }
 
 // Für den Login-Bildschirm: startet den Sign-in/up-Flow ohne bestehende

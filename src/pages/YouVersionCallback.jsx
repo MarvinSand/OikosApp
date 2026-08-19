@@ -77,9 +77,8 @@ export default function YouVersionCallback() {
         } else {
           // Keine Oikos-Session -> "signin"-Modus (Login-Bildschirm).
           setFallbackPath('/auth')
-          const { email, tokenHash } = await completeYouVersionSignIn({ code, state, redirectUri })
+          const { tokenHash } = await completeYouVersionSignIn({ code, state, redirectUri })
           const { error: verifyError } = await supabase.auth.verifyOtp({
-            email,
             token_hash: tokenHash,
             type: 'magiclink',
           })

@@ -201,6 +201,7 @@ Deno.serve(async (req) => {
       await db.from('profiles').update({
         youversion_connected: true,
         youversion_yvp_id: yvpId,
+        youversion_email: idPayload?.email ?? null,
       }).eq('id', targetUserId)
     }
 
@@ -317,7 +318,7 @@ Deno.serve(async (req) => {
   if (body.action === 'disconnect') {
     if (!userId) return json({ error: 'unauthorized' }, 401)
     await db.from('user_youversion_tokens').delete().eq('user_id', userId)
-    await db.from('profiles').update({ youversion_connected: false, youversion_yvp_id: null }).eq('id', userId)
+    await db.from('profiles').update({ youversion_connected: false, youversion_yvp_id: null, youversion_email: null }).eq('id', userId)
     return json({ connected: false })
   }
 

@@ -513,11 +513,12 @@ export default function SettingsView() {
               title="Ansicht & Datenschutz"
               onClick={() => setSection('privacy')}
             />
-            <MenuRow
+            <SettingToggle
               icon={BookMarked}
               title="YouVersion"
-              desc={yv.connected ? 'Verbunden' : 'Nicht verbunden'}
-              onClick={() => yv.connected ? yv.disconnect() : yv.connect()}
+              desc={yv.connected ? (yv.email || 'Verbunden') : 'Nicht verbunden'}
+              checked={!!yv.connected}
+              onChange={() => yv.connected ? yv.disconnect() : yv.connect()}
             />
           </div>
 
