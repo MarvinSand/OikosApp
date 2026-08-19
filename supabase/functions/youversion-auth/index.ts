@@ -1,11 +1,8 @@
 // YouVersion "Login mit YouVersion" – OAuth 2.0 mit PKCE.
 //
-// WICHTIG: Die exakten URLs/Parameter unten stammen aus öffentlich
-// zugänglichen Sekundärquellen (developers.youversion.com war zum Zeitpunkt
-// der Implementierung per Netzwerk-Egress nicht direkt abrufbar). Vor dem
-// ersten echten Login-Test bitte gegen https://developers.youversion.com/sign-in-apis
-// gegenchecken:
-//   - Authorize-Endpoint:  https://login.youversion.com/authorize
+// Verifiziert gegen developers.youversion.com/sign-in-apis (Stand: siehe
+// Commit-Historie) – Standard-OAuth-2.0-Authorization-Code-Flow mit PKCE:
+//   - Authorize-Endpoint:  https://api.youversion.com/auth/authorize
 //   - Token-Endpoint:      https://api.youversion.com/auth/token
 //   - App-Key-Header:      X-YVP-App-Key (App-Ebene, z.B. für Bibeltext)
 //   - User-Token-Header:   Authorization: Bearer <access_token>
@@ -13,7 +10,7 @@
 //
 // Ablauf:
 //   1. Frontend ruft POST .../start auf (mit Supabase-JWT) -> bekommt authorizeUrl
-//   2. Browser navigiert zu login.youversion.com, Nutzer bestätigt Scopes
+//   2. Browser navigiert zu api.youversion.com/auth/authorize, Nutzer bestätigt Scopes
 //   3. YouVersion leitet zurück auf redirect_uri (unsere Frontend-Route
 //      /bible/youversion/callback) mit ?code=...&state=...
 //   4. Frontend ruft POST .../callback mit {code, state} auf -> Tokens werden
@@ -23,7 +20,7 @@ import { json, corsHeaders } from '../_shared/cors.ts'
 import { getUserId, serviceClient } from '../_shared/authUser.ts'
 
 const APP_KEY = Deno.env.get('YOUVERSION_APP_KEY')!
-const AUTHORIZE_URL = 'https://login.youversion.com/authorize'
+const AUTHORIZE_URL = 'https://api.youversion.com/auth/authorize'
 const TOKEN_URL = 'https://api.youversion.com/auth/token'
 const SCOPE = 'bibles highlights'
 const STATE_TTL_MS = 10 * 60 * 1000

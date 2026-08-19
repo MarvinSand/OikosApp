@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Highlighter, StickyNote, Bookmark, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Highlighter, StickyNote, Bookmark, X, PenLine } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useChapterText, useBibleMarkers, saveReadingProgress, DEFAULT_BIBLE_ID } from '../hooks/useBible'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
@@ -23,9 +23,22 @@ export default function BibleView() {
   const [noteDraft, setNoteDraft] = useState('')
 
   const bookInfo = findBook(book)
-  const { verses, loading, error } = useChapterText(DEFAULT_BIBLE_ID, book, chapter)
+  const { html, loading, error } = useChapterText(DEFAULT_BIBLE_ID, book, chapter)
   const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(book, chapter)
   const yv = useYouVersionAccount()
+
+  // YouVersion liefert den Kapiteltext als HTML. Falls die Verse darin mit
+  // [data-usfm="BUCH.KAPITEL.VERS"] ausgezeichnet sind, lässt sich per Klick
+  // direkt der richtige Vers auswählen. Ist das Attribut nicht vorhanden
+  // (Struktur nicht 100% verifiziert), bleibt die manuelle Vers-Eingabe unten
+  // als Fallback nutzbar.
+  function handleContentClick(e) {
+    const el = e.target.closest('[data-usfm]')
+    if (!el) return
+    const usfm = el.getAttribute('data-usfm') || ''
+    const num = parseInt(usfm.split('.').pop(), 10)
+    if (!isNaN(num)) setSelectedVerse(prev => prev === num ? null : num)
+  }
 
   function referenceLabel(verseNum) {
     return `${bookInfo?.name || book} ${chapter},${verseNum}`
@@ -95,35 +108,28 @@ export default function BibleView() {
           </div>
         )}
 
-        {!loading && !error && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 17, lineHeight: 1.9, color: 'var(--color-text)' }}>
-            {(verses || []).map(v => {
-              const num = v.verse ?? v.number
-              const text = v.text ?? v.content ?? ''
-              const hl = highlightFor(num)
-              const vNotes = notesFor(num)
-              const bookmarked = isBookmarked(num)
-              const isSelected = selectedVerse === num
+        {!loading && !error && html && (
+          <>
+            <ManualVerseSelector
+              value={selectedVerse}
+              onChange={setSelectedVerse}
+              highlightCount={highlights.length}
+              noteCount={notes.length}
+              bookmarkCount={bookmarks.length}
+            />
+            {/* Text stammt aus der eigenen Edge Function (Proxy zu api.youversion.com),
+                nicht aus Nutzereingaben - dangerouslySetInnerHTML ist hier unbedenklich. */}
+            <div
+              className="bible-passage-content"
+              onClick={handleContentClick}
+              style={{ fontFamily: 'Lora, serif', fontSize: 17, lineHeight: 1.9, color: 'var(--color-text)' }}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          </>
+        )}
 
-              return (
-                <span
-                  key={num}
-                  onClick={() => setSelectedVerse(isSelected ? null : num)}
-                  style={{
-                    backgroundColor: hl ? HIGHLIGHT_COLORS[hl.color] || HIGHLIGHT_COLORS.yellow : (isSelected ? 'var(--color-bg-secondary)' : 'transparent'),
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                    boxShadow: isSelected ? '0 0 0 2px var(--color-accent)' : 'none',
-                  }}
-                >
-                  <sup style={{ fontSize: 11, marginRight: 2, color: 'var(--color-text-tertiary)' }}>{num}</sup>
-                  {text}{' '}
-                  {bookmarked && <Bookmark size={12} style={{ display: 'inline', color: 'var(--color-accent)' }} fill="var(--color-accent)" />}
-                  {vNotes.length > 0 && <StickyNote size={12} style={{ display: 'inline', color: 'var(--color-accent)' }} />}
-                </span>
-              )
-            })}
-          </p>
+        {!loading && !error && !html && (
+          <p style={{ color: 'var(--color-text-tertiary)' }}>Kein Text gefunden.</p>
         )}
       </div>
 
@@ -245,6 +251,33 @@ function VerseActionBar({
           Sichern
         </button>
       </div>
+    </div>
+  )
+}
+
+function ManualVerseSelector({ value, onChange, highlightCount, noteCount, bookmarkCount }) {
+  return (
+    <div className="flex items-center gap-2 mb-4 flex-wrap">
+      <PenLine size={14} style={{ color: 'var(--color-text-tertiary)' }} />
+      <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>Vers markieren:</span>
+      <input
+        type="number"
+        min={1}
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value ? parseInt(e.target.value, 10) : null)}
+        placeholder="Nr."
+        className="w-16 px-2 py-1 rounded-lg text-sm"
+        style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+      />
+      {(highlightCount > 0 || noteCount > 0 || bookmarkCount > 0) && (
+        <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginLeft: 'auto' }}>
+          {highlightCount > 0 && `${highlightCount} Markierung${highlightCount > 1 ? 'en' : ''}`}
+          {highlightCount > 0 && (noteCount > 0 || bookmarkCount > 0) && ' · '}
+          {noteCount > 0 && `${noteCount} Notiz${noteCount > 1 ? 'en' : ''}`}
+          {noteCount > 0 && bookmarkCount > 0 && ' · '}
+          {bookmarkCount > 0 && `${bookmarkCount} Lesezeichen`}
+        </span>
+      )}
     </div>
   )
 }

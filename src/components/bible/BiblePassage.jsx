@@ -1,17 +1,13 @@
-import { useChapterText, DEFAULT_BIBLE_ID } from '../../hooks/useBible'
+import { usePassageText, DEFAULT_BIBLE_ID } from '../../hooks/useBible'
 
 // Eingebettete Bibelstelle für Bible Studies im Jüngerschaftsbereich, z. B.:
 //   <BiblePassage book="JHN" chapter={3} verseStart={16} verseEnd={16} referenceLabel="Joh 3,16" />
-// Zeigt bei API-Fehlern die referenceLabel + einen Hinweis statt kaputt zu wirken.
+// Der Text kommt als HTML von YouVersion (GET /v1/bibles/{id}/passages/{ref})
+// - dangerouslySetInnerHTML ist hier unbedenklich, da der Inhalt aus unserer
+// eigenen Edge Function (Server-zu-Server-Proxy zu api.youversion.com) kommt,
+// nicht aus Nutzereingaben.
 export default function BiblePassage({ book, chapter, verseStart, verseEnd, referenceLabel, bibleId = DEFAULT_BIBLE_ID }) {
-  const { verses, loading, error } = useChapterText(bibleId, book, chapter)
-
-  const filtered = verses?.filter(v => {
-    const num = v.verse ?? v.number
-    if (verseStart == null) return true
-    if (verseEnd) return num >= verseStart && num <= verseEnd
-    return num === verseStart
-  })
+  const { html, loading, error } = usePassageText(bibleId, book, chapter, verseStart, verseEnd)
 
   return (
     <div
@@ -32,13 +28,15 @@ export default function BiblePassage({ book, chapter, verseStart, verseEnd, refe
         </p>
       )}
 
-      {!loading && !error && filtered?.length > 0 && (
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 15, lineHeight: 1.7, color: 'var(--color-text)' }}>
-          {filtered.map(v => (v.text ?? v.content ?? '')).join(' ')}
-        </p>
+      {!loading && !error && html && (
+        <div
+          className="bible-passage-content"
+          style={{ fontFamily: 'Lora, serif', fontSize: 15, lineHeight: 1.7, color: 'var(--color-text)' }}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
       )}
 
-      {!loading && !error && filtered?.length === 0 && (
+      {!loading && !error && !html && (
         <p style={{ color: 'var(--color-text-tertiary)', fontSize: 13 }}>Kein Text gefunden.</p>
       )}
     </div>

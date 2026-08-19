@@ -9,8 +9,13 @@ import { fetchBiblePath } from '../lib/youversion'
 // darüber lässt sich die Version wie in der YouVersion-App umschalten.
 export const DEFAULT_BIBLE_ID = '73'
 
+// GET /v1/bibles/{id}/books/{book}/chapters/{chapter}/verses liefert nur eine
+// Referenzliste (id/passage_id/title) OHNE Bibeltext. Der eigentliche Text
+// kommt über GET /v1/bibles/{id}/passages/{referenz} (Feld `content`, HTML
+// mit vermutlich [data-usfm]-Attributen pro Vers – das lässt sich nicht ohne
+// echten Test verifizieren, siehe supportsVerseTap unten).
 export function useChapterText(bibleId, book, chapter) {
-  const [verses, setVerses] = useState(null)
+  const [html, setHtml] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -19,17 +24,47 @@ export function useChapterText(bibleId, book, chapter) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetchBiblePath(`/v1/bibles/${bibleId}/books/${book}/chapters/${chapter}/verses`)
+    fetchBiblePath(`/v1/bibles/${bibleId}/passages/${book}.${chapter}`)
       .then(data => {
         if (cancelled) return
-        setVerses(data.data ?? data.verses ?? data.items ?? [])
+        const content = data?.data?.content ?? data?.content ?? ''
+        setHtml(content)
       })
       .catch(e => { if (!cancelled) setError(e.message) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [bibleId, book, chapter])
 
-  return { verses, loading, error }
+  return { html, loading, error }
+}
+
+function passageIdFor(book, chapter, verseStart, verseEnd) {
+  if (verseStart == null) return `${book}.${chapter}`
+  if (verseEnd && verseEnd !== verseStart) return `${book}.${chapter}.${verseStart}-${book}.${chapter}.${verseEnd}`
+  return `${book}.${chapter}.${verseStart}`
+}
+
+export function usePassageText(bibleId, book, chapter, verseStart, verseEnd) {
+  const [html, setHtml] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!book || !chapter) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    fetchBiblePath(`/v1/bibles/${bibleId}/passages/${passageIdFor(book, chapter, verseStart, verseEnd)}`)
+      .then(data => {
+        if (cancelled) return
+        setHtml(data?.data?.content ?? data?.content ?? '')
+      })
+      .catch(e => { if (!cancelled) setError(e.message) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [bibleId, book, chapter, verseStart, verseEnd])
+
+  return { html, loading, error }
 }
 
 export function useGermanBibleVersions() {
