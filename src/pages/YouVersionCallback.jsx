@@ -38,9 +38,19 @@ export default function YouVersionCallback() {
       setErrorDetail(oauthError)
       return
     }
-    if (!code || !state) {
+    if (!state) {
       setStatus('error')
-      setErrorDetail('YouVersion hat den Login ohne Bestätigungscode abgebrochen. Bitte noch einmal versuchen.')
+      setErrorDetail('invalid_request')
+      return
+    }
+    // Seit Juli 2026 ist der erste Rücksprung von /auth/authorize bewusst
+    // "state-only" (Identität wird serverseitig an den State gebunden). Erst
+    // eine zweite Top-Level-Navigation zu /auth/callback?state=... liefert
+    // per 302 den echten "code" - ein fetch() kann den Location-Header davon
+    // nicht lesen, es muss eine echte Browser-Navigation sein. Diese Seite
+    // wird dadurch ein zweites Mal geladen, diesmal mit ?code=...&state=...
+    if (!code) {
+      window.location.assign(`https://api.youversion.com/auth/callback?state=${encodeURIComponent(state)}`)
       return
     }
     // Kein Client-seitiger sessionStorage-Abgleich des States: YouVersion
