@@ -4,9 +4,10 @@ import { useAuth } from './useAuth'
 import { fetchBiblePath } from '../lib/youversion'
 
 // Numerische YouVersion-Bibel-ID (per GET /v1/bibles?language_ranges[]=deu
-// ermittelt). 58 = "Elberfelder 1871". Andere deutsche Übersetzungen (u.a.
-// Luther 1912 = 51, Hoffnung für alle = 73) liefert useGermanBibleVersions().
-export const DEFAULT_BIBLE_ID = '58'
+// ermittelt). 73 = "Hoffnung für alle". Andere deutsche Übersetzungen (u.a.
+// Luther 1912 = 51, Elberfelder 1871 = 58) liefert useGermanBibleVersions() –
+// darüber lässt sich die Version wie in der YouVersion-App umschalten.
+export const DEFAULT_BIBLE_ID = '73'
 
 export function useChapterText(bibleId, book, chapter) {
   const [verses, setVerses] = useState(null)
