@@ -72,6 +72,9 @@ Deno.serve(async (req) => {
     const codeVerifier = randomToken(64)
     const codeChallenge = await sha256Base64Url(codeVerifier)
     const state = randomToken(24)
+    // OpenID Connect verlangt bei scope=openid einen nonce (sonst
+    // invalid_request: "nonce is required when scope includes openid").
+    const nonce = randomToken(24)
 
     // Alte, abgelaufene States aufräumen statt eine Cron-Function zu brauchen.
     await db.from('youversion_oauth_state').delete().lt('created_at', new Date(Date.now() - STATE_TTL_MS).toISOString())
@@ -80,6 +83,7 @@ Deno.serve(async (req) => {
       state,
       user_id: userId,
       code_verifier: codeVerifier,
+      nonce,
     })
     if (insertError) return json({ error: insertError.message }, 500)
 
@@ -89,6 +93,7 @@ Deno.serve(async (req) => {
     url.searchParams.set('redirect_uri', redirectUri)
     url.searchParams.set('scope', SCOPE)
     url.searchParams.set('state', state)
+    url.searchParams.set('nonce', nonce)
     url.searchParams.set('code_challenge', codeChallenge)
     url.searchParams.set('code_challenge_method', 'S256')
 
@@ -102,7 +107,7 @@ Deno.serve(async (req) => {
 
     const { data: stateRow, error: stateError } = await db
       .from('youversion_oauth_state')
-      .select('user_id, code_verifier, created_at')
+      .select('user_id, code_verifier, nonce, created_at')
       .eq('state', state)
       .maybeSingle()
 
@@ -145,6 +150,10 @@ Deno.serve(async (req) => {
       try {
         const payload = JSON.parse(atob(tokenData.id_token.split('.')[1]))
         yvpId = payload.sub ?? payload.yvp_id ?? null
+        if (payload.nonce && payload.nonce !== stateRow.nonce) {
+          console.error(`id_token nonce mismatch for user ${userId}`)
+          return json({ error: 'nonce_mismatch' }, 400)
+        }
       } catch {
         /* ignore malformed id_token */
       }
