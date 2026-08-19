@@ -146,6 +146,10 @@ Deno.serve(async (req) => {
     url.searchParams.set('nonce', nonce)
     url.searchParams.set('code_challenge', codeChallenge)
     url.searchParams.set('code_challenge_method', 'S256')
+    // Ohne diesen Parameter kann der In-Browser-Flow (v.a. auf Mobilgeräten)
+    // abbrechen und nur mit "state" (ohne "code"/"error") zurückleiten, statt
+    // den Nutzer einen Bestätigungs-Button klicken zu lassen.
+    url.searchParams.set('require_user_interaction', 'true')
 
     return json({ authorizeUrl: url.toString(), state, mode })
   }

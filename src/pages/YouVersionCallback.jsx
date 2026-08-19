@@ -40,7 +40,7 @@ export default function YouVersionCallback() {
     }
     if (!code || !state) {
       setStatus('error')
-      setErrorDetail('invalid_request')
+      setErrorDetail('YouVersion hat den Login ohne Bestätigungscode abgebrochen. Bitte noch einmal versuchen.')
       return
     }
     // Kein Client-seitiger sessionStorage-Abgleich des States: YouVersion
