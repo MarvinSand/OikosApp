@@ -1,20 +1,33 @@
-// YouVersion "Login mit YouVersion" – OAuth 2.0 mit PKCE.
+// YouVersion "Login mit YouVersion" – OAuth 2.0 mit PKCE + OpenID Connect.
 //
-// Verifiziert gegen developers.youversion.com/sign-in-apis (Stand: siehe
-// Commit-Historie) – Standard-OAuth-2.0-Authorization-Code-Flow mit PKCE:
+// Verifiziert gegen developers.youversion.com/sign-in-apis – Standard-OAuth-
+// 2.0-Authorization-Code-Flow mit PKCE:
 //   - Authorize-Endpoint:  https://api.youversion.com/auth/authorize
 //   - Token-Endpoint:      https://api.youversion.com/auth/token
 //   - App-Key-Header:      X-YVP-App-Key (App-Ebene, z.B. für Bibeltext)
 //   - User-Token-Header:   Authorization: Bearer <access_token>
-//   - Scopes:              "bibles", "highlights" (mehr per Leerzeichen trennen)
+//   - Scopes:              "openid profile email" (Highlights sind ein
+//     separater Data-Exchange-Schritt nach dem Login, siehe unten)
+//   - nonce ist Pflicht, sobald scope "openid" enthält
 //
-// Ablauf:
-//   1. Frontend ruft POST .../start auf (mit Supabase-JWT) -> bekommt authorizeUrl
-//   2. Browser navigiert zu api.youversion.com/auth/authorize, Nutzer bestätigt Scopes
-//   3. YouVersion leitet zurück auf redirect_uri (unsere Frontend-Route
-//      /bible/youversion/callback) mit ?code=...&state=...
-//   4. Frontend ruft POST .../callback mit {code, state} auf -> Tokens werden
-//      serverseitig getauscht und gespeichert, niemals ans Frontend zurückgegeben.
+// Zwei Modi, je nachdem ob der Aufrufer beim Start bereits eine Oikos-
+// Session hat (Authorization-Header mit gültigem Supabase-JWT):
+//
+//   "link"   – Nutzer ist schon bei Oikos eingeloggt (Bibel/Einstellungen)
+//              und verknüpft sein bestehendes Konto mit YouVersion.
+//   "signin" – Nutzer ist NICHT eingeloggt (Login-Bildschirm) und meldet
+//              sich direkt über YouVersion an. Wird kein Oikos-Konto mit
+//              dieser YouVersion-Identität (yvp_id) oder E-Mail gefunden,
+//              wird eins angelegt (auth.admin.createUser, das bestehende
+//              on_auth_user_created-Trigger legt automatisch die
+//              profiles-Zeile an). Login selbst passiert über einen per
+//              auth.admin.generateLink erzeugten Magic-Link-Token, den das
+//              Frontend per supabase.auth.verifyOtp einlöst – ohne dass
+//              eine echte E-Mail verschickt wird.
+//
+// Der Modus wird beim "start" aus der Anwesenheit eines gültigen Oikos-JWTs
+// abgeleitet und zusammen mit dem State gespeichert; beim "callback" ist
+// ausschließlich dieser gespeicherte Modus maßgeblich.
 
 import { json, corsHeaders } from '../_shared/cors.ts'
 import { getUserId, serviceClient } from '../_shared/authUser.ts'
@@ -24,11 +37,6 @@ const AUTHORIZE_URL = 'https://api.youversion.com/auth/authorize'
 const TOKEN_URL = 'https://api.youversion.com/auth/token'
 const DATA_EXCHANGE_TOKEN_URL = 'https://api.youversion.com/data-exchange/token'
 const DATA_EXCHANGE_URL = 'https://api.youversion.com/data-exchange'
-// Der Standard-Login-Scope unterstützt nur Identitäts-Claims. Zugriff auf
-// Highlights/Notizen ist ein separater Schritt (POST /data-exchange/token
-// mit requested_permissions:["highlights"], erst NACH diesem Login möglich,
-// da der Endpoint bereits einen User-Access-Token braucht) - siehe
-// completeYouVersionLogin-Aufrufer für den Folge-Schritt.
 const SCOPE = 'openid profile email'
 const STATE_TTL_MS = 10 * 60 * 1000
 
@@ -50,11 +58,53 @@ async function sha256Base64Url(input: string) {
   return base64url(digest)
 }
 
+function decodeIdToken(idToken: string): Record<string, any> | null {
+  try {
+    return JSON.parse(atob(idToken.split('.')[1]))
+  } catch {
+    return null
+  }
+}
+
+async function exchangeCode(code: string, redirectUri: string, codeVerifier: string) {
+  const res = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-YVP-App-Key': APP_KEY },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+      client_id: APP_KEY,
+      code_verifier: codeVerifier,
+    }),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`token_exchange_failed: ${res.status} ${text}`)
+  }
+  return res.json()
+}
+
+// Sucht einen bestehenden auth.users-Eintrag per E-Mail. Es gibt in
+// supabase-js keine direkte "getUserByEmail" Admin-API, deshalb wird die
+// (paginierte) Nutzerliste durchsucht - für die aktuelle Nutzerzahl der App
+// ausreichend, skaliert aber nicht unbegrenzt.
+async function findAuthUserByEmail(db: ReturnType<typeof serviceClient>, email: string) {
+  const target = email.toLowerCase()
+  for (let page = 1; page <= 5; page++) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 1000 })
+    if (error || !data?.users?.length) break
+    const match = data.users.find(u => u.email?.toLowerCase() === target)
+    if (match) return match
+    if (data.users.length < 1000) break
+  }
+  return null
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
   const userId = await getUserId(req)
-  if (!userId) return json({ error: 'unauthorized' }, 401)
 
   let body: any = {}
   try {
@@ -69,11 +119,10 @@ Deno.serve(async (req) => {
     const redirectUri = body.redirectUri
     if (!redirectUri) return json({ error: 'redirectUri required' }, 400)
 
+    const mode = userId ? 'link' : 'signin'
     const codeVerifier = randomToken(64)
     const codeChallenge = await sha256Base64Url(codeVerifier)
     const state = randomToken(24)
-    // OpenID Connect verlangt bei scope=openid einen nonce (sonst
-    // invalid_request: "nonce is required when scope includes openid").
     const nonce = randomToken(24)
 
     // Alte, abgelaufene States aufräumen statt eine Cron-Function zu brauchen.
@@ -84,6 +133,7 @@ Deno.serve(async (req) => {
       user_id: userId,
       code_verifier: codeVerifier,
       nonce,
+      mode,
     })
     if (insertError) return json({ error: insertError.message }, 500)
 
@@ -97,8 +147,7 @@ Deno.serve(async (req) => {
     url.searchParams.set('code_challenge', codeChallenge)
     url.searchParams.set('code_challenge_method', 'S256')
 
-    console.log(`authorizeUrl: ${url.toString()}`)
-    return json({ authorizeUrl: url.toString(), state })
+    return json({ authorizeUrl: url.toString(), state, mode })
   }
 
   if (body.action === 'callback') {
@@ -107,106 +156,133 @@ Deno.serve(async (req) => {
 
     const { data: stateRow, error: stateError } = await db
       .from('youversion_oauth_state')
-      .select('user_id, code_verifier, nonce, created_at')
+      .select('user_id, code_verifier, nonce, mode, created_at')
       .eq('state', state)
       .maybeSingle()
 
     if (stateError || !stateRow) return json({ error: 'invalid_state' }, 400)
-    if (stateRow.user_id !== userId) return json({ error: 'state_user_mismatch' }, 403)
     if (Date.now() - new Date(stateRow.created_at).getTime() > STATE_TTL_MS) {
       await db.from('youversion_oauth_state').delete().eq('state', state)
       return json({ error: 'state_expired' }, 400)
     }
+    if (stateRow.mode === 'link' && stateRow.user_id !== userId) {
+      return json({ error: 'state_user_mismatch' }, 403)
+    }
 
-    const tokenRes = await fetch(TOKEN_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-YVP-App-Key': APP_KEY,
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: redirectUri,
-        client_id: APP_KEY,
-        code_verifier: stateRow.code_verifier,
-      }),
-    })
-
+    let tokenData: any
+    try {
+      tokenData = await exchangeCode(code, redirectUri, stateRow.code_verifier)
+    } catch (e) {
+      return json({ error: 'token_exchange_failed', detail: String(e) }, 502)
+    }
     await db.from('youversion_oauth_state').delete().eq('state', state)
 
-    if (!tokenRes.ok) {
-      const text = await tokenRes.text().catch(() => '')
-      return json({ error: 'token_exchange_failed', detail: text }, 502)
+    const idPayload = tokenData.id_token ? decodeIdToken(tokenData.id_token) : null
+    if (idPayload?.nonce && idPayload.nonce !== stateRow.nonce) {
+      return json({ error: 'nonce_mismatch' }, 400)
     }
-
-    const tokenData = await tokenRes.json()
+    const yvpId: string = tokenData.yvp_id ?? idPayload?.sub ?? 'unknown'
     const expiresAt = new Date(Date.now() + (tokenData.expires_in ?? 3600) * 1000).toISOString()
 
-    // yvp_id kommt aus dem id_token (JWT) oder einem eigenen Feld – je
-    // nachdem, was die echte Antwort liefert. Fallback: userinfo-Endpoint.
-    let yvpId: string | null = tokenData.yvp_id ?? null
-    if (!yvpId && tokenData.id_token) {
-      try {
-        const payload = JSON.parse(atob(tokenData.id_token.split('.')[1]))
-        yvpId = payload.sub ?? payload.yvp_id ?? null
-        if (payload.nonce && payload.nonce !== stateRow.nonce) {
-          console.error(`id_token nonce mismatch for user ${userId}`)
-          return json({ error: 'nonce_mismatch' }, 400)
-        }
-      } catch {
-        /* ignore malformed id_token */
-      }
+    async function saveTokensAndLinkProfile(targetUserId: string) {
+      await db.from('user_youversion_tokens').upsert({
+        user_id: targetUserId,
+        yvp_id: yvpId,
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token ?? null,
+        scope: tokenData.scope ?? SCOPE,
+        expires_at: expiresAt,
+        updated_at: new Date().toISOString(),
+      })
+      await db.from('profiles').update({
+        youversion_connected: true,
+        youversion_yvp_id: yvpId,
+      }).eq('id', targetUserId)
     }
-
-    const { error: upsertError } = await db.from('user_youversion_tokens').upsert({
-      user_id: userId,
-      yvp_id: yvpId ?? 'unknown',
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token ?? null,
-      scope: tokenData.scope ?? SCOPE,
-      expires_at: expiresAt,
-      updated_at: new Date().toISOString(),
-    })
-    if (upsertError) return json({ error: upsertError.message }, 500)
-
-    await db.from('profiles').update({
-      youversion_connected: true,
-      youversion_yvp_id: yvpId,
-    }).eq('id', userId)
 
     // Highlights sind kein Login-Scope, sondern eine separate Berechtigung,
     // die erst nach dem Login per "Data Exchange" angefragt werden kann.
-    // Best-effort: schlägt das fehl, ist der Login trotzdem erfolgreich -
-    // der Nutzer kann Highlights dann später erneut anfragen (sync-Action).
-    let dataExchangeUrl: string | null = null
-    try {
-      const dxRes = await fetch(DATA_EXCHANGE_TOKEN_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-YVP-App-Key': APP_KEY,
-          Authorization: `Bearer ${tokenData.access_token}`,
-        },
-        body: JSON.stringify({ requested_permissions: ['highlights'] }),
-      })
-      if (dxRes.ok) {
+    // Best-effort: schlägt das fehl, ist der Login trotzdem erfolgreich.
+    async function requestHighlightsDataExchangeUrl(): Promise<string | null> {
+      try {
+        const dxRes = await fetch(DATA_EXCHANGE_TOKEN_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-YVP-App-Key': APP_KEY,
+            Authorization: `Bearer ${tokenData.access_token}`,
+          },
+          body: JSON.stringify({ requested_permissions: ['highlights'] }),
+        })
+        if (!dxRes.ok) {
+          console.error(`data-exchange/token failed: ${dxRes.status} ${await dxRes.text().catch(() => '')}`)
+          return null
+        }
         const dx = await dxRes.json()
         const dxUrl = new URL(DATA_EXCHANGE_URL)
         dxUrl.searchParams.set('token', dx.token)
         dxUrl.searchParams.set('x-yvp-app-key', APP_KEY)
-        dataExchangeUrl = dxUrl.toString()
-      } else {
-        console.error(`data-exchange/token failed: ${dxRes.status} ${await dxRes.text().catch(() => '')}`)
+        return dxUrl.toString()
+      } catch (e) {
+        console.error(`data-exchange/token error: ${e}`)
+        return null
       }
-    } catch (e) {
-      console.error(`data-exchange/token error: ${e}`)
     }
 
-    return json({ connected: true, dataExchangeUrl })
+    if (stateRow.mode === 'link') {
+      if (!userId) return json({ error: 'unauthorized' }, 401)
+      await saveTokensAndLinkProfile(userId)
+      const dataExchangeUrl = await requestHighlightsDataExchangeUrl()
+      return json({ connected: true, dataExchangeUrl })
+    }
+
+    // mode === 'signin': neues oder bestehendes Oikos-Konto per YouVersion-
+    // Identität finden/anlegen und den Nutzer einloggen.
+    const email: string | undefined = idPayload?.email
+    const name: string = idPayload?.name || idPayload?.given_name || ''
+    if (!email) return json({ error: 'no_email_from_youversion' }, 400)
+
+    let targetUserId: string | null = null
+
+    const { data: existingProfile } = await db
+      .from('profiles')
+      .select('id')
+      .eq('youversion_yvp_id', yvpId)
+      .maybeSingle()
+    if (existingProfile) targetUserId = existingProfile.id
+
+    if (!targetUserId) {
+      const existingAuthUser = await findAuthUserByEmail(db, email)
+      if (existingAuthUser) targetUserId = existingAuthUser.id
+    }
+
+    if (!targetUserId) {
+      const { data: created, error: createError } = await db.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: { full_name: name },
+      })
+      if (createError || !created?.user) {
+        return json({ error: 'account_creation_failed', detail: createError?.message }, 500)
+      }
+      targetUserId = created.user.id
+    }
+
+    await saveTokensAndLinkProfile(targetUserId)
+
+    const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+    })
+    if (linkError || !linkData?.properties?.hashed_token) {
+      return json({ error: 'signin_link_failed', detail: linkError?.message }, 500)
+    }
+
+    return json({ email, tokenHash: linkData.properties.hashed_token })
   }
 
   if (body.action === 'request-highlights') {
+    if (!userId) return json({ error: 'unauthorized' }, 401)
     const { data: tokenRow } = await db
       .from('user_youversion_tokens')
       .select('access_token')
@@ -235,6 +311,7 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === 'disconnect') {
+    if (!userId) return json({ error: 'unauthorized' }, 401)
     await db.from('user_youversion_tokens').delete().eq('user_id', userId)
     await db.from('profiles').update({ youversion_connected: false, youversion_yvp_id: null }).eq('id', userId)
     return json({ connected: false })

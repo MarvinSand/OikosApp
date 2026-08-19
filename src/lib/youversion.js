@@ -8,6 +8,14 @@ async function authHeaders() {
   return { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }
 }
 
+// Für den Sign-in/up-Flow (Login-Bildschirm): es gibt noch keine Oikos-
+// Session. `apikey` reicht der Edge Function (verify_jwt ist dort
+// deaktiviert, die Function unterscheidet den Modus selbst danach, ob ein
+// gültiges Bearer-Token mitkommt oder nicht).
+function anonHeaders() {
+  return { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }
+}
+
 // ─── YouVersion Login (OAuth/PKCE über die youversion-auth Edge Function) ───
 
 export async function startYouVersionLogin(redirectUri) {
@@ -30,6 +38,29 @@ export async function completeYouVersionLogin({ code, state, redirectUri }) {
   })
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'callback_failed')
   return res.json() // { connected: true, dataExchangeUrl: string | null }
+}
+
+// ─── "Mit YouVersion anmelden/registrieren" (Login-Bildschirm, kein Oikos-
+// Login vorausgesetzt) ───
+
+export async function startYouVersionSignIn(redirectUri) {
+  const res = await fetch(`${FUNCTIONS_BASE}/youversion-auth`, {
+    method: 'POST',
+    headers: anonHeaders(),
+    body: JSON.stringify({ action: 'start', redirectUri }),
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'start_failed')
+  return res.json() // { authorizeUrl, state, mode: 'signin' }
+}
+
+export async function completeYouVersionSignIn({ code, state, redirectUri }) {
+  const res = await fetch(`${FUNCTIONS_BASE}/youversion-auth`, {
+    method: 'POST',
+    headers: anonHeaders(),
+    body: JSON.stringify({ action: 'callback', code, state, redirectUri }),
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'callback_failed')
+  return res.json() // { email, tokenHash }
 }
 
 // Highlights sind kein Login-Scope, sondern eine separate Berechtigung, die

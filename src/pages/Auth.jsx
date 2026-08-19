@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Cross, MailCheck, Eye, EyeOff } from 'lucide-react'
+import { Cross, MailCheck, Eye, EyeOff, BookMarked } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useChangePassword } from '../hooks/useChangePassword'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
+import { useYouVersionSignIn } from '../hooks/useYouVersionAccount'
 
 export default function Auth() {
   const hasSeenWelcome = typeof window !== 'undefined' && localStorage.getItem('oikos_welcome_seen')
@@ -21,6 +22,7 @@ export default function Auth() {
   const { login, register } = useAuth()
   const { showToast } = useToast()
   const resetFlow = useChangePassword('loggedOut')
+  const youversionSignIn = useYouVersionSignIn()
 
   function goToReset() { setError(''); resetFlow.reset(); setView('reset') }
   function goToLogin() { setError(''); setView('login') }
@@ -296,6 +298,27 @@ export default function Auth() {
                 {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}
               </button>
             </form>
+
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-warm-3" />
+              <span className="text-xs font-medium text-dark-light">oder</span>
+              <div className="flex-1 h-px bg-warm-3" />
+            </div>
+
+            <button
+              type="button"
+              onClick={youversionSignIn.start}
+              disabled={youversionSignIn.starting}
+              className="w-full py-3.5 rounded-xl font-semibold text-dark bg-paper border-1.5 border-warm-3 hover:border-warm-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <BookMarked size={18} />
+              {youversionSignIn.starting ? 'Einen Moment...' : (view === 'login' ? 'Mit YouVersion anmelden' : 'Mit YouVersion registrieren')}
+            </button>
+            {youversionSignIn.error && (
+              <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20 mt-3">
+                {youversionSignIn.error}
+              </div>
+            )}
           </>
         )}
 

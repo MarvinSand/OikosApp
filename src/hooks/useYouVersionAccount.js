@@ -1,27 +1,20 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from './useAuth'
 import { supabase } from '../lib/supabase'
-import { startYouVersionLogin, disconnectYouVersion, syncYouVersionData } from '../lib/youversion'
+import { startYouVersionLogin, disconnectYouVersion, syncYouVersionData, startYouVersionSignIn } from '../lib/youversion'
 
 // Muss exakt einer im YouVersion-Dashboard registrierten Callback-URL
-// entsprechen: https://oikosapp.net/auth/youversion/callback,
-// http://localhost:5173/auth/youversion/callback,
-// https://oikos-app-tau.vercel.app/bible/youversion/callback (Vercel-Default-
-// Domain, anderer Pfad!). Deshalb Origin/Pfad hier zentral auflösen statt
-// naiv window.location.origin zu nehmen (das liefert z.B. "www.oikosapp.net",
-// was NICHT registriert ist und die YouVersion-Anfrage ablehnt).
+// entsprechen. Bewusst die AKTUELLE Origin verwenden (nicht auf eine feste
+// Domain wie "oikosapp.net" umbiegen): würde der Redirect auf eine andere
+// (Sub-)Domain als die zeigen, auf der der Login gestartet wurde (z.B.
+// www.oikosapp.net -> oikosapp.net), wäre das für den Browser ein anderer
+// Origin - die Oikos-Login-Session (localStorage) ist dort nicht sichtbar,
+// der Nutzer landet "ausgeloggt" auf der Callback-Seite. Im YouVersion-
+// Dashboard müssen deshalb ALLE tatsächlich genutzten (Sub-)Domains als
+// Callback-URL eingetragen sein - aktuell: oikosapp.net, www.oikosapp.net,
+// localhost:5173, oikos-app-tau.vercel.app (dort mit /bible/... Pfad).
 export function resolveYouVersionRedirectUri() {
   const { hostname, origin } = window.location
-  if (hostname === 'oikosapp.net' || hostname === 'www.oikosapp.net') {
-    return 'https://oikosapp.net/auth/youversion/callback'
-  }
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `${origin}/auth/youversion/callback`
-  }
-  // Vercel-Preview/-Default-Domains o.ä. sind nicht vorregistriert -
-  // fällt auf den Vercel-Default-Domain-Pfad zurück, falls das die aktuelle
-  // Domain ist; sonst bleibt der Login-Versuch (erwartbar) an YouVersion
-  // hängen, bis die jeweilige Domain im Dashboard eingetragen wird.
   if (hostname === 'oikos-app-tau.vercel.app') {
     return `${origin}/bible/youversion/callback`
   }
@@ -30,7 +23,6 @@ export function resolveYouVersionRedirectUri() {
 
 // Route, unter der die App auf den Redirect von YouVersion wartet.
 export const YOUVERSION_CALLBACK_PATH = '/auth/youversion/callback'
-const STATE_KEY = 'oikos_youversion_oauth_state'
 
 export function useYouVersionAccount() {
   const { user } = useAuth()
@@ -57,8 +49,7 @@ export function useYouVersionAccount() {
     setError(null)
     try {
       const redirectUri = resolveYouVersionRedirectUri()
-      const { authorizeUrl, state } = await startYouVersionLogin(redirectUri)
-      sessionStorage.setItem(STATE_KEY, state)
+      const { authorizeUrl } = await startYouVersionLogin(redirectUri)
       window.location.href = authorizeUrl
     } catch (e) {
       setError(e.message)
@@ -87,4 +78,28 @@ export function useYouVersionAccount() {
   }, [])
 
   return { connected, connecting, syncing, syncResult, error, connect, disconnect, sync, reloadStatus }
+}
+
+// Für den Login-Bildschirm: startet den Sign-in/up-Flow ohne bestehende
+// Oikos-Session. Der Rückweg landet auf derselben Callback-Route wie beim
+// "Verbinden"-Flow (useYouVersionAccount.connect) - dort entscheidet das
+// Vorhandensein einer Oikos-Session, welcher Zweig (link/signin) gemeint war.
+export function useYouVersionSignIn() {
+  const [starting, setStarting] = useState(false)
+  const [error, setError] = useState(null)
+
+  const start = useCallback(async () => {
+    setStarting(true)
+    setError(null)
+    try {
+      const redirectUri = resolveYouVersionRedirectUri()
+      const { authorizeUrl } = await startYouVersionSignIn(redirectUri)
+      window.location.href = authorizeUrl
+    } catch (e) {
+      setError(e.message)
+      setStarting(false)
+    }
+  }, [])
+
+  return { start, starting, error }
 }

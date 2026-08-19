@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookMarked, AlertCircle } from 'lucide-react'
-import { completeYouVersionLogin } from '../lib/youversion'
+import { completeYouVersionLogin, completeYouVersionSignIn } from '../lib/youversion'
 import { resolveYouVersionRedirectUri } from '../hooks/useYouVersionAccount'
-
-const STATE_KEY = 'oikos_youversion_oauth_state'
+import { supabase } from '../lib/supabase'
 
 export default function YouVersionCallback() {
   const navigate = useNavigate()
   const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'permission' | 'error'
   const [errorDetail, setErrorDetail] = useState(null)
+  const [fallbackPath, setFallbackPath] = useState('/bible')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -32,34 +32,56 @@ export default function YouVersionCallback() {
     const code = params.get('code')
     const state = params.get('state')
     const oauthError = params.get('error')
-    const expectedState = sessionStorage.getItem(STATE_KEY)
-    sessionStorage.removeItem(STATE_KEY)
 
     if (oauthError) {
       setStatus('error')
       setErrorDetail(oauthError)
       return
     }
-    if (!code || !state || state !== expectedState) {
+    if (!code || !state) {
       setStatus('error')
-      setErrorDetail('invalid_state')
+      setErrorDetail('invalid_request')
       return
     }
+    // Kein Client-seitiger sessionStorage-Abgleich des States: YouVersion
+    // kann auf eine andere (Sub-)Domain zurückleiten als die, auf der der
+    // Login gestartet wurde (z.B. www.oikosapp.net -> oikosapp.net, weil nur
+    // Letzteres als Callback-URL registriert ist) - das ist ein anderer
+    // Origin, dessen sessionStorage nicht lesbar ist. Die Edge Function
+    // validiert den State bereits serverseitig, das reicht.
 
-    completeYouVersionLogin({ code, state, redirectUri: resolveYouVersionRedirectUri() })
-      .then(({ dataExchangeUrl }) => {
-        if (dataExchangeUrl) {
-          // Zweiter Hop: Nutzer bestätigt separat den Zugriff auf Highlights.
-          window.location.href = dataExchangeUrl
-          return
+    ;(async () => {
+      const redirectUri = resolveYouVersionRedirectUri()
+      const { data: { session } } = await supabase.auth.getSession()
+
+      try {
+        if (session) {
+          // Bereits bei Oikos eingeloggt -> "link"-Modus (Bibel/Einstellungen).
+          const { dataExchangeUrl } = await completeYouVersionLogin({ code, state, redirectUri })
+          if (dataExchangeUrl) {
+            window.location.href = dataExchangeUrl
+            return
+          }
+          setStatus('success')
+          setTimeout(() => navigate('/bible', { replace: true }), 1200)
+        } else {
+          // Keine Oikos-Session -> "signin"-Modus (Login-Bildschirm).
+          setFallbackPath('/auth')
+          const { email, tokenHash } = await completeYouVersionSignIn({ code, state, redirectUri })
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            email,
+            token_hash: tokenHash,
+            type: 'magiclink',
+          })
+          if (verifyError) throw verifyError
+          setStatus('success')
+          setTimeout(() => navigate('/', { replace: true }), 800)
         }
-        setStatus('success')
-        setTimeout(() => navigate('/bible', { replace: true }), 1200)
-      })
-      .catch(e => {
+      } catch (e) {
         setStatus('error')
         setErrorDetail(e.message)
-      })
+      }
+    })()
   }, [navigate])
 
   return (
@@ -76,7 +98,7 @@ export default function YouVersionCallback() {
             <BookMarked size={36} style={{ color: 'var(--color-accent)' }} />
           </div>
           <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>YouVersion verbunden</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>Deine Markierungen und Notizen werden gleich synchronisiert…</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>Du wirst weitergeleitet…</p>
         </>
       )}
       {status === 'permission' && (
@@ -98,11 +120,11 @@ export default function YouVersionCallback() {
             {errorDetail || 'Unbekannter Fehler'}
           </p>
           <button
-            onClick={() => navigate('/bible', { replace: true })}
+            onClick={() => navigate(fallbackPath, { replace: true })}
             className="px-5 py-2.5 rounded-xl font-medium"
             style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
           >
-            Zurück zur Bibel
+            Zurück
           </button>
         </>
       )}
