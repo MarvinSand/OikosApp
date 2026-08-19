@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
     url.searchParams.set('code_challenge', codeChallenge)
     url.searchParams.set('code_challenge_method', 'S256')
 
+    console.log(`authorizeUrl: ${url.toString()}`)
     return json({ authorizeUrl: url.toString(), state })
   }
 

@@ -91,6 +91,10 @@ Deno.serve(async (req) => {
   const upstreamRes = await fetch(upstream.toString(), { headers })
   const body = await upstreamRes.text()
 
+  if (!upstreamRes.ok) {
+    console.error(`upstream ${upstreamRes.status} for ${upstream.toString()}: ${body.slice(0, 500)}`)
+  }
+
   return withCors(new Response(body, {
     status: upstreamRes.status,
     headers: { 'Content-Type': upstreamRes.headers.get('Content-Type') || 'application/json' },
