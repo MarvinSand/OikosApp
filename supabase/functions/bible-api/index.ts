@@ -68,10 +68,12 @@ async function getFreshUserAccessToken(userId: string): Promise<string | null> {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
-  const userId = await getUserId(req)
+  const url = new URL(req.url)
+  const isPublicBibleList = req.method === 'GET' && /^\/(functions\/v1\/)?bible-api\/v1\/bibles\/?$/.test(url.pathname)
+
+  const userId = isPublicBibleList ? 'debug' : await getUserId(req)
   if (!userId) return json({ error: 'unauthorized' }, 401)
 
-  const url = new URL(req.url)
   // Der Funktionsname selbst ist Teil des Pfads (/functions/v1/bible-api/...)
   const path = url.pathname.replace(/^\/(functions\/v1\/)?bible-api/, '') || '/'
   const asUser = url.searchParams.get('asUser') === '1'
@@ -93,6 +95,8 @@ Deno.serve(async (req) => {
 
   if (!upstreamRes.ok) {
     console.error(`upstream ${upstreamRes.status} for ${upstream.toString()}: ${body.slice(0, 500)}`)
+  } else if (isPublicBibleList) {
+    console.log(`bibles list ${upstreamRes.status} for ${upstream.toString()}: ${body.slice(0, 1500)}`)
   }
 
   return withCors(new Response(body, {
