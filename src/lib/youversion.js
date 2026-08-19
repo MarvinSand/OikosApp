@@ -29,7 +29,20 @@ export async function completeYouVersionLogin({ code, state, redirectUri }) {
     body: JSON.stringify({ action: 'callback', code, state, redirectUri }),
   })
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'callback_failed')
-  return res.json() // { connected: true }
+  return res.json() // { connected: true, dataExchangeUrl: string | null }
+}
+
+// Highlights sind kein Login-Scope, sondern eine separate Berechtigung, die
+// erst nach dem Login per "Data Exchange"-Zustimmungsseite freigegeben wird.
+export async function requestYouVersionHighlights() {
+  const headers = await authHeaders()
+  const res = await fetch(`${FUNCTIONS_BASE}/youversion-auth`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ action: 'request-highlights' }),
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'request_highlights_failed')
+  return res.json() // { dataExchangeUrl }
 }
 
 export async function disconnectYouVersion() {
@@ -55,7 +68,8 @@ export async function syncYouVersionData() {
 export async function fetchBiblePath(path, { asUser = false } = {}) {
   const headers = await authHeaders()
   delete headers['Content-Type']
-  const qs = asUser ? '?asUser=1' : ''
+  const separator = path.includes('?') ? '&' : '?'
+  const qs = asUser ? `${separator}asUser=1` : ''
   const res = await fetch(`${FUNCTIONS_BASE}/bible-api${path}${qs}`, { headers })
   if (!res.ok) throw new Error(`bible_api_${res.status}`)
   return res.json()

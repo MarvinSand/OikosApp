@@ -24,7 +24,7 @@ export function useChapterText(bibleId, book, chapter) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetchBiblePath(`/v1/bibles/${bibleId}/passages/${book}.${chapter}`)
+    fetchBiblePath(`/v1/bibles/${bibleId}/passages/${book}.${chapter}?format=html`)
       .then(data => {
         if (cancelled) return
         const content = data?.data?.content ?? data?.content ?? ''
@@ -54,7 +54,7 @@ export function usePassageText(bibleId, book, chapter, verseStart, verseEnd) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetchBiblePath(`/v1/bibles/${bibleId}/passages/${passageIdFor(book, chapter, verseStart, verseEnd)}`)
+    fetchBiblePath(`/v1/bibles/${bibleId}/passages/${passageIdFor(book, chapter, verseStart, verseEnd)}?format=html`)
       .then(data => {
         if (cancelled) return
         setHtml(data?.data?.content ?? data?.content ?? '')

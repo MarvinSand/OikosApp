@@ -22,7 +22,14 @@ import { getUserId, serviceClient } from '../_shared/authUser.ts'
 const APP_KEY = Deno.env.get('YOUVERSION_APP_KEY')!
 const AUTHORIZE_URL = 'https://api.youversion.com/auth/authorize'
 const TOKEN_URL = 'https://api.youversion.com/auth/token'
-const SCOPE = 'bibles highlights'
+const DATA_EXCHANGE_TOKEN_URL = 'https://api.youversion.com/data-exchange/token'
+const DATA_EXCHANGE_URL = 'https://api.youversion.com/data-exchange'
+// Der Standard-Login-Scope unterstützt nur Identitäts-Claims. Zugriff auf
+// Highlights/Notizen ist ein separater Schritt (POST /data-exchange/token
+// mit requested_permissions:["highlights"], erst NACH diesem Login möglich,
+// da der Endpoint bereits einen User-Access-Token braucht) - siehe
+// completeYouVersionLogin-Aufrufer für den Folge-Schritt.
+const SCOPE = 'openid profile email'
 const STATE_TTL_MS = 10 * 60 * 1000
 
 function base64url(bytes: ArrayBuffer | Uint8Array) {
@@ -159,7 +166,63 @@ Deno.serve(async (req) => {
       youversion_yvp_id: yvpId,
     }).eq('id', userId)
 
-    return json({ connected: true })
+    // Highlights sind kein Login-Scope, sondern eine separate Berechtigung,
+    // die erst nach dem Login per "Data Exchange" angefragt werden kann.
+    // Best-effort: schlägt das fehl, ist der Login trotzdem erfolgreich -
+    // der Nutzer kann Highlights dann später erneut anfragen (sync-Action).
+    let dataExchangeUrl: string | null = null
+    try {
+      const dxRes = await fetch(DATA_EXCHANGE_TOKEN_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-YVP-App-Key': APP_KEY,
+          Authorization: `Bearer ${tokenData.access_token}`,
+        },
+        body: JSON.stringify({ requested_permissions: ['highlights'] }),
+      })
+      if (dxRes.ok) {
+        const dx = await dxRes.json()
+        const dxUrl = new URL(DATA_EXCHANGE_URL)
+        dxUrl.searchParams.set('token', dx.token)
+        dxUrl.searchParams.set('x-yvp-app-key', APP_KEY)
+        dataExchangeUrl = dxUrl.toString()
+      } else {
+        console.error(`data-exchange/token failed: ${dxRes.status} ${await dxRes.text().catch(() => '')}`)
+      }
+    } catch (e) {
+      console.error(`data-exchange/token error: ${e}`)
+    }
+
+    return json({ connected: true, dataExchangeUrl })
+  }
+
+  if (body.action === 'request-highlights') {
+    const { data: tokenRow } = await db
+      .from('user_youversion_tokens')
+      .select('access_token')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (!tokenRow) return json({ error: 'not_connected_to_youversion' }, 409)
+
+    const dxRes = await fetch(DATA_EXCHANGE_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-YVP-App-Key': APP_KEY,
+        Authorization: `Bearer ${tokenRow.access_token}`,
+      },
+      body: JSON.stringify({ requested_permissions: ['highlights'] }),
+    })
+    if (!dxRes.ok) {
+      const text = await dxRes.text().catch(() => '')
+      return json({ error: 'data_exchange_token_failed', detail: text }, 502)
+    }
+    const dx = await dxRes.json()
+    const dxUrl = new URL(DATA_EXCHANGE_URL)
+    dxUrl.searchParams.set('token', dx.token)
+    dxUrl.searchParams.set('x-yvp-app-key', APP_KEY)
+    return json({ dataExchangeUrl: dxUrl.toString() })
   }
 
   if (body.action === 'disconnect') {

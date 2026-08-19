@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Highlighter, StickyNote, Bookmark, X, PenLine } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { useChapterText, useBibleMarkers, saveReadingProgress, DEFAULT_BIBLE_ID } from '../hooks/useBible'
+import { useChapterText, useBibleMarkers, useGermanBibleVersions, saveReadingProgress, DEFAULT_BIBLE_ID } from '../hooks/useBible'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
+
+const BIBLE_ID_STORAGE_KEY = 'oikos_bible_version_id'
 
 const HIGHLIGHT_COLORS = {
   yellow: '#fde68a',
@@ -18,14 +20,26 @@ export default function BibleView() {
   const { user } = useAuth()
   const [book, setBook] = useState('JHN')
   const [chapter, setChapter] = useState(3)
+  const [bibleId, setBibleId] = useState(() => {
+    try { return localStorage.getItem(BIBLE_ID_STORAGE_KEY) || DEFAULT_BIBLE_ID } catch { return DEFAULT_BIBLE_ID }
+  })
   const [showBookPicker, setShowBookPicker] = useState(false)
+  const [showVersionPicker, setShowVersionPicker] = useState(false)
   const [selectedVerse, setSelectedVerse] = useState(null)
   const [noteDraft, setNoteDraft] = useState('')
 
   const bookInfo = findBook(book)
-  const { html, loading, error } = useChapterText(DEFAULT_BIBLE_ID, book, chapter)
+  const { html, loading, error } = useChapterText(bibleId, book, chapter)
+  const { versions: bibleVersions } = useGermanBibleVersions()
   const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(book, chapter)
   const yv = useYouVersionAccount()
+  const currentVersion = bibleVersions?.find(v => String(v.id) === String(bibleId))
+
+  function selectVersion(id) {
+    setBibleId(String(id))
+    try { localStorage.setItem(BIBLE_ID_STORAGE_KEY, String(id)) } catch { /* ignore */ }
+    setShowVersionPicker(false)
+  }
 
   // YouVersion liefert den Kapiteltext als HTML. Falls die Verse darin mit
   // [data-usfm="BUCH.KAPITEL.VERS"] ausgezeichnet sind, lässt sich per Klick
@@ -49,7 +63,7 @@ export default function BibleView() {
     setChapter(nextChapter)
     setSelectedVerse(null)
     setShowBookPicker(false)
-    if (user) saveReadingProgress(user.id, { book: nextBook, chapter: nextChapter })
+    if (user) saveReadingProgress(user.id, { bibleId, book: nextBook, chapter: nextChapter })
   }
 
   function goPrevChapter() {
@@ -96,6 +110,14 @@ export default function BibleView() {
             <ChevronRight size={20} />
           </button>
         </div>
+
+        <button
+          onClick={() => setShowVersionPicker(true)}
+          className="mt-2 flex items-center gap-1 text-xs font-medium"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          {currentVersion?.localized_abbreviation || currentVersion?.abbreviation || '…'} <ChevronDown size={12} />
+        </button>
       </div>
 
       {/* Content */}
@@ -144,12 +166,12 @@ export default function BibleView() {
           noteDraft={noteDraft}
           setNoteDraft={setNoteDraft}
           onClose={() => { setSelectedVerse(null); setNoteDraft('') }}
-          onHighlight={(color) => addHighlight({ verseStart: selectedVerse, referenceLabel: referenceLabel(selectedVerse), color })}
+          onHighlight={(color) => addHighlight({ verseStart: selectedVerse, referenceLabel: referenceLabel(selectedVerse), color, bibleId })}
           onRemoveHighlight={(id) => removeHighlight(id)}
-          onBookmark={() => toggleBookmark({ verse: selectedVerse, referenceLabel: referenceLabel(selectedVerse) })}
+          onBookmark={() => toggleBookmark({ verse: selectedVerse, referenceLabel: referenceLabel(selectedVerse), bibleId })}
           onSaveNote={async () => {
             if (!noteDraft.trim()) return
-            await addNote({ verseStart: selectedVerse, referenceLabel: referenceLabel(selectedVerse), note: noteDraft.trim() })
+            await addNote({ verseStart: selectedVerse, referenceLabel: referenceLabel(selectedVerse), note: noteDraft.trim(), bibleId })
             setNoteDraft('')
           }}
           onRemoveNote={(id) => removeNote(id)}
@@ -161,6 +183,15 @@ export default function BibleView() {
           currentBook={book}
           onSelect={(code) => goToChapter(code, 1)}
           onClose={() => setShowBookPicker(false)}
+        />
+      )}
+
+      {showVersionPicker && (
+        <VersionPicker
+          versions={bibleVersions}
+          currentId={bibleId}
+          onSelect={selectVersion}
+          onClose={() => setShowVersionPicker(false)}
         />
       )}
     </div>
@@ -278,6 +309,31 @@ function ManualVerseSelector({ value, onChange, highlightCount, noteCount, bookm
           {bookmarkCount > 0 && `${bookmarkCount} Lesezeichen`}
         </span>
       )}
+    </div>
+  )
+}
+
+function VersionPicker({ versions, currentId, onSelect, onClose }) {
+  return (
+    <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+      <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+        <h2 className="font-bold" style={{ color: 'var(--color-text)' }}>Übersetzung wählen</h2>
+        <button onClick={onClose}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-2">
+        {!versions && <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Lädt…</p>}
+        {versions?.map(v => (
+          <button
+            key={v.id}
+            onClick={() => onSelect(v.id)}
+            className="w-full text-left py-3"
+            style={{ borderBottom: '1px solid var(--color-border)', color: String(v.id) === String(currentId) ? 'var(--color-accent)' : 'var(--color-text)' }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{v.localized_title || v.title}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{v.localized_abbreviation || v.abbreviation}</div>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

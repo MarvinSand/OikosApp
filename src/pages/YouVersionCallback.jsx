@@ -8,11 +8,27 @@ const STATE_KEY = 'oikos_youversion_oauth_state'
 
 export default function YouVersionCallback() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
+  const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'permission' | 'error'
   const [errorDetail, setErrorDetail] = useState(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+
+    // Zweiter Redirect (nach der "Data Exchange"-Zustimmungsseite für
+    // Highlights) landet vermutlich auf derselben Route - erkennbar an
+    // data_exchange_status statt code/state.
+    const dxStatus = params.get('data_exchange_status')
+    if (dxStatus) {
+      if (dxStatus === 'granted') {
+        setStatus('success')
+      } else {
+        setStatus('permission')
+        setErrorDetail(params.get('error_description') || 'Zugriff auf Highlights nicht erteilt.')
+      }
+      setTimeout(() => navigate('/bible', { replace: true }), 1500)
+      return
+    }
+
     const code = params.get('code')
     const state = params.get('state')
     const oauthError = params.get('error')
@@ -31,7 +47,12 @@ export default function YouVersionCallback() {
     }
 
     completeYouVersionLogin({ code, state, redirectUri: window.location.origin + YOUVERSION_CALLBACK_PATH })
-      .then(() => {
+      .then(({ dataExchangeUrl }) => {
+        if (dataExchangeUrl) {
+          // Zweiter Hop: Nutzer bestätigt separat den Zugriff auf Highlights.
+          window.location.href = dataExchangeUrl
+          return
+        }
         setStatus('success')
         setTimeout(() => navigate('/bible', { replace: true }), 1200)
       })
@@ -56,6 +77,15 @@ export default function YouVersionCallback() {
           </div>
           <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>YouVersion verbunden</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>Deine Markierungen und Notizen werden gleich synchronisiert…</p>
+        </>
+      )}
+      {status === 'permission' && (
+        <>
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+            <BookMarked size={36} style={{ color: 'var(--color-accent)' }} />
+          </div>
+          <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>Verbunden, aber ohne Highlights</h1>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{errorDetail}</p>
         </>
       )}
       {status === 'error' && (
