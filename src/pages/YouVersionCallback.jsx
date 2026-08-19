@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookMarked, AlertCircle } from 'lucide-react'
 import { completeYouVersionLogin } from '../lib/youversion'
-import { YOUVERSION_CALLBACK_PATH } from '../hooks/useYouVersionAccount'
+import { resolveYouVersionRedirectUri } from '../hooks/useYouVersionAccount'
 
 const STATE_KEY = 'oikos_youversion_oauth_state'
 
@@ -46,7 +46,7 @@ export default function YouVersionCallback() {
       return
     }
 
-    completeYouVersionLogin({ code, state, redirectUri: window.location.origin + YOUVERSION_CALLBACK_PATH })
+    completeYouVersionLogin({ code, state, redirectUri: resolveYouVersionRedirectUri() })
       .then(({ dataExchangeUrl }) => {
         if (dataExchangeUrl) {
           // Zweiter Hop: Nutzer bestätigt separat den Zugriff auf Highlights.

@@ -270,6 +270,27 @@
   }
 }
 
+/* YouVersion-Kapiteltext: Versnummer klein & gedämpft (nicht als Wort lesbar),
+   Vers-Wrapper (siehe wrapVersesInHtml) antippbar mit sanftem Hover/Auswahl. */
+.yv-vlbl {
+  font-size: 0.62em;
+  font-weight: 600;
+  vertical-align: super;
+  color: var(--color-text-tertiary);
+  margin-right: 0.15em;
+  user-select: none;
+}
+.bible-verse {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.bible-verse:active {
+  background-color: var(--color-bg-secondary);
+}
+
 /* Retain old animations for backward compatibility */
 @keyframes stagePulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(90, 200, 250, 0.5); }

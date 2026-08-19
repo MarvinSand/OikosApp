@@ -108,6 +108,7 @@ function AppShellInner() {
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
           <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
+          <Route path="/auth/youversion/callback" element={<YouVersionCallback />} />
           <Route path="/bible/youversion/callback" element={<YouVersionCallback />} />
           <Route path="/bible" element={<BibleView />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />

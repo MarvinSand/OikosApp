@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { fetchBiblePath } from '../lib/youversion'
+import { wrapVersesInHtml } from '../lib/biblePassageHtml'
 
 // Numerische YouVersion-Bibel-ID (per GET /v1/bibles?language_ranges[]=deu
 // ermittelt). 73 = "Hoffnung für alle". Andere deutsche Übersetzungen (u.a.
@@ -11,9 +12,9 @@ export const DEFAULT_BIBLE_ID = '73'
 
 // GET /v1/bibles/{id}/books/{book}/chapters/{chapter}/verses liefert nur eine
 // Referenzliste (id/passage_id/title) OHNE Bibeltext. Der eigentliche Text
-// kommt über GET /v1/bibles/{id}/passages/{referenz} (Feld `content`, HTML
-// mit vermutlich [data-usfm]-Attributen pro Vers – das lässt sich nicht ohne
-// echten Test verifizieren, siehe supportsVerseTap unten).
+// kommt über GET /v1/bibles/{id}/passages/{referenz}?format=html (Feld
+// `content`), mit <span class="yv-v" v="N"> als Versmarker – siehe
+// wrapVersesInHtml für die Aufbereitung zu antippbaren Vers-Elementen.
 export function useChapterText(bibleId, book, chapter) {
   const [html, setHtml] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -28,7 +29,7 @@ export function useChapterText(bibleId, book, chapter) {
       .then(data => {
         if (cancelled) return
         const content = data?.data?.content ?? data?.content ?? ''
-        setHtml(content)
+        setHtml(wrapVersesInHtml(content))
       })
       .catch(e => { if (!cancelled) setError(e.message) })
       .finally(() => { if (!cancelled) setLoading(false) })
@@ -57,7 +58,7 @@ export function usePassageText(bibleId, book, chapter, verseStart, verseEnd) {
     fetchBiblePath(`/v1/bibles/${bibleId}/passages/${passageIdFor(book, chapter, verseStart, verseEnd)}?format=html`)
       .then(data => {
         if (cancelled) return
-        setHtml(data?.data?.content ?? data?.content ?? '')
+        setHtml(wrapVersesInHtml(data?.data?.content ?? data?.content ?? ''))
       })
       .catch(e => { if (!cancelled) setError(e.message) })
       .finally(() => { if (!cancelled) setLoading(false) })

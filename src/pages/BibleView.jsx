@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Highlighter, StickyNote, Bookmark, X, PenLine } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useChapterText, useBibleMarkers, useGermanBibleVersions, saveReadingProgress, DEFAULT_BIBLE_ID } from '../hooks/useBible'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
@@ -18,6 +18,7 @@ const HIGHLIGHT_COLORS = {
 export default function BibleView() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const contentRef = useRef(null)
   const [book, setBook] = useState('JHN')
   const [chapter, setChapter] = useState(3)
   const [bibleId, setBibleId] = useState(() => {
@@ -25,7 +26,11 @@ export default function BibleView() {
   })
   const [showBookPicker, setShowBookPicker] = useState(false)
   const [showVersionPicker, setShowVersionPicker] = useState(false)
-  const [selectedVerse, setSelectedVerse] = useState(null)
+  // "Marker-Modus" wie in der YouVersion-App: erster Tap auf einen Vers
+  // öffnet den Modus und wählt ihn aus, weitere Taps erweitern/verkleinern
+  // die Auswahl. Die Aktionsleiste wirkt dann auf den gesamten (zusammen-
+  // hängenden) Bereich min…max der ausgewählten Versnummern.
+  const [selectedVerses, setSelectedVerses] = useState(new Set())
   const [noteDraft, setNoteDraft] = useState('')
 
   const bookInfo = findBook(book)
@@ -41,27 +46,56 @@ export default function BibleView() {
     setShowVersionPicker(false)
   }
 
-  // YouVersion liefert den Kapiteltext als HTML. Falls die Verse darin mit
-  // [data-usfm="BUCH.KAPITEL.VERS"] ausgezeichnet sind, lässt sich per Klick
-  // direkt der richtige Vers auswählen. Ist das Attribut nicht vorhanden
-  // (Struktur nicht 100% verifiziert), bleibt die manuelle Vers-Eingabe unten
-  // als Fallback nutzbar.
   function handleContentClick(e) {
-    const el = e.target.closest('[data-usfm]')
+    const el = e.target.closest('[data-verse]')
     if (!el) return
-    const usfm = el.getAttribute('data-usfm') || ''
-    const num = parseInt(usfm.split('.').pop(), 10)
-    if (!isNaN(num)) setSelectedVerse(prev => prev === num ? null : num)
+    const num = parseInt(el.getAttribute('data-verse'), 10)
+    if (isNaN(num)) return
+    setSelectedVerses(prev => {
+      const next = new Set(prev)
+      if (next.has(num)) next.delete(num)
+      else next.add(num)
+      return next
+    })
   }
 
-  function referenceLabel(verseNum) {
-    return `${bookInfo?.name || book} ${chapter},${verseNum}`
+  const highlightFor = (verseNum) => highlights.find(h => verseNum >= h.verse_start && verseNum <= (h.verse_end ?? h.verse_start))
+  const notesFor = (verseNum) => notes.filter(n => verseNum >= n.verse_start && verseNum <= (n.verse_end ?? n.verse_start))
+  const isBookmarked = (verseNum) => bookmarks.some(b => b.verse === verseNum)
+
+  // DOM-Overlay für Auswahl + bestehende Markierungen direkt auf die
+  // gewrappten [data-verse]-Spans anwenden (dangerouslySetInnerHTML wird
+  // von React nicht re-diffed, deshalb hier imperativ).
+  useEffect(() => {
+    const container = contentRef.current
+    if (!container) return
+    container.querySelectorAll('[data-verse]').forEach(el => {
+      const num = parseInt(el.getAttribute('data-verse'), 10)
+      const hl = highlightFor(num)
+      if (selectedVerses.has(num)) {
+        el.style.backgroundColor = hl ? HIGHLIGHT_COLORS[hl.color] || HIGHLIGHT_COLORS.yellow : 'var(--color-bg-secondary)'
+        el.style.boxShadow = '0 0 0 2px var(--color-accent)'
+      } else if (hl) {
+        el.style.backgroundColor = HIGHLIGHT_COLORS[hl.color] || HIGHLIGHT_COLORS.yellow
+        el.style.boxShadow = 'none'
+      } else {
+        el.style.backgroundColor = 'transparent'
+        el.style.boxShadow = 'none'
+      }
+    })
+  }, [html, selectedVerses, highlights])
+
+  function referenceLabel() {
+    const nums = Array.from(selectedVerses).sort((a, b) => a - b)
+    if (nums.length === 0) return ''
+    if (nums.length === 1) return `${bookInfo?.name || book} ${chapter},${nums[0]}`
+    return `${bookInfo?.name || book} ${chapter},${nums[0]}-${nums[nums.length - 1]}`
   }
 
   function goToChapter(nextBook, nextChapter) {
     setBook(nextBook)
     setChapter(nextChapter)
-    setSelectedVerse(null)
+    setSelectedVerses(new Set())
     setShowBookPicker(false)
     if (user) saveReadingProgress(user.id, { bibleId, book: nextBook, chapter: nextChapter })
   }
@@ -78,9 +112,11 @@ export default function BibleView() {
     if (idx < BIBLE_BOOKS.length - 1) goToChapter(BIBLE_BOOKS[idx + 1].code, 1)
   }
 
-  const highlightFor = (verseNum) => highlights.find(h => verseNum >= h.verse_start && verseNum <= (h.verse_end ?? h.verse_start))
-  const notesFor = (verseNum) => notes.filter(n => verseNum >= n.verse_start && verseNum <= (n.verse_end ?? n.verse_start))
-  const isBookmarked = (verseNum) => bookmarks.some(b => b.verse === verseNum)
+  const selectedNums = Array.from(selectedVerses).sort((a, b) => a - b)
+  const verseStart = selectedNums[0]
+  const verseEnd = selectedNums[selectedNums.length - 1]
+  const activeNotes = selectedNums.length ? notesFor(verseStart).concat(verseEnd !== verseStart ? notesFor(verseEnd) : []) : []
+  const uniqueActiveNotes = [...new Map(activeNotes.map(n => [n.id, n])).values()]
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -121,7 +157,10 @@ export default function BibleView() {
       </div>
 
       {/* Content */}
-      <div className="px-5 py-5" style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))' }}>
+      <div
+        className="px-5 py-5"
+        style={{ paddingBottom: selectedVerses.size > 0 ? 220 : 'calc(84px + env(safe-area-inset-bottom, 0px))' }}
+      >
         {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
         {error && (
           <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}>
@@ -131,23 +170,15 @@ export default function BibleView() {
         )}
 
         {!loading && !error && html && (
-          <>
-            <ManualVerseSelector
-              value={selectedVerse}
-              onChange={setSelectedVerse}
-              highlightCount={highlights.length}
-              noteCount={notes.length}
-              bookmarkCount={bookmarks.length}
-            />
-            {/* Text stammt aus der eigenen Edge Function (Proxy zu api.youversion.com),
-                nicht aus Nutzereingaben - dangerouslySetInnerHTML ist hier unbedenklich. */}
-            <div
-              className="bible-passage-content"
-              onClick={handleContentClick}
-              style={{ fontFamily: 'Lora, serif', fontSize: 17, lineHeight: 1.9, color: 'var(--color-text)' }}
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          </>
+          // Text stammt aus der eigenen Edge Function (Proxy zu api.youversion.com),
+          // nicht aus Nutzereingaben - dangerouslySetInnerHTML ist hier unbedenklich.
+          <div
+            ref={contentRef}
+            className="bible-passage-content"
+            onClick={handleContentClick}
+            style={{ fontFamily: 'Lora, serif', fontSize: 17, lineHeight: 1.9, color: 'var(--color-text)' }}
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
         )}
 
         {!loading && !error && !html && (
@@ -155,23 +186,23 @@ export default function BibleView() {
         )}
       </div>
 
-      {/* Verse-Aktionsleiste */}
-      {selectedVerse != null && (
+      {/* Marker-Aktionsleiste */}
+      {selectedVerses.size > 0 && (
         <VerseActionBar
-          verseNum={selectedVerse}
-          referenceLabel={referenceLabel(selectedVerse)}
-          existingHighlight={highlightFor(selectedVerse)}
-          bookmarked={isBookmarked(selectedVerse)}
-          notes={notesFor(selectedVerse)}
+          referenceLabel={referenceLabel()}
+          existingHighlight={verseStart != null ? highlightFor(verseStart) : null}
+          bookmarked={verseStart != null && verseEnd === verseStart && isBookmarked(verseStart)}
+          showBookmark={verseStart != null && verseEnd === verseStart}
+          notes={uniqueActiveNotes}
           noteDraft={noteDraft}
           setNoteDraft={setNoteDraft}
-          onClose={() => { setSelectedVerse(null); setNoteDraft('') }}
-          onHighlight={(color) => addHighlight({ verseStart: selectedVerse, referenceLabel: referenceLabel(selectedVerse), color, bibleId })}
+          onClose={() => { setSelectedVerses(new Set()); setNoteDraft('') }}
+          onHighlight={(color) => addHighlight({ verseStart, verseEnd, referenceLabel: referenceLabel(), color, bibleId })}
           onRemoveHighlight={(id) => removeHighlight(id)}
-          onBookmark={() => toggleBookmark({ verse: selectedVerse, referenceLabel: referenceLabel(selectedVerse), bibleId })}
+          onBookmark={() => toggleBookmark({ verse: verseStart, referenceLabel: referenceLabel(), bibleId })}
           onSaveNote={async () => {
             if (!noteDraft.trim()) return
-            await addNote({ verseStart: selectedVerse, referenceLabel: referenceLabel(selectedVerse), note: noteDraft.trim(), bibleId })
+            await addNote({ verseStart, verseEnd, referenceLabel: referenceLabel(), note: noteDraft.trim(), bibleId })
             setNoteDraft('')
           }}
           onRemoveNote={(id) => removeNote(id)}
@@ -226,13 +257,13 @@ function YouVersionBadge({ yv }) {
 }
 
 function VerseActionBar({
-  verseNum, referenceLabel, existingHighlight, bookmarked, notes, noteDraft, setNoteDraft,
+  referenceLabel, existingHighlight, bookmarked, showBookmark, notes, noteDraft, setNoteDraft,
   onClose, onHighlight, onRemoveHighlight, onBookmark, onSaveNote, onRemoveNote,
 }) {
   return (
     <div
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md rounded-t-2xl p-4 z-30"
-      style={{ backgroundColor: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', boxShadow: '0 -4px 24px rgba(0,0,0,0.15)' }}
+      style={{ backgroundColor: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', boxShadow: '0 -4px 24px rgba(0,0,0,0.15)', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="flex items-center justify-between mb-3">
         <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{referenceLabel}</p>
@@ -247,16 +278,18 @@ function VerseActionBar({
             className="w-8 h-8 rounded-full flex items-center justify-center"
             style={{ backgroundColor: hex, boxShadow: existingHighlight?.color === name ? '0 0 0 2px var(--color-accent)' : 'none' }}
           >
-            {existingHighlight?.color === name && <Highlighter size={14} />}
+            {existingHighlight?.color === name && <span style={{ fontSize: 12 }}>✓</span>}
           </button>
         ))}
-        <button
-          onClick={onBookmark}
-          className="w-8 h-8 rounded-full flex items-center justify-center ml-auto"
-          style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-        >
-          <Bookmark size={16} style={{ color: bookmarked ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }} fill={bookmarked ? 'var(--color-accent)' : 'none'} />
-        </button>
+        {showBookmark && (
+          <button
+            onClick={onBookmark}
+            className="w-8 h-8 rounded-full flex items-center justify-center ml-auto"
+            style={{ backgroundColor: 'var(--color-bg-secondary)' }}
+          >
+            <Bookmark size={16} style={{ color: bookmarked ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }} fill={bookmarked ? 'var(--color-accent)' : 'none'} />
+          </button>
+        )}
       </div>
 
       {notes.map(n => (
@@ -267,6 +300,7 @@ function VerseActionBar({
       ))}
 
       <div className="flex items-center gap-2">
+        <StickyNote size={16} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
         <input
           value={noteDraft}
           onChange={e => setNoteDraft(e.target.value)}
@@ -286,43 +320,40 @@ function VerseActionBar({
   )
 }
 
-function ManualVerseSelector({ value, onChange, highlightCount, noteCount, bookmarkCount }) {
-  return (
-    <div className="flex items-center gap-2 mb-4 flex-wrap">
-      <PenLine size={14} style={{ color: 'var(--color-text-tertiary)' }} />
-      <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>Vers markieren:</span>
-      <input
-        type="number"
-        min={1}
-        value={value ?? ''}
-        onChange={e => onChange(e.target.value ? parseInt(e.target.value, 10) : null)}
-        placeholder="Nr."
-        className="w-16 px-2 py-1 rounded-lg text-sm"
-        style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
-      />
-      {(highlightCount > 0 || noteCount > 0 || bookmarkCount > 0) && (
-        <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginLeft: 'auto' }}>
-          {highlightCount > 0 && `${highlightCount} Markierung${highlightCount > 1 ? 'en' : ''}`}
-          {highlightCount > 0 && (noteCount > 0 || bookmarkCount > 0) && ' · '}
-          {noteCount > 0 && `${noteCount} Notiz${noteCount > 1 ? 'en' : ''}`}
-          {noteCount > 0 && bookmarkCount > 0 && ' · '}
-          {bookmarkCount > 0 && `${bookmarkCount} Lesezeichen`}
-        </span>
-      )}
-    </div>
-  )
-}
-
 function VersionPicker({ versions, currentId, onSelect, onClose }) {
+  const [search, setSearch] = useState('')
+  const filtered = versions?.filter(v => {
+    if (!search.trim()) return true
+    const q = search.trim().toLowerCase()
+    return (v.localized_title || v.title || '').toLowerCase().includes(q)
+      || (v.localized_abbreviation || v.abbreviation || '').toLowerCase().includes(q)
+  })
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <h2 className="font-bold" style={{ color: 'var(--color-text)' }}>Übersetzung wählen</h2>
         <button onClick={onClose}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
       </div>
+      <div className="px-4 pt-3 pb-1">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+          <Search size={16} style={{ color: 'var(--color-text-tertiary)' }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Übersetzung suchen…"
+            className="flex-1 bg-transparent text-sm outline-none"
+            style={{ color: 'var(--color-text)' }}
+            autoFocus
+          />
+        </div>
+      </div>
       <div className="flex-1 overflow-y-auto px-4 py-2">
         {!versions && <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Lädt…</p>}
-        {versions?.map(v => (
+        {versions && filtered.length === 0 && (
+          <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Keine Übersetzung gefunden.</p>
+        )}
+        {filtered?.map(v => (
           <button
             key={v.id}
             onClick={() => onSelect(v.id)}

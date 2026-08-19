@@ -3,7 +3,33 @@ import { useAuth } from './useAuth'
 import { supabase } from '../lib/supabase'
 import { startYouVersionLogin, disconnectYouVersion, syncYouVersionData } from '../lib/youversion'
 
-export const YOUVERSION_CALLBACK_PATH = '/bible/youversion/callback'
+// Muss exakt einer im YouVersion-Dashboard registrierten Callback-URL
+// entsprechen: https://oikosapp.net/auth/youversion/callback,
+// http://localhost:5173/auth/youversion/callback,
+// https://oikos-app-tau.vercel.app/bible/youversion/callback (Vercel-Default-
+// Domain, anderer Pfad!). Deshalb Origin/Pfad hier zentral auflösen statt
+// naiv window.location.origin zu nehmen (das liefert z.B. "www.oikosapp.net",
+// was NICHT registriert ist und die YouVersion-Anfrage ablehnt).
+export function resolveYouVersionRedirectUri() {
+  const { hostname, origin } = window.location
+  if (hostname === 'oikosapp.net' || hostname === 'www.oikosapp.net') {
+    return 'https://oikosapp.net/auth/youversion/callback'
+  }
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${origin}/auth/youversion/callback`
+  }
+  // Vercel-Preview/-Default-Domains o.ä. sind nicht vorregistriert -
+  // fällt auf den Vercel-Default-Domain-Pfad zurück, falls das die aktuelle
+  // Domain ist; sonst bleibt der Login-Versuch (erwartbar) an YouVersion
+  // hängen, bis die jeweilige Domain im Dashboard eingetragen wird.
+  if (hostname === 'oikos-app-tau.vercel.app') {
+    return `${origin}/bible/youversion/callback`
+  }
+  return `${origin}/auth/youversion/callback`
+}
+
+// Route, unter der die App auf den Redirect von YouVersion wartet.
+export const YOUVERSION_CALLBACK_PATH = '/auth/youversion/callback'
 const STATE_KEY = 'oikos_youversion_oauth_state'
 
 export function useYouVersionAccount() {
@@ -30,7 +56,7 @@ export function useYouVersionAccount() {
     setConnecting(true)
     setError(null)
     try {
-      const redirectUri = window.location.origin + YOUVERSION_CALLBACK_PATH
+      const redirectUri = resolveYouVersionRedirectUri()
       const { authorizeUrl, state } = await startYouVersionLogin(redirectUri)
       sessionStorage.setItem(STATE_KEY, state)
       window.location.href = authorizeUrl
