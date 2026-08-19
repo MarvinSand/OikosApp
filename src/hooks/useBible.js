@@ -3,13 +3,10 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { fetchBiblePath } from '../lib/youversion'
 
-// Platzhalter-Bibel-ID. YouVersion vergibt pro Übersetzung eine numerische
-// ID (Beispiel aus der API-Doku: 3034 für die englische ESV). Die ID für eine
-// deutsche Übersetzung (z. B. Elberfelder/Luther) steht hier noch nicht fest –
-// bitte über GET /bible-api/v1/bibles?language=deu (siehe listGermanBibles
-// unten) die echte ID ermitteln und hier eintragen, sobald der Endpoint
-// gegen die echte Doku verifiziert ist.
-export const DEFAULT_BIBLE_ID = 'de-elb'
+// Numerische YouVersion-Bibel-ID (per GET /v1/bibles?language_ranges[]=deu
+// ermittelt). 58 = "Elberfelder 1871". Andere deutsche Übersetzungen (u.a.
+// Luther 1912 = 51, Hoffnung für alle = 73) liefert useGermanBibleVersions().
+export const DEFAULT_BIBLE_ID = '58'
 
 export function useChapterText(bibleId, book, chapter) {
   const [verses, setVerses] = useState(null)
