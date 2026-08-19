@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
-  Moon, Globe, Navigation, KeyRound, Camera,
+  Moon, Globe, KeyRound, Camera,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -323,7 +323,6 @@ export default function SettingsView() {
 
   // Datenschutz-Toggles
   const [showOnMap, setShowOnMap] = useState(false)
-  const [allowLocation, setAllowLocation] = useState(true)
   const [locValue, setLocValue] = useState(null)
   const [savingLoc, setSavingLoc] = useState(false)
 
@@ -343,7 +342,6 @@ export default function SettingsView() {
       show_bio: profile.show_bio ?? true,
     })
     setShowOnMap(profile.show_on_world_map ?? false)
-    setAllowLocation(profile.allow_location ?? true)
     setLocValue(
       profile.latitude != null && profile.longitude != null
         ? { shortName: profile.city || 'Mein Standort', lat: profile.latitude, lng: profile.longitude }
@@ -391,18 +389,6 @@ export default function SettingsView() {
       showToast(next ? 'Auf der Weltkarte sichtbar ✓' : 'Nicht mehr auf der Weltkarte')
     } catch {
       setShowOnMap(!next)
-      showToast('Fehler beim Speichern', 'error')
-    }
-  }
-
-  async function handleToggleLocation() {
-    const next = !allowLocation
-    setAllowLocation(next)
-    try {
-      await updateProfile({ allow_location: next })
-      showToast(next ? 'Standort erlaubt ✓' : 'Standort deaktiviert')
-    } catch {
-      setAllowLocation(!next)
       showToast('Fehler beim Speichern', 'error')
     }
   }
@@ -666,13 +652,6 @@ export default function SettingsView() {
                 desc="Zeigt deinen Standort für andere auf der Weltkarte."
                 checked={showOnMap}
                 onChange={handleToggleMap}
-              />
-              <SettingToggle
-                icon={Navigation}
-                title="Standort erlauben"
-                desc="Erlaubt der App, deinen Standort zu verwenden."
-                checked={allowLocation}
-                onChange={handleToggleLocation}
               />
             </div>
           </AnchorSection>
