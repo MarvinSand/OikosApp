@@ -1,11 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, BookOpen, Globe, BookMarked, User } from 'lucide-react'
+import { Home, BookOpen, Globe, BookMarked, Book, User } from 'lucide-react'
 
 const tabs = [
   { path: '/',                 icon: Home,       label: 'Home',         match: ['/']                   },
   { path: '/prayers',          icon: BookOpen,   label: 'For You',      match: ['/friends', '/prayer', '/prayers'] },
   { path: '/worldmap',         icon: Globe,      label: 'Weltkarte',    match: ['/worldmap']           },
   { path: '/discipleship',     icon: BookMarked, label: 'Jüngerschaft', match: ['/discipleship']       },
+  { path: '/bible',            icon: Book,       label: 'Bibel',        match: ['/bible']              },
   { path: '/profile',          icon: User,       label: 'Profil',       match: ['/profile']            },
 ]
 
