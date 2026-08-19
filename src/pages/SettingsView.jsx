@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
-  Moon, Globe, KeyRound, Camera,
+  Moon, Globe, KeyRound, Camera, BookMarked,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -10,6 +10,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useChangePassword } from '../hooks/useChangePassword'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
+import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import AddressAutocomplete from '../components/common/AddressAutocomplete'
 import { Avatar } from '../components/profile/ProfileTabs'
 
@@ -298,6 +299,7 @@ export default function SettingsView() {
   const { theme, toggleTheme } = useTheme()
   const fileInputRef = useRef(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const yv = useYouVersionAccount()
 
   // 'hub' | 'profile' | 'privacy' – Deep-Link via ?section=privacy&anchor=bio
   const [searchParams] = useSearchParams()
@@ -510,6 +512,12 @@ export default function SettingsView() {
               icon={ShieldCheck}
               title="Ansicht & Datenschutz"
               onClick={() => setSection('privacy')}
+            />
+            <MenuRow
+              icon={BookMarked}
+              title="YouVersion"
+              desc={yv.connected ? 'Verbunden' : 'Nicht verbunden'}
+              onClick={() => yv.connected ? yv.disconnect() : yv.connect()}
             />
           </div>
 
