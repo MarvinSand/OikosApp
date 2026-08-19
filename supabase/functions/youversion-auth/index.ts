@@ -6,8 +6,9 @@
 //   - Token-Endpoint:      https://api.youversion.com/auth/token
 //   - App-Key-Header:      X-YVP-App-Key (App-Ebene, z.B. für Bibeltext)
 //   - User-Token-Header:   Authorization: Bearer <access_token>
-//   - Scopes:              "openid profile email" (Highlights sind ein
-//     separater Data-Exchange-Schritt nach dem Login, siehe unten)
+//   - Scopes:              "openid profile email" (OIDC-Identität)
+//   - requested_permissions[]: eigener Parameter am /authorize-Aufruf,
+//     getrennt vom OAuth-"scope" - aktuell nur "highlights" unterstützt
 //   - nonce ist Pflicht, sobald scope "openid" enthält
 //
 // Zwei Modi, je nachdem ob der Aufrufer beim Start bereits eine Oikos-
@@ -35,8 +36,6 @@ import { getUserId, serviceClient } from '../_shared/authUser.ts'
 const APP_KEY = Deno.env.get('YOUVERSION_APP_KEY')!
 const AUTHORIZE_URL = 'https://api.youversion.com/auth/authorize'
 const TOKEN_URL = 'https://api.youversion.com/auth/token'
-const DATA_EXCHANGE_TOKEN_URL = 'https://api.youversion.com/data-exchange/token'
-const DATA_EXCHANGE_URL = 'https://api.youversion.com/data-exchange'
 const SCOPE = 'openid profile email'
 const STATE_TTL_MS = 10 * 60 * 1000
 
@@ -120,6 +119,7 @@ Deno.serve(async (req) => {
     if (!redirectUri) return json({ error: 'redirectUri required' }, 400)
 
     const mode = userId ? 'link' : 'signin'
+    const requestHighlights = mode === 'link' && body.requestHighlights !== false
     const codeVerifier = randomToken(64)
     const codeChallenge = await sha256Base64Url(codeVerifier)
     const state = randomToken(24)
@@ -150,6 +150,11 @@ Deno.serve(async (req) => {
     // abbrechen und nur mit "state" (ohne "code"/"error") zurückleiten, statt
     // den Nutzer einen Bestätigungs-Button klicken zu lassen.
     url.searchParams.set('require_user_interaction', 'true')
+    // requested_permissions[] ist ein eigener Parameter direkt am
+    // /authorize-Aufruf (getrennt vom OAuth-"scope") - NICHT über die
+    // separate "Data Exchange"-Seite anfragen, das ist ein anderer,
+    // unnötiger Mechanismus für diesen Fall.
+    if (requestHighlights) url.searchParams.set('requested_permissions[]', 'highlights')
 
     return json({ authorizeUrl: url.toString(), state, mode })
   }
@@ -205,40 +210,13 @@ Deno.serve(async (req) => {
       }).eq('id', targetUserId)
     }
 
-    // Highlights sind kein Login-Scope, sondern eine separate Berechtigung,
-    // die erst nach dem Login per "Data Exchange" angefragt werden kann.
-    // Best-effort: schlägt das fehl, ist der Login trotzdem erfolgreich.
-    async function requestHighlightsDataExchangeUrl(): Promise<string | null> {
-      try {
-        const dxRes = await fetch(DATA_EXCHANGE_TOKEN_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-YVP-App-Key': APP_KEY,
-            Authorization: `Bearer ${tokenData.access_token}`,
-          },
-          body: JSON.stringify({ requested_permissions: ['highlights'] }),
-        })
-        if (!dxRes.ok) {
-          console.error(`data-exchange/token failed: ${dxRes.status} ${await dxRes.text().catch(() => '')}`)
-          return null
-        }
-        const dx = await dxRes.json()
-        const dxUrl = new URL(DATA_EXCHANGE_URL)
-        dxUrl.searchParams.set('token', dx.token)
-        dxUrl.searchParams.set('x-yvp-app-key', APP_KEY)
-        return dxUrl.toString()
-      } catch (e) {
-        console.error(`data-exchange/token error: ${e}`)
-        return null
-      }
-    }
-
     if (stateRow.mode === 'link') {
       if (!userId) return json({ error: 'unauthorized' }, 401)
       await saveTokensAndLinkProfile(userId)
-      const dataExchangeUrl = await requestHighlightsDataExchangeUrl()
-      return json({ connected: true, dataExchangeUrl })
+      // granted_permissions kommt (falls requested_permissions[] gesetzt war)
+      // als Query-Param auf dem redirect_uri der zweiten Runde (Auth Call 2)
+      // mit an - das Frontend liest es dort direkt aus der URL, nicht hier.
+      return json({ connected: true })
     }
 
     // mode === 'signin': neues oder bestehendes Oikos-Konto per YouVersion-
@@ -284,35 +262,6 @@ Deno.serve(async (req) => {
     }
 
     return json({ email, tokenHash: linkData.properties.hashed_token })
-  }
-
-  if (body.action === 'request-highlights') {
-    if (!userId) return json({ error: 'unauthorized' }, 401)
-    const { data: tokenRow } = await db
-      .from('user_youversion_tokens')
-      .select('access_token')
-      .eq('user_id', userId)
-      .maybeSingle()
-    if (!tokenRow) return json({ error: 'not_connected_to_youversion' }, 409)
-
-    const dxRes = await fetch(DATA_EXCHANGE_TOKEN_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-YVP-App-Key': APP_KEY,
-        Authorization: `Bearer ${tokenRow.access_token}`,
-      },
-      body: JSON.stringify({ requested_permissions: ['highlights'] }),
-    })
-    if (!dxRes.ok) {
-      const text = await dxRes.text().catch(() => '')
-      return json({ error: 'data_exchange_token_failed', detail: text }, 502)
-    }
-    const dx = await dxRes.json()
-    const dxUrl = new URL(DATA_EXCHANGE_URL)
-    dxUrl.searchParams.set('token', dx.token)
-    dxUrl.searchParams.set('x-yvp-app-key', APP_KEY)
-    return json({ dataExchangeUrl: dxUrl.toString() })
   }
 
   if (body.action === 'disconnect') {

@@ -37,7 +37,7 @@ export async function completeYouVersionLogin({ code, state, redirectUri }) {
     body: JSON.stringify({ action: 'callback', code, state, redirectUri }),
   })
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'callback_failed')
-  return res.json() // { connected: true, dataExchangeUrl: string | null }
+  return res.json() // { connected: true }
 }
 
 // ─── "Mit YouVersion anmelden/registrieren" (Login-Bildschirm, kein Oikos-
@@ -61,19 +61,6 @@ export async function completeYouVersionSignIn({ code, state, redirectUri }) {
   })
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'callback_failed')
   return res.json() // { email, tokenHash }
-}
-
-// Highlights sind kein Login-Scope, sondern eine separate Berechtigung, die
-// erst nach dem Login per "Data Exchange"-Zustimmungsseite freigegeben wird.
-export async function requestYouVersionHighlights() {
-  const headers = await authHeaders()
-  const res = await fetch(`${FUNCTIONS_BASE}/youversion-auth`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ action: 'request-highlights' }),
-  })
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'request_highlights_failed')
-  return res.json() // { dataExchangeUrl }
 }
 
 export async function disconnectYouVersion() {

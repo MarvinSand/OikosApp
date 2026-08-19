@@ -7,27 +7,12 @@ import { supabase } from '../lib/supabase'
 
 export default function YouVersionCallback() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'permission' | 'error'
+  const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
   const [errorDetail, setErrorDetail] = useState(null)
   const [fallbackPath, setFallbackPath] = useState('/bible')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-
-    // Zweiter Redirect (nach der "Data Exchange"-Zustimmungsseite für
-    // Highlights) landet vermutlich auf derselben Route - erkennbar an
-    // data_exchange_status statt code/state.
-    const dxStatus = params.get('data_exchange_status')
-    if (dxStatus) {
-      if (dxStatus === 'granted') {
-        setStatus('success')
-      } else {
-        setStatus('permission')
-        setErrorDetail(params.get('error_description') || 'Zugriff auf Highlights nicht erteilt.')
-      }
-      setTimeout(() => navigate('/bible', { replace: true }), 1500)
-      return
-    }
 
     const code = params.get('code')
     const state = params.get('state')
@@ -67,11 +52,7 @@ export default function YouVersionCallback() {
       try {
         if (session) {
           // Bereits bei Oikos eingeloggt -> "link"-Modus (Bibel/Einstellungen).
-          const { dataExchangeUrl } = await completeYouVersionLogin({ code, state, redirectUri })
-          if (dataExchangeUrl) {
-            window.location.href = dataExchangeUrl
-            return
-          }
+          await completeYouVersionLogin({ code, state, redirectUri })
           setStatus('success')
           setTimeout(() => navigate('/bible', { replace: true }), 1200)
         } else {
@@ -108,15 +89,6 @@ export default function YouVersionCallback() {
           </div>
           <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>YouVersion verbunden</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>Du wirst weitergeleitet…</p>
-        </>
-      )}
-      {status === 'permission' && (
-        <>
-          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
-            <BookMarked size={36} style={{ color: 'var(--color-accent)' }} />
-          </div>
-          <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>Verbunden, aber ohne Highlights</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>{errorDetail}</p>
         </>
       )}
       {status === 'error' && (
