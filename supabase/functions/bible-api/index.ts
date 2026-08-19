@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
   if (!upstreamRes.ok) {
     console.error(`upstream ${upstreamRes.status} for ${upstream.toString()}: ${body.slice(0, 500)}`)
   } else if (isPublicBibleList) {
-    console.log(`bibles list ${upstreamRes.status} for ${upstream.toString()}: ${body.slice(0, 1500)}`)
+    console.log(`bibles list ${upstreamRes.status} for ${upstream.toString()}: ${body.slice(0, 2000)}`)
   }
 
   return withCors(new Response(body, {

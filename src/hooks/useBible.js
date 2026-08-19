@@ -40,7 +40,7 @@ export function useGermanBibleVersions() {
 
   useEffect(() => {
     let cancelled = false
-    fetchBiblePath('/v1/bibles?language=deu')
+    fetchBiblePath('/v1/bibles?language_ranges[]=deu')
       .then(data => { if (!cancelled) setVersions(data.data ?? data.items ?? []) })
       .catch(e => { if (!cancelled) setError(e.message) })
     return () => { cancelled = true }
