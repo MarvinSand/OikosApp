@@ -54,11 +54,14 @@ async function fetchAllPages(path: string, accessToken: string) {
     const res = await fetch(next, {
       headers: { Authorization: `Bearer ${accessToken}`, 'X-YVP-App-Key': APP_KEY, Accept: 'application/json' },
     })
+    const bodyText = await res.text()
     if (!res.ok) {
+      console.error(`fetchAllPages ${res.status} for ${next}: ${bodyText.slice(0, 500)}`)
       if (items.length === 0) throw new Error(`${res.status} on ${next}`)
       break
     }
-    const data = await res.json()
+    console.log(`fetchAllPages 200 for ${next}: ${bodyText.slice(0, 500)}`)
+    const data = JSON.parse(bodyText)
     items.push(...(data.items ?? data.data ?? (Array.isArray(data) ? data : [])))
     next = data.next_page ?? data.next ?? null
   }
