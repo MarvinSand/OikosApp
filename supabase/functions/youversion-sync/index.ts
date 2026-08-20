@@ -77,6 +77,18 @@ async function trySync<T>(label: string, fn: () => Promise<T[]>) {
   }
 }
 
+async function probe(label: string, path: string, accessToken: string) {
+  try {
+    const res = await fetch(UPSTREAM_BASE + path, {
+      headers: { Authorization: `Bearer ${accessToken}`, 'X-YVP-App-Key': APP_KEY, Accept: 'application/json' },
+    })
+    const text = await res.text()
+    console.log(`PROBE ${label} ${res.status} ${path}: ${text.slice(0, 400)}`)
+  } catch (e) {
+    console.error(`PROBE ${label} threw for ${path}: ${String(e)}`)
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
@@ -87,6 +99,20 @@ Deno.serve(async (req) => {
   if (!accessToken) return json({ error: 'not_connected_to_youversion' }, 409)
 
   const db = serviceClient()
+
+  // Temporäre Discovery-Probes, um die echte Highlights-Listing-Route und
+  // ob Notes/Bookmarks überhaupt existieren herauszufinden. Nur Logging,
+  // beeinflusst das Sync-Ergebnis nicht. Wird entfernt, sobald die echten
+  // Pfade bekannt sind.
+  await Promise.all([
+    probe('highlights-with-passage', '/v1/highlights?bible_id=73&passage_id=JHN.3', accessToken),
+    probe('highlights-mine', '/v1/highlights/mine', accessToken),
+    probe('users-me', '/v1/users/me', accessToken),
+    probe('me', '/v1/me', accessToken),
+    probe('root-v1', '/v1', accessToken),
+    probe('root', '/', accessToken),
+    probe('openapi', '/openapi.json', accessToken),
+  ])
 
   const [highlights, notes, bookmarks] = await Promise.all([
     trySync('highlights', () => fetchAllPages('/v1/highlights', accessToken)),
