@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from './useAuth'
 import { supabase } from '../lib/supabase'
-import { startYouVersionLogin, disconnectYouVersion, syncYouVersionData, startYouVersionSignIn } from '../lib/youversion'
+import { startYouVersionLogin, disconnectYouVersion, startYouVersionSignIn } from '../lib/youversion'
 
 // Muss exakt einer im YouVersion-Dashboard registrierten Callback-URL
 // entsprechen. Bewusst die AKTUELLE Origin verwenden (nicht auf eine feste
@@ -29,8 +29,6 @@ export function useYouVersionAccount() {
   const [connected, setConnected] = useState(null) // null = noch unbekannt
   const [email, setEmail] = useState(null)
   const [connecting, setConnecting] = useState(false)
-  const [syncing, setSyncing] = useState(false)
-  const [syncResult, setSyncResult] = useState(null)
   const [error, setError] = useState(null)
 
   const reloadStatus = useCallback(async () => {
@@ -65,22 +63,7 @@ export function useYouVersionAccount() {
     setEmail(null)
   }, [])
 
-  const sync = useCallback(async () => {
-    setSyncing(true)
-    setError(null)
-    try {
-      const result = await syncYouVersionData()
-      setSyncResult(result.synced)
-      return result.synced
-    } catch (e) {
-      setError(e.message)
-      return null
-    } finally {
-      setSyncing(false)
-    }
-  }, [])
-
-  return { connected, email, connecting, syncing, syncResult, error, connect, disconnect, sync, reloadStatus }
+  return { connected, email, connecting, error, connect, disconnect, reloadStatus }
 }
 
 // Für den Login-Bildschirm: startet den Sign-in/up-Flow ohne bestehende

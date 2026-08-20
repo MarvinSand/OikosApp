@@ -4,10 +4,9 @@ import { useAuth } from './useAuth'
 import { fetchBiblePath } from '../lib/youversion'
 import { wrapVersesInHtml } from '../lib/biblePassageHtml'
 
-// Numerische YouVersion-Bibel-ID (per GET /v1/bibles?language_ranges[]=deu
-// ermittelt). 73 = "Hoffnung für alle". Andere deutsche Übersetzungen (u.a.
-// Luther 1912 = 51, Elberfelder 1871 = 58) liefert useGermanBibleVersions() –
-// darüber lässt sich die Version wie in der YouVersion-App umschalten.
+// Numerische YouVersion-Bibel-ID. 73 = "Hoffnung für alle" (Default). Alle
+// ~1479 verfügbaren Übersetzungen liefert useBibleVersions() – darüber lässt
+// sich die Version wie in der YouVersion-App umschalten.
 export const DEFAULT_BIBLE_ID = '73'
 
 // GET /v1/bibles/{id}/books/{book}/chapters/{chapter}/verses liefert nur eine
@@ -68,24 +67,97 @@ export function usePassageText(bibleId, book, chapter, verseStart, verseEnd) {
   return { html, loading, error }
 }
 
-export function useGermanBibleVersions() {
-  const [versions, setVersions] = useState(null)
+// Modul-Cache: die Liste aller Übersetzungen ändert sich praktisch nie
+// innerhalb einer Session, muss also nicht bei jedem Öffnen des Version-
+// Pickers neu über ~20 Seiten nachgeladen werden.
+let bibleVersionsCache = null // { versions, timestamp }
+const BIBLE_VERSIONS_CACHE_MS = 6 * 60 * 60 * 1000
+
+// GET /v1/bibles?language_ranges[]=* liefert ALLE Übersetzungen (aktuell
+// ~1479 Stück, Feld total_size), aber paginiert über next_page_token/
+// page_token (~65 Einträge pro Seite). Ohne language_ranges[] lehnt die API
+// mit 422 ab - "*" ist der (undokumentierte, aber funktionierende) Wildcard-
+// Language-Range.
+export function useBibleVersions() {
+  const [versions, setVersions] = useState(bibleVersionsCache?.versions ?? null)
+  const [loading, setLoading] = useState(!bibleVersionsCache)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (bibleVersionsCache && Date.now() - bibleVersionsCache.timestamp < BIBLE_VERSIONS_CACHE_MS) {
+      setVersions(bibleVersionsCache.versions)
+      setLoading(false)
+      return
+    }
     let cancelled = false
-    fetchBiblePath('/v1/bibles?language_ranges[]=deu')
-      .then(data => { if (!cancelled) setVersions(data.data ?? data.items ?? []) })
-      .catch(e => { if (!cancelled) setError(e.message) })
+    setLoading(true)
+    setError(null)
+    ;(async () => {
+      try {
+        const all = []
+        let path = '/v1/bibles?language_ranges[]=*'
+        let guard = 0
+        while (path && guard < 40) {
+          guard++
+          const data = await fetchBiblePath(path)
+          all.push(...(data?.data ?? []))
+          const token = data?.next_page_token
+          path = token ? `/v1/bibles?language_ranges[]=*&page_token=${encodeURIComponent(token)}` : null
+        }
+        if (cancelled) return
+        bibleVersionsCache = { versions: all, timestamp: Date.now() }
+        setVersions(all)
+      } catch (e) {
+        if (!cancelled) setError(e.message)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
     return () => { cancelled = true }
   }, [])
 
-  return { versions, error }
+  return { versions, loading, error }
+}
+
+// ─── Favoriten-Übersetzungen ───
+
+export function useFavoriteBibleVersions() {
+  const { user } = useAuth()
+  const [favorites, setFavorites] = useState(new Set())
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!user) { setLoading(false); return }
+    setLoading(true)
+    const { data } = await supabase.from('bible_favorite_versions').select('bible_id').eq('user_id', user.id)
+    setFavorites(new Set((data || []).map(r => String(r.bible_id))))
+    setLoading(false)
+  }, [user?.id])
+
+  useEffect(() => { load() }, [load])
+
+  async function toggleFavorite(bibleId) {
+    const id = String(bibleId)
+    const wasFavorite = favorites.has(id)
+    setFavorites(prev => {
+      const next = new Set(prev)
+      if (wasFavorite) next.delete(id)
+      else next.add(id)
+      return next
+    })
+    if (wasFavorite) {
+      await supabase.from('bible_favorite_versions').delete().eq('user_id', user.id).eq('bible_id', id)
+    } else {
+      await supabase.from('bible_favorite_versions').insert({ user_id: user.id, bible_id: id })
+    }
+  }
+
+  return { favorites, loading, toggleFavorite }
 }
 
 // ─── Lokale Marker (eigene + aus YouVersion synchronisierte) ───
 
-export function useBibleMarkers(book, chapter) {
+export function useBibleMarkers(bibleId, book, chapter) {
   const { user } = useAuth()
   const [highlights, setHighlights] = useState([])
   const [notes, setNotes] = useState([])
@@ -95,6 +167,38 @@ export function useBibleMarkers(book, chapter) {
   const load = useCallback(async () => {
     if (!user || !book || !chapter) return
     setLoading(true)
+
+    // Highlights aus der YouVersion-App für dieses Kapitel spiegeln. Die
+    // YouVersion Platform API kennt keine "alle Highlights des Nutzers"-Liste,
+    // nur GET /v1/highlights?bible_id=&passage_id=<BUCH>.<KAPITEL> - deshalb
+    // bei jedem Kapitelaufruf synchronisieren statt über einen globalen
+    // "Sync"-Button. Nicht verbunden/Fehler -> einfach überspringen, lokale
+    // Highlights werden trotzdem geladen.
+    try {
+      const data = await fetchBiblePath(`/v1/highlights?bible_id=${bibleId}&passage_id=${book}.${chapter}`, { asUser: true })
+      const items = data?.data ?? []
+      if (items.length) {
+        const rows = items.map(h => {
+          const parts = String(h.passage_id).split('.')
+          const verse = parseInt(parts[parts.length - 1], 10)
+          return {
+            user_id: user.id,
+            bible_id: String(h.bible_id ?? bibleId),
+            book, chapter,
+            verse_start: verse,
+            verse_end: null,
+            reference_label: `${book} ${chapter},${verse}`,
+            color: h.color ? `#${h.color}` : '#fde68a',
+            source: 'youversion',
+            youversion_id: String(h.passage_id),
+          }
+        })
+        await supabase.from('bible_highlights').upsert(rows, { onConflict: 'user_id,source,youversion_id' })
+      }
+    } catch {
+      /* nicht verbunden oder YouVersion-API-Fehler - lokale Highlights reichen */
+    }
+
     const [h, n, b] = await Promise.all([
       supabase.from('bible_highlights').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
       supabase.from('bible_notes').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
@@ -104,7 +208,7 @@ export function useBibleMarkers(book, chapter) {
     setNotes(n.data || [])
     setBookmarks(b.data || [])
     setLoading(false)
-  }, [user?.id, book, chapter])
+  }, [user?.id, bibleId, book, chapter])
 
   useEffect(() => { load() }, [load])
 

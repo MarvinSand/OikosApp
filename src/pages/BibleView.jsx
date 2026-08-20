@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { useChapterText, useBibleMarkers, useGermanBibleVersions, saveReadingProgress, DEFAULT_BIBLE_ID } from '../hooks/useBible'
+import { useChapterText, useBibleMarkers, useBibleVersions, useFavoriteBibleVersions, saveReadingProgress, DEFAULT_BIBLE_ID } from '../hooks/useBible'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
 
@@ -47,8 +47,9 @@ export default function BibleView() {
 
   const bookInfo = findBook(book)
   const { html, loading, error } = useChapterText(bibleId, book, chapter)
-  const { versions: bibleVersions } = useGermanBibleVersions()
-  const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(book, chapter)
+  const { versions: bibleVersions, loading: versionsLoading } = useBibleVersions()
+  const { favorites: favoriteVersionIds, toggleFavorite: toggleFavoriteVersion } = useFavoriteBibleVersions()
+  const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(bibleId, book, chapter)
   const yv = useYouVersionAccount()
   const currentVersion = bibleVersions?.find(v => String(v.id) === String(bibleId))
 
@@ -224,7 +225,8 @@ export default function BibleView() {
       {showBookPicker && (
         <BookPicker
           currentBook={book}
-          onSelect={(code) => goToChapter(code, 1)}
+          currentChapter={chapter}
+          onSelect={(code, ch) => goToChapter(code, ch)}
           onClose={() => setShowBookPicker(false)}
         />
       )}
@@ -232,7 +234,10 @@ export default function BibleView() {
       {showVersionPicker && (
         <VersionPicker
           versions={bibleVersions}
+          loading={versionsLoading}
           currentId={bibleId}
+          favorites={favoriteVersionIds}
+          onToggleFavorite={toggleFavoriteVersion}
           onSelect={selectVersion}
           onClose={() => setShowVersionPicker(false)}
         />
@@ -245,15 +250,13 @@ function YouVersionBadge({ yv }) {
   if (yv.connected === null) return null
   if (yv.connected) {
     return (
-      <button
-        onClick={yv.sync}
-        disabled={yv.syncing}
+      <span
         className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
         style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-accent)' }}
-        title="Highlights/Notizen aus YouVersion synchronisieren"
+        title="Highlights aus der YouVersion-App werden beim Öffnen eines Kapitels automatisch übernommen"
       >
-        <BookMarked size={12} /> {yv.syncing ? 'Sync…' : 'YouVersion ✓'}
-      </button>
+        <BookMarked size={12} /> YouVersion ✓
+      </span>
     )
   }
   return (
@@ -282,7 +285,7 @@ function VerseActionBar({
         <button onClick={onClose}><X size={18} style={{ color: 'var(--color-text-tertiary)' }} /></button>
       </div>
 
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         {Object.entries(HIGHLIGHT_COLORS).map(([name, hex]) => (
           <button
             key={name}
@@ -293,6 +296,11 @@ function VerseActionBar({
             {existingHighlight?.color === name && <span style={{ fontSize: 12 }}>✓</span>}
           </button>
         ))}
+        <CustomColorButton
+          value={existingHighlight && !HIGHLIGHT_COLORS[existingHighlight.color] ? existingHighlight.color : null}
+          onPick={(hex) => onHighlight(hex)}
+          onRemove={() => onRemoveHighlight(existingHighlight.id)}
+        />
         {showBookmark && (
           <button
             onClick={onBookmark}
@@ -332,14 +340,74 @@ function VerseActionBar({
   )
 }
 
-function VersionPicker({ versions, currentId, onSelect, onClose }) {
+// "+"-Button für frei wählbare Highlight-Farben (nicht nur die 5 Presets),
+// über den nativen Farbwähler des Browsers (<input type="color">).
+function CustomColorButton({ value, onPick, onRemove }) {
+  const inputRef = useRef(null)
+  const isActive = !!value
+
+  return (
+    <button
+      type="button"
+      onClick={() => isActive ? onRemove() : inputRef.current?.click()}
+      className="w-8 h-8 rounded-full flex items-center justify-center relative"
+      style={{
+        backgroundColor: isActive ? value : 'var(--color-bg-secondary)',
+        boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none',
+        border: isActive ? 'none' : '1px dashed var(--color-border)',
+      }}
+      title="Eigene Farbe"
+    >
+      {isActive ? <span style={{ fontSize: 12 }}>✓</span> : <Plus size={14} style={{ color: 'var(--color-text-tertiary)' }} />}
+      <input
+        ref={inputRef}
+        type="color"
+        defaultValue={value || '#fde68a'}
+        onChange={e => onPick(e.target.value)}
+        className="absolute inset-0 opacity-0 pointer-events-none"
+        tabIndex={-1}
+      />
+    </button>
+  )
+}
+
+function VersionPicker({ versions, loading, currentId, favorites, onToggleFavorite, onSelect, onClose }) {
   const [search, setSearch] = useState('')
-  const filtered = versions?.filter(v => {
-    if (!search.trim()) return true
-    const q = search.trim().toLowerCase()
-    return (v.localized_title || v.title || '').toLowerCase().includes(q)
-      || (v.localized_abbreviation || v.abbreviation || '').toLowerCase().includes(q)
-  })
+  const q = search.trim().toLowerCase()
+
+  const matches = (v) =>
+    (v.localized_title || v.title || '').toLowerCase().includes(q)
+    || (v.localized_abbreviation || v.abbreviation || '').toLowerCase().includes(q)
+
+  const all = versions || []
+  const favoriteVersions = all.filter(v => favorites?.has(String(v.id)) && (!q || matches(v)))
+  const rest = all.filter(v => !favorites?.has(String(v.id)) && (!q || matches(v)))
+  const RESULT_CAP = q ? 200 : 100
+  const restShown = rest.slice(0, RESULT_CAP)
+  const hiddenCount = rest.length - restShown.length
+
+  function VersionRow(v) {
+    const isFavorite = favorites?.has(String(v.id))
+    return (
+      <div
+        key={v.id}
+        className="w-full flex items-center gap-2 py-3"
+        style={{ borderBottom: '1px solid var(--color-border)' }}
+      >
+        <button
+          onClick={() => onSelect(v.id)}
+          className="flex-1 text-left"
+          style={{ color: String(v.id) === String(currentId) ? 'var(--color-accent)' : 'var(--color-text)' }}
+        >
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{v.localized_title || v.title}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{v.localized_abbreviation || v.abbreviation}</div>
+        </button>
+        <button onClick={() => onToggleFavorite(v.id)} className="p-1.5">
+          <Star size={16} style={{ color: isFavorite ? '#f59e0b' : 'var(--color-text-tertiary)' }} fill={isFavorite ? '#f59e0b' : 'none'} />
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -353,7 +421,7 @@ function VersionPicker({ versions, currentId, onSelect, onClose }) {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Übersetzung suchen…"
+            placeholder="Übersetzung suchen (1400+ verfügbar)…"
             className="flex-1 bg-transparent text-sm outline-none"
             style={{ color: 'var(--color-text)' }}
             autoFocus
@@ -361,27 +429,73 @@ function VersionPicker({ versions, currentId, onSelect, onClose }) {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-2">
-        {!versions && <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Lädt…</p>}
-        {versions && filtered.length === 0 && (
+        {loading && !all.length && <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Lädt Übersetzungen…</p>}
+        {!loading && all.length > 0 && favoriteVersions.length === 0 && restShown.length === 0 && (
           <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Keine Übersetzung gefunden.</p>
         )}
-        {filtered?.map(v => (
-          <button
-            key={v.id}
-            onClick={() => onSelect(v.id)}
-            className="w-full text-left py-3"
-            style={{ borderBottom: '1px solid var(--color-border)', color: String(v.id) === String(currentId) ? 'var(--color-accent)' : 'var(--color-text)' }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{v.localized_title || v.title}</div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{v.localized_abbreviation || v.abbreviation}</div>
-          </button>
-        ))}
+        {favoriteVersions.length > 0 && (
+          <>
+            <p className="text-xs font-semibold uppercase tracking-wide pt-2 pb-1" style={{ color: 'var(--color-text-tertiary)' }}>Favoriten</p>
+            {favoriteVersions.map(VersionRow)}
+          </>
+        )}
+        {restShown.length > 0 && (
+          <>
+            {favoriteVersions.length > 0 && (
+              <p className="text-xs font-semibold uppercase tracking-wide pt-3 pb-1" style={{ color: 'var(--color-text-tertiary)' }}>Alle Übersetzungen</p>
+            )}
+            {restShown.map(VersionRow)}
+          </>
+        )}
+        {hiddenCount > 0 && (
+          <p className="text-xs text-center py-3" style={{ color: 'var(--color-text-tertiary)' }}>
+            +{hiddenCount} weitere – Suche verfeinern, um sie zu finden.
+          </p>
+        )}
       </div>
     </div>
   )
 }
 
-function BookPicker({ currentBook, onSelect, onClose }) {
+function BookPicker({ currentBook, currentChapter, onSelect, onClose }) {
+  const [pendingBook, setPendingBook] = useState(null)
+
+  if (pendingBook) {
+    const info = findBook(pendingBook)
+    const chapters = Array.from({ length: info?.chapters || 0 }, (_, i) => i + 1)
+    return (
+      <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <div className="flex items-center gap-2 px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+          <button onClick={() => setPendingBook(null)} className="p-1 -ml-1">
+            <ChevronLeft size={20} style={{ color: 'var(--color-text-tertiary)' }} />
+          </button>
+          <h2 className="font-bold flex-1" style={{ color: 'var(--color-text)' }}>{info?.name} – Kapitel wählen</h2>
+          <button onClick={onClose}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="grid grid-cols-6 gap-2">
+            {chapters.map(ch => {
+              const isCurrent = pendingBook === currentBook && ch === currentChapter
+              return (
+                <button
+                  key={ch}
+                  onClick={() => onSelect(pendingBook, ch)}
+                  className="aspect-square rounded-lg flex items-center justify-center font-medium"
+                  style={{
+                    backgroundColor: isCurrent ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
+                    color: isCurrent ? 'white' : 'var(--color-text)',
+                  }}
+                >
+                  {ch}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -392,7 +506,7 @@ function BookPicker({ currentBook, onSelect, onClose }) {
         {BIBLE_BOOKS.map(b => (
           <button
             key={b.code}
-            onClick={() => onSelect(b.code)}
+            onClick={() => setPendingBook(b.code)}
             className="w-full text-left py-3 flex items-center justify-between"
             style={{ borderBottom: '1px solid var(--color-border)', color: b.code === currentBook ? 'var(--color-accent)' : 'var(--color-text)' }}
           >

@@ -74,13 +74,6 @@ export async function disconnectYouVersion() {
   return res.json()
 }
 
-export async function syncYouVersionData() {
-  const headers = await authHeaders()
-  const res = await fetch(`${FUNCTIONS_BASE}/youversion-sync`, { method: 'POST', headers })
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'sync_failed')
-  return res.json() // { synced: { highlights: {...}, notes: {...}, bookmarks: {...} } }
-}
-
 // ─── Bibeltext (bible-api Proxy) ───
 
 export async function fetchBiblePath(path, { asUser = false } = {}) {

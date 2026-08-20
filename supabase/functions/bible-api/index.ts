@@ -11,9 +11,16 @@
 // -> wird zu https://api.youversion.com/v1/bibles/de-elb/books/JHN/chapters/3/verses
 // mit Header X-YVP-App-Key.
 //
-// WICHTIG: Exakte Pfade (Buch-Codes, Bibel-IDs, Such-Endpoint, "Verse of the
-// Day") bitte gegen https://developers.youversion.com/api gegenchecken – die
-// Doku war beim Bau dieser Function per Egress-Proxy nicht direkt abrufbar.
+// Verifiziert (per Debug-Logging gegen echte Responses, da developers.
+// youversion.com per Egress-Proxy nicht direkt abrufbar war):
+//   - GET /v1/bibles?language_ranges[]=* liefert ALLE Übersetzungen
+//     (paginiert über next_page_token/page_token, total_size im Response).
+//   - GET /v1/highlights?bible_id=&passage_id=<BUCH>.<KAPITEL> liefert die
+//     Highlights des verbundenen Nutzers FÜR DIESES KAPITEL (asUser=1) -
+//     es gibt keine "alle Highlights"-Liste ohne Passage-Filter.
+//   - /v1/notes und /v1/bookmarks existieren nicht (404) - Notizen/Lesezeichen
+//     aus der YouVersion-App lassen sich über diese API nicht synchronisieren,
+//     nur Highlights.
 //
 // Optional: Ist der aufrufende Oikos-User per "Login mit YouVersion"
 // verbunden UND wird ?asUser=1 übergeben, wird zusätzlich (bzw. statt App-Key)
