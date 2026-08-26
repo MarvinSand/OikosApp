@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MessageCircle, Bell } from 'lucide-react'
 import { useHasUnreadConversations } from '../hooks/useHasUnreadConversations'
@@ -8,10 +8,14 @@ import { useSwipeTabs } from '../hooks/useSwipeTabs'
 import TopPrayerToday from '../components/home/TopPrayerToday'
 import WelcomeBanner from '../components/home/WelcomeBanner'
 import ProfileCompletionCard from '../components/home/ProfileCompletionCard'
-import HomeCommunityTab from '../components/home/HomeCommunityTab'
 import GoalCard from '../components/prayer/GoalCard'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
+
+// Lazy: zieht sonst PeopleYouMayKnow, CommunityCard, CreateCommunitySheet
+// (inkl. AddressAutocomplete/Google-Maps-Loader) in Homes kritischen
+// Ladepfad – obwohl der Community-Tab erst nach einem Tap sichtbar wird.
+const HomeCommunityTab = lazy(() => import('../components/home/HomeCommunityTab'))
 
 // ─── Gruppengebet mit meistem Engagement (Top-Goal) ───────────
 function TopGroupGoal() {
@@ -185,7 +189,9 @@ export default function Home() {
           </div>
         ) : (
           <div style={{ padding: '20px 16px 0' }}>
-            <HomeCommunityTab />
+            <Suspense fallback={<div style={{ height: 200, borderRadius: 18, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />}>
+              <HomeCommunityTab />
+            </Suspense>
           </div>
         )}
       </div>

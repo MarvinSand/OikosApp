@@ -1,5 +1,20 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Mobil weiterhin langsam trotz weniger Requests: Home zog heimlich den Google-Maps-Loader mit
+
+**Problem:** Nach den Request-Reduzierungen (siehe Eintrag unten) fühlte sich die App auf dem Handy trotzdem noch langsam an. Ursache war kein Netzwerk-/Query-Problem mehr, sondern Bundle-Gewicht: `HomeCommunityTab.jsx` (**statisch** von der eagerly geladenen `Home.jsx` importiert) importierte `{ CreateCommunitySheet, JoinCommunityModal }` **statisch** aus `pages/FriendsView.jsx` – einer 2200-Zeilen-Datei mit Feed/Chat/Community-Logik. Ein statischer Import zwingt den Browser, das komplette Zielmodul zu laden und auszuführen, *bevor* das importierende Modul fertig ist – unabhängig davon, ob `lazy()`/`Suspense` irgendwo anders in der Kette verwendet wird. Da `CreateCommunitySheet` zusätzlich `AddressAutocomplete` (→ `@react-google-maps/api`, ~161 kB / 37 kB gzip) einbindet, lud **jeder** App-Start diesen kompletten Google-Maps-Loader mit – obwohl der Community-Tab auf Home gar nicht der Standard-Tab ist und die Sheets nur nach einem Tap auf "Erstellen"/"Beitreten" gebraucht werden. Ein vorheriger Fix-Versuch (`preloadLandingRoute` in `vite.config.js`) hatte das Symptom schon dokumentiert, aber nur die *Preload-Priorität* entschärft – am eigentlichen Zwangsimport änderte das nichts.
+
+**Fix:**
+- `CreateCommunitySheet`/`JoinCommunityModal` aus `FriendsView.jsx` in eine eigene Datei `src/components/community/CommunitySheets.jsx` ausgelagert (dedupliziert `FriendsView.jsx` gleich mit).
+- `HomeCommunityTab.jsx` lädt beide jetzt über `lazy(() => import(...))` + `<Suspense>` – der Google-Maps-Loader wird erst angefordert, wenn eines der beiden Sheets tatsächlich öffnet.
+- `Home.jsx` lädt `HomeCommunityTab` selbst jetzt ebenfalls lazy (vorher statischer Import, obwohl der Community-Tab beim ersten Render meist gar nicht sichtbar ist).
+- Effekt: Home-Chunk 27,6 kB → 19,1 kB gzip; `AddressAutocomplete`/Google-Maps-Bundle (161 kB / 37 kB gzip) komplett aus Homes kritischem Pfad entfernt.
+
+**Lektion:**
+- Ein Component-Baum, der teilweise `lazy()` nutzt, ist **nicht automatisch leichtgewichtig** – ein einziger *statischer* Import irgendwo in der Kette (auch tief verschachtelt) zieht das Zielmodul trotzdem eager mit rein. Bei Bundle-Untersuchungen nach genau solchen Querimporten suchen: `grep -rn "from '.*/pages/" src/components`.
+- Named Exports aus einer Seiten-Datei (`pages/*.jsx`) heraus an anderer Stelle zu importieren ist ein Warnsignal – wenn ein Unterkomponente wie ein Sheet/Modal auch von woanders gebraucht wird, gehört sie in eine eigene Datei außerhalb von `pages/`, nicht als Named Export einer Route.
+- `npm run build` und die Chunk-Größen in der Ausgabe sind der schnellste Weg, sowas zu entdecken – ein unerwartet großer oder unerwartet in einem Chunk gelandeter Import (hier: Google Maps im `Home`-Chunk) fällt dort sofort auf.
+
 ## Home-Dashboard: 28+ Requests durch serverseitige Views/RPCs auf ~5 reduziert
 
 **Problem:** Auch nach dem RLS-Fix (siehe Eintrag unten) lud die Home-Seite beim ersten Rendern noch 28+ einzelne Supabase-Requests: `usePrayerGoals` lief als 2 Vorab-Queries (Community-/Freundschafts-IDs) + 5 parallele visibility-Queries (public/mine/specific/community/siblings) = 7 Requests; `useConversations` – auf Home nur für ein `hasUnread`-Badge genutzt – lud bis zu 9 Requests (Mitgliedschaften → Konversationen je Typ → Nachrichten/Gegenüber/Community-Mitgliedschaften → Profile); `TopPrayerToday` brauchte 3 Requests (2 parallele Ranking-Queries, dann eine dritte, vom Ranking abhängige Kandidaten-Query); die Profil-Vervollständigungs-Karte zog über `useProfile` (4 Requests) + `useFriendships` (2 Requests) weitere 6 Requests nur für ein paar Booleans/Zahlen.

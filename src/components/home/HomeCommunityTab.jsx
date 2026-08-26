@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Plus, Compass, Hash } from 'lucide-react'
 import { useCommunities } from '../../hooks/useCommunities'
@@ -8,7 +8,11 @@ import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import CommunityCard from '../community/CommunityCard'
 import PeopleYouMayKnow from './PeopleYouMayKnow'
-import { CreateCommunitySheet, JoinCommunityModal } from '../../pages/FriendsView'
+
+// Lazy: CreateCommunitySheet zieht AddressAutocomplete (Google-Maps-Loader)
+// mit – soll erst laden, wenn der Nutzer tatsächlich "Erstellen" tippt.
+const CreateCommunitySheet = lazy(() => import('../community/CommunitySheets').then(m => ({ default: m.CreateCommunitySheet })))
+const JoinCommunityModal = lazy(() => import('../community/CommunitySheets').then(m => ({ default: m.JoinCommunityModal })))
 
 const sectionLabel = {
   fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)',
@@ -159,8 +163,10 @@ export default function HomeCommunityTab() {
         )}
       </div>
 
-      {showCreate && <CreateCommunitySheet onClose={() => setShowCreate(false)} />}
-      {showJoin && <JoinCommunityModal onClose={() => setShowJoin(false)} />}
+      <Suspense fallback={null}>
+        {showCreate && <CreateCommunitySheet onClose={() => setShowCreate(false)} />}
+        {showJoin && <JoinCommunityModal onClose={() => setShowJoin(false)} />}
+      </Suspense>
     </div>
   )
 }
