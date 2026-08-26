@@ -6,7 +6,7 @@ const tabs = [
   { path: '/',                   icon: Home,       label: 'Home',         match: ['/']                          },
   { path: '/prayers',            icon: BookOpen,   label: 'For You',      match: ['/friends', '/prayer', '/prayers'] },
   { path: '/worldmap',           icon: Globe,      label: 'Weltkarte',    match: ['/worldmap'], featured: true  },
-  { path: '/discipleship',       icon: BookMarked, label: 'Jüngerschaft', match: ['/discipleship']              },
+  { path: '/juengerschaft',      icon: BookMarked, label: 'Jüngerschaft', match: ['/juengerschaft']             },
   { path: '/bible',              icon: Book,       label: 'Bibel',        match: ['/bible']                     },
   { path: '/profile',            icon: User,       label: 'Profil',       match: ['/profile']                   },
 ]

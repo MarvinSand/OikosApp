@@ -39,6 +39,14 @@ const ConversationView = lazy(() => import('./pages/ConversationView'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const NotificationSettingsView = lazy(() => import('./pages/NotificationSettingsView'))
 const BibleView = lazy(() => import('./pages/BibleView'))
+const DiscipleshipWeg = lazy(() => import('./pages/discipleship/WegView'))
+const DiscipleshipStationDetail = lazy(() => import('./pages/discipleship/StationDetailView'))
+const DiscipleshipWerkzeuge = lazy(() => import('./pages/discipleship/WerkzeugeView'))
+const DiscipleshipToolPresenter = lazy(() => import('./pages/discipleship/ToolPresenterView'))
+const DiscipleshipBibliothek = lazy(() => import('./pages/discipleship/BibliothekView'))
+const DiscipleshipBekenntnis = lazy(() => import('./pages/discipleship/BekenntnisView'))
+const DiscipleshipChallenges = lazy(() => import('./pages/discipleship/ChallengesView'))
+const DiscipleshipChallengeDetail = lazy(() => import('./pages/discipleship/ChallengeDetailView'))
 
 // Der Start lief bisher streng seriell: Entry-Bundle → Session prüfen →
 // *dann erst* den Chunk der Landing-Route holen → dann die Daten laden.
@@ -86,7 +94,8 @@ function AppShellInner() {
     location.pathname === '/worldmap' ||
     location.pathname.startsWith('/map/') ||
     location.pathname.startsWith('/chat/') ||
-    location.pathname.startsWith('/community/')
+    location.pathname.startsWith('/community/') ||
+    location.pathname.startsWith('/juengerschaft/werkzeuge/')
 
   return (
     <div className="h-[100dvh] flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
@@ -107,7 +116,15 @@ function AppShellInner() {
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
-          <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
+          <Route path="/discipleship" element={<Navigate to="/juengerschaft" replace />} />
+          <Route path="/juengerschaft" element={<DiscipleshipWeg />} />
+          <Route path="/juengerschaft/werkzeuge" element={<DiscipleshipWerkzeuge />} />
+          <Route path="/juengerschaft/werkzeuge/:slug" element={<DiscipleshipToolPresenter />} />
+          <Route path="/juengerschaft/bibliothek" element={<DiscipleshipBibliothek />} />
+          <Route path="/juengerschaft/bekenntnis" element={<DiscipleshipBekenntnis />} />
+          <Route path="/juengerschaft/challenges" element={<DiscipleshipChallenges />} />
+          <Route path="/juengerschaft/challenges/:id" element={<DiscipleshipChallengeDetail />} />
+          <Route path="/juengerschaft/station/:slug" element={<DiscipleshipStationDetail />} />
           <Route path="/bible" element={<BibleView />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/feed/saved" element={<SavedPostsView />} />
@@ -208,33 +225,6 @@ function RecoveryRedirect() {
 function OwnMapPage() {
   const { mapId } = useParams()
   return <MapView initialMapId={mapId} hideWorldMapToggle />
-}
-
-function DiscipleshipComingSoon() {
-  const navigate = useNavigate()
-  return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center px-6 text-center">
-      <div
-        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
-        style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-      >
-        <span className="text-4xl">📖</span>
-      </div>
-      <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
-        Jüngerschaft
-      </h1>
-      <p style={{ color: 'var(--color-text-secondary)', maxWidth: 360, marginBottom: 24 }}>
-        Coming soon – dieser Bereich ist gerade in Arbeit. Bald kannst du hier deinen Weg im Glauben begleiten lassen.
-      </p>
-      <button
-        onClick={() => navigate('/bible')}
-        className="px-5 py-2.5 rounded-xl font-medium"
-        style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
-      >
-        Bibel öffnen
-      </button>
-    </div>
-  )
 }
 
 async function checkBirthdays(userId) {
