@@ -33,6 +33,7 @@ export function useWorldMap() {
   const { user } = useAuth()
   const [visibleUsers, setVisibleUsers] = useState([])
   const [activities, setActivities] = useState([])
+  const [gemeinden, setGemeinden] = useState([])
   const [myProfile, setMyProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -45,7 +46,7 @@ export function useWorldMap() {
       // Profil, Freundschaften und Aktivitäten hängen nicht voneinander ab –
       // vorher liefen sie seriell (3 Round-Trips), obwohl nur die
       // Sichtbare-Nutzer-Abfrage wirklich von den Freundschaften abhängt.
-      const [{ data: profile }, { data: friendships }, { data: acts }] = await Promise.all([
+      const [{ data: profile }, { data: friendships }, { data: acts }, { data: gems }] = await Promise.all([
         supabase
           .from('profiles')
           .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
@@ -69,9 +70,20 @@ export function useWorldMap() {
           .or(`expires_at.is.null,expires_at.gt.${now}`)
           .order('created_at', { ascending: false })
           .limit(500),
+        // Öffentliche Gemeinden/Hausgemeinden mit Standort – RLS erlaubt
+        // public.communities Lesen für alle (is_public = true), siehe phase58b.
+        supabase
+          .from('communities')
+          .select('id, name, description, avatar_url, address, latitude, longitude, meeting_info')
+          .eq('community_type', 'gemeinde')
+          .eq('is_public', true)
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null)
+          .limit(500),
       ])
       setMyProfile(profile)
       setActivities(acts || [])
+      setGemeinden(gems || [])
 
       const friendIds = [...new Set(
         (friendships || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
@@ -251,6 +263,7 @@ export function useWorldMap() {
   return {
     visibleUsers,
     activities,
+    gemeinden,
     nearbyUsers,
     myProfile,
     loading,

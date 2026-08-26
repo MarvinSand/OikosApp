@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { Search } from 'lucide-react'
 import {
@@ -223,7 +224,7 @@ export default function AddressAutocomplete({
         </p>
       )}
 
-      {((open && suggestions.length > 0) || showNoResults) && dropdownStyle && (
+      {((open && suggestions.length > 0) || showNoResults) && dropdownStyle && createPortal(
         <div style={{
           position: 'fixed',
           top: dropdownStyle.top, left: dropdownStyle.left, width: dropdownStyle.width,
@@ -261,7 +262,8 @@ export default function AddressAutocomplete({
               Keine Adresse gefunden. Versuche eine genauere Eingabe.
             </p>
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {showMapPreview && isLoaded && selectedLoc?.lat && (

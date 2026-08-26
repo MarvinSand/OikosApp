@@ -12,7 +12,7 @@ let inFlight = null
 async function fetchCommunities(userId) {
   const { data } = await supabase
     .from('community_members')
-    .select('id, role, joined_at, community_id, communities(id, name, description, is_public, join_mode, avatar_url, invite_code, created_by, created_at)')
+    .select('id, role, joined_at, community_id, communities(id, name, description, is_public, join_mode, avatar_url, invite_code, created_by, created_at, community_type, address, latitude, longitude, meeting_info)')
     .eq('user_id', userId)
 
   if (!data || data.length === 0) return []
@@ -88,7 +88,7 @@ export function useCommunities() {
     load()
   }, [userId, load])
 
-  async function createCommunity({ name, description, is_public = false }) {
+  async function createCommunity({ name, description, is_public = false, community_type = 'group', address = null, latitude = null, longitude = null, meeting_info = null }) {
     const invite_code = Math.random().toString(36).substring(2, 8).toUpperCase()
     const { data, error } = await supabase.rpc('create_community', {
       p_name: name,
@@ -97,7 +97,19 @@ export function useCommunities() {
       p_is_public: is_public,
     })
     if (error) throw error
-    const community = typeof data === 'string' ? JSON.parse(data) : data
+    let community = typeof data === 'string' ? JSON.parse(data) : data
+
+    // Standortfelder gehören nicht zur create_community-RPC – als Admin
+    // dürfen wir die eigene, gerade erstellte Community direkt aktualisieren.
+    if (community_type === 'gemeinde') {
+      const { data: updated, error: updateError } = await supabase
+        .from('communities')
+        .update({ community_type, address, latitude, longitude, meeting_info })
+        .eq('id', community.id)
+        .select('*')
+        .single()
+      if (!updateError && updated) community = updated
+    }
 
     // Create a community conversation (don't throw if this fails)
     try {

@@ -11,6 +11,7 @@ import AdvancedMarker from './AdvancedMarker'
 import UserPinSheet from './UserPinSheet'
 import ActivitySheet from './ActivitySheet'
 import CreateActivitySheet from './CreateActivitySheet'
+import GemeindePinSheet from './GemeindePinSheet'
 import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
 
 // ─── Palette (Phase 27: schwarz/weiß + babyblauer Akzent) ──
@@ -153,14 +154,47 @@ function buildActivityPinElement(emoji, participants, { zoom } = {}) {
   return wrap
 }
 
-// Cluster-Icon: zeigt Personenhaufen, Event-Symbol oder beides
-function buildClusterElement(count, isMixed, hasEvent) {
+// Gemeinde-Pin: schlichtes Haus-Icon, damit es sich klar von Personen (rund)
+// und Events (pulsierendes Quadrat) unterscheidet.
+function buildGemeindePinElement(gemeinde, { zoom } = {}) {
+  const size = 50
+  const bg = gemeinde.avatar_url ? 'transparent' : C.accentDark
+
+  const wrap = document.createElement('div')
+  wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translateY(50%);cursor:pointer;`
+
+  const scaleLayer = document.createElement('div')
+  scaleLayer.dataset.pinScale = '1'
+  scaleLayer.style.cssText = `position:relative;width:100%;height:100%;transform-origin:50% 50%;transform:scale(${pinScale(zoom)});transition:transform 0.18s ease;`
+
+  const square = document.createElement('div')
+  square.style.cssText = `width:100%;height:100%;border-radius:30%;background:${bg};border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,0.22);`
+  if (gemeinde.avatar_url) {
+    const img = document.createElement('img')
+    img.src = gemeinde.avatar_url
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;'
+    img.referrerPolicy = 'no-referrer'
+    square.appendChild(img)
+  } else {
+    const span = document.createElement('span')
+    span.style.cssText = 'font-size:22px;'
+    span.textContent = '🏠'
+    square.appendChild(span)
+  }
+  scaleLayer.appendChild(square)
+  wrap.appendChild(scaleLayer)
+  return wrap
+}
+
+// Cluster-Icon: zeigt Personenhaufen, Event-Symbol, Gemeinde-Haus oder eine Mischung
+function buildClusterElement(count, kinds) {
   const wrap = document.createElement('div')
   wrap.style.cssText = `position:relative;width:52px;height:52px;transform:translateY(50%);`
 
+  const isMixed = kinds.size > 1
   const bg = isMixed
     ? `linear-gradient(135deg, ${C.accent} 50%, ${C.accentDark} 50%)`
-    : hasEvent ? C.accent : C.accentDark
+    : kinds.has('activity') ? C.accent : C.accentDark
 
   const circle = document.createElement('div')
   circle.style.cssText = `width:52px;height:52px;border-radius:50%;background:${bg};border:2.5px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.22);gap:1px;`
@@ -171,10 +205,11 @@ function buildClusterElement(count, isMixed, hasEvent) {
   num.textContent = String(count)
   circle.appendChild(num)
 
-  // Icon-Zeile: Person + Kalender wenn gemischt, sonst nur eins
+  // Icon-Zeile: je enthaltener Art ein Symbol
+  const iconMap = { user: '👤', activity: '📅', gemeinde: '🏠' }
   const icons = document.createElement('span')
   icons.style.cssText = 'font-size:9px;color:rgba(255,255,255,0.9);line-height:1;'
-  icons.textContent = isMixed ? '👤 📅' : hasEvent ? '📅' : '👤'
+  icons.textContent = [...kinds].map(k => iconMap[k]).join(' ')
   circle.appendChild(icons)
 
   wrap.appendChild(circle)
@@ -209,7 +244,7 @@ function PrivacyBanner({ onClose }) {
 // ─── Combined pin clusterer (Personen + Events in einem Cluster) ─────────────
 // Events bekommen höheren zIndex → übertrumpfen Personen-Pins bei Überlappung.
 // Das Cluster-Icon zeigt an, ob nur Personen, nur Events oder beides drin sind.
-function useCombinedClusterer({ map, users, activities, onUserClick, onActivityClick, showUsers, showEvents, zoom }) {
+function useCombinedClusterer({ map, users, activities, gemeinden, onUserClick, onActivityClick, onGemeindeClick, showUsers, showEvents, showGemeinden, zoom }) {
   const clustererRef = useRef(null)
   const allMarkersRef = useRef([])
   const zoomRef = useRef(zoom)
@@ -254,7 +289,20 @@ function useCombinedClusterer({ map, users, activities, onUserClick, onActivityC
       return marker
     }) : []
 
-    const allMarkers = [...userMarkers, ...actMarkers]
+    const gemeindeMarkers = showGemeinden ? gemeinden.map(g => {
+      const content = buildGemeindePinElement(g, { zoom: zoomRef.current })
+      content.dataset.pinType = 'gemeinde'
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        position: { lat: g.latitude, lng: g.longitude },
+        content,
+        zIndex: 30,
+        gmpClickable: true,
+      })
+      marker.addListener('gmp-click', () => onGemeindeClick(g))
+      return marker
+    }) : []
+
+    const allMarkers = [...userMarkers, ...actMarkers, ...gemeindeMarkers]
     allMarkersRef.current = allMarkers
 
     const clusterer = new MarkerClusterer({
@@ -262,9 +310,8 @@ function useCombinedClusterer({ map, users, activities, onUserClick, onActivityC
       markers: allMarkers,
       renderer: {
         render: ({ count, position, markers }) => {
-          const hasEvent = markers.some(m => m.content?.dataset?.pinType === 'activity')
-          const hasUser  = markers.some(m => m.content?.dataset?.pinType === 'user')
-          const content  = buildClusterElement(count, hasEvent && hasUser, hasEvent)
+          const kinds = new Set(markers.map(m => m.content?.dataset?.pinType).filter(Boolean))
+          const content = buildClusterElement(count, kinds)
           return new window.google.maps.marker.AdvancedMarkerElement({
             position, content, zIndex: 200 + count,
           })
@@ -279,7 +326,7 @@ function useCombinedClusterer({ map, users, activities, onUserClick, onActivityC
       clustererRef.current = null
       allMarkersRef.current = []
     }
-  }, [map, users, activities, showUsers, showEvents, onUserClick, onActivityClick])
+  }, [map, users, activities, gemeinden, showUsers, showEvents, showGemeinden, onUserClick, onActivityClick, onGemeindeClick])
 }
 
 // ─── Snapchat-style Zoom Sidebar ─────────────────────────
@@ -365,7 +412,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const {
-    visibleUsers, activities, myProfile,
+    visibleUsers, activities, gemeinden, myProfile,
     loading, createActivity, joinActivity, joinActivityChat, leaveActivity, deleteActivity, updateActivity,
   } = useWorldMap()
 
@@ -377,6 +424,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const snapZoom = useSnapchatZoom({ map, minZoom: minZoomRef.current })
   const [selectedUser, setSelectedUser] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
+  const [selectedGemeinde, setSelectedGemeinde] = useState(null)
   // Merkt sich, ob das aktuell offene Detail (Person/Event) aus der
   // Drawer-Liste heraus geöffnet wurde. Falls ja, springt das Drawer beim
   // Schließen (X) wieder zurück zur vollen Liste statt eingeklappt zu bleiben.
@@ -390,7 +438,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const siblingsOnly = searchParams.get('layer') === 'siblings'
   const [showGeschwister, setShowGeschwister] = useState(true)
   const [showEvents, setShowEvents] = useState(!siblingsOnly)
-  // Drawer: welcher Inhalt (Geschwister/Events) unten im hochziehbaren Menü angezeigt wird
+  const [showGemeinden, setShowGemeinden] = useState(!siblingsOnly)
+  // Drawer: welcher Inhalt (Geschwister/Events/Gemeinden) unten im hochziehbaren Menü angezeigt wird
   const [drawerTab, setDrawerTab] = useState('siblings')
   // Umkreis in km (null = weltweit) – filtert Liste UND Karten-Pins
   const [radiusKm, setRadiusKm] = useState(null)
@@ -431,20 +480,36 @@ export default function WorldMapView({ onNavigateToProfile }) {
     [activitiesWithDistance, radiusKm]
   )
 
+  const gemeindenWithDistance = useMemo(() => {
+    if (!hasOwnLocation) return gemeinden
+    return gemeinden.map(g => ({
+      ...g,
+      distance: haversine(myProfile.latitude, myProfile.longitude, g.latitude, g.longitude),
+    }))
+  }, [gemeinden, hasOwnLocation, myProfile?.latitude, myProfile?.longitude]) // eslint-disable-line react-hooks/exhaustive-deps
+  const gemeindenInRadius = useMemo(
+    () => gemeindenWithDistance.filter(g => radiusKm == null || g.distance == null || g.distance <= radiusKm),
+    [gemeindenWithDistance, radiusKm]
+  )
+
   const usersForMap = useMemo(() => (showGeschwister ? usersInRadius : []), [showGeschwister, usersInRadius])
   const activitiesForMap = useMemo(() => (showEvents ? activitiesInRadius : []), [showEvents, activitiesInRadius])
 
   // Erster Tap wählt die Ebene (und den Drawer-Tab), zweiter Tap auf die
   // bereits ausgewählte Ebene blendet sie aus.
+  const LAYERS = {
+    siblings: [showGeschwister, setShowGeschwister],
+    events: [showEvents, setShowEvents],
+    gemeinden: [showGemeinden, setShowGemeinden],
+  }
   function handlePillTap(tabKey) {
-    if (tabKey === 'siblings') {
-      if (!showGeschwister) { setShowGeschwister(true); setDrawerTab('siblings') }
-      else if (drawerTab !== 'siblings') setDrawerTab('siblings')
-      else { setShowGeschwister(false); if (showEvents) setDrawerTab('events') }
-    } else {
-      if (!showEvents) { setShowEvents(true); setDrawerTab('events') }
-      else if (drawerTab !== 'events') setDrawerTab('events')
-      else { setShowEvents(false); if (showGeschwister) setDrawerTab('siblings') }
+    const [isShown, setShown] = LAYERS[tabKey]
+    if (!isShown) { setShown(true); setDrawerTab(tabKey) }
+    else if (drawerTab !== tabKey) setDrawerTab(tabKey)
+    else {
+      setShown(false)
+      const fallback = Object.keys(LAYERS).find(k => k !== tabKey && LAYERS[k][0])
+      if (fallback) setDrawerTab(fallback)
     }
   }
 
@@ -487,15 +552,19 @@ export default function WorldMapView({ onNavigateToProfile }) {
 
   const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
   const handleActivityClick = useMemo(() => (a) => setSelectedActivity(a), [])
+  const handleGemeindeClick = useMemo(() => (g) => setSelectedGemeinde(g), [])
 
   useCombinedClusterer({
     map,
     users: visibleUsers,
     activities,
+    gemeinden,
     onUserClick: handleUserClick,
     onActivityClick: handleActivityClick,
+    onGemeindeClick: handleGemeindeClick,
     showUsers: showGeschwister && isLoaded,
     showEvents: showEvents && isLoaded,
+    showGemeinden: showGemeinden && isLoaded,
     zoom: snapZoom.currentZoom,
   })
 
@@ -611,9 +680,11 @@ export default function WorldMapView({ onNavigateToProfile }) {
           tab={drawerTab}
           showGeschwister={showGeschwister}
           showEvents={showEvents}
+          showGemeinden={showGemeinden}
           onPillTap={handlePillTap}
           users={usersInRadius}
           activities={activitiesInRadius}
+          gemeinden={gemeindenInRadius}
           myProfile={myProfile}
           hasOwnLocation={hasOwnLocation}
           radiusKm={radiusKm}
@@ -621,6 +692,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
           reopenListKey={reopenListKey}
           onSelectUser={(u) => { focusOn(u.latitude, u.longitude); openedFromListRef.current = true; setSelectedUser(u) }}
           onSelectActivity={(a) => { focusOn(a.latitude, a.longitude); openedFromListRef.current = true; setSelectedActivity(a) }}
+          onSelectGemeinde={(g) => { focusOn(g.latitude, g.longitude); openedFromListRef.current = true; setSelectedGemeinde(g) }}
         />
 
         {/* Privacy banner */}
@@ -633,6 +705,15 @@ export default function WorldMapView({ onNavigateToProfile }) {
           setSelectedUser(null)
           if (openedFromListRef.current) { openedFromListRef.current = false; setReopenListKey(k => k + 1) }
         }} />
+      )}
+      {selectedGemeinde && (
+        <GemeindePinSheet
+          gemeinde={selectedGemeinde}
+          onClose={() => {
+            setSelectedGemeinde(null)
+            if (openedFromListRef.current) { openedFromListRef.current = false; setReopenListKey(k => k + 1) }
+          }}
+        />
       )}
       {selectedActivity && (
         <ActivitySheet

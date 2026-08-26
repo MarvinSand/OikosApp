@@ -4,7 +4,7 @@ import {
   ArrowLeft, Settings, Copy, LogOut, SendHorizontal,
   MoreVertical, Shield, Plus, Trash2, MapPin, Clock, Pin, Globe, Lock, Users,
   ShieldOff, UserMinus, User, MessageSquare, RefreshCw, Pencil, X, Check, ChevronRight,
-  MessageCircle, CalendarDays, HandHeart
+  MessageCircle, CalendarDays, HandHeart, HelpCircle
 } from 'lucide-react'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
 import MemberAvatarStack from '../components/community/MemberAvatarStack'
@@ -19,6 +19,7 @@ import PrayerCardList from '../components/prayer/PrayerCardList'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/image'
+import AddressAutocomplete from '../components/common/AddressAutocomplete'
 
 // ─── Shared header styles ─────────────────────────────────────
 const glassBtn = {
@@ -527,6 +528,51 @@ function AddPrayerSheet({ onClose, onSubmit }) {
   )
 }
 
+// ─── Fragen an die Gemeinde ────────────────────────────────────
+function QuestionCard({ q, currentUserId, onAnswer }) {
+  const [answering, setAnswering] = useState(false)
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const askerName = q.asker?.full_name || q.asker?.username || (q.asked_by === currentUserId ? 'Du' : 'Jemand')
+
+  async function handleSubmit() {
+    if (!text.trim()) return
+    setSaving(true)
+    await onAnswer(q.id, text.trim())
+    setSaving(false)
+    setAnswering(false)
+    setText('')
+  }
+
+  return (
+    <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 14, padding: '14px 16px', marginBottom: 12, border: '1px solid var(--color-warm-3)', boxShadow: '0 1px 4px rgba(58,46,36,0.06)' }}>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: '0 0 4px' }}>{askerName} · {timeAgo(q.created_at)}</p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 8px', lineHeight: 1.5 }}>{q.question}</p>
+
+      {q.status === 'answered' ? (
+        <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-accent)', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Antwort</p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{q.answer}</p>
+        </div>
+      ) : answering ? (
+        <div>
+          <textarea autoFocus value={text} onChange={e => setText(e.target.value.slice(0, 500))} placeholder="Antwort schreiben…" rows={3} style={{ ...inp, resize: 'none' }} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button onClick={() => setAnswering(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
+            <button onClick={handleSubmit} disabled={!text.trim() || saving} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}>
+              {saving ? 'Sende…' : 'Antworten'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setAnswering(true)} style={{ padding: '7px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 600, color: 'var(--color-warm-1)', cursor: 'pointer' }}>
+          Antworten
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Member Profile Sheet (Discord Style) ──────────────────────
 function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRoleChange, onRemove }) {
   const navigate = useNavigate()
@@ -618,6 +664,9 @@ function SettingsSheet({
   const [description, setDescription] = useState(community.description || '')
   const [isPublic, setIsPublic] = useState(community.is_public || false)
   const [joinMode, setJoinMode] = useState(community.join_mode || 'open')
+  const isGemeinde = community.community_type === 'gemeinde'
+  const [location, setLocation] = useState(community.address ? { address: community.address, lat: community.latitude, lng: community.longitude, shortName: community.address } : null)
+  const [meetingInfo, setMeetingInfo] = useState(community.meeting_info || '')
   const [saving, setSaving] = useState(false)
   const [bannerBusy, setBannerBusy] = useState(false)
   const [avatarBusy, setAvatarBusy] = useState(false)
@@ -625,7 +674,9 @@ function SettingsSheet({
   const avatarInputRef = useRef(null)
   const isChanged =
     name !== community.name || description !== (community.description || '') ||
-    isPublic !== community.is_public || joinMode !== (community.join_mode || 'open')
+    isPublic !== community.is_public || joinMode !== (community.join_mode || 'open') ||
+    meetingInfo !== (community.meeting_info || '') ||
+    (isGemeinde && location?.address && location.address !== community.address)
 
   // Avatar-Upload: <community_id>/avatar.jpg im Bucket community-avatars.
   // Nur Admins dürfen schreiben (RLS, siehe phase58_community_admin.sql).
@@ -717,7 +768,16 @@ function SettingsSheet({
     setSaving(true)
     // Beitritt-nur-mit-Anfrage ergibt nur bei öffentlichen Communities Sinn –
     // wird die Community privat gemacht, fällt der Modus automatisch zurück.
-    await onUpdate({ name, description, is_public: isPublic, join_mode: isPublic ? joinMode : 'open' })
+    const updates = { name, description, is_public: isPublic, join_mode: isPublic ? joinMode : 'open' }
+    if (isGemeinde) {
+      updates.meeting_info = meetingInfo.trim() || null
+      if (location?.address) {
+        updates.address = location.address
+        updates.latitude = location.lat
+        updates.longitude = location.lng
+      }
+    }
+    await onUpdate(updates)
     setSaving(false)
     showToast('Community gespeichert ✓')
     onClose()
@@ -755,6 +815,19 @@ function SettingsSheet({
               <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Beschreibung</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] resize-none focus:outline-none focus:border-warm-1" />
             </div>
+
+            {isGemeinde && (
+              <>
+                <div>
+                  <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Standort</label>
+                  <AddressAutocomplete value={location} onChange={setLocation} placeholder="Adresse der Gemeinde…" showMapPreview />
+                </div>
+                <div>
+                  <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Treffzeit</label>
+                  <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder="z.B. Wöchentlich, Mittwoch 19 Uhr" className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
+                </div>
+              </>
+            )}
 
             {/* Profilbild */}
             <div>
@@ -823,9 +896,15 @@ function SettingsSheet({
             <div className="flex items-center justify-between bg-warm-4 border border-warm-3 rounded-xl p-4">
               <div>
                 <p className="font-serif text-[14px] font-bold text-dark m-0">Öffentliche Community</p>
-                <p className="font-serif text-[12px] text-dark-muted m-0 leading-tight mt-0.5">Jeder kann beitreten und mitlesen.</p>
+                <p className="font-serif text-[12px] text-dark-muted m-0 leading-tight mt-0.5">
+                  {isGemeinde ? 'Gemeinden sind immer öffentlich, damit sie auf der Karte gefunden werden.' : 'Jeder kann beitreten und mitlesen.'}
+                </p>
               </div>
-              <button onClick={() => setIsPublic(v => !v)} className={`relative w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-warm-1' : 'bg-warm-3'}`}>
+              <button
+                onClick={() => !isGemeinde && setIsPublic(v => !v)}
+                disabled={isGemeinde}
+                className={`relative w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-warm-1' : 'bg-warm-3'} ${isGemeinde ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${isPublic ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
             </div>
@@ -990,6 +1069,7 @@ export default function CommunityDetail() {
     posts, createPost, deletePost, togglePinPost,
     events, myRsvps, createEvent, deleteEvent, rsvpEvent,
     updateCommunity, joinRequests, respondToJoinRequest,
+    questions, answerQuestion,
   } = useCommunityDetail(id)
   const { messages, loading: chatLoading, sendMessage, deleteMessage, updateMessage } = useChat(conversationId)
   const { prayers, loading: prayersLoading, createPrayer, reload: reloadPrayers } = useCommunityPrayers(id, conversationId)
@@ -1106,12 +1186,21 @@ export default function CommunityDetail() {
     }
   }
 
+  const isGemeinde = community?.community_type === 'gemeinde'
+  const openQuestions = questions.filter(q => q.status === 'open').length
+
   const tabs = [
     { key: 'chat', label: 'Chat', icon: MessageCircle },
     { key: 'board', label: 'Pinnwand', icon: Pin },
     { key: 'events', label: 'Events', icon: CalendarDays },
     { key: 'prayers', label: 'Gebete', icon: HandHeart },
+    ...(isGemeinde ? [{ key: 'questions', label: 'Fragen', icon: HelpCircle }] : []),
   ]
+
+  async function handleAnswerQuestion(questionId, answer) {
+    await answerQuestion(questionId, answer)
+    showToast('Antwort gesendet ✓')
+  }
 
   // ── Loading ──────────────────────────────────────────────────
   if (loading) {
@@ -1377,6 +1466,25 @@ export default function CommunityDetail() {
                 </div>
               ) : (
                 <PrayerCardList prayers={prayers} onChanged={reloadPrayers} showContext={false} />
+              )}
+            </div>
+          )}
+
+          {/* FRAGEN tab */}
+          {activeTab === 'questions' && isGemeinde && (
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
+              {questions.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 16px' }}>
+                  <p style={{ fontSize: 36, margin: '0 0 10px' }}>❓</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>Noch keine Fragen</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: 0 }}>
+                    Fragen von Besuchern der Karte erscheinen hier.
+                  </p>
+                </div>
+              ) : (
+                questions.map(q => (
+                  <QuestionCard key={q.id} q={q} currentUserId={user.id} onAnswer={handleAnswerQuestion} />
+                ))
               )}
             </div>
           )}
