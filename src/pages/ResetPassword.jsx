@@ -67,9 +67,12 @@ export default function ResetPassword() {
     try {
       const { error: err } = await supabase.auth.updateUser({ password })
       if (err) throw err
+      // Nach dem Ändern ausloggen statt mit der Recovery-Session eingeloggt zu
+      // bleiben – der User soll sich bewusst mit dem neuen Passwort anmelden.
+      await supabase.auth.signOut()
       setDone(true)
       showToast('Passwort geändert ✓')
-      setTimeout(() => navigate('/', { replace: true }), 2000)
+      setTimeout(() => navigate('/auth', { replace: true }), 2000)
     } catch (err) {
       setError(err.message || 'Ein Fehler ist aufgetreten.')
     } finally {
@@ -129,7 +132,7 @@ export default function ResetPassword() {
               Passwort geändert!
             </p>
             <p className="text-sm text-dark-muted italic">
-              Du wirst weitergeleitet…
+              Du wirst zum Login weitergeleitet…
             </p>
           </div>
         ) : (

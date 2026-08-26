@@ -224,6 +224,19 @@
   }
 }
 
+/* Feed-Karten (Posts/Kommentare): in der Handyansicht randlos (volle Breite,
+   nur oben/unten getrennt), auf dem Desktop mit Rand links/rechts. */
+.feed-card-frame {
+  border-left: none;
+  border-right: none;
+}
+@media (min-width: 768px) {
+  .feed-card-frame {
+    border-left: 1px solid var(--color-warm-3);
+    border-right: 1px solid var(--color-warm-3);
+  }
+}
+
 /* Bodenfreiheit im Chat, damit die Eingabeleiste direkt über der Bottom-Nav
    sitzt (Höhe der Nav inkl. Safe-Area). Auf Desktop keine Nav -> 0. */
 .chat-nav-clearance {
@@ -255,6 +268,27 @@
     bottom: 0;
     left: calc(50% + 110px);
   }
+}
+
+/* YouVersion-Kapiteltext: Versnummer klein & gedämpft (nicht als Wort lesbar),
+   Vers-Wrapper (siehe wrapVersesInHtml) antippbar mit sanftem Hover/Auswahl. */
+.yv-vlbl {
+  font-size: 0.62em;
+  font-weight: 600;
+  vertical-align: super;
+  color: var(--color-text-tertiary);
+  margin-right: 0.15em;
+  user-select: none;
+}
+.bible-verse {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.bible-verse:active {
+  background-color: var(--color-bg-secondary);
 }
 
 /* Retain old animations for backward compatibility */

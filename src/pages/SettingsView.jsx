@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
-  Moon, Globe, Navigation, KeyRound,
+  Moon, Globe, KeyRound, Camera, BookMarked,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
+import { useChangePassword } from '../hooks/useChangePassword'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
+import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import AddressAutocomplete from '../components/common/AddressAutocomplete'
+import { Avatar } from '../components/profile/ProfileTabs'
 
 function validateUsername(val) {
   if (!val || val.trim().length < 3) return 'Mindestens 3 Zeichen'
@@ -133,6 +136,36 @@ const inputStyle = {
   fontSize: 14, color: 'var(--color-text)', outline: 'none', fontFamily: 'inherit',
 }
 
+// Umhüllt einen Abschnitt mit einer ID zum Scrollen + kurzer Hervorhebung,
+// wenn er über ?anchor=… von der Home-Karte aus angesprungen wird.
+function AnchorSection({ id, activeAnchor, children }) {
+  const ref = useRef(null)
+  const [highlight, setHighlight] = useState(false)
+
+  useEffect(() => {
+    if (activeAnchor !== id || !ref.current) return
+    ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlight(true)
+    const t = setTimeout(() => setHighlight(false), 1600)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAnchor, id])
+
+  return (
+    <div
+      ref={ref}
+      id={id}
+      style={{
+        borderRadius: 14,
+        boxShadow: highlight ? '0 0 0 2px var(--color-accent)' : '0 0 0 2px transparent',
+        transition: 'box-shadow 0.4s ease',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
 function DeleteModal({ onCancel, onConfirm, loading }) {
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -156,19 +189,125 @@ function DeleteModal({ onCancel, onConfirm, loading }) {
   )
 }
 
+function ChangePasswordModal({ email, onClose }) {
+  const { showToast } = useToast()
+  const flow = useChangePassword('loggedIn')
+
+  useEffect(() => {
+    flow.sendCode(email)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    const ok = await flow.submit(email)
+    if (ok) {
+      showToast('Passwort geändert ✓')
+      setTimeout(onClose, 1200)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 14, padding: 24, maxWidth: 380, width: '100%' }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
+          Passwort ändern
+        </h3>
+
+        {flow.step === 'request' && (
+          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, marginBottom: 20 }}>
+            {flow.isLoading ? 'Code wird gesendet…' : 'Einen Moment…'}
+          </p>
+        )}
+
+        {flow.step === 'code' && (
+          <form onSubmit={handleSubmit}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
+              Wir haben zur Sicherheit einen Code an <strong>{email}</strong> geschickt. Gib ihn zusammen mit deinem neuen Passwort ein.
+            </p>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Code</label>
+              <input
+                autoFocus
+                type="text"
+                inputMode="numeric"
+                value={flow.code}
+                onChange={e => flow.setCode(e.target.value)}
+                placeholder="6-stelliger Code"
+                required
+                style={{ ...inputStyle, letterSpacing: '0.1em' }}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Neues Passwort</label>
+              <input
+                type="password"
+                value={flow.password}
+                onChange={e => flow.setPassword(e.target.value)}
+                placeholder="Mindestens 8 Zeichen"
+                required
+                minLength={8}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Passwort bestätigen</label>
+              <input
+                type="password"
+                value={flow.confirm}
+                onChange={e => flow.setConfirm(e.target.value)}
+                placeholder="Passwort wiederholen"
+                required
+                style={inputStyle}
+              />
+            </div>
+
+            {flow.error && (
+              <p style={{ fontSize: 13, color: 'var(--color-error)', marginBottom: 16 }}>{flow.error}</p>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                Abbrechen
+              </button>
+              <button type="submit" disabled={flow.isLoading} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                {flow.isLoading ? 'Speichere…' : 'Ändern'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {flow.step === 'done' && (
+          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Passwort geändert ✓</p>
+        )}
+
+        {flow.step === 'request' && (
+          <button onClick={onClose} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+            Abbrechen
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsView() {
   const navigate = useNavigate()
-  const { profile, updateProfile, deleteAccount, loading: profileLoading } = useProfile()
+  const { profile, updateProfile, uploadAvatar, deleteAccount, loading: profileLoading } = useProfile()
   const { user, resendVerificationEmail } = useAuth()
   const { showToast } = useToast()
   const { theme, toggleTheme } = useTheme()
+  const fileInputRef = useRef(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const yv = useYouVersionAccount()
 
-  // 'hub' | 'profile' | 'privacy' – Deep-Link via ?section=privacy
+  // 'hub' | 'profile' | 'privacy' – Deep-Link via ?section=privacy&anchor=bio
   const [searchParams] = useSearchParams()
   const initialSection = ['profile', 'privacy'].includes(searchParams.get('section'))
     ? searchParams.get('section')
     : 'hub'
   const [section, setSection] = useState(initialSection)
+  const activeAnchor = searchParams.get('anchor')
 
   const [form, setForm] = useState({
     full_name: '', username: '',
@@ -182,11 +321,10 @@ export default function SettingsView() {
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [resending, setResending] = useState(false)
-  const [sendingPasswordReset, setSendingPasswordReset] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
 
   // Datenschutz-Toggles
   const [showOnMap, setShowOnMap] = useState(false)
-  const [allowLocation, setAllowLocation] = useState(true)
   const [locValue, setLocValue] = useState(null)
   const [savingLoc, setSavingLoc] = useState(false)
 
@@ -206,7 +344,6 @@ export default function SettingsView() {
       show_bio: profile.show_bio ?? true,
     })
     setShowOnMap(profile.show_on_world_map ?? false)
-    setAllowLocation(profile.allow_location ?? true)
     setLocValue(
       profile.latitude != null && profile.longitude != null
         ? { shortName: profile.city || 'Mein Standort', lat: profile.latitude, lng: profile.longitude }
@@ -258,29 +395,33 @@ export default function SettingsView() {
     }
   }
 
-  async function handleToggleLocation() {
-    const next = !allowLocation
-    setAllowLocation(next)
-    try {
-      await updateProfile({ allow_location: next })
-      showToast(next ? 'Standort erlaubt ✓' : 'Standort deaktiviert')
-    } catch {
-      setAllowLocation(!next)
-      showToast('Fehler beim Speichern', 'error')
-    }
-  }
-
   async function handleSelectLocation(loc) {
     if (!loc?.lat || !loc?.lng) return
     setLocValue({ shortName: loc.shortName, lat: loc.lat, lng: loc.lng })
+    setField('city', loc.city || loc.shortName || form.city)
     setSavingLoc(true)
     try {
-      await updateProfile({ latitude: loc.lat, longitude: loc.lng })
+      await updateProfile({ latitude: loc.lat, longitude: loc.lng, city: loc.city || loc.shortName || null })
       showToast('Standort aktualisiert ✓')
     } catch {
       showToast('Fehler beim Speichern', 'error')
     } finally {
       setSavingLoc(false)
+    }
+  }
+
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    try {
+      await uploadAvatar(file)
+      showToast('Profilbild aktualisiert ✓')
+    } catch {
+      showToast('Fehler beim Hochladen', 'error')
+    } finally {
+      setAvatarUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -293,22 +434,6 @@ export default function SettingsView() {
       showToast('Fehler beim Senden', 'error')
     } finally {
       setResending(false)
-    }
-  }
-
-  async function handleChangePassword() {
-    if (!user?.email) return
-    setSendingPasswordReset(true)
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: window.location.origin + '/reset-password',
-      })
-      if (error) throw error
-      showToast('E-Mail zum Passwort-Ändern gesendet ✓')
-    } catch {
-      showToast('Fehler beim Senden', 'error')
-    } finally {
-      setSendingPasswordReset(false)
     }
   }
 
@@ -388,6 +513,13 @@ export default function SettingsView() {
               title="Ansicht & Datenschutz"
               onClick={() => setSection('privacy')}
             />
+            <SettingToggle
+              icon={BookMarked}
+              title="YouVersion"
+              desc={yv.connected ? (yv.email || 'Verbunden') : 'Nicht verbunden'}
+              checked={!!yv.connected}
+              onChange={() => yv.connected ? yv.disconnect() : yv.connect()}
+            />
           </div>
 
           {/* Account */}
@@ -398,9 +530,8 @@ export default function SettingsView() {
             <MenuRow
               icon={KeyRound}
               title="Passwort ändern"
-              desc={sendingPasswordReset ? 'Sende E-Mail…' : 'Link zum Ändern per E-Mail erhalten'}
-              onClick={handleChangePassword}
-              disabled={sendingPasswordReset}
+              desc="Code per E-Mail erhalten"
+              onClick={() => setShowChangePassword(true)}
             />
             <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
               Ausloggen
@@ -415,6 +546,34 @@ export default function SettingsView() {
       {/* ─── PROFIL BEARBEITEN ─── */}
       {section === 'profile' && (
         <div style={{ padding: '20px 16px' }}>
+
+          {/* ── Profilbild ── */}
+          <AnchorSection id="avatar" activeAnchor={activeAnchor}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 4, marginBottom: 20 }}>
+              <div style={{ position: 'relative' }}>
+                <Avatar profile={profile} size={64} uploading={avatarUploading} />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  aria-label="Profilbild ändern"
+                  style={{
+                    position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: '50%',
+                    backgroundColor: 'var(--color-accent)', color: 'white', border: '2px solid var(--color-bg)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  }}
+                >
+                  <Camera size={11} />
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>Profilbild</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  {avatarUploading ? 'Wird hochgeladen…' : 'Tippe auf das Kamera-Symbol zum Ändern'}
+                </p>
+              </div>
+            </div>
+          </AnchorSection>
 
           {/* ── Basis ── */}
           <FieldRow label="Name">
@@ -482,29 +641,50 @@ export default function SettingsView() {
             Öffentliches Profil
           </h3>
 
-          <FieldRow label="Wohnort">
-            <input type="text" value={form.city} onChange={e => setField('city', e.target.value)} placeholder="z. B. München" style={inputStyle} />
-            <ToggleRow label="Öffentlich anzeigen" checked={form.show_city} onChange={() => setField('show_city', !form.show_city)} />
-          </FieldRow>
+          <AnchorSection id="location" activeAnchor={activeAnchor}>
+            <FieldRow label="Wohnort">
+              <AddressAutocomplete
+                value={locValue}
+                onChange={handleSelectLocation}
+                placeholder="Adresse oder Ort suchen…"
+              />
+              <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', margin: '6px 2px 0', lineHeight: 1.5 }}>
+                {savingLoc ? 'Wird gespeichert…' : 'Wird per Google-Suche automatisch erkannt und gespeichert.'}
+              </p>
+              <ToggleRow label="Öffentlich anzeigen" checked={form.show_city} onChange={() => setField('show_city', !form.show_city)} />
+            </FieldRow>
+
+            <div style={{ marginBottom: 18 }}>
+              <SettingToggle
+                icon={Globe}
+                title="Auf der Weltkarte sichtbar"
+                desc="Zeigt deinen Standort für andere auf der Weltkarte."
+                checked={showOnMap}
+                onChange={handleToggleMap}
+              />
+            </div>
+          </AnchorSection>
 
           <FieldRow label="Gemeinde">
             <input type="text" value={form.church_name} onChange={e => setField('church_name', e.target.value)} placeholder="z. B. Gemeinde Köln" style={inputStyle} />
             <ToggleRow label="Öffentlich anzeigen" checked={form.show_church} onChange={() => setField('show_church', !form.show_church)} />
           </FieldRow>
 
-          <FieldRow label="Über mich">
-            <textarea
-              value={form.bio_text}
-              onChange={e => setField('bio_text', e.target.value.slice(0, 150))}
-              placeholder="Erzähl etwas über dich…"
-              rows={3}
-              style={{ ...inputStyle, resize: 'vertical', minHeight: 70 }}
-            />
-            <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4, textAlign: 'right' }}>
-              {form.bio_text.length}/150
-            </p>
-            <ToggleRow label="Öffentlich anzeigen" checked={form.show_bio} onChange={() => setField('show_bio', !form.show_bio)} />
-          </FieldRow>
+          <AnchorSection id="bio" activeAnchor={activeAnchor}>
+            <FieldRow label="Über mich">
+              <textarea
+                value={form.bio_text}
+                onChange={e => setField('bio_text', e.target.value.slice(0, 150))}
+                placeholder="Erzähl etwas über dich…"
+                rows={3}
+                style={{ ...inputStyle, resize: 'vertical', minHeight: 70 }}
+              />
+              <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4, textAlign: 'right' }}>
+                {form.bio_text.length}/150
+              </p>
+              <ToggleRow label="Öffentlich anzeigen" checked={form.show_bio} onChange={() => setField('show_bio', !form.show_bio)} />
+            </FieldRow>
+          </AnchorSection>
 
           <button onClick={handleSave} disabled={saving} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', marginTop: 8, backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 15, fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
             {saving ? 'Wird gespeichert…' : 'Änderungen speichern'}
@@ -515,41 +695,10 @@ export default function SettingsView() {
       {/* ─── ANSICHT & DATENSCHUTZ ─── */}
       {section === 'privacy' && (
         <div style={{ padding: '20px 16px' }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: '0 0 16px', lineHeight: 1.5 }}>
+            Weltkarte & Standort findest du jetzt unter „Profil bearbeiten".
+          </p>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>
-            Weltkarte & Standort
-          </h3>
-          <SettingToggle
-            icon={Globe}
-            title="Auf der Weltkarte sichtbar"
-            checked={showOnMap}
-            onChange={handleToggleMap}
-          />
-
-          {/* Standort-Adresse für die Weltkarte */}
-          <div style={{ padding: '12px 4px 4px' }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
-              Mein Standort auf der Weltkarte
-            </label>
-            <AddressAutocomplete
-              value={locValue}
-              onChange={handleSelectLocation}
-              placeholder="Adresse oder Ort suchen…"
-            />
-            <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', margin: '6px 2px 0', lineHeight: 1.5 }}>
-              {locValue
-                ? (savingLoc ? 'Wird gespeichert…' : 'Dieser Ort wird anderen auf der Weltkarte angezeigt, wenn „Auf der Weltkarte sichtbar" aktiv ist.')
-                : 'Lege fest, wo du auf der Weltkarte erscheinst.'}
-            </p>
-          </div>
-
-          <SettingToggle
-            icon={Navigation}
-            title="Standort erlauben"
-            checked={allowLocation}
-            onChange={handleToggleLocation}
-          />
-
-          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '24px 0 12px' }}>
             Darstellung
           </h3>
           <SettingToggle
@@ -563,6 +712,10 @@ export default function SettingsView() {
 
       {showDelete && (
         <DeleteModal loading={deleting} onCancel={() => setShowDelete(false)} onConfirm={handleDelete} />
+      )}
+
+      {showChangePassword && (
+        <ChangePasswordModal email={user?.email} onClose={() => setShowChangePassword(false)} />
       )}
     </div>
   )
