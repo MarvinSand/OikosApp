@@ -1,5 +1,19 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Langsamer erster Seitenaufbau: RLS-Policies waren die Hauptursache, nicht Vercel/Supabase-Plan
+
+**Problem (bis Aug. 2026):** Die App fühlte sich beim ersten Öffnen sehr langsam an, unabhängig davon, wie viel client-seitiges Caching/Parallelisieren in den Hooks schon gemacht wurde (siehe `useAuth`-Eintrag unten). Der Supabase Performance Advisor zeigte den eigentlichen Grund: **152 RLS-Policies** riefen `auth.uid()` direkt in `USING`/`WITH CHECK` auf, statt es als `(select auth.uid())` zu wrappen. Postgres wertet einen nackten Funktionsaufruf dort für **jede geprüfte Zeile neu** aus, statt ihn einmal pro Query zu cachen (InitPlan). Dazu kamen **225 Fälle von mehreren permissiven Policies** auf derselben Tabelle/Aktion (u.a. exakte Duplikate wie `notif_select` + `select own notifications` auf `notifications`) – Postgres muss dann alle davon pro Zeile auswerten – sowie **83 fehlende Indizes auf Foreign-Key-Spalten** (`community_members.user_id`, `messages.sender_id`, `friendships.addressee_id`, `personal_prayer_requests.owner_id`, ...), die genau die Spalten sind, über die die App-Hooks filtern/joinen.
+
+Das betraf praktisch jede Tabelle, die beim App-Start oder Navigieren angefasst wird (profiles, friendships, notifications, conversations, messages, community_members, prayer_goals, personal_prayer_requests, world_map_activities, ...). Bei ~15–25 Supabase-Abfragen pro Seitenaufbau addierte sich das zu spürbaren Sekunden – **nicht** der Supabase-Free-Plan oder Vercel als Hosting waren die Ursache, und es gibt keine YouVersion-Bible-API-Anbindung im Code (nur DB-Spalten `bible_reference`/`bible_verse`, keine externen Fetches).
+
+**Fix:** `supabase/phase62_rls_performance_initplan.sql` (alle `auth.uid()` → `(select auth.uid())`, Duplikat-Policies entfernt) und `supabase/phase63_missing_fk_indexes.sql` (fehlende FK-Indizes). Beide idempotent, im Supabase SQL-Editor ausführbar.
+
+**Lektion:**
+- Bei "die App ist langsam" **zuerst den Supabase Performance Advisor prüfen** (`get_advisors` mit `type: "performance"` bzw. Dashboard → Advisors), bevor man Client-Code optimiert. Client-seitiges Query-Batching/Caching (Modul-Caches, `Promise.all` statt serieller Waterfalls) hilft, behebt aber nicht das Grundproblem, wenn jede einzelne Query durch ineffiziente RLS langsam ist.
+- Jede neue RLS-Policy mit `(select auth.uid())` statt nacktem `auth.uid()` schreiben.
+- Vor dem Anlegen einer neuen Policy prüfen, ob für dieselbe Tabelle/Aktion schon eine passende existiert – nicht einfach eine weitere permissive Policy stapeln.
+- Bei neuen Foreign-Key-Spalten direkt einen Index mitanlegen, wenn die Spalte in `.eq()`/`.in()`/`.or()`-Filtern verwendet wird.
+
 ## KRITISCH: Supabase-Spalten müssen vor Nutzung existieren
 
 **Problem:** Wenn eine Spalte in einem `supabase.from('table').update({...})` Payload enthalten ist, die in der Datenbank **nicht existiert**, schlägt das **gesamte Update fehl** – alle anderen Felder werden ebenfalls nicht gespeichert. Der Fehler lautet:
