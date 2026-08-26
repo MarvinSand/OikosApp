@@ -33,6 +33,7 @@ export function useWorldMap() {
   const { user } = useAuth()
   const [visibleUsers, setVisibleUsers] = useState([])
   const [activities, setActivities] = useState([])
+  const [gemeinden, setGemeinden] = useState([])
   const [myProfile, setMyProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -84,6 +85,18 @@ export function useWorldMap() {
         .order('created_at', { ascending: false })
         .limit(500)
       setActivities(acts || [])
+
+      // Öffentliche Gemeinden/Hausgemeinden mit Standort – RLS erlaubt
+      // public.communities Lesen für alle (is_public = true), siehe phase58b.
+      const { data: gems } = await supabase
+        .from('communities')
+        .select('id, name, description, avatar_url, address, latitude, longitude, meeting_info')
+        .eq('community_type', 'gemeinde')
+        .eq('is_public', true)
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .limit(500)
+      setGemeinden(gems || [])
     } finally {
       setLoading(false)
     }
@@ -246,6 +259,7 @@ export function useWorldMap() {
   return {
     visibleUsers,
     activities,
+    gemeinden,
     nearbyUsers,
     myProfile,
     loading,
