@@ -1,5 +1,21 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Home-Dashboard: 28+ Requests durch serverseitige Views/RPCs auf ~5 reduziert
+
+**Problem:** Auch nach dem RLS-Fix (siehe Eintrag unten) lud die Home-Seite beim ersten Rendern noch 28+ einzelne Supabase-Requests: `usePrayerGoals` lief als 2 Vorab-Queries (Community-/Freundschafts-IDs) + 5 parallele visibility-Queries (public/mine/specific/community/siblings) = 7 Requests; `useConversations` – auf Home nur für ein `hasUnread`-Badge genutzt – lud bis zu 9 Requests (Mitgliedschaften → Konversationen je Typ → Nachrichten/Gegenüber/Community-Mitgliedschaften → Profile); `TopPrayerToday` brauchte 3 Requests (2 parallele Ranking-Queries, dann eine dritte, vom Ranking abhängige Kandidaten-Query); die Profil-Vervollständigungs-Karte zog über `useProfile` (4 Requests) + `useFriendships` (2 Requests) weitere 6 Requests nur für ein paar Booleans/Zahlen.
+
+**Fix (`supabase/phase64_home_dashboard_rpcs.sql`):** Die Visibility-/Ranking-Logik dorthin verlagert, wo sie ohnehin schon existiert oder klar serverseitig gehört:
+- `my_prayer_goals` – eine View (`security_invoker = true`, damit die bestehende RLS-Policy "Read prayer_goals" weiter pro Nutzer greift) mit einem `bucket`-Label (`mine`/`public`/`community`/`shared`) statt 5 einzelner visibility-Queries. Die RLS-Policy implementierte exakt dieselbe OR-Logik ohnehin schon – ein ungefilterter Select auf der View liefert dieselbe Ergebnismenge in einem Request.
+- `get_my_conversations()` – eine RPC mit LATERAL JOINs, die pro Konversation letzte Nachricht, Gegenüber/Community/Aktivität und ein fertig berechnetes `unread` liefert.
+- `has_unread_conversations()` – eine eigene, sehr leichte RPC (`select bool_or(unread) from get_my_conversations()`) für Home, das nur das Badge-Bit braucht, nicht Nachrichteninhalte/Profile/Community-Namen.
+- `get_top_prayer_today()` – Ranking (Logs+Kommentare von heute) und Kandidatenauswahl in einer Query statt 2+1 Requests mit echter Abhängigkeit dazwischen.
+- `get_profile_completion_status()` – Bio/Avatar/Standort/People-Count/Freundschaftsstatus in einer RPC statt `useProfile` + `useFriendships` (6 Requests) zu kombinieren.
+
+**Lektion:**
+- Wenn eine RLS-Policy schon die komplette Sichtbarkeits-Logik (eigene ODER public ODER Community-Mitglied ODER ...) abbildet, braucht der Client dieselbe Logik **nicht noch einmal** über mehrere gefilterte Queries nachzubauen – ein einzelner ungefilterter Select (ggf. über eine dünne View mit `security_invoker = true`) reicht.
+- Prüfen, ob eine Seite wirklich die volle Datenform eines geteilten Hooks braucht, oder nur ein einzelnes Bit (Beispiel: Home brauchte für's Chat-Badge nur `hasUnread`, nicht die komplette Konversationsliste mit Nachrichteninhalten – dafür lohnt sich eine eigene, schlanke RPC statt des vollen Hooks).
+- Mehrstufige Abhängigkeiten (Query A liefert IDs für Query B) lassen sich oft in eine einzige SQL-Funktion mit CTEs/LATERAL JOINs verlagern, statt sie als sequenzielle Client-Requests nachzubilden.
+
 ## Langsamer erster Seitenaufbau: RLS-Policies waren die Hauptursache, nicht Vercel/Supabase-Plan
 
 **Problem (bis Aug. 2026):** Die App fühlte sich beim ersten Öffnen sehr langsam an, unabhängig davon, wie viel client-seitiges Caching/Parallelisieren in den Hooks schon gemacht wurde (siehe `useAuth`-Eintrag unten). Der Supabase Performance Advisor zeigte den eigentlichen Grund: **152 RLS-Policies** riefen `auth.uid()` direkt in `USING`/`WITH CHECK` auf, statt es als `(select auth.uid())` zu wrappen. Postgres wertet einen nackten Funktionsaufruf dort für **jede geprüfte Zeile neu** aus, statt ihn einmal pro Query zu cachen (InitPlan). Dazu kamen **225 Fälle von mehreren permissiven Policies** auf derselben Tabelle/Aktion (u.a. exakte Duplikate wie `notif_select` + `select own notifications` auf `notifications`) – Postgres muss dann alle davon pro Zeile auswerten – sowie **83 fehlende Indizes auf Foreign-Key-Spalten** (`community_members.user_id`, `messages.sender_id`, `friendships.addressee_id`, `personal_prayer_requests.owner_id`, ...), die genau die Spalten sind, über die die App-Hooks filtern/joinen.

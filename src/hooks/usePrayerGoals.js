@@ -3,6 +3,14 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 // Lädt Gebetsziele für Discover/Home/Meine/Community und erstellt neue.
+//
+// Vorher: 2 Vorab-Queries (Community-/Freundschafts-IDs) + 5 parallele
+// visibility-Queries = 7 Requests. Die RLS-Policy "Read prayer_goals" auf
+// `prayer_goals` implementiert exakt dieselbe OR-Logik (eigene ODER public
+// ODER Community-Mitglied ODER Geschwister ODER gezielt freigegeben) bereits
+// serverseitig – ein einzelner Select auf der `my_prayer_goals`-View (die
+// nur ein `bucket`-Label ergänzt, RLS via security_invoker aber weiter
+// greifen lässt) liefert dieselbe Ergebnismenge in einem Request.
 export function usePrayerGoals() {
   const { user } = useAuth()
   const [publicGoals, setPublicGoals] = useState([])
@@ -15,73 +23,23 @@ export function usePrayerGoals() {
     if (!user) return
     setLoading(true)
 
-    // Mitgliedschaften und Freundschaften hängen nicht voneinander ab und
-    // werden beide nur gebraucht, um die jeweils dritte Abfrage zu filtern –
-    // vorher liefen sie in zwei getrennten seriellen Runden.
-    const [{ data: memberships }, { data: friendsRaw }] = await Promise.all([
-      // Communities des Nutzers (für Community-Ziele)
-      supabase
-        .from('community_members')
-        .select('community_id')
-        .eq('user_id', user.id),
-      // Mit dir geteilte Ziele: verbundene Geschwister
-      supabase
-        .from('friendships')
-        .select('requester_id, addressee_id')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-        .eq('status', 'accepted'),
-    ])
-    const communityIds = (memberships || []).map(m => m.community_id)
-    const friendIds = (friendsRaw || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
+    const { data } = await supabase
+      .from('my_prayer_goals')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(300)
 
-    const queries = {
-      // Öffentliche Ziele – nach Aktivität sortiert (Teilnehmer)
-      public: supabase.from('prayer_goals')
-        .select('*')
-        .eq('visibility', 'public')
-        .order('participant_count', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(50),
-      // Eigene Ziele
-      mine: supabase.from('prayer_goals')
-        .select('*')
-        .eq('created_by', user.id)
-        .order('created_at', { ascending: false }),
-      // Gezielt für dich freigegebene Ziele
-      specific: supabase.from('prayer_goals').select('*')
-        .eq('visibility', 'specific')
-        .contains('visibility_user_ids', [user.id])
-        .order('created_at', { ascending: false }),
-      community: communityIds.length > 0
-        ? supabase.from('prayer_goals')
-            .select('*')
-            .eq('visibility', 'community')
-            .in('community_id', communityIds)
-            .order('created_at', { ascending: false })
-        : Promise.resolve({ data: [] }),
-      siblings: friendIds.length > 0
-        ? supabase.from('prayer_goals').select('*')
-            .eq('visibility', 'siblings')
-            .in('created_by', friendIds)
-            .order('created_at', { ascending: false })
-        : Promise.resolve({ data: [] }),
-    }
-
-    const keys = Object.keys(queries)
-    const values = await Promise.all(keys.map(key => queries[key]))
-    const results = Object.fromEntries(keys.map((key, i) => [key, values[i]]))
-
-    setPublicGoals(results.public.data || [])
-    setMyGoals(results.mine.data || [])
-    setCommunityGoals(results.community.data || [])
-
-    const sharedMap = new Map()
-    for (const r of [results.specific, results.siblings]) {
-      for (const g of (r.data || [])) {
-        if (g.created_by !== user.id) sharedMap.set(g.id, g)
-      }
-    }
-    setSharedGoals([...sharedMap.values()])
+    const rows = data || []
+    setMyGoals(rows.filter(g => g.bucket === 'mine'))
+    setCommunityGoals(rows.filter(g => g.bucket === 'community'))
+    setSharedGoals(rows.filter(g => g.bucket === 'shared'))
+    // Featured/Discover-Ansicht sortiert nach Teilnehmerzahl statt Datum –
+    // auf dem bereits geladenen (kleinen) Array, nicht per Extra-Query.
+    setPublicGoals(
+      rows
+        .filter(g => g.bucket === 'public')
+        .sort((a, b) => (b.participant_count || 0) - (a.participant_count || 0) || b.created_at.localeCompare(a.created_at))
+    )
 
     setLoading(false)
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps

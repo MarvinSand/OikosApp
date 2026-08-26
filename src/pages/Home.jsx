@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MessageCircle, Bell } from 'lucide-react'
-import { useConversations } from '../hooks/useConversations'
+import { useHasUnreadConversations } from '../hooks/useHasUnreadConversations'
 import { useNotifications } from '../hooks/useNotifications'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
 import { useSwipeTabs } from '../hooks/useSwipeTabs'
@@ -65,7 +65,7 @@ const HOME_TABS = [
 
 export default function Home() {
   const navigate = useNavigate()
-  const { hasUnread } = useConversations()
+  const hasUnread = useHasUnreadConversations()
   const { unreadCount } = useNotifications()
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') === 'community' ? 'community' : 'aktuelles'

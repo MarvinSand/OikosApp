@@ -10,42 +10,18 @@ export default function TopPrayerToday() {
   const [loading, setLoading] = useState(true)
   const [showPrayer, setShowPrayer] = useState(false)
 
+  // Vorher: 2 parallele Queries (Logs/Kommentare von heute) für's Ranking,
+  // dann eine dritte, vom Ranking-Ergebnis abhängige Query für die
+  // Kandidaten – 3 Requests mit echter Abhängigkeit dazwischen. Die
+  // `get_top_prayer_today()`-RPC rankt und wählt serverseitig in einem Zug.
   async function load() {
     setLoading(true)
     try {
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      const todayISO = todayStart.toISOString()
-
-      // Heutige Interaktionen: Gebete + Kommentare
-      const [{ data: logs }, { data: notes }] = await Promise.all([
-        supabase.from('personal_prayer_logs').select('request_id').gte('created_at', todayISO),
-        supabase.from('prayer_notes').select('request_id').gte('created_at', todayISO),
-      ])
-
-      const counts = {}
-      for (const l of (logs || [])) counts[l.request_id] = (counts[l.request_id] || 0) + 1
-      for (const n of (notes || [])) counts[n.request_id] = (counts[n.request_id] || 0) + 1
-
-      const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1])
-      if (ranked.length === 0) { setRequest(null); return }
-
-      const topIds = ranked.slice(0, 10).map(([id]) => id)
-      const { data: candidates } = await supabase
-        .from('personal_prayer_requests')
-        .select('*, profiles!owner_id(id, username, full_name, gender, is_christian)')
-        .in('id', topIds)
-        .eq('visibility', 'public')
-        .eq('is_answered', false)
-
-      const byId = {}
-      for (const r of (candidates || [])) byId[r.id] = r
-
-      // erstes (höchstgewichtetes) öffentliches Anliegen wählen
-      const top = ranked.map(([id]) => id).find(id => byId[id])
-      if (!top) { setRequest(null); return }
-      setRequest(byId[top])
-      setInteractions(counts[top] || 0)
+      const { data } = await supabase.rpc('get_top_prayer_today')
+      const top = data?.[0]
+      if (!top?.request) { setRequest(null); return }
+      setRequest(top.request)
+      setInteractions(top.interactions || 0)
     } catch {
       setRequest(null)
     } finally {

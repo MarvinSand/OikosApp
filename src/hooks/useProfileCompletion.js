@@ -1,7 +1,6 @@
-import { useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
-import { useProfile } from './useProfile'
-import { useFriendships } from './useFriendships'
 
 // Schritte zur Profil-Vervollständigung mit Gewichtung (Summe = 100).
 // Jeder Schritt hat ein Ziel (Route), zu dem die Home-Karte navigiert.
@@ -20,7 +19,7 @@ const STEPS = [
     title: 'Bio schreiben',
     text: 'Erzähl anderen kurz, wer du bist.',
     target: '/settings?section=profile&anchor=bio',
-    done: profile => !!profile?.bio_text?.trim(),
+    done: status => !!status?.has_bio,
   },
   {
     key: 'avatar',
@@ -28,7 +27,7 @@ const STEPS = [
     title: 'Profilbild hinzufügen',
     text: 'Zeig dein Gesicht – so erkennen dich Geschwister leichter.',
     target: '/settings?section=profile&anchor=avatar',
-    done: profile => !!profile?.avatar_url,
+    done: status => !!status?.has_avatar,
   },
   {
     key: 'location',
@@ -36,7 +35,7 @@ const STEPS = [
     title: 'Standort angeben',
     text: 'Trag deinen Standort ein und zeig ihn auf der Weltkarte.',
     target: '/settings?section=profile&anchor=location',
-    done: profile => profile?.latitude != null && profile?.longitude != null,
+    done: status => !!status?.has_location,
   },
   {
     key: 'oikosMap',
@@ -44,7 +43,7 @@ const STEPS = [
     title: 'Erste Oikos Map erstellen',
     text: 'Trag Menschen aus deinem Umfeld ein, für die du beten möchtest.',
     target: '/profile',
-    done: (_profile, stats) => (stats?.peopleCount || 0) > 0,
+    done: status => (status?.people_count || 0) > 0,
   },
   {
     key: 'friendRequest',
@@ -52,22 +51,34 @@ const STEPS = [
     title: 'Erste Freundschaftsanfrage schicken',
     text: 'Verbinde dich mit Geschwistern aus deiner Community.',
     target: '/friends',
-    done: (_profile, _stats, friendState) =>
-      (friendState?.friends?.length || 0) > 0 || (friendState?.pendingSent?.length || 0) > 0,
+    done: status => !!status?.has_friend_or_pending_sent,
   },
 ]
 
+// Vorher: useProfile (4 Requests: Profil, peopleCount, prayerCount,
+// impact-stage) + useFriendships (2 Requests: friendships, Profile der
+// Gegenüber) – 6 Requests nur um 5 Booleans/Zahlen zu bestimmen. Die
+// `get_profile_completion_status()`-RPC liefert genau diese Werte
+// serverseitig in einem Request.
 export function useProfileCompletion() {
   const { user } = useAuth()
-  const { profile, stats, loading: profileLoading } = useProfile()
-  const { friends, pendingSent, loading: friendsLoading } = useFriendships()
+  const [status, setStatus] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const loading = !user || profileLoading || friendsLoading
+  const load = useCallback(async () => {
+    if (!user) { setLoading(false); return }
+    setLoading(true)
+    const { data } = await supabase.rpc('get_profile_completion_status')
+    setStatus(data?.[0] || null)
+    setLoading(false)
+  }, [user?.id])
+
+  useEffect(() => { load() }, [load])
 
   const { percent, steps, nextStep } = useMemo(() => {
     const evaluated = STEPS.map(step => ({
       ...step,
-      isDone: step.done(profile, stats, { friends, pendingSent }),
+      isDone: step.done(status),
     }))
     const totalWeight = evaluated.reduce((sum, s) => sum + s.weight, 0)
     const doneWeight = evaluated.reduce((sum, s) => sum + (s.isDone ? s.weight : 0), 0)
@@ -76,7 +87,7 @@ export function useProfileCompletion() {
       steps: evaluated,
       nextStep: evaluated.find(s => !s.isDone) || null,
     }
-  }, [profile, stats, friends, pendingSent])
+  }, [status])
 
   return { percent, steps, nextStep, loading, isComplete: percent >= 100 }
 }
