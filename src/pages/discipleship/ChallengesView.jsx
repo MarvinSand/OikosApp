@@ -35,7 +35,7 @@ export default function ChallengesView() {
   async function load() {
     setLoading(true)
     const [{ data: completedStations }, { data: participations }] = await Promise.all([
-      supabase.from('user_station_progress').select('station_id').eq('user_id', user.id).eq('status', 'completed'),
+      supabase.from('discipleship_station_progress').select('station_id').eq('user_id', user.id).eq('status', 'completed'),
       supabase.from('challenge_participants').select('challenge_id, status, progress_value, challenges:challenge_id (id, title, type, goal_type, goal_value, station_id)').eq('user_id', user.id),
     ])
 

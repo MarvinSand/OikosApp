@@ -49,13 +49,13 @@ export default function StationDetailView() {
       if (cancelled || !stationData) { setLoading(false); return }
 
       const [{ data: progress }, { data: reflectionRows }] = await Promise.all([
-        supabase.from('user_station_progress').select('status').eq('user_id', user.id).eq('station_id', stationData.id).maybeSingle(),
+        supabase.from('discipleship_station_progress').select('status').eq('user_id', user.id).eq('station_id', stationData.id).maybeSingle(),
         supabase.from('station_reflections').select('prompt_key, body').eq('user_id', user.id).eq('station_id', stationData.id),
       ])
       if (cancelled) return
 
       if (!progress) {
-        supabase.from('user_station_progress').upsert(
+        supabase.from('discipleship_station_progress').upsert(
           { user_id: user.id, station_id: stationData.id, status: 'active' },
           { onConflict: 'user_id,station_id' }
         ).then(() => {})
@@ -87,7 +87,7 @@ export default function StationDetailView() {
 
   async function completeStation() {
     setCompleting(true)
-    await supabase.from('user_station_progress').upsert({
+    await supabase.from('discipleship_station_progress').upsert({
       user_id: user.id, station_id: station.id, status: 'completed', completed_at: new Date().toISOString(),
     }, { onConflict: 'user_id,station_id' })
     setCompleting(false)

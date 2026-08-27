@@ -21,7 +21,7 @@ export function useDiscipleshipPath() {
       supabase.from('discipleship_stations')
         .select('id, order_index, slug, title, bible_reference')
         .order('order_index'),
-      supabase.from('user_station_progress')
+      supabase.from('discipleship_station_progress')
         .select('station_id, status, completed_at')
         .eq('user_id', user.id),
       supabase.from('challenges')

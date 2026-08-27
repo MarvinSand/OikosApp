@@ -33,7 +33,14 @@ create table if not exists public.discipleship_stations (
 );
 
 -- ─── 2. Fortschritt pro Nutzer ─────────────────────────────────────────
-create table if not exists public.user_station_progress (
+-- Heißt bewusst NICHT "user_station_progress": dieser Name existiert in der
+-- DB bereits (0 Zeilen, kein Code im Repo nutzt es) als Teil eines anderen,
+-- nirgends im Repo dokumentierten Jüngerschafts-Anlaufs (stages/stations/
+-- user_discipleship_profile/bible_plans/...), dessen station_id auf
+-- public.stations statt public.discipleship_stations zeigt. "create table
+-- if not exists" hätte dort still nichts getan und Schreibzugriffe wären an
+-- einem falschen Fremdschlüssel gescheitert.
+create table if not exists public.discipleship_station_progress (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid references public.profiles(id) on delete cascade not null,
   station_id   uuid references public.discipleship_stations(id) on delete cascade not null,
@@ -150,7 +157,7 @@ create table if not exists public.bible_verses_cache (
 
 -- ─── RLS ────────────────────────────────────────────────────────────────
 alter table public.discipleship_stations   enable row level security;
-alter table public.user_station_progress   enable row level security;
+alter table public.discipleship_station_progress   enable row level security;
 alter table public.station_reflections     enable row level security;
 alter table public.challenges              enable row level security;
 alter table public.challenge_participants  enable row level security;
@@ -165,8 +172,8 @@ drop policy if exists "Read stations" on public.discipleship_stations;
 create policy "Read stations" on public.discipleship_stations
   for select using ((select auth.uid()) is not null);
 
-drop policy if exists "Own station progress" on public.user_station_progress;
-create policy "Own station progress" on public.user_station_progress
+drop policy if exists "Own station progress" on public.discipleship_station_progress;
+create policy "Own station progress" on public.discipleship_station_progress
   for all using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Own reflections" on public.station_reflections;
@@ -262,7 +269,7 @@ create or replace view public.challenge_participants_public
   from public.challenge_participants;
 
 -- ─── Indizes ─────────────────────────────────────────────────────────────
-create index if not exists user_station_progress_user_idx on public.user_station_progress (user_id);
+create index if not exists discipleship_station_progress_user_idx on public.discipleship_station_progress (user_id);
 create index if not exists station_reflections_user_idx on public.station_reflections (user_id, station_id);
 create index if not exists challenge_participants_challenge_status_idx on public.challenge_participants (challenge_id, status);
 create index if not exists challenge_participants_user_idx on public.challenge_participants (user_id);
