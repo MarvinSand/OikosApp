@@ -5,7 +5,8 @@ import { COMMENT_SELECT, attachCommentEngagement } from '../lib/commentEngagemen
 
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
-  bible_reference, bible_verse, is_public, view_count, bookmark_count, created_at,
+  bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end,
+  is_public, view_count, bookmark_count, created_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 

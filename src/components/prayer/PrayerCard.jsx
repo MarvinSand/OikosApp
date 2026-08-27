@@ -12,6 +12,7 @@ import EditPrayerSheet from './EditPrayerSheet'
 import CommentInput from './CommentInput'
 import { useToast } from '../../context/ToastContext'
 import { summarizeLogs } from '../../hooks/usePrayerEngagement'
+import BibleReferenceChip from '../bible/BibleReferenceChip'
 import {
   timeAgo, formatLastPrayed, getInitials, authorName as displayName, KIND_OIKOS,
   prayerContext,
@@ -291,6 +292,11 @@ export default function PrayerCard({
               </button>
             )}
           </div>
+        )}
+
+        {/* Verknüpfte Bibelstelle */}
+        {prayer.bibleVerse && (
+          <BibleReferenceChip attachment={prayer.bibleVerse} variant="block" />
         )}
 
         {/* Herkunft: für wen / aus welcher Map / von wem – bzw. Community */}

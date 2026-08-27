@@ -19,6 +19,8 @@ import SiblingPicker from '../components/prayer/SiblingPicker'
 import OikosFilterSheet from '../components/prayer/OikosFilterSheet'
 import { useOikosFilterSource } from '../hooks/useOikosFilterSource'
 import { KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
+import BibleReferenceChip from '../components/bible/BibleReferenceChip'
+import VersePickerSheet from '../components/bible/VersePickerSheet'
 
 // ─── Konstanten ───────────────────────────────────────────────
 
@@ -113,6 +115,9 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
   const [goalTarget, setGoalTarget] = useState('')
   const [goalCustom, setGoalCustom] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [verse, setVerse] = useState(null)
+  const [quoteVerse, setQuoteVerse] = useState(true)
+  const [showVersePicker, setShowVersePicker] = useState(false)
 
   const isCustomGoalType = goalType === 'custom'
   const goalTargetNum = parseInt(goalTarget, 10)
@@ -138,6 +143,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
         category,
         visibility_community_id: visibility === 'community' ? selectedCommunity : null,
         visibility_user_ids: visibility === 'specific' ? selectedSiblings : [],
+        bibleVerseRef: verse ? { ...verse, verseText: quoteVerse ? verse.verseText : null } : null,
       })
       if (goalEnabled && goalOk) {
         await onCreateGoal({
@@ -197,6 +203,24 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
               rows={4}
               style={{ ...field, lineHeight: 1.6, resize: 'vertical' }}
             />
+
+            {/* Bibelstelle verknüpfen */}
+            {verse ? (
+              <div style={{ marginTop: 10 }}>
+                <BibleReferenceChip attachment={verse} variant="block" showVerse={quoteVerse} onRemove={() => setVerse(null)} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                  <input type="checkbox" checked={quoteVerse} onChange={e => setQuoteVerse(e.target.checked)} style={{ accentColor: 'var(--color-accent)' }} />
+                  Vers im Gebet zitieren
+                </label>
+              </div>
+            ) : (
+              <button onClick={() => setShowVersePicker(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginTop: 10, width: '100%' }}
+              >
+                <span style={{ fontSize: 16 }}>📖</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Bibelstelle verknüpfen</span>
+              </button>
+            )}
 
             {/* 2) Kategorie */}
             <p style={secTitle}>2 · Kategorie</p>
@@ -291,6 +315,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
               {text.trim() && <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{text.trim()}</p>}
             </div>
             <SummaryRow label="Kategorie" value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
+            <SummaryRow label="Bibelstelle" value={verse ? verse.referenceLabel : '—'} />
             <SummaryRow label="Gebetsziel" value={!goalEnabled || !goalOk ? 'Keins' : isCustomGoalType ? goalCustom.trim() : `${goalTarget} ${goalTypeObj?.label}`} />
             <SummaryRow label="Sichtbarkeit" value={
               visibility === 'community'
@@ -311,6 +336,13 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
           </div>
         )}
       </div>
+
+      {showVersePicker && (
+        <VersePickerSheet
+          onClose={() => setShowVersePicker(false)}
+          onSelect={(att) => { setVerse(att); setShowVersePicker(false) }}
+        />
+      )}
     </div>
   )
 }
@@ -540,10 +572,10 @@ export default function Prayers() {
     ampel: null,
   }))
 
-  async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids }) {
+  async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids, bibleVerseRef }) {
     // Fehler werden absichtlich NICHT geschluckt – das Sheet zeigt die echte
     // Ursache an, damit ein nicht gepostetes Gebet sichtbar/diagnostizierbar wird.
-    const created = await createRequest({ title, description, visibility, category, visibility_community_id, visibility_user_ids })
+    const created = await createRequest({ title, description, visibility, category, visibility_community_id, visibility_user_ids, bibleVerseRef })
     reload()
     return created
   }
