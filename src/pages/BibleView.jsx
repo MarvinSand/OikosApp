@@ -88,12 +88,18 @@ export default function BibleView() {
       if (selectedVerses.has(num)) {
         el.style.backgroundColor = hl ? resolveHighlightColor(hl.color) : 'var(--color-bg-secondary)'
         el.style.boxShadow = '0 0 0 2px var(--color-accent)'
+        el.style.color = hl ? '#1a1a1a' : ''
       } else if (hl) {
         el.style.backgroundColor = resolveHighlightColor(hl.color)
         el.style.boxShadow = 'none'
+        // Highlight-Farben sind immer helle Pastelltöne (Presets + eigene
+        // Auswahl) - Text deshalb fest dunkel, damit er im Dark Mode nicht
+        // in der hellen Markierung verschwindet.
+        el.style.color = '#1a1a1a'
       } else {
         el.style.backgroundColor = 'transparent'
         el.style.boxShadow = 'none'
+        el.style.color = ''
       }
     })
   }, [html, selectedVerses, highlights])
