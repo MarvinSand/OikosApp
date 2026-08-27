@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { fetchBiblePath } from '../lib/youversion'
 import { wrapVersesInHtml } from '../lib/biblePassageHtml'
+import { HIGHLIGHT_COLORS } from '../lib/bibleColors'
 
 // Numerische YouVersion-Bibel-ID. 73 = "Hoffnung für alle" (Default). Alle
 // ~1479 verfügbaren Übersetzungen liefert useBibleVersions() – darüber lässt
@@ -153,6 +154,87 @@ export function useFavoriteBibleVersions() {
   }
 
   return { favorites, loading, toggleFavorite }
+}
+
+// ─── Gespeicherte + zuletzt verwendete Highlight-Farben ───
+//
+// Presets (HIGHLIGHT_COLORS) werden per Namen in bible_highlights.color
+// gehalten - hier landen ausschließlich Hex-Werte ('#rrggbb'), damit beide
+// Quellen sich nie überschneiden.
+
+export function useSavedBibleColors() {
+  const { user } = useAuth()
+  const [colors, setColors] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!user) { setLoading(false); return }
+    setLoading(true)
+    const { data } = await supabase
+      .from('bible_saved_colors')
+      .select('color')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    setColors((data || []).map(r => r.color))
+    setLoading(false)
+  }, [user?.id])
+
+  useEffect(() => { load() }, [load])
+
+  function isSaved(hex) {
+    return colors.some(c => c.toLowerCase() === hex?.toLowerCase())
+  }
+
+  async function toggleColor(hex) {
+    if (!hex?.startsWith('#') || !user) return
+    const value = hex.toLowerCase()
+    const wasSaved = isSaved(value)
+    setColors(prev => wasSaved ? prev.filter(c => c.toLowerCase() !== value) : [value, ...prev])
+    if (wasSaved) {
+      await supabase.from('bible_saved_colors').delete().eq('user_id', user.id).eq('color', value)
+    } else {
+      await supabase.from('bible_saved_colors').insert({ user_id: user.id, color: value })
+    }
+  }
+
+  return { colors, loading, isSaved, toggleColor, reload: load }
+}
+
+export function useRecentBibleColors(limit = 6) {
+  const { user } = useAuth()
+  const [colors, setColors] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!user) { setLoading(false); return }
+    setLoading(true)
+    // PostgREST kennt kein "distinct on" - Dedupe passiert client-seitig über
+    // die letzten ~60 Highlights des Nutzers.
+    const { data } = await supabase
+      .from('bible_highlights')
+      .select('color, created_at')
+      .eq('user_id', user.id)
+      .not('color', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(60)
+    const seen = new Set()
+    const deduped = []
+    for (const row of data || []) {
+      const c = row.color
+      if (!c || !c.startsWith('#') || HIGHLIGHT_COLORS[c]) continue
+      const key = c.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      deduped.push(c)
+      if (deduped.length >= limit) break
+    }
+    setColors(deduped)
+    setLoading(false)
+  }, [user?.id, limit])
+
+  useEffect(() => { load() }, [load])
+
+  return { colors, loading, reload: load }
 }
 
 // ─── Lokale Marker (eigene + aus YouVersion synchronisierte) ───

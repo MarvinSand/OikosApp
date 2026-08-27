@@ -1,41 +1,44 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star, Share2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { useChapterText, useBibleMarkers, useBibleVersions, useFavoriteBibleVersions, saveReadingProgress, DEFAULT_BIBLE_ID } from '../hooks/useBible'
+import {
+  useChapterText, useBibleMarkers, useBibleVersions, useFavoriteBibleVersions,
+  useSavedBibleColors, useRecentBibleColors, saveReadingProgress, DEFAULT_BIBLE_ID,
+} from '../hooks/useBible'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
+import { useToast } from '../context/ToastContext'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
+import { HIGHLIGHT_COLORS, resolveHighlightColor } from '../lib/bibleColors'
+import { formatReferenceLabel, parseBibleLinkParams } from '../lib/bibleLink'
+import { verseTextFromContainer } from '../lib/biblePassageHtml'
+import { createFeedPost } from '../hooks/useFeed'
+import FeedPostSheet from '../components/feed/FeedPostSheet'
+import BookChapterPicker from '../components/bible/BookChapterPicker'
+import VersePickerSheet from '../components/bible/VersePickerSheet'
 
 const BIBLE_ID_STORAGE_KEY = 'oikos_bible_version_id'
-
-// Angelehnt an die Farbpalette der YouVersion Bible App (5 Presets).
-const HIGHLIGHT_COLORS = {
-  yellow: '#fde68a',
-  green: '#bbf7d0',
-  blue: '#bfdbfe',
-  purple: '#ddd6fe',
-  orange: '#fed7aa',
-}
-
-// Aus YouVersion synchronisierte Highlights können einen Farbnamen liefern,
-// der nicht exakt einem unserer Presets entspricht (z.B. "pink", "red",
-// Hex-Codes) - dann Rohwert/Fallback statt eines falschen Presets anzeigen.
-function resolveHighlightColor(color) {
-  if (!color) return HIGHLIGHT_COLORS.yellow
-  if (HIGHLIGHT_COLORS[color]) return HIGHLIGHT_COLORS[color]
-  if (color.startsWith('#')) return color
-  return HIGHLIGHT_COLORS.yellow
-}
 
 export default function BibleView() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { showToast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
   const contentRef = useRef(null)
-  const [book, setBook] = useState('JHN')
-  const [chapter, setChapter] = useState(3)
+  const [book, setBook] = useState(() => parseBibleLinkParams(searchParams)?.book ?? 'JHN')
+  const [chapter, setChapter] = useState(() => parseBibleLinkParams(searchParams)?.chapter ?? 3)
   const [bibleId, setBibleId] = useState(() => {
+    const fromLink = parseBibleLinkParams(searchParams)?.bibleId
+    if (fromLink) return fromLink
     try { return localStorage.getItem(BIBLE_ID_STORAGE_KEY) || DEFAULT_BIBLE_ID } catch { return DEFAULT_BIBLE_ID }
   })
+  // Vers(e), auf die nach dem Laden des Kapitels gesprungen + kurz geflasht
+  // werden soll (aus einem Deep-Link wie /bible?book=JHN&chapter=3&verse=16).
+  const [pendingVerses, setPendingVerses] = useState(() => {
+    const parsed = parseBibleLinkParams(searchParams)
+    return parsed?.verseStart != null ? { start: parsed.verseStart, end: parsed.verseEnd ?? parsed.verseStart } : null
+  })
+  const [flashVerses, setFlashVerses] = useState(null) // Set<number> | null
   const [showBookPicker, setShowBookPicker] = useState(false)
   const [showVersionPicker, setShowVersionPicker] = useState(false)
   // "Marker-Modus" wie in der YouVersion-App: erster Tap auf einen Vers
@@ -44,14 +47,50 @@ export default function BibleView() {
   // hängenden) Bereich min…max der ausgewählten Versnummern.
   const [selectedVerses, setSelectedVerses] = useState(new Set())
   const [noteDraft, setNoteDraft] = useState('')
+  const [sharePayload, setSharePayload] = useState(null) // { attachment, body } | null
 
   const bookInfo = findBook(book)
   const { html, loading, error } = useChapterText(bibleId, book, chapter)
   const { versions: bibleVersions, loading: versionsLoading } = useBibleVersions()
   const { favorites: favoriteVersionIds, toggleFavorite: toggleFavoriteVersion } = useFavoriteBibleVersions()
   const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(bibleId, book, chapter)
+  const { colors: savedColors, isSaved: isColorSaved, toggleColor: toggleSaveColor } = useSavedBibleColors()
+  const { colors: recentColors, reload: reloadRecentColors } = useRecentBibleColors()
   const yv = useYouVersionAccount()
   const currentVersion = bibleVersions?.find(v => String(v.id) === String(bibleId))
+
+  // Router remountet BibleView bei /bible?... -> /bible?...-Navigation NICHT
+  // (z.B. wenn man aus dem bereits offenen Reader einen zweiten Chip antippt)
+  // - Params deshalb bei jeder Änderung erneut anwenden.
+  useEffect(() => {
+    const parsed = parseBibleLinkParams(searchParams)
+    if (!parsed) return
+    setBook(parsed.book)
+    setChapter(parsed.chapter)
+    if (parsed.bibleId) setBibleId(parsed.bibleId)
+    setPendingVerses(parsed.verseStart != null ? { start: parsed.verseStart, end: parsed.verseEnd ?? parsed.verseStart } : null)
+    setSelectedVerses(new Set())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  // Sobald der Kapiteltext gerendert ist: zum Zielvers scrollen, kurz
+  // hervorheben, dann aufräumen (URL bereinigen, damit ein Reload/manuelles
+  // Blättern nicht erneut springt).
+  useEffect(() => {
+    if (!html || !pendingVerses || !contentRef.current) return
+    const el = contentRef.current.querySelector(`[data-verse="${pendingVerses.start}"]`)
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    const nums = new Set()
+    for (let n = pendingVerses.start; n <= pendingVerses.end; n++) nums.add(n)
+    setFlashVerses(nums)
+    const timeout = setTimeout(() => {
+      setFlashVerses(null)
+      setPendingVerses(null)
+      setSearchParams({}, { replace: true })
+    }, 2000)
+    return () => clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [html, pendingVerses])
 
   function selectVersion(id) {
     setBibleId(String(id))
@@ -89,6 +128,15 @@ export default function BibleView() {
         el.style.backgroundColor = hl ? resolveHighlightColor(hl.color) : 'var(--color-bg-secondary)'
         el.style.boxShadow = '0 0 0 2px var(--color-accent)'
         el.style.color = hl ? '#1a1a1a' : ''
+        el.style.transition = ''
+      } else if (flashVerses?.has(num)) {
+        // Kurzes Aufblitzen nach einem Deep-Link-Sprung (siehe pendingVerses-
+        // Effekt) - läuft bewusst im selben Overlay-Effekt wie Auswahl/
+        // Highlights, sonst überschreiben sich die style-Properties gegenseitig.
+        el.style.backgroundColor = 'var(--color-accent-light, var(--color-bg-secondary))'
+        el.style.boxShadow = '0 0 0 2px var(--color-accent)'
+        el.style.color = ''
+        el.style.transition = 'background-color .4s ease'
       } else if (hl) {
         el.style.backgroundColor = resolveHighlightColor(hl.color)
         el.style.boxShadow = 'none'
@@ -96,19 +144,20 @@ export default function BibleView() {
         // Auswahl) - Text deshalb fest dunkel, damit er im Dark Mode nicht
         // in der hellen Markierung verschwindet.
         el.style.color = '#1a1a1a'
+        el.style.transition = ''
       } else {
         el.style.backgroundColor = 'transparent'
         el.style.boxShadow = 'none'
         el.style.color = ''
+        el.style.transition = ''
       }
     })
-  }, [html, selectedVerses, highlights])
+  }, [html, selectedVerses, highlights, flashVerses])
 
   function referenceLabel() {
     const nums = Array.from(selectedVerses).sort((a, b) => a - b)
     if (nums.length === 0) return ''
-    if (nums.length === 1) return `${bookInfo?.name || book} ${chapter},${nums[0]}`
-    return `${bookInfo?.name || book} ${chapter},${nums[0]}-${nums[nums.length - 1]}`
+    return formatReferenceLabel({ book, chapter, verseStart: nums[0], verseEnd: nums[nums.length - 1] })
   }
 
   function goToChapter(nextBook, nextChapter) {
@@ -116,7 +165,24 @@ export default function BibleView() {
     setChapter(nextChapter)
     setSelectedVerses(new Set())
     setShowBookPicker(false)
+    setPendingVerses(null)
     if (user) saveReadingProgress(user.id, { bibleId, book: nextBook, chapter: nextChapter })
+  }
+
+  // "Als Beitrag teilen": markierte(r) Vers(e) + optionale Notiz als Feed-
+  // Post vorschlagen (FeedPostSheet vorausgefüllt geöffnet).
+  function handleShareToFeed() {
+    const nums = Array.from(selectedVerses).sort((a, b) => a - b)
+    if (!nums.length) return
+    const vStart = nums[0]
+    const vEnd = nums[nums.length - 1]
+    const verseText = verseTextFromContainer(contentRef.current, nums)
+    const attachment = {
+      bibleId, book, chapter, verseStart: vStart, verseEnd: vEnd,
+      referenceLabel: referenceLabel(), verseText,
+    }
+    const body = noteDraft.trim() || uniqueActiveNotes[0]?.note || ''
+    setSharePayload({ attachment, body })
   }
 
   function goPrevChapter() {
@@ -215,8 +281,15 @@ export default function BibleView() {
           notes={uniqueActiveNotes}
           noteDraft={noteDraft}
           setNoteDraft={setNoteDraft}
+          savedColors={savedColors}
+          recentColors={recentColors}
+          isColorSaved={isColorSaved}
+          onToggleSaveColor={toggleSaveColor}
           onClose={() => { setSelectedVerses(new Set()); setNoteDraft('') }}
-          onHighlight={(color) => addHighlight({ verseStart, verseEnd, referenceLabel: referenceLabel(), color, bibleId })}
+          onHighlight={async (color) => {
+            await addHighlight({ verseStart, verseEnd, referenceLabel: referenceLabel(), color, bibleId })
+            reloadRecentColors()
+          }}
           onRemoveHighlight={(id) => removeHighlight(id)}
           onBookmark={() => toggleBookmark({ verse: verseStart, referenceLabel: referenceLabel(), bibleId })}
           onSaveNote={async () => {
@@ -225,11 +298,12 @@ export default function BibleView() {
             setNoteDraft('')
           }}
           onRemoveNote={(id) => removeNote(id)}
+          onShareToFeed={handleShareToFeed}
         />
       )}
 
       {showBookPicker && (
-        <BookPicker
+        <BookChapterPicker
           currentBook={book}
           currentChapter={chapter}
           onSelect={(code, ch) => goToChapter(code, ch)}
@@ -246,6 +320,26 @@ export default function BibleView() {
           onToggleFavorite={toggleFavoriteVersion}
           onSelect={selectVersion}
           onClose={() => setShowVersionPicker(false)}
+        />
+      )}
+
+      {sharePayload && (
+        <FeedPostSheet
+          initialBody={sharePayload.body}
+          initialCategory="bibelstelle"
+          initialVerse={sharePayload.attachment}
+          onClose={() => setSharePayload(null)}
+          onSubmit={async (data) => {
+            const post = await createFeedPost(user.id, data)
+            setSharePayload(null)
+            if (post) {
+              showToast('Beitrag geteilt 🙌')
+              setSelectedVerses(new Set())
+              setNoteDraft('')
+            } else {
+              showToast('Fehler beim Posten', 'error')
+            }
+          }}
         />
       )}
     </div>
@@ -279,8 +373,15 @@ function YouVersionBadge({ yv }) {
 
 function VerseActionBar({
   referenceLabel, existingHighlight, bookmarked, showBookmark, notes, noteDraft, setNoteDraft,
-  onClose, onHighlight, onRemoveHighlight, onBookmark, onSaveNote, onRemoveNote,
+  savedColors, recentColors, isColorSaved, onToggleSaveColor,
+  onClose, onHighlight, onRemoveHighlight, onBookmark, onSaveNote, onRemoveNote, onShareToFeed,
 }) {
+  const activeHex = existingHighlight && !HIGHLIGHT_COLORS[existingHighlight.color] ? existingHighlight.color : null
+  const extraColors = [
+    ...(savedColors || []),
+    ...(recentColors || []).filter(c => !(savedColors || []).includes(c)),
+  ].slice(0, 8)
+
   return (
     <div
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md rounded-t-2xl p-4 z-30"
@@ -288,7 +389,14 @@ function VerseActionBar({
     >
       <div className="flex items-center justify-between mb-3">
         <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{referenceLabel}</p>
-        <button onClick={onClose}><X size={18} style={{ color: 'var(--color-text-tertiary)' }} /></button>
+        <div className="flex items-center gap-1">
+          {onShareToFeed && (
+            <button onClick={onShareToFeed} title="Als Beitrag teilen">
+              <Share2 size={17} style={{ color: 'var(--color-text-tertiary)' }} />
+            </button>
+          )}
+          <button onClick={onClose}><X size={18} style={{ color: 'var(--color-text-tertiary)' }} /></button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -303,7 +411,9 @@ function VerseActionBar({
           </button>
         ))}
         <CustomColorButton
-          value={existingHighlight && !HIGHLIGHT_COLORS[existingHighlight.color] ? existingHighlight.color : null}
+          value={activeHex}
+          saved={activeHex ? isColorSaved?.(activeHex) : false}
+          onSaveCurrent={() => activeHex && onToggleSaveColor?.(activeHex)}
           onPick={(hex) => onHighlight(hex)}
           onRemove={() => onRemoveHighlight(existingHighlight.id)}
         />
@@ -317,6 +427,29 @@ function VerseActionBar({
           </button>
         )}
       </div>
+
+      {extraColors.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
+            Eigene Farben
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {extraColors.map(hex => {
+              const isActive = existingHighlight?.color?.toLowerCase() === hex.toLowerCase()
+              return (
+                <button
+                  key={hex}
+                  onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(hex)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none' }}
+                >
+                  {isActive && <span style={{ fontSize: 11 }}>✓</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {notes.map(n => (
         <div key={n.id} className="flex items-start justify-between gap-2 mb-2 p-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
@@ -347,8 +480,9 @@ function VerseActionBar({
 }
 
 // "+"-Button für frei wählbare Highlight-Farben (nicht nur die 5 Presets),
-// über den nativen Farbwähler des Browsers (<input type="color">).
-function CustomColorButton({ value, onPick, onRemove }) {
+// über den nativen Farbwähler des Browsers (<input type="color">). Trägt bei
+// aktiver Custom-Farbe zusätzlich ein Stern-Badge zum Speichern/Entfernen.
+function CustomColorButton({ value, saved, onSaveCurrent, onPick, onRemove }) {
   const inputRef = useRef(null)
   const isActive = !!value
 
@@ -365,10 +499,23 @@ function CustomColorButton({ value, onPick, onRemove }) {
       title="Eigene Farbe"
     >
       {isActive ? <span style={{ fontSize: 12 }}>✓</span> : <Plus size={14} style={{ color: 'var(--color-text-tertiary)' }} />}
+      {isActive && onSaveCurrent && (
+        <span
+          role="button"
+          onClick={e => { e.stopPropagation(); onSaveCurrent() }}
+          className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: 'var(--color-bg)', boxShadow: '0 0 0 1px var(--color-border)' }}
+          title={saved ? 'Farbe gespeichert' : 'Farbe speichern'}
+        >
+          <Star size={10} style={{ color: saved ? '#f59e0b' : 'var(--color-text-tertiary)' }} fill={saved ? '#f59e0b' : 'none'} />
+        </span>
+      )}
+      {/* Kontrolliert statt defaultValue: sonst löst erneutes Wählen derselben
+          Farbe kein onChange aus (bekannter <input type="color">-Papercut). */}
       <input
         ref={inputRef}
         type="color"
-        defaultValue={value || '#fde68a'}
+        value={value || '#fde68a'}
         onChange={e => onPick(e.target.value)}
         className="absolute inset-0 opacity-0 pointer-events-none"
         tabIndex={-1}
@@ -463,64 +610,3 @@ function VersionPicker({ versions, loading, currentId, favorites, onToggleFavori
   )
 }
 
-function BookPicker({ currentBook, currentChapter, onSelect, onClose }) {
-  const [pendingBook, setPendingBook] = useState(null)
-
-  if (pendingBook) {
-    const info = findBook(pendingBook)
-    const chapters = Array.from({ length: info?.chapters || 0 }, (_, i) => i + 1)
-    return (
-      <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
-        <div className="flex items-center gap-2 px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
-          <button onClick={() => setPendingBook(null)} className="p-1 -ml-1">
-            <ChevronLeft size={20} style={{ color: 'var(--color-text-tertiary)' }} />
-          </button>
-          <h2 className="font-bold flex-1" style={{ color: 'var(--color-text)' }}>{info?.name} – Kapitel wählen</h2>
-          <button onClick={onClose}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          <div className="grid grid-cols-6 gap-2">
-            {chapters.map(ch => {
-              const isCurrent = pendingBook === currentBook && ch === currentChapter
-              return (
-                <button
-                  key={ch}
-                  onClick={() => onSelect(pendingBook, ch)}
-                  className="aspect-square rounded-lg flex items-center justify-center font-medium"
-                  style={{
-                    backgroundColor: isCurrent ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
-                    color: isCurrent ? 'white' : 'var(--color-text)',
-                  }}
-                >
-                  {ch}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <h2 className="font-bold" style={{ color: 'var(--color-text)' }}>Buch wählen</h2>
-        <button onClick={onClose}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-2">
-        {BIBLE_BOOKS.map(b => (
-          <button
-            key={b.code}
-            onClick={() => setPendingBook(b.code)}
-            className="w-full text-left py-3 flex items-center justify-between"
-            style={{ borderBottom: '1px solid var(--color-border)', color: b.code === currentBook ? 'var(--color-accent)' : 'var(--color-text)' }}
-          >
-            {b.name}
-            {b.code === currentBook && <span style={{ fontSize: 12 }}>aktuell</span>}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}

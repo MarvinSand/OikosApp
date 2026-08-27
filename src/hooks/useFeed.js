@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { compressImage } from '../lib/image'
+import { verseFieldsFromAttachment } from '../lib/bibleLink'
 
 const PAGE_SIZE = 20
 
-const POST_SELECT = `
+export const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
-  bible_reference, bible_verse, is_public, visibility_mode,
+  bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end,
+  is_public, visibility_mode,
   visibility_user_ids, excluded_user_ids, view_count, bookmark_count, created_at, updated_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
@@ -98,80 +100,14 @@ export function useFeed(filter = 'all') {
   }
 
   /**
-   * createPost
-   *   body, category (required)
-   *   visibilityMode: 'public' | 'siblings' | 'communities' | 'specific_include'
-   *   communityIds: array (used when visibilityMode = 'communities')
-   *   visibilityUserIds: array (used when visibilityMode = 'specific_include')
-   *   excludedUserIds: array (always applied for filtering)
-   *   photoFile: optional File object → uploaded to feed-photos bucket
+   * createPost - dünner Wrapper um die eigenständige createFeedPost() (siehe
+   * unten), damit auch Seiten ohne den vollen useFeed('all')-Hook (z.B. "Als
+   * Beitrag teilen" aus der Bibel) einen Post anlegen können, ohne dessen
+   * Neben-Queries (Reaktionen/Kommentare/Reposts/Bookmarks) mitzuladen.
    */
-  async function createPost({
-    body,
-    title = null,
-    category,
-    visibilityMode = 'public',
-    communityIds = [],
-    visibilityUserIds = [],
-    excludedUserIds = [],
-    photoFile = null,
-    bibleReference = null,
-    bibleVerse = null,
-  }) {
-    // Step 1: optional photo upload to Supabase Storage
-    let photo_url = null
-    if (photoFile) {
-      try {
-        photo_url = await uploadPhoto(photoFile, user.id)
-      } catch (err) {
-        console.error('Photo upload failed', err)
-      }
-    }
-
-    // Map category → legacy `type` for backwards compatibility with PostCard rendering
-    const legacyType = ({
-      bibelstelle: 'bible',
-      zeugnis:     'testimony',
-      frage:       'question',
-      meilenstein: 'text',
-      ermutigung:  'text',
-      sonstiges:   'text',
-    })[category] || 'text'
-
-    const insertPayload = {
-      author_id: user.id,
-      type: photo_url ? 'photo' : legacyType,
-      category,
-      title: title || null,
-      body,
-      photo_url,
-      bible_reference: bibleReference,
-      bible_verse: bibleVerse,
-      is_public: visibilityMode === 'public', // for legacy RLS fallback
-      visibility_mode: visibilityMode,
-      visibility_user_ids: visibilityMode === 'specific_include' ? visibilityUserIds : [],
-      excluded_user_ids: excludedUserIds,
-    }
-
-    const { data, error } = await supabase
-      .from('feed_posts')
-      .insert(insertPayload)
-      .select(POST_SELECT)
-      .single()
-
-    if (error) {
-      console.error('Post insert failed', error)
-      return null
-    }
-
-    if (visibilityMode === 'communities' && communityIds.length > 0) {
-      await supabase
-        .from('feed_post_communities')
-        .insert(communityIds.map(cid => ({ post_id: data.id, community_id: cid })))
-    }
-
-    const post = { ...data, reactions: [], commentCount: 0 }
-    setPosts(prev => [post, ...prev])
+  async function createPost(args) {
+    const post = await createFeedPost(user.id, args)
+    if (post) setPosts(prev => [post, ...prev])
     return post
   }
 
@@ -267,6 +203,90 @@ export function useFeed(filter = 'all') {
     commentOnPost,
     reload: loadPosts,
   }
+}
+
+/**
+ * createFeedPost - eigenständig (kein Hook), damit sie auch außerhalb von
+ * useFeed() aufgerufen werden kann (z.B. "Als Beitrag teilen" aus der Bibel).
+ *   userId: auth user id
+ *   body, category (required)
+ *   visibilityMode: 'public' | 'siblings' | 'communities' | 'specific_include'
+ *   communityIds: array (used when visibilityMode = 'communities')
+ *   visibilityUserIds: array (used when visibilityMode = 'specific_include')
+ *   excludedUserIds: array (always applied for filtering)
+ *   photoFile: optional File object → uploaded to feed-photos bucket
+ *   bibleVerseRef: optional VerseAttachment (aus src/lib/bibleLink.js) - hat
+ *     Vorrang vor den alten bibleReference/bibleVerse-Freitextparametern.
+ */
+export async function createFeedPost(userId, {
+  body,
+  title = null,
+  category,
+  visibilityMode = 'public',
+  communityIds = [],
+  visibilityUserIds = [],
+  excludedUserIds = [],
+  photoFile = null,
+  bibleReference = null,
+  bibleVerse = null,
+  bibleVerseRef = null,
+}) {
+  // Step 1: optional photo upload to Supabase Storage
+  let photo_url = null
+  if (photoFile) {
+    try {
+      photo_url = await uploadPhoto(photoFile, userId)
+    } catch (err) {
+      console.error('Photo upload failed', err)
+    }
+  }
+
+  // Map category → legacy `type` for backwards compatibility with PostCard rendering
+  const legacyType = ({
+    bibelstelle: 'bible',
+    zeugnis:     'testimony',
+    frage:       'question',
+    meilenstein: 'text',
+    ermutigung:  'text',
+    sonstiges:   'text',
+  })[category] || 'text'
+
+  const verseFields = bibleVerseRef
+    ? verseFieldsFromAttachment(bibleVerseRef)
+    : { bible_reference: bibleReference, bible_verse: bibleVerse }
+
+  const insertPayload = {
+    author_id: userId,
+    type: photo_url ? 'photo' : legacyType,
+    category,
+    title: title || null,
+    body,
+    photo_url,
+    ...verseFields,
+    is_public: visibilityMode === 'public', // for legacy RLS fallback
+    visibility_mode: visibilityMode,
+    visibility_user_ids: visibilityMode === 'specific_include' ? visibilityUserIds : [],
+    excluded_user_ids: excludedUserIds,
+  }
+
+  const { data, error } = await supabase
+    .from('feed_posts')
+    .insert(insertPayload)
+    .select(POST_SELECT)
+    .single()
+
+  if (error) {
+    console.error('Post insert failed', error)
+    return null
+  }
+
+  if (visibilityMode === 'communities' && communityIds.length > 0) {
+    await supabase
+      .from('feed_post_communities')
+      .insert(communityIds.map(cid => ({ post_id: data.id, community_id: cid })))
+  }
+
+  return { ...data, reactions: [], commentCount: 0 }
 }
 
 // ─── Photo upload helper ──────────────────────────────────────

@@ -35,3 +35,22 @@ export function wrapVersesInHtml(html) {
 
   return doc.body.innerHTML
 }
+
+// Extrahiert den reinen Verstext für die angegebenen Versnummern direkt aus
+// dem bereits gerenderten DOM (kein zweiter API-Call nötig) - z.B. für ein
+// Zitat beim Teilen als Feed-Post. Erwartet die von wrapVersesInHtml erzeugte
+// Struktur ([data-verse="N"] enthält den .yv-v-Marker + die .yv-vlbl-
+// Versnummer-Anzeige + den eigentlichen Text).
+export function verseTextFromContainer(container, verseNums) {
+  if (!container || !verseNums?.length) return ''
+  return verseNums
+    .map(n => {
+      const el = container.querySelector(`[data-verse="${n}"]`)
+      if (!el) return ''
+      const clone = el.cloneNode(true)
+      clone.querySelectorAll('.yv-v, .yv-vlbl').forEach(m => m.remove())
+      return clone.textContent.trim()
+    })
+    .filter(Boolean)
+    .join(' ')
+}
