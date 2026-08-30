@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
-import { Plus, Navigation } from 'lucide-react'
+import { Plus, Navigation, Settings } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorldMap, haversine } from '../../hooks/useWorldMap'
 import { useToast } from '../../context/ToastContext'
@@ -12,6 +12,7 @@ import UserPinSheet from './UserPinSheet'
 import ActivitySheet from './ActivitySheet'
 import CreateActivitySheet from './CreateActivitySheet'
 import GemeindePinSheet from './GemeindePinSheet'
+import LocationSettingsSheet from './LocationSettingsSheet'
 import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
 
 // ─── Palette (Phase 27: schwarz/weiß + babyblauer Akzent) ──
@@ -219,7 +220,7 @@ function buildClusterElement(count, kinds) {
 // ─── Privacy Banner ──────────────────────────────────────
 const PRIVACY_KEY = 'oikos_worldmap_privacy_seen'
 
-function PrivacyBanner({ onClose }) {
+function PrivacyBanner({ onClose, hasLocation, onSetLocation }) {
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}>
       <div style={{ width: '100%', background: C.bg, borderRadius: '20px 20px 0 0', paddingTop: 28, paddingLeft: 20, paddingRight: 20, paddingBottom: 'max(28px, calc(84px + env(safe-area-inset-bottom, 0px)))', boxShadow: '0 -4px 24px rgba(0,0,0,0.12)' }}>
@@ -228,7 +229,7 @@ function PrivacyBanner({ onClose }) {
           Willkommen auf der Weltkarte
         </h3>
         <p style={{ fontSize: 13, color: C.textSec, textAlign: 'center', lineHeight: 1.65, marginBottom: 22 }}>
-          Hier siehst du deine verbundenen Geschwister und Events in deiner Nähe. Dein Standort wird anderen nur angezeigt, wenn du das in deinen Profil-Einstellungen aktivierst.
+          Hier siehst du andere Christen und Events in deiner Nähe. Wie genau dein eigener Standort anderen angezeigt wird – von „nur Stadt" bis „genaue Adresse" – kannst du oben rechts über das Zahnrad individuell für alle Nutzer und für Freunde einstellen.
         </p>
         <button
           onClick={onClose}
@@ -236,6 +237,14 @@ function PrivacyBanner({ onClose }) {
         >
           Verstanden ✓
         </button>
+        {!hasLocation && (
+          <button
+            onClick={onSetLocation}
+            style={{ width: '100%', padding: '14px', border: `1.5px solid ${C.accent}`, borderRadius: 14, background: 'transparent', color: C.accent, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10 }}
+          >
+            Standort jetzt festlegen
+          </button>
+        )}
       </div>
     </div>
   )
@@ -409,11 +418,11 @@ function useSnapchatZoom({ map, minZoom = 2 }) {
 // ─── Main Component ───────────────────────────────────────
 export default function WorldMapView({ onNavigateToProfile }) {
   const { user } = useAuth()
-  const navigate = useNavigate()
   const { showToast } = useToast()
   const {
     visibleUsers, activities, gemeinden, myProfile,
     loading, createActivity, joinActivity, joinActivityChat, leaveActivity, deleteActivity, updateActivity,
+    updateLocationVisibility, updateLocationSettings,
   } = useWorldMap()
 
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
@@ -432,6 +441,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const [reopenListKey, setReopenListKey] = useState(0)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
+  const [showLocationSettings, setShowLocationSettings] = useState(false)
   // Zwei unabhängige Ebenen – beide können gleichzeitig aktiv sein.
   // ?layer=siblings (z.B. von "Auf der Map suchen") → nur Geschwister, keine Events.
   const [searchParams] = useSearchParams()
@@ -618,6 +628,16 @@ export default function WorldMapView({ onNavigateToProfile }) {
           )}
         </GoogleMap>
 
+        {/* Standort-Einstellungen: Zahnrad oben rechts, aktuell die leere Ecke */}
+        <button
+          onClick={() => setShowLocationSettings(true)}
+          style={{ ...mapBtnStyle, position: 'absolute', top: 12, right: 12, zIndex: 500 }}
+          title="Standort-Einstellungen"
+          aria-label="Standort-Einstellungen"
+        >
+          <Settings size={18} />
+        </button>
+
         {/* Rechter Bedien-Stapel: Zoom-Leiste + "Event hosten"-Button fest
             untereinander mit festem Abstand – überlappen dadurch nie, egal
             wie klein der sichtbare Kartenbereich ist. Bottom-verankert über
@@ -669,7 +689,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
                 Hinterlege deine Adresse in den Einstellungen.
               </p>
             </div>
-            <button onClick={() => navigate('/settings?section=privacy')} style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setShowLocationSettings(true)} style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
               Standort
             </button>
           </div>
@@ -696,7 +716,13 @@ export default function WorldMapView({ onNavigateToProfile }) {
         />
 
         {/* Privacy banner */}
-        {showPrivacyBanner && <PrivacyBanner onClose={closePrivacyBanner} />}
+        {showPrivacyBanner && (
+          <PrivacyBanner
+            onClose={closePrivacyBanner}
+            hasLocation={hasOwnLocation}
+            onSetLocation={() => { closePrivacyBanner(); setShowLocationSettings(true) }}
+          />
+        )}
       </div>
 
       {/* Bottom Sheets */}
@@ -755,6 +781,14 @@ export default function WorldMapView({ onNavigateToProfile }) {
               showToast(`Fehler beim Erstellen: ${detail}`, 'error')
             }
           }}
+        />
+      )}
+      {showLocationSettings && (
+        <LocationSettingsSheet
+          myProfile={myProfile}
+          updateLocationSettings={updateLocationSettings}
+          updateLocationVisibility={updateLocationVisibility}
+          onClose={() => setShowLocationSettings(false)}
         />
       )}
     </div>

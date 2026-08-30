@@ -71,7 +71,11 @@ export default function UserPinSheet({ user, onClose }) {
                 @{user.username}
               </p>
             )}
-            {(user.city || user.country) && (
+            {user.address_full ? (
+              <p style={{ fontSize: 12, color: C.textSec, margin: '5px 0 0' }}>
+                📍 {user.address_full}
+              </p>
+            ) : (user.city || user.country) && (
               <p style={{ fontSize: 12, color: C.textSec, margin: '5px 0 0' }}>
                 📍 {[user.city, user.country].filter(Boolean).join(', ')}
               </p>

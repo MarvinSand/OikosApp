@@ -43,21 +43,20 @@ export function useWorldMap() {
     try {
       const now = new Date().toISOString()
 
-      // Profil, Freundschaften und Aktivitäten hängen nicht voneinander ab –
-      // vorher liefen sie seriell (3 Round-Trips), obwohl nur die
-      // Sichtbare-Nutzer-Abfrage wirklich von den Freundschaften abhängt.
-      const [{ data: profile }, { data: friendships }, { data: acts }, { data: gems }] = await Promise.all([
+      // Profil, sichtbare Nutzer und Aktivitäten hängen nicht voneinander ab –
+      // vorher liefen sie teils seriell. Wer auf der Karte sichtbar ist und mit
+      // welcher Präzision entscheidet serverseitig get_world_map_users() (RPC):
+      // Freunde sehen die Präzisionsstufe aus location_precision_friends, alle
+      // anderen App-Nutzer die aus location_precision_public – 'hidden' schließt
+      // die jeweilige Zielgruppe komplett aus. Das ersetzt den früheren
+      // Freundschafts-Only-Filter (nur akzeptierte Freunde sahen überhaupt etwas).
+      const [{ data: profile }, { data: worldMapUsers }, { data: acts }, { data: gems }] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
+          .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio, address_full, address_street, address_district, location_precision_public, location_precision_friends')
           .eq('id', user.id)
           .single(),
-        // Gegenseitige (akzeptierte) Freundschaften → nur diese Geschwister erscheinen auf der Karte
-        supabase
-          .from('friendships')
-          .select('requester_id, addressee_id')
-          .eq('status', 'accepted')
-          .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
+        supabase.rpc('get_world_map_users'),
         // Kein is_public-Filter mehr – Row Level Security entscheidet, welche Events
         // (öffentlich / Geschwister / Gemeinde / eigene) der Nutzer sehen darf.
         supabase
@@ -84,23 +83,7 @@ export function useWorldMap() {
       setMyProfile(profile)
       setActivities(acts || [])
       setGemeinden(gems || [])
-
-      const friendIds = [...new Set(
-        (friendships || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
-      )]
-
-      if (friendIds.length > 0) {
-        const { data: users } = await supabase
-          .from('profiles')
-          .select('id, full_name, username, avatar_url, latitude, longitude, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
-          .in('id', friendIds)
-          .eq('show_on_world_map', true)
-          .not('latitude', 'is', null)
-          .not('longitude', 'is', null)
-        setVisibleUsers(users || [])
-      } else {
-        setVisibleUsers([])
-      }
+      setVisibleUsers(worldMapUsers || [])
     } finally {
       setLoading(false)
     }
@@ -258,6 +241,20 @@ export function useWorldMap() {
     return !error
   }
 
+  // Adresse + Präzisions-Einstellungen (öffentlich/Freunde) speichern – patch
+  // enthält nur die tatsächlich geänderten Felder (Auto-Save pro Feld in der
+  // LocationSettingsSheet), analog zu updateLocationVisibility oben.
+  async function updateLocationSettings(patch) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ ...patch, world_map_last_updated: new Date().toISOString() })
+      .eq('id', user.id)
+    if (!error) {
+      setMyProfile(prev => ({ ...prev, ...patch }))
+    }
+    return !error
+  }
+
   const myActivities = activities.filter(a => a.author_id === user?.id)
 
   return {
@@ -274,6 +271,7 @@ export function useWorldMap() {
     deleteActivity,
     updateActivity,
     updateLocationVisibility,
+    updateLocationSettings,
     myActivities,
     reload: loadData,
   }
