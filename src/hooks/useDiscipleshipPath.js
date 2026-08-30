@@ -2,50 +2,34 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
-// Lädt Stationen + eigenen Fortschritt + an Stationen gebundene Challenges
-// + eigene Teilnahme daran in möglichst wenigen Requests (kein serverseitiges
-// Zusammenrechnen nötig, RLS lässt ohnehin nur eigene Progress-/Teilnahme-
-// Zeilen zu - siehe CLAUDE.md-Lektion zu unnötigem Query-Batching).
+// Lädt Stationen + eigenen Fortschritt in möglichst wenigen Requests (RLS
+// lässt ohnehin nur eigene Progress-Zeilen zu, kein serverseitiges
+// Zusammenrechnen nötig - siehe CLAUDE.md-Lektion zu unnötigem
+// Query-Batching). content_head wird mitgeladen, damit ein Tap auf eine
+// noch gesperrte Station eine Kurzinfo zeigen kann, ohne extra nachzuladen.
 export function useDiscipleshipPath() {
   const { user } = useAuth()
   const [stations, setStations] = useState([])
   const [progressByStation, setProgressByStation] = useState({})
-  const [challengesByStation, setChallengesByStation] = useState({})
-  const [participationByChallenge, setParticipationByChallenge] = useState({})
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     if (!user) return
     setLoading(true)
-    const [{ data: stationsData }, { data: progressData }, { data: challengesData }, { data: participantsData }] = await Promise.all([
+    const [{ data: stationsData }, { data: progressData }] = await Promise.all([
       supabase.from('discipleship_stations')
-        .select('id, order_index, slug, title, bible_reference')
+        .select('id, order_index, slug, title, bible_reference, content_head')
         .order('order_index'),
       supabase.from('discipleship_station_progress')
         .select('station_id, status, completed_at')
-        .eq('user_id', user.id),
-      supabase.from('challenges')
-        .select('id, station_id, type, title, goal_type, goal_value')
-        .not('station_id', 'is', null),
-      supabase.from('challenge_participants')
-        .select('challenge_id, status, progress_value')
         .eq('user_id', user.id),
     ])
 
     const progressMap = {}
     for (const p of progressData || []) progressMap[p.station_id] = p
-    const participationMap = {}
-    for (const p of participantsData || []) participationMap[p.challenge_id] = p
-    const challengeMap = {}
-    for (const c of challengesData || []) {
-      if (!challengeMap[c.station_id]) challengeMap[c.station_id] = []
-      challengeMap[c.station_id].push(c)
-    }
 
     setStations(stationsData || [])
     setProgressByStation(progressMap)
-    setChallengesByStation(challengeMap)
-    setParticipationByChallenge(participationMap)
     setLoading(false)
   }, [user?.id])
 
@@ -65,21 +49,5 @@ export function useDiscipleshipPath() {
     return 'locked'
   }
 
-  function challengeStateFor(challenge, stationState) {
-    const participation = participationByChallenge[challenge.id]
-    if (participation?.status === 'completed') return 'completed'
-    if (stationState === 'completed') return 'open'
-    return 'locked'
-  }
-
-  const openChallengeCount = stations.reduce((count, s) => {
-    const state = stateFor(s)
-    const challenges = challengesByStation[s.id] || []
-    return count + challenges.filter(c => challengeStateFor(c, state) === 'open').length
-  }, 0)
-
-  return {
-    stations, loading, stateFor, challengeStateFor,
-    challengesByStation, openChallengeCount, refresh: load,
-  }
+  return { stations, loading, stateFor, refresh: load }
 }

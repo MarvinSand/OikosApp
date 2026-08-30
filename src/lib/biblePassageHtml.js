@@ -35,3 +35,22 @@ export function wrapVersesInHtml(html) {
 
   return doc.body.innerHTML
 }
+
+// Die YouVersion-API akzeptiert Vers-Bereiche als eigene Passage-ID
+// (z.B. "LUK.15.11-LUK.15.32") nicht - liefert dafür 404. Einzelverse
+// ("LUK.15.11") funktionieren. Deshalb wird immer das ganze Kapitel
+// geladen (wrapVersesInHtml oben) und hier client-seitig auf den
+// gewünschten Versbereich zugeschnitten: alle [data-verse]-Spans außerhalb
+// [verseStart, verseEnd] werden entfernt.
+export function extractVerseRange(html, verseStart, verseEnd) {
+  if (!html || verseStart == null) return html
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const end = verseEnd ?? verseStart
+
+  doc.querySelectorAll('[data-verse]').forEach(el => {
+    const num = parseInt(el.getAttribute('data-verse'), 10)
+    if (isNaN(num) || num < verseStart || num > end) el.remove()
+  })
+
+  return doc.body.innerHTML
+}

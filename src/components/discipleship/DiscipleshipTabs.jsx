@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 
 const SEGMENTS = [
-  { path: '/juengerschaft',              label: 'Weg' },
+  { path: '/juengerschaft',              label: 'Bible Study' },
   { path: '/juengerschaft/werkzeuge',    label: 'Werkzeuge' },
   { path: '/juengerschaft/bibliothek',   label: 'Bibliothek' },
   { path: '/juengerschaft/bekenntnis',   label: 'Bekenntnis' },
