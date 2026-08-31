@@ -145,10 +145,20 @@ export function useWorldMap() {
         const { error: commError } = await supabase.from('activity_communities').insert(rows)
         if (commError) console.error('activity_communities insert failed:', commError)
       }
-      // Automatically create the activity chat and add creator as member
-      const { data: convId, error: chatError } = await supabase.rpc('create_activity_chat', { p_activity_id: act.id })
-      if (chatError) console.error('create_activity_chat failed:', chatError)
-      const actWithConv = { ...act, conversation_id: convId || null }
+      // join_activity() statt create_activity_chat(): legt zusätzlich zur
+      // Chat-Mitgliedschaft auch den activity_participants-Eintrag für den
+      // Ersteller an, damit er selbst als "beigetreten" gezählt wird (strikte
+      // Obermenge derselben RPC-Signatur/Rückgabe).
+      const { data: convId, error: chatError } = await supabase.rpc('join_activity', { p_activity_id: act.id })
+      if (chatError) console.error('join_activity (on create) failed:', chatError)
+      const actWithConv = {
+        ...act,
+        conversation_id: convId || null,
+        participants: [
+          ...(act.participants || []),
+          { user_id: user.id, joined_at: new Date().toISOString(), profile: act.author },
+        ],
+      }
       setActivities(prev => [actWithConv, ...prev])
       return { act: actWithConv, error, chatError }
     }
