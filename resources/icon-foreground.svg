@@ -1,0 +1,26 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5AC8FA"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+  </defs>
+  <!-- transparent background: Android adaptive icon foreground layer -->
+  <g transform="translate(512 512)">
+    <path d="M -180 16
+             L 0 -164
+             L 180 16
+             L 180 196
+             L 74 196
+             L 74 74
+             L -74 74
+             L -74 196
+             L -180 196
+             Z"
+          fill="none"
+          stroke="url(#accent)"
+          stroke-width="38"
+          stroke-linejoin="round"
+          stroke-linecap="round"/>
+  </g>
+</svg>

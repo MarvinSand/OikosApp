@@ -10,9 +10,11 @@ import Auth from './pages/Auth'
 import ResetPassword from './pages/ResetPassword'
 import AuthCallback from './pages/AuthCallback'
 import YouVersionCallback from './pages/YouVersionCallback'
+import PrivacyPolicy from './pages/PrivacyPolicy'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import NativeBridge from './components/native/NativeBridge'
 // All authenticated pages load lazily: each route becomes its own chunk and
 // shared heavy deps (Google Maps SDK bindings) end up in async chunks instead
 // of the entry bundle
@@ -319,6 +321,7 @@ export default function App() {
         <div className="min-h-screen bg-bg w-full flex justify-center md:block">
           <div className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg">
             <BrowserRouter>
+              <NativeBridge />
               <RecoveryRedirect />
               <Routes>
                 <Route
@@ -333,6 +336,7 @@ export default function App() {
                     Oikos eingeloggt. */}
                 <Route path="/auth/youversion/callback" element={<YouVersionCallback />} />
                 <Route path="/bible/youversion/callback" element={<YouVersionCallback />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route
                   path="/*"
                   element={recovery ? <Navigate to="/reset-password" replace /> : (user ? <AppShell /> : <Navigate to="/auth" replace />)}

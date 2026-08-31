@@ -3,6 +3,14 @@ dist
 .env.local
 .env
 
+# Native app signing secrets - never commit
+android/keystore.properties
+android/*.keystore
+android/*.jks
+ios/App/App.xcworkspace/xcuserdata/
+*.p12
+*.mobileprovision
+
 # Build/debug artifacts
 build_error*.log
 tmp_query.js
