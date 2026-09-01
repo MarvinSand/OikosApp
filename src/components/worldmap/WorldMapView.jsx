@@ -710,6 +710,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
           radiusKm={radiusKm}
           onRadiusChange={setRadiusKm}
           reopenListKey={reopenListKey}
+          onCreateEvent={() => setShowCreateSheet(true)}
           onSelectUser={(u) => { focusOn(u.latitude, u.longitude); openedFromListRef.current = true; setSelectedUser(u) }}
           onSelectActivity={(a) => { focusOn(a.latitude, a.longitude); openedFromListRef.current = true; setSelectedActivity(a) }}
           onSelectGemeinde={(g) => { focusOn(g.latitude, g.longitude); openedFromListRef.current = true; setSelectedGemeinde(g) }}

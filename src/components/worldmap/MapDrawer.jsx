@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Search, SlidersHorizontal, Users, CalendarDays, X, MapPin, Repeat, Home } from 'lucide-react'
+import { Search, SlidersHorizontal, Users, CalendarDays, X, MapPin, Repeat, Home, Plus } from 'lucide-react'
 import { nextOccurrence, formatRecurrenceLabel, isRecurring } from '../../lib/recurrence'
 
 const C = {
@@ -66,6 +66,7 @@ export default function MapDrawer({
   users, activities, gemeinden = [], myProfile, hasOwnLocation,
   radiusKm, onRadiusChange,
   onSelectUser, onSelectActivity, onSelectGemeinde, reopenListKey,
+  onCreateEvent,
 }) {
   // 'closed' = nur Kopf sichtbar · 'half' = + Suchleiste (Tap auf Geschwister/
   // Events landet hier) · 'full' = komplettes Sheet mit Liste (Tap in die
@@ -405,6 +406,20 @@ export default function MapDrawer({
           {list.length} {tab === 'siblings' ? 'Geschwister' : tab === 'gemeinden' ? (list.length === 1 ? 'Gemeinde' : 'Gemeinden') : (list.length === 1 ? 'Event' : 'Events')}
           {radiusKm != null && hasOwnLocation ? ` im Umkreis von ${radiusKm} km` : ''}
         </p>
+
+        {tab === 'events' && (
+          <button
+            onClick={() => { setLevel('closed'); onCreateEvent() }}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '10px 14px', borderRadius: 12, border: 'none',
+              background: C.accent, color: '#fff', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', marginBottom: 10,
+            }}
+          >
+            <Plus size={16} /> Event erstellen
+          </button>
+        )}
 
         {list.length === 0 && (
           <div style={{ textAlign: 'center', padding: '28px 20px' }}>
