@@ -9,7 +9,7 @@ import PersonDetailSheet from '../components/map/PersonDetailSheet'
 export default function PublicMapView() {
   const { id: userId, mapId } = useParams()
   const navigate = useNavigate()
-  const { map, people, connections, places, placeConnections, ownerName, linkedProfiles, loading } = usePublicMap(userId, mapId)
+  const { map, people, connections, places, placeConnections, ownerName, linkedProfiles, overlayData, togglePersonMapOverlay, loading } = usePublicMap(userId, mapId)
   const [selectedPerson, setSelectedPerson] = useState(null)
 
   if (loading) {
@@ -60,6 +60,7 @@ export default function PublicMapView() {
           connections={connections}
           places={places}
           placeConnections={placeConnections}
+          overlayData={overlayData}
           onPersonClick={setSelectedPerson}
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
@@ -74,9 +75,11 @@ export default function PublicMapView() {
           people={people}
           places={places}
           placeConnections={placeConnections}
+          overlayData={overlayData}
           mapOwnerName={ownerName}
           ownerDisconnected={selectedPerson.owner_disconnected ?? false}
           linkedProfile={selectedPerson.linked_user_id ? linkedProfiles[selectedPerson.linked_user_id] || null : null}
+          onOverlayPreview={togglePersonMapOverlay}
         />
       )}
     </div>
