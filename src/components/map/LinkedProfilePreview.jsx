@@ -6,24 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useFriendships } from '../../hooks/useFriendships'
 import { useToast } from '../../context/ToastContext'
 import { countryToFlag, COUNTRIES } from '../../lib/countries'
-
-function timeAgo(dateStr) {
-  if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'gerade eben'
-  if (mins < 60) return `vor ${mins} Min.`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `vor ${hours} Std.`
-  if (hours < 48) return 'gestern'
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `vor ${days} Tagen`
-  return new Date(dateStr).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })
-}
-
-function getInitials(name) {
-  return (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-}
+import { timeAgo, getInitials } from '../../lib/prayerModel'
 
 // ════════════════════════════════════════════════════════════════════════
 // Mini-Profilvorschau für eine mit einem OIKOS-Account verknüpfte Person
