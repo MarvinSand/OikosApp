@@ -347,7 +347,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
 
     supabase
       .from('profiles')
-      .select('id, full_name, username, avatar_url')
+      .select('id, full_name, username, avatar_url, bio_text, bio, city, country, church_name, show_bio, show_city, show_church, latitude, longitude')
       .in('id', linkedIds)
       .then(({ data }) => {
         if (!data) return
@@ -674,7 +674,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             linkAccount(personId, profileId)
             supabase
               .from('profiles')
-              .select('id, full_name, username, avatar_url')
+              .select('id, full_name, username, avatar_url, bio_text, bio, city, country, church_name, show_bio, show_city, show_church, latitude, longitude')
               .eq('id', profileId)
               .single()
               .then(({ data }) => {

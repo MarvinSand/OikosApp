@@ -9,6 +9,7 @@ import AddressAutocomplete from '../common/AddressAutocomplete'
 import PrayerRequestsSection from '../person/PrayerRequestsSection'
 import ImpactMapSection from '../person/ImpactMapSection'
 import StoryLineSection from '../person/StoryLineSection'
+import LinkedProfilePreview from './LinkedProfilePreview'
 
 const RELATIONSHIP_TYPES = ['Freund/in', 'Kollege/in', 'Familie', 'Nachbar/in', 'Bekannte/r', 'Sonstige/r']
 
@@ -697,7 +698,7 @@ function LocationSection({ person, onUpdate }) {
 }
 
 // --- Account Linking Section ---
-function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkAccount, onUpdateOverlay, isOwner = true }) {
+function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkAccount, onUpdateOverlay, onOverlayPreview, overlayData = [], isOwner = true }) {
   const navigate = useNavigate()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -807,6 +808,14 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
             Profil →
           </button>
         </div>
+
+        <LinkedProfilePreview
+          person={person}
+          linkedProfile={linkedProfile}
+          isOwner={isOwner}
+          overlayData={overlayData}
+          onOverlayPreview={onOverlayPreview}
+        />
 
         {/* OIKOS einblenden toggle — nur für den Besitzer konfigurierbar */}
         {isOwner && (
@@ -1022,6 +1031,7 @@ export default function PersonDetailSheet({
   onLinkAccount,
   onUnlinkAccount,
   onUpdateOverlay,
+  onOverlayPreview,
   placeConnections = [],
   places = [],
   onDisconnectFromPlace,
@@ -1191,6 +1201,26 @@ export default function PersonDetailSheet({
           </p>
         )}
 
+        {/* OIKOS Account Verknüpfung */}
+        <div>
+          <AccountLinkingSection
+            person={person}
+            linkedProfile={linkedProfile}
+            onLinkAccount={(personId, profileId) => {
+              onLinkAccount?.(personId, profileId)
+              setPerson(p => ({ ...p, linked_user_id: profileId }))
+            }}
+            onUnlinkAccount={(personId) => {
+              onUnlinkAccount?.(personId)
+              setPerson(p => ({ ...p, linked_user_id: null, overlay_map_id: null }))
+            }}
+            onUpdateOverlay={onUpdateOverlay}
+            onOverlayPreview={onOverlayPreview}
+            overlayData={overlayData}
+            isOwner={isOwner}
+          />
+        </div>
+
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* Gebetsanliegen */}
@@ -1240,26 +1270,6 @@ export default function PersonDetailSheet({
           onDisconnectFromPlace={onDisconnectFromPlace}
           isOwner={isOwner}
         />
-
-        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
-
-        {/* OIKOS Account Verknüpfung */}
-        <div>
-          <AccountLinkingSection
-            person={person}
-            linkedProfile={linkedProfile}
-            onLinkAccount={(personId, profileId) => {
-              onLinkAccount?.(personId, profileId)
-              setPerson(p => ({ ...p, linked_user_id: profileId }))
-            }}
-            onUnlinkAccount={(personId) => {
-              onUnlinkAccount?.(personId)
-              setPerson(p => ({ ...p, linked_user_id: null, overlay_map_id: null }))
-            }}
-            onUpdateOverlay={onUpdateOverlay}
-            isOwner={isOwner}
-          />
-        </div>
 
         {/* Standort (für "Oikos Verbindungen anzeigen" auf der Weltkarte) */}
         {isOwner && (

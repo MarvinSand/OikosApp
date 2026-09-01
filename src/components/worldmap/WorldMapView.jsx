@@ -495,7 +495,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   }, [oikosSource.active])
   // Zwei unabhängige Ebenen – beide können gleichzeitig aktiv sein.
   // ?layer=siblings (z.B. von "Auf der Map suchen") → nur Geschwister, keine Events.
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const siblingsOnly = searchParams.get('layer') === 'siblings'
   const [showGeschwister, setShowGeschwister] = useState(true)
   const [showEvents, setShowEvents] = useState(!siblingsOnly)
@@ -673,6 +673,30 @@ export default function WorldMapView({ onNavigateToProfile }) {
     }
     return lines
   }, [oikosSource.active, oikosSource.connections, oikosPersonPositions])
+
+  function focusOn(lat, lng) {
+    if (!map || lat == null || lng == null) return
+    map.panTo({ lat, lng })
+    if (map.getZoom() < 11) map.setZoom(11)
+  }
+
+  // Deep-link: ?focus=<userId> (aus der Mini-Profilvorschau auf der Oikos-
+  // Map) → diese Person fokussieren, sobald Karte + Geschwister-Liste bereit
+  // sind. Ist die Person hier nicht sichtbar (keine Freundschaft,
+  // show_on_world_map=false, kein Standort), nur ein Hinweis statt Absturz.
+  useEffect(() => {
+    const focusId = searchParams.get('focus')
+    if (!focusId || loading || !map) return
+    const target = visibleUsers.find(u => u.id === focusId)
+    if (target) {
+      focusOn(target.latitude, target.longitude)
+      setSelectedUser(target)
+    } else {
+      showToast('Diese Person ist auf der Weltkarte nicht sichtbar')
+    }
+    setSearchParams(prev => { prev.delete('focus'); return prev }, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, visibleUsers, loading, map])
 
   useCombinedClusterer({
     map,
