@@ -1055,6 +1055,26 @@ export default function PersonDetailSheet({
           </p>
         )}
 
+        {/* OIKOS Account Verknüpfung */}
+        <div>
+          <AccountLinkingSection
+            person={person}
+            linkedProfile={linkedProfile}
+            onLinkAccount={(personId, profileId) => {
+              onLinkAccount?.(personId, profileId)
+              setPerson(p => ({ ...p, linked_user_id: profileId }))
+            }}
+            onUnlinkAccount={(personId) => {
+              onUnlinkAccount?.(personId)
+              setPerson(p => ({ ...p, linked_user_id: null, overlay_map_id: null }))
+            }}
+            onUpdateOverlay={onUpdateOverlay}
+            onOverlayPreview={onOverlayPreview}
+            overlayData={overlayData}
+            isOwner={isOwner}
+          />
+        </div>
+
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
 
         {/* Gebetsanliegen */}
@@ -1104,28 +1124,6 @@ export default function PersonDetailSheet({
           onDisconnectFromPlace={onDisconnectFromPlace}
           isOwner={isOwner}
         />
-
-        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
-
-        {/* OIKOS Account Verknüpfung */}
-        <div>
-          <AccountLinkingSection
-            person={person}
-            linkedProfile={linkedProfile}
-            onLinkAccount={(personId, profileId) => {
-              onLinkAccount?.(personId, profileId)
-              setPerson(p => ({ ...p, linked_user_id: profileId }))
-            }}
-            onUnlinkAccount={(personId) => {
-              onUnlinkAccount?.(personId)
-              setPerson(p => ({ ...p, linked_user_id: null, overlay_map_id: null }))
-            }}
-            onUpdateOverlay={onUpdateOverlay}
-            onOverlayPreview={onOverlayPreview}
-            overlayData={overlayData}
-            isOwner={isOwner}
-          />
-        </div>
 
         {/* Person löschen */}
         {isOwner && (
