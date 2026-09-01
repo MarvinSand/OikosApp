@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, Polyline } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
-import { Plus, Navigation, Settings } from 'lucide-react'
+import { Plus, Navigation, Settings, Users2 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorldMap, haversine } from '../../hooks/useWorldMap'
+import { useOikosWorldMapSource } from '../../hooks/useOikosWorldMapSource'
 import { useToast } from '../../context/ToastContext'
 import { GOOGLE_MAPS_LOADER_OPTIONS, DEFAULT_MAP_ID } from '../../lib/googleMaps'
 import AdvancedMarker from './AdvancedMarker'
@@ -13,6 +14,8 @@ import ActivitySheet from './ActivitySheet'
 import CreateActivitySheet from './CreateActivitySheet'
 import GemeindePinSheet from './GemeindePinSheet'
 import LocationSettingsSheet from './LocationSettingsSheet'
+import OikosWorldMapSourceSheet from './OikosWorldMapSourceSheet'
+import OikosPersonPinSheet from './OikosPersonPinSheet'
 import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
 
 // ─── Palette (Phase 27: schwarz/weiß + babyblauer Akzent) ──
@@ -187,6 +190,33 @@ function buildGemeindePinElement(gemeinde, { zoom } = {}) {
   return wrap
 }
 
+// Pin für Personen aus einer Oikos Map ohne eigenen Weltkarten-Profil-Pin
+// (accountlos, oder verknüpft aber anderweitig nicht sichtbar). Gestrichelter
+// Rand grenzt sie optisch klar von echten Account-Pins ab.
+function buildOikosPersonPinElement(person, { zoom } = {}) {
+  const size = 44
+  const borderColor = C.accentDark
+  const initials = getInitials(person.name)
+
+  const wrap = document.createElement('div')
+  wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translateY(50%);`
+
+  const scaleLayer = document.createElement('div')
+  scaleLayer.dataset.pinScale = '1'
+  scaleLayer.style.cssText = `position:relative;width:100%;height:100%;transform-origin:50% 50%;transform:scale(${pinScale(zoom)});transition:transform 0.18s ease;`
+
+  const circle = document.createElement('div')
+  circle.style.cssText = `width:100%;height:100%;border-radius:50%;background:${C.bg};border:2.5px dashed ${borderColor};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,0.18);cursor:pointer;`
+
+  const span = document.createElement('span')
+  span.style.cssText = `font-size:${Math.floor(size / 3)}px;font-weight:700;color:${borderColor};user-select:none;`
+  span.textContent = initials
+  circle.appendChild(span)
+  scaleLayer.appendChild(circle)
+  wrap.appendChild(scaleLayer)
+  return wrap
+}
+
 // Cluster-Icon: zeigt Personenhaufen, Event-Symbol, Gemeinde-Haus oder eine Mischung
 function buildClusterElement(count, kinds) {
   const wrap = document.createElement('div')
@@ -207,7 +237,7 @@ function buildClusterElement(count, kinds) {
   circle.appendChild(num)
 
   // Icon-Zeile: je enthaltener Art ein Symbol
-  const iconMap = { user: '👤', activity: '📅', gemeinde: '🏠' }
+  const iconMap = { user: '👤', activity: '📅', gemeinde: '🏠', 'oikos-person': '🔗' }
   const icons = document.createElement('span')
   icons.style.cssText = 'font-size:9px;color:rgba(255,255,255,0.9);line-height:1;'
   icons.textContent = [...kinds].map(k => iconMap[k]).join(' ')
@@ -253,7 +283,7 @@ function PrivacyBanner({ onClose, hasLocation, onSetLocation }) {
 // ─── Combined pin clusterer (Personen + Events in einem Cluster) ─────────────
 // Events bekommen höheren zIndex → übertrumpfen Personen-Pins bei Überlappung.
 // Das Cluster-Icon zeigt an, ob nur Personen, nur Events oder beides drin sind.
-function useCombinedClusterer({ map, users, activities, gemeinden, onUserClick, onActivityClick, onGemeindeClick, showUsers, showEvents, showGemeinden, zoom }) {
+function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, onUserClick, onActivityClick, onGemeindeClick, onOikosPersonClick, showUsers, showEvents, showGemeinden, showOikosPeople, zoom }) {
   const clustererRef = useRef(null)
   const allMarkersRef = useRef([])
   const zoomRef = useRef(zoom)
@@ -311,7 +341,20 @@ function useCombinedClusterer({ map, users, activities, gemeinden, onUserClick, 
       return marker
     }) : []
 
-    const allMarkers = [...userMarkers, ...actMarkers, ...gemeindeMarkers]
+    const oikosMarkers = showOikosPeople ? (oikosPeople || []).map(p => {
+      const content = buildOikosPersonPinElement(p, { zoom: zoomRef.current })
+      content.dataset.pinType = 'oikos-person'
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        position: { lat: p.latitude, lng: p.longitude },
+        content,
+        zIndex: 20,
+        gmpClickable: true,
+      })
+      marker.addListener('gmp-click', () => onOikosPersonClick(p))
+      return marker
+    }) : []
+
+    const allMarkers = [...userMarkers, ...actMarkers, ...gemeindeMarkers, ...oikosMarkers]
     allMarkersRef.current = allMarkers
 
     const clusterer = new MarkerClusterer({
@@ -335,7 +378,7 @@ function useCombinedClusterer({ map, users, activities, gemeinden, onUserClick, 
       clustererRef.current = null
       allMarkersRef.current = []
     }
-  }, [map, users, activities, gemeinden, showUsers, showEvents, showGemeinden, onUserClick, onActivityClick, onGemeindeClick])
+  }, [map, users, activities, gemeinden, oikosPeople, showUsers, showEvents, showGemeinden, showOikosPeople, onUserClick, onActivityClick, onGemeindeClick, onOikosPersonClick])
 }
 
 // ─── Snapchat-style Zoom Sidebar ─────────────────────────
@@ -442,6 +485,14 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
   const [showLocationSettings, setShowLocationSettings] = useState(false)
+  const [showOikosSourceSheet, setShowOikosSourceSheet] = useState(false)
+  const [selectedOikosPerson, setSelectedOikosPerson] = useState(null)
+  const oikosSource = useOikosWorldMapSource({ enabled: showOikosSourceSheet })
+
+  // Sheet automatisch schließen, sobald eine Auswahl bestätigt wurde
+  useEffect(() => {
+    if (oikosSource.active) setShowOikosSourceSheet(false)
+  }, [oikosSource.active])
   // Zwei unabhängige Ebenen – beide können gleichzeitig aktiv sein.
   // ?layer=siblings (z.B. von "Auf der Map suchen") → nur Geschwister, keine Events.
   const [searchParams] = useSearchParams()
@@ -563,18 +614,80 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
   const handleActivityClick = useMemo(() => (a) => setSelectedActivity(a), [])
   const handleGemeindeClick = useMemo(() => (g) => setSelectedGemeinde(g), [])
+  const handleOikosPersonClick = useMemo(() => (p) => setSelectedOikosPerson(p), [])
+
+  // "Oikos Verbindungen anzeigen" – bereits über einen echten Profil-Pin
+  // abgedeckte Accounts (eigener Pin + alle sichtbaren Nutzer). Grundlage für
+  // Dedup (Modus B) und für Modus A ("nur bereits Sichtbare").
+  const coveredAccountIds = useMemo(() => {
+    const set = new Set()
+    if (myProfile?.id) set.add(myProfile.id)
+    for (const u of visibleUsers) set.add(u.id)
+    return set
+  }, [myProfile?.id, visibleUsers])
+
+  // Neue Pins nur für Personen ohne eigenen Profil-Pin (accountlos, oder
+  // verknüpft aber anderweitig nicht sichtbar) – Modus A fügt nie neue Pins hinzu.
+  const oikosPersonPins = useMemo(() => {
+    if (!oikosSource.active || oikosSource.whoMode !== 'all_assigned') return []
+    return oikosSource.locationPins
+      .filter(p => !p.linked_user_id || !coveredAccountIds.has(p.linked_user_id))
+      .map(p => ({
+        id: p.person_id, name: p.name, latitude: p.lat, longitude: p.lng,
+        address: p.address, relationship_type: p.relationship_type, linked_user_id: p.linked_user_id,
+      }))
+  }, [oikosSource.active, oikosSource.whoMode, oikosSource.locationPins, coveredAccountIds])
+
+  // person_id → {lat,lng} für Beziehungslinien. Deckt sowohl Personen mit
+  // echtem Profil-Pin (über linked_user_id → visibleUsers/myProfile) als auch
+  // neue Oikos-Pins ab; nur Kanten, bei denen BEIDE Enden aufgelöst sind, werden gezeichnet.
+  const oikosPersonPositions = useMemo(() => {
+    const positions = new Map()
+    if (!oikosSource.active) return positions
+
+    const linkedList = oikosSource.whoMode === 'linked_visible' ? oikosSource.linkedPeople : oikosSource.locationPins
+    for (const p of linkedList) {
+      const pid = p.person_id ?? p.id
+      const linkedId = p.linked_user_id
+      if (!linkedId || !coveredAccountIds.has(linkedId)) continue
+      const pos = linkedId === myProfile?.id
+        ? { lat: myProfile.latitude, lng: myProfile.longitude }
+        : (visibleUsers.find(u => u.id === linkedId) || null)
+      if (pos?.lat != null || pos?.latitude != null) {
+        positions.set(pid, { lat: pos.lat ?? pos.latitude, lng: pos.lng ?? pos.longitude })
+      }
+    }
+    for (const pin of oikosPersonPins) {
+      positions.set(pin.id, { lat: pin.latitude, lng: pin.longitude })
+    }
+    return positions
+  }, [oikosSource.active, oikosSource.whoMode, oikosSource.linkedPeople, oikosSource.locationPins, oikosPersonPins, coveredAccountIds, myProfile, visibleUsers])
+
+  const oikosConnectionLines = useMemo(() => {
+    if (!oikosSource.active) return []
+    const lines = []
+    for (const c of oikosSource.connections) {
+      const from = oikosPersonPositions.get(c.source_person_id)
+      const to = oikosPersonPositions.get(c.target_person_id)
+      if (from && to) lines.push({ id: `${c.source_person_id}-${c.target_person_id}`, from, to, color: c.color })
+    }
+    return lines
+  }, [oikosSource.active, oikosSource.connections, oikosPersonPositions])
 
   useCombinedClusterer({
     map,
     users: visibleUsers,
     activities,
     gemeinden,
+    oikosPeople: oikosPersonPins,
     onUserClick: handleUserClick,
     onActivityClick: handleActivityClick,
     onGemeindeClick: handleGemeindeClick,
+    onOikosPersonClick: handleOikosPersonClick,
     showUsers: showGeschwister && isLoaded,
     showEvents: showEvents && isLoaded,
     showGemeinden: showGemeinden && isLoaded,
+    showOikosPeople: oikosSource.active && isLoaded,
     zoom: snapZoom.currentZoom,
   })
 
@@ -626,9 +739,18 @@ export default function WorldMapView({ onNavigateToProfile }) {
               <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} />
             </AdvancedMarker>
           )}
+
+          {/* Oikos-Beziehungslinien – nur zwischen tatsächlich aufgelösten Personen */}
+          {oikosConnectionLines.map(line => (
+            <Polyline
+              key={line.id}
+              path={[line.from, line.to]}
+              options={{ strokeColor: line.color || C.accent, strokeWeight: 2, strokeOpacity: 0.6, clickable: false }}
+            />
+          ))}
         </GoogleMap>
 
-        {/* Standort-Einstellungen: Zahnrad oben rechts, aktuell die leere Ecke */}
+        {/* Standort-Einstellungen: Zahnrad oben rechts */}
         <button
           onClick={() => setShowLocationSettings(true)}
           style={{ ...mapBtnStyle, position: 'absolute', top: 12, right: 12, zIndex: 500 }}
@@ -636,6 +758,20 @@ export default function WorldMapView({ onNavigateToProfile }) {
           aria-label="Standort-Einstellungen"
         >
           <Settings size={18} />
+        </button>
+
+        {/* Oikos Verbindungen anzeigen: oben mittig */}
+        <button
+          onClick={() => { oikosSource.active ? oikosSource.reset() : setShowOikosSourceSheet(true) }}
+          style={{
+            ...mapBtnStyle, position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 500, width: 'auto', padding: '0 14px', gap: 6,
+          }}
+          title="Oikos Verbindungen anzeigen"
+        >
+          <Users2 size={15} />
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Oikos Verbindungen anzeigen</span>
+          {oikosSource.active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />}
         </button>
 
         {/* Rechter Bedien-Stapel: Zoom-Leiste + "Event hosten"-Button fest
@@ -790,6 +926,18 @@ export default function WorldMapView({ onNavigateToProfile }) {
           updateLocationSettings={updateLocationSettings}
           updateLocationVisibility={updateLocationVisibility}
           onClose={() => setShowLocationSettings(false)}
+        />
+      )}
+      {showOikosSourceSheet && (
+        <OikosWorldMapSourceSheet
+          source={oikosSource}
+          onClose={() => setShowOikosSourceSheet(false)}
+        />
+      )}
+      {selectedOikosPerson && (
+        <OikosPersonPinSheet
+          person={selectedOikosPerson}
+          onClose={() => setSelectedOikosPerson(null)}
         />
       )}
     </div>

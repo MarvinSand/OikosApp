@@ -1,14 +1,23 @@
 import { useState } from 'react'
 import { X, Pencil, Trash2, Palette } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { useFriendships } from '../../hooks/useFriendships'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
+import AddressAutocomplete from '../common/AddressAutocomplete'
 import PrayerRequestsSection from '../person/PrayerRequestsSection'
 import ImpactMapSection from '../person/ImpactMapSection'
 import StoryLineSection from '../person/StoryLineSection'
 
 const RELATIONSHIP_TYPES = ['Freund/in', 'Kollege/in', 'Familie', 'Nachbar/in', 'Bekannte/r', 'Sonstige/r']
+
+const LOCATION_VISIBILITY_OPTIONS = [
+  { value: 'private',          icon: '🔒', label: 'Nur ich' },
+  { value: 'all_siblings',     icon: '👥', label: 'Alle verbundenen Geschwister' },
+  { value: 'specific_include', icon: '✅', label: 'Nur ausgewählte Geschwister' },
+  { value: 'map_visibility',   icon: '🗺', label: 'Alle, für die die Map sichtbar ist' },
+]
 
 const CIRCLE_COLORS = [
   { label: 'Standard', hex: '#E8E4DC' },
@@ -545,6 +554,143 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
             </div>
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+// --- Location Section ---
+// Standort + granulare Sichtbarkeit für "Oikos Verbindungen auf der Weltkarte".
+// Speichert ausschließlich über onUpdate (→ useOikosMaps' updatePerson), NICHT
+// direkt per supabase.update() wie handleSaveEdit — sonst bleibt der people-State
+// des Hooks (der die Canvas-Darstellung treibt) nicht synchron.
+function LocationSection({ person, onUpdate }) {
+  const { friends } = useFriendships()
+  const [savingAddr, setSavingAddr] = useState(false)
+  const [visibility, setVisibility] = useState(person.location_visibility || 'private')
+  const [selectedIds, setSelectedIds] = useState(person.location_visibility_user_ids || [])
+  const [connectEnabled, setConnectEnabled] = useState(person.oikos_connect_enabled || false)
+
+  const addrValue = person.location_lat != null && person.location_lng != null
+    ? { shortName: person.location_address || person.name, lat: person.location_lat, lng: person.location_lng }
+    : null
+
+  async function handleSelectAddress(loc) {
+    if (!loc?.lat || !loc?.lng) return
+    setSavingAddr(true)
+    try {
+      await onUpdate?.({
+        location_lat: loc.lat,
+        location_lng: loc.lng,
+        location_address: loc.address || null,
+        location_street: loc.street || null,
+        location_district: loc.district || null,
+        location_city: loc.city || loc.shortName || null,
+        location_country: loc.country || null,
+      })
+    } finally {
+      setSavingAddr(false)
+    }
+  }
+
+  function handleVisibilityChange(value) {
+    setVisibility(value)
+    onUpdate?.({ location_visibility: value })
+  }
+
+  function toggleFriendId(id) {
+    const next = selectedIds.includes(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]
+    setSelectedIds(next)
+    onUpdate?.({ location_visibility_user_ids: next })
+  }
+
+  function handleToggleConnect() {
+    const next = !connectEnabled
+    setConnectEnabled(next)
+    onUpdate?.({ oikos_connect_enabled: next })
+  }
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        Standort
+      </h4>
+
+      <AddressAutocomplete value={addrValue} onChange={handleSelectAddress} placeholder="Adresse eingeben…" />
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '6px 2px 14px' }}>
+        {savingAddr ? 'Wird gespeichert…' : 'Wird per Google-Suche automatisch erkannt und gespeichert.'}
+      </p>
+
+      <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
+            Oikos Verbinden
+          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
+            Schaltet den Standort für „Oikos Verbindungen anzeigen" auf der Weltkarte frei.
+          </p>
+        </div>
+        <button onClick={handleToggleConnect} style={toggleTrack(connectEnabled)}>
+          <div style={toggleThumb(connectEnabled)} />
+        </button>
+      </div>
+
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 8px' }}>
+        Wer darf den Standort sehen?
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {LOCATION_VISIBILITY_OPTIONS.map(opt => {
+          const active = visibility === opt.value
+          return (
+            <button
+              key={opt.value}
+              onClick={() => handleVisibilityChange(opt.value)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 12px', borderRadius: 10, cursor: 'pointer',
+                border: `1.5px solid ${active ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
+                backgroundColor: active ? 'var(--color-warm-4)' : 'var(--color-white)',
+                fontFamily: 'Lora, serif', fontSize: 13, textAlign: 'left',
+                color: active ? 'var(--color-warm-1)' : 'var(--color-text)',
+                fontWeight: active ? 600 : 400,
+              }}
+            >
+              <span>{opt.icon}</span>
+              <span style={{ flex: 1 }}>{opt.label}</span>
+              {active && <span style={{ fontSize: 12 }}>●</span>}
+            </button>
+          )
+        })}
+      </div>
+
+      {visibility === 'specific_include' && (
+        <div style={{ marginTop: 10 }}>
+          {friends.length === 0 ? (
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+              Noch keine verbundenen Geschwister.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {friends.map(f => {
+                const uid = f.otherUser?.id
+                const checked = selectedIds.includes(uid)
+                return (
+                  <label key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleFriendId(uid)}
+                      style={{ width: 16, height: 16, accentColor: 'var(--color-warm-1)', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)' }}>
+                      {f.otherUser?.full_name || f.otherUser?.username}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -1114,6 +1260,22 @@ export default function PersonDetailSheet({
             isOwner={isOwner}
           />
         </div>
+
+        {/* Standort (für "Oikos Verbindungen anzeigen" auf der Weltkarte) */}
+        {isOwner && (
+          <>
+            <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', marginBottom: 20 }} />
+            <div>
+              <LocationSection
+                person={person}
+                onUpdate={(updates) => {
+                  setPerson(p => ({ ...p, ...updates }))
+                  return onUpdate?.(updates)
+                }}
+              />
+            </div>
+          </>
+        )}
 
         {/* Person löschen */}
         {isOwner && (
