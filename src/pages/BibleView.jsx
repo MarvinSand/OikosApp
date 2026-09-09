@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useChapterText, useBibleMarkers, useBibleVersions, useFavoriteBibleVersions, saveReadingProgress, DEFAULT_BIBLE_ID } from '../hooks/useBible'
@@ -31,8 +31,17 @@ export default function BibleView() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const contentRef = useRef(null)
-  const [book, setBook] = useState('JHN')
-  const [chapter, setChapter] = useState(3)
+  // "Kontext ansehen" (Bekenntnis/Bibliothek) springt hierher mit
+  // ?book=&chapter=&verse= - Kapitel wird normal geladen, der Vers danach
+  // per data-verse-Span angesprungen und kurz hervorgehoben.
+  const [searchParams] = useSearchParams()
+  const jumpToVerseRef = useRef(parseInt(searchParams.get('verse'), 10) || null)
+  const jumpedRef = useRef(false)
+  const [book, setBook] = useState(() => searchParams.get('book') || 'JHN')
+  const [chapter, setChapter] = useState(() => {
+    const fromParams = parseInt(searchParams.get('chapter'), 10)
+    return fromParams > 0 ? fromParams : 3
+  })
   const [bibleId, setBibleId] = useState(() => {
     try { return localStorage.getItem(BIBLE_ID_STORAGE_KEY) || DEFAULT_BIBLE_ID } catch { return DEFAULT_BIBLE_ID }
   })
@@ -97,6 +106,20 @@ export default function BibleView() {
       }
     })
   }, [html, selectedVerses, highlights])
+
+  // Einmaliger Sprung zum Vers aus ?verse=, nachdem das Kapitel geladen ist.
+  // Läuft nach dem Overlay-Effekt oben, damit der Flash nicht sofort wieder
+  // auf "transparent" zurückgesetzt wird.
+  useEffect(() => {
+    if (jumpedRef.current || !html || !jumpToVerseRef.current) return
+    const el = contentRef.current?.querySelector(`[data-verse="${jumpToVerseRef.current}"]`)
+    if (!el) return
+    jumpedRef.current = true
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    el.style.transition = 'background-color 0.4s ease'
+    el.style.backgroundColor = 'var(--color-accent-light, #fde68a)'
+    setTimeout(() => { el.style.backgroundColor = 'transparent' }, 2000)
+  }, [html])
 
   function referenceLabel() {
     const nums = Array.from(selectedVerses).sort((a, b) => a - b)

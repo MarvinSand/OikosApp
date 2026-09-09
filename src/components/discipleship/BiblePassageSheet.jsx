@@ -1,4 +1,5 @@
-import { X, RotateCw } from 'lucide-react'
+import { X, RotateCw, BookOpen } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useStationPassage } from '../../hooks/useStationPassage'
 
 // Bottom-Sheet für eine einzelne Bibelstelle, angetippt aus einer Zeile
@@ -6,7 +7,12 @@ import { useStationPassage } from '../../hooks/useStationPassage'
 // Stationsdetailseite - book/chapter/verse sind hier nur nicht aus einer
 // festen Spalte, sondern aus lib/bibleBooks.js#parseGermanReference geparst.
 export default function BiblePassageSheet({ label, parsed, onClose }) {
+  const navigate = useNavigate()
   const { html, loading, error, retry } = useStationPassage(parsed?.book, parsed?.chapter, parsed?.verseStart, parsed?.verseEnd)
+
+  function openContext() {
+    navigate(`/bible?book=${parsed.book}&chapter=${parsed.chapter}&verse=${parsed.verseStart}`)
+  }
 
   return (
     <>
@@ -35,6 +41,16 @@ export default function BiblePassageSheet({ label, parsed, onClose }) {
         )}
         {parsed && !loading && !error && html && (
           <div style={{ fontFamily: 'Lora, serif', fontSize: 16, lineHeight: 1.8, color: 'var(--color-text)' }} dangerouslySetInnerHTML={{ __html: html }} />
+        )}
+
+        {parsed && (
+          <button
+            onClick={openContext}
+            className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl font-medium mt-4"
+            style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-accent)' }}
+          >
+            <BookOpen size={15} /> Kontext ansehen
+          </button>
         )}
       </div>
     </>
