@@ -1,12 +1,23 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
-## iOS Safari: sticky-Header, die zwischen Geschwister-Seiten oft gemountet/unmountet werden, hinterlassen Geisterflächen
+## Feste Kopfleiste über scrollendem Inhalt: eigene Scroll-Fläche statt sticky/fixed
 
-**Problem:** Im Jüngerschaftsbereich (`src/pages/discipleship/*`) war die obere Leiste (Segment-Navigation `DiscipleshipTabs`, sowie die Zurück-Header von `StationDetailView`/`ChallengeDetailView`) `position: sticky; top: 0`. Diese Komponenten werden bei jeder Navigation zwischen den 5+ Jüngerschafts-Unterseiten neu gemountet/unmountet – viel häufiger als z. B. der `.chat-input-bar`-Fall unten. Auf iOS Safari führte das zum selben Compositing-Bug wie bei `position: fixed`-Leisten (siehe Eintrag "Eingabeleisten/Chat" weiter unten): die Leiste erschien abgeschnitten und die Geisterfläche blieb beim Wechsel auf **andere Tabs** (Home, For You, ...) sichtbar, bis die Seite neu geladen wurde.
+**Problem (drei Anläufe, Jüngerschaftsbereich `src/pages/discipleship/*`):**
+1. Die Segment-Leiste (`DiscipleshipTabs`) war `position: sticky; top: 0` und wurde von **jeder** der 5 Unterseiten selbst gerendert, also bei jeder Navigation neu gemountet/unmountet. Auf iOS Safari löste das denselben Compositing-Bug aus wie `position: fixed`-Leisten (siehe Eintrag "Eingabeleisten/Chat" weiter unten): die Leiste erschien abgeschnitten, und die Geisterfläche blieb beim Wechsel auf **andere Haupttabs** (Home, For You, …) sichtbar, bis die Seite neu geladen wurde.
+2. `sticky` einfach entfernen behob den Bug, aber die Leiste scrollte dann mit dem Inhalt weg – im Weg besonders auffällig, weil `WegView` beim Öffnen automatisch zur **aktiven Station** scrollt und die ganz unten in einem ~2400 px hohen Pfad liegt: die Leiste war beim Öffnen sofort außerhalb des Bildes.
+3. `sticky` zurückholen (mit gemeinsamer Layout-Route, damit die Leiste nur einmal mountet) reichte ebenfalls nicht – die Leiste soll sich schlicht **überhaupt nicht** bewegen.
 
-**Fix:** `sticky top-0` (bzw. das zugehörige `z-20`) einfach entfernt – die Leisten sind jetzt normale, statische Elemente im Dokumentfluss (scrollen mit dem Inhalt mit, bleiben nicht oben kleben).
+**Fix (Endstand):** Die Leiste gehört gar nicht in den scrollenden Bereich. `DiscipleshipLayout.jsx` ist eine verschachtelte Route (`/juengerschaft` mit den 5 Hauptseiten als Kind-Routen) und baut die Seite so:
 
-**Lektion:** Nicht nur `position: fixed` ist auf iOS Safari riskant (siehe unten) – `position: sticky` in einer Komponente, die auf mehreren Geschwister-Routen häufig gemountet/unmountet wird, kann denselben Geisterflächen-Bug auslösen. Bei sowas lieber ganz auf sticky/fixed verzichten, außer die Komponente lebt auf einer einzigen, selten unmountenden Seite (Referenz: `ConversationView`).
+```
+Root: height 100dvh, flex-column, paddingBottom: var(--bottom-nav-h, 64px)
+├─ DiscipleshipTabs        (Flex-Kind, flex-shrink-0, KEIN sticky/fixed)
+└─ div flex-1 min-h-0 overflow-y-auto   → <Outlet/>
+```
+
+Zusätzlich müssen genau diese 5 Pfade in `App.jsx` zu `isFullScreenRoute` (Konstante `DISCIPLESHIP_LAYOUT_PATHS`), sonst scrollt der äußere Container zusätzlich und `.mobile-nav-padding` erzeugt eine doppelte Lücke.
+
+**Lektion:** Für "Leiste bleibt oben stehen, Inhalt scrollt darunter" ist die eigene Scroll-Fläche (Flex-Kind + `flex-1 overflow-y-auto`) die robuste Lösung – nicht sticky/fixed. Sticky/fixed ist auf iOS Safari doppelt riskant (Geisterflächen bei häufigem Mount/Unmount) und hilft ohnehin nicht, wenn die Seite selbst automatisch scrollt. Wenn eine Seite ihre eigene Scroll-Fläche bekommt, muss sie **immer** auch in `isFullScreenRoute` eingetragen werden.
 
 ## Mobil weiterhin langsam trotz weniger Requests: Home zog heimlich den Google-Maps-Loader mit
 

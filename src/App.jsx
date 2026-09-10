@@ -85,18 +85,33 @@ function LoadingSpinner() {
   )
 }
 
+// Die 5 Jüngerschafts-Hauptseiten laufen über DiscipleshipLayout, das die
+// Segment-Leiste fest oben hält und den Inhalt darunter in einer eigenen
+// Scroll-Fläche rendert. Der äußere Container darf dort deshalb nicht
+// zusätzlich scrollen (sonst scrollt die Leiste doch weg und
+// .mobile-nav-padding erzeugt eine doppelte Lücke). Bewusst exakte Pfade:
+// die Detailseiten (Station/Challenge) sind normale Scroll-Seiten.
+const DISCIPLESHIP_LAYOUT_PATHS = [
+  '/juengerschaft',
+  '/juengerschaft/werkzeuge',
+  '/juengerschaft/bibliothek',
+  '/juengerschaft/bekenntnis',
+  '/juengerschaft/challenges',
+]
+
 function AppShellInner() {
   const location = useLocation()
   useSwipeNav()
   // Routes where the inner container should not be vertically scrollable
-  // (full-bleed map views)
+  // (full-bleed map views, pages with their own scroll area)
   const isFullScreenRoute =
     location.pathname === '/' ||
     location.pathname === '/worldmap' ||
     location.pathname.startsWith('/map/') ||
     location.pathname.startsWith('/chat/') ||
     location.pathname.startsWith('/community/') ||
-    location.pathname.startsWith('/juengerschaft/werkzeuge/')
+    location.pathname.startsWith('/juengerschaft/werkzeuge/') ||
+    DISCIPLESHIP_LAYOUT_PATHS.includes(location.pathname)
 
   return (
     <div className="h-[100dvh] flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">

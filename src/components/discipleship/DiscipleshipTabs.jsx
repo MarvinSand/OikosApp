@@ -8,21 +8,19 @@ const SEGMENTS = [
   { path: '/juengerschaft/challenges',   label: 'Challenges' },
 ]
 
-// Segment-Navigation oben auf jedem der 5 Jüngerschafts-Hauptbereiche.
-// Wird NUR von DiscipleshipLayout.jsx gerendert (verschachtelte Route in
-// App.jsx) - dadurch mountet diese Komponente nur einmal beim Betreten des
-// Jüngerschaftsbereichs und bleibt bestehen, während zwischen den 5
-// Unterseiten gewechselt wird (React Router tauscht nur den <Outlet/>-
-// Inhalt aus). Deshalb ist sticky hier sicher: der frühere iOS-Safari-
-// Geisterflächen-Bug (siehe CLAUDE.md) trat auf, weil jede der 5 Seiten
-// früher ihre eigene Instanz gerendert hat und die Leiste dadurch bei
-// jeder Navigation neu gemountet/unmountet wurde.
+// Segment-Navigation der 5 Jüngerschafts-Hauptbereiche. Wird NUR von
+// DiscipleshipLayout.jsx gerendert, dort als Flex-Kind OBERHALB des
+// scrollenden Inhalts - deshalb braucht sie kein sticky/fixed: sie liegt
+// außerhalb des Scroll-Containers und kann sich dadurch nicht verschieben.
+// (Sticky/fixed hatte hier zweimal Probleme gemacht: erst
+// Compositing-Geisterflächen auf iOS Safari, dann war die Leiste durch das
+// Auto-Scrollen des Wegs zur aktiven Station aus dem Bild - siehe CLAUDE.md.)
 export default function DiscipleshipTabs({ active }) {
   const navigate = useNavigate()
 
   return (
     <div
-      className="flex gap-1 px-3 py-2 overflow-x-auto hide-scrollbar sticky top-0 z-20"
+      className="flex gap-1 px-3 py-2 overflow-x-auto hide-scrollbar flex-shrink-0"
       style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}
     >
       {SEGMENTS.map(s => {
