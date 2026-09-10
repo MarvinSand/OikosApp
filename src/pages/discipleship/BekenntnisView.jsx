@@ -9,9 +9,17 @@ const CreedEditorSheet = lazy(() => import('../../components/discipleship/CreedE
 const BiblePassageSheet = lazy(() => import('../../components/discipleship/BiblePassageSheet'))
 const ReportSheet = lazy(() => import('../../components/discipleship/ReportSheet'))
 
+function formatConfessedAt(iso) {
+  const d = new Date(iso)
+  return `${d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
+}
+
 // Konvention: eine Zeile mit bible_reference = null und "§ "-Präfix im
 // body ist ein Abschnittstitel (siehe phase65b_discipleship_seed.sql).
-function CreedRow({ creed, isOwn, isOfficial, expanded, lines, confessionCount, onToggleExpand, onEdit, onAdopt, onReport, onConfess, onOpenLine }) {
+function CreedRow({
+  creed, isOwn, isOfficial, expanded, lines, confessionCount, historyOpen, history,
+  onToggleExpand, onEdit, onAdopt, onReport, onConfess, onToggleHistory, onOpenLine,
+}) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
       <div className="flex items-center gap-1.5 pl-1 pr-3 py-2">
@@ -42,15 +50,49 @@ function CreedRow({ creed, isOwn, isOfficial, expanded, lines, confessionCount, 
           </button>
         )}
 
-        <button
-          onClick={onConfess}
-          title="Bekannt - Zähler erhöhen"
-          className="flex items-center gap-1 px-2 py-1.5 rounded-lg flex-shrink-0"
-          style={{ backgroundColor: 'var(--color-bg)' }}
-        >
-          <Check size={14} style={{ color: 'var(--color-accent)' }} />
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--color-accent)' }}>{confessionCount}</span>
-        </button>
+        {/* Abhak-Kästchen + Zähler + kleines Dropdown mit dem Verlauf */}
+        <div className="flex items-center gap-1 flex-shrink-0 relative">
+          <button
+            onClick={onConfess}
+            title="Bekannt - abhaken"
+            className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: 'var(--color-bg)', border: '1.5px solid var(--color-accent)' }}
+          >
+            <Check size={14} style={{ color: 'var(--color-accent)' }} />
+          </button>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--color-text-tertiary)', minWidth: 14, textAlign: 'center' }}>
+            {confessionCount}
+          </span>
+          <button
+            onClick={onToggleHistory}
+            title="Verlauf anzeigen"
+            className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: 'var(--color-bg)' }}
+          >
+            <ChevronDown size={13} style={{ color: 'var(--color-text-tertiary)', transform: historyOpen ? 'rotate(180deg)' : 'none' }} />
+          </button>
+
+          {historyOpen && (
+            <div
+              style={{
+                position: 'absolute', top: '120%', right: 0, zIndex: 30, width: 210,
+                backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 12,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: '10px 12px', maxHeight: 220, overflowY: 'auto',
+              }}
+            >
+              <p style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
+                {confessionCount}× bekannt
+              </p>
+              {!history && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
+              {history?.length === 0 && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Noch nicht abgehakt.</p>}
+              {history?.map(h => (
+                <p key={h.id} style={{ fontSize: 12, color: 'var(--color-text-secondary)', padding: '3px 0' }}>
+                  {formatConfessedAt(h.confessed_at)}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {expanded && (
@@ -86,6 +128,8 @@ export default function BekenntnisView() {
   const [confessionByCreed, setConfessionByCreed] = useState({})
   const [expandedId, setExpandedId] = useState(null)
   const [linesByCreed, setLinesByCreed] = useState({})
+  const [historyOpenId, setHistoryOpenId] = useState(null)
+  const [historyByCreed, setHistoryByCreed] = useState({})
 
   const [passageSheet, setPassageSheet] = useState(null)
   const [editorInitial, setEditorInitial] = useState(undefined)
@@ -128,17 +172,40 @@ export default function BekenntnisView() {
     }
   }
 
+  async function toggleHistory(creed) {
+    if (historyOpenId === creed.id) { setHistoryOpenId(null); return }
+    setHistoryOpenId(creed.id)
+    if (!historyByCreed[creed.id]) {
+      const { data } = await supabase
+        .from('creed_confession_logs')
+        .select('id, confessed_at')
+        .eq('user_id', user.id)
+        .eq('creed_id', creed.id)
+        .order('confessed_at', { ascending: false })
+        .limit(50)
+      setHistoryByCreed(prev => ({ ...prev, [creed.id]: data || [] }))
+    }
+  }
+
   function openLine(line) {
     if (!line.bible_reference) return
     setPassageSheet({ label: line.bible_reference, parsed: parseGermanReference(line.bible_reference) })
   }
 
   async function confess(creedId) {
+    const nowIso = new Date().toISOString()
     const next = (confessionByCreed[creedId] || 0) + 1
     setConfessionByCreed(prev => ({ ...prev, [creedId]: next }))
-    await supabase.from('creed_confessions').upsert({
-      user_id: user.id, creed_id: creedId, count: next, last_confessed_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,creed_id' })
+    setHistoryByCreed(prev => prev[creedId]
+      ? { ...prev, [creedId]: [{ id: `optimistic-${nowIso}`, confessed_at: nowIso }, ...prev[creedId]] }
+      : prev)
+
+    await Promise.all([
+      supabase.from('creed_confessions').upsert({
+        user_id: user.id, creed_id: creedId, count: next, last_confessed_at: nowIso,
+      }, { onConflict: 'user_id,creed_id' }),
+      supabase.from('creed_confession_logs').insert({ user_id: user.id, creed_id: creedId, confessed_at: nowIso }),
+    ])
   }
 
   async function openOwnCreed(creed) {
@@ -158,6 +225,10 @@ export default function BekenntnisView() {
   return (
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
       <DiscipleshipTabs active="/juengerschaft/bekenntnis" />
+
+      {historyOpenId && (
+        <div onClick={() => setHistoryOpenId(null)} style={{ position: 'fixed', inset: 0, zIndex: 25 }} />
+      )}
 
       <div className="px-4 py-4" style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))' }}>
         {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
@@ -179,9 +250,11 @@ export default function BekenntnisView() {
                   key={c.id} creed={c} isOwn isOfficial={false}
                   expanded={expandedId === c.id} lines={linesByCreed[c.id]}
                   confessionCount={confessionByCreed[c.id] || 0}
+                  historyOpen={historyOpenId === c.id} history={historyByCreed[c.id]}
                   onToggleExpand={() => toggleExpand(c)}
                   onEdit={() => openOwnCreed(c)}
                   onConfess={() => confess(c.id)}
+                  onToggleHistory={() => toggleHistory(c)}
                   onOpenLine={openLine}
                 />
               ))}
@@ -204,10 +277,12 @@ export default function BekenntnisView() {
                   key={c.id} creed={c} isOwn={false} isOfficial={c.user_id === null}
                   expanded={expandedId === c.id} lines={linesByCreed[c.id]}
                   confessionCount={confessionByCreed[c.id] || 0}
+                  historyOpen={historyOpenId === c.id} history={historyByCreed[c.id]}
                   onToggleExpand={() => toggleExpand(c)}
                   onAdopt={() => adoptCreed(c)}
                   onReport={() => setReportTarget(c.id)}
                   onConfess={() => confess(c.id)}
+                  onToggleHistory={() => toggleHistory(c)}
                   onOpenLine={openLine}
                 />
               ))}
