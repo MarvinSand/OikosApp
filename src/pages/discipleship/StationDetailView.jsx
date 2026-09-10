@@ -126,7 +126,7 @@ export default function StationDetailView() {
 
   return (
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
-      <div className="sticky top-0 z-20 px-4 pt-4 pb-3 flex items-center gap-2" style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+      <div className="px-4 pt-4 pb-3 flex items-center gap-2" style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
         <button onClick={() => navigate('/juengerschaft')} className="p-1 -ml-1">
           <ChevronLeft size={22} style={{ color: 'var(--color-text-tertiary)' }} />
         </button>

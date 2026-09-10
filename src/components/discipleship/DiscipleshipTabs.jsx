@@ -12,12 +12,19 @@ const SEGMENTS = [
 // Jede View rendert diese Leiste selbst (kein verschachteltes Routing
 // nötig), analog dazu wie Prayers.jsx/FriendsView.jsx ihre Tab-Leisten
 // heute schon selbst rendern.
+//
+// Bewusst NICHT sticky/fixed: diese Leiste wird auf 5 verschiedenen Seiten
+// bei jeder Navigation neu gemountet/unmountet. Auf iOS Safari hinterlässt
+// ein sticky/fixed-Element in dieser Konstellation eine Compositing-
+// Geisterfläche, die auch auf andere Tabs übergreift, bis man neu lädt
+// (siehe CLAUDE.md "Eingabeleisten/Chat: fix unten an der Bottom-Nav
+// verankern" - derselbe Effekt, hier oben statt unten).
 export default function DiscipleshipTabs({ active }) {
   const navigate = useNavigate()
 
   return (
     <div
-      className="flex gap-1 px-3 py-2 overflow-x-auto hide-scrollbar sticky top-0 z-20"
+      className="flex gap-1 px-3 py-2 overflow-x-auto hide-scrollbar"
       style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}
     >
       {SEGMENTS.map(s => {

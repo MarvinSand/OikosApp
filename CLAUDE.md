@@ -1,5 +1,13 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## iOS Safari: sticky-Header, die zwischen Geschwister-Seiten oft gemountet/unmountet werden, hinterlassen Geisterflächen
+
+**Problem:** Im Jüngerschaftsbereich (`src/pages/discipleship/*`) war die obere Leiste (Segment-Navigation `DiscipleshipTabs`, sowie die Zurück-Header von `StationDetailView`/`ChallengeDetailView`) `position: sticky; top: 0`. Diese Komponenten werden bei jeder Navigation zwischen den 5+ Jüngerschafts-Unterseiten neu gemountet/unmountet – viel häufiger als z. B. der `.chat-input-bar`-Fall unten. Auf iOS Safari führte das zum selben Compositing-Bug wie bei `position: fixed`-Leisten (siehe Eintrag "Eingabeleisten/Chat" weiter unten): die Leiste erschien abgeschnitten und die Geisterfläche blieb beim Wechsel auf **andere Tabs** (Home, For You, ...) sichtbar, bis die Seite neu geladen wurde.
+
+**Fix:** `sticky top-0` (bzw. das zugehörige `z-20`) einfach entfernt – die Leisten sind jetzt normale, statische Elemente im Dokumentfluss (scrollen mit dem Inhalt mit, bleiben nicht oben kleben).
+
+**Lektion:** Nicht nur `position: fixed` ist auf iOS Safari riskant (siehe unten) – `position: sticky` in einer Komponente, die auf mehreren Geschwister-Routen häufig gemountet/unmountet wird, kann denselben Geisterflächen-Bug auslösen. Bei sowas lieber ganz auf sticky/fixed verzichten, außer die Komponente lebt auf einer einzigen, selten unmountenden Seite (Referenz: `ConversationView`).
+
 ## Mobil weiterhin langsam trotz weniger Requests: Home zog heimlich den Google-Maps-Loader mit
 
 **Problem:** Nach den Request-Reduzierungen (siehe Eintrag unten) fühlte sich die App auf dem Handy trotzdem noch langsam an. Ursache war kein Netzwerk-/Query-Problem mehr, sondern Bundle-Gewicht: `HomeCommunityTab.jsx` (**statisch** von der eagerly geladenen `Home.jsx` importiert) importierte `{ CreateCommunitySheet, JoinCommunityModal }` **statisch** aus `pages/FriendsView.jsx` – einer 2200-Zeilen-Datei mit Feed/Chat/Community-Logik. Ein statischer Import zwingt den Browser, das komplette Zielmodul zu laden und auszuführen, *bevor* das importierende Modul fertig ist – unabhängig davon, ob `lazy()`/`Suspense` irgendwo anders in der Kette verwendet wird. Da `CreateCommunitySheet` zusätzlich `AddressAutocomplete` (→ `@react-google-maps/api`, ~161 kB / 37 kB gzip) einbindet, lud **jeder** App-Start diesen kompletten Google-Maps-Loader mit – obwohl der Community-Tab auf Home gar nicht der Standard-Tab ist und die Sheets nur nach einem Tap auf "Erstellen"/"Beitreten" gebraucht werden. Ein vorheriger Fix-Versuch (`preloadLandingRoute` in `vite.config.js`) hatte das Symptom schon dokumentiert, aber nur die *Preload-Priorität* entschärft – am eigentlichen Zwangsimport änderte das nichts.
