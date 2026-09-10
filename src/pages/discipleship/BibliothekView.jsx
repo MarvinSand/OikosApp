@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Search, BookOpen, ListChecks, FileText } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import DiscipleshipTabs from '../../components/discipleship/DiscipleshipTabs'
 
 const TAGS = ['Angst', 'Streit', 'Ehe & Familie', 'Heilung', 'Liebe', 'Annahme', 'Schuld']
 
@@ -39,9 +38,7 @@ export default function BibliothekView() {
   }, [entries, search, activeTags])
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
-      <DiscipleshipTabs active="/juengerschaft/bibliothek" />
-
+    <>
       <div className="px-4 pt-4">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-3" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
           <Search size={16} style={{ color: 'var(--color-text-tertiary)' }} />
@@ -121,6 +118,6 @@ export default function BibliothekView() {
           })}
         </div>
       </div>
-    </div>
+    </>
   )
 }

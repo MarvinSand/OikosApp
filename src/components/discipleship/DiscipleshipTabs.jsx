@@ -9,22 +9,20 @@ const SEGMENTS = [
 ]
 
 // Segment-Navigation oben auf jedem der 5 Jüngerschafts-Hauptbereiche.
-// Jede View rendert diese Leiste selbst (kein verschachteltes Routing
-// nötig), analog dazu wie Prayers.jsx/FriendsView.jsx ihre Tab-Leisten
-// heute schon selbst rendern.
-//
-// Bewusst NICHT sticky/fixed: diese Leiste wird auf 5 verschiedenen Seiten
-// bei jeder Navigation neu gemountet/unmountet. Auf iOS Safari hinterlässt
-// ein sticky/fixed-Element in dieser Konstellation eine Compositing-
-// Geisterfläche, die auch auf andere Tabs übergreift, bis man neu lädt
-// (siehe CLAUDE.md "Eingabeleisten/Chat: fix unten an der Bottom-Nav
-// verankern" - derselbe Effekt, hier oben statt unten).
+// Wird NUR von DiscipleshipLayout.jsx gerendert (verschachtelte Route in
+// App.jsx) - dadurch mountet diese Komponente nur einmal beim Betreten des
+// Jüngerschaftsbereichs und bleibt bestehen, während zwischen den 5
+// Unterseiten gewechselt wird (React Router tauscht nur den <Outlet/>-
+// Inhalt aus). Deshalb ist sticky hier sicher: der frühere iOS-Safari-
+// Geisterflächen-Bug (siehe CLAUDE.md) trat auf, weil jede der 5 Seiten
+// früher ihre eigene Instanz gerendert hat und die Leiste dadurch bei
+// jeder Navigation neu gemountet/unmountet wurde.
 export default function DiscipleshipTabs({ active }) {
   const navigate = useNavigate()
 
   return (
     <div
-      className="flex gap-1 px-3 py-2 overflow-x-auto hide-scrollbar"
+      className="flex gap-1 px-3 py-2 overflow-x-auto hide-scrollbar sticky top-0 z-20"
       style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}
     >
       {SEGMENTS.map(s => {

@@ -3,7 +3,6 @@ import { Plus, Search, Copy, Flag, Lock, Globe, ChevronDown, Pencil, Check } fro
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { parseGermanReference } from '../../lib/bibleBooks'
-import DiscipleshipTabs from '../../components/discipleship/DiscipleshipTabs'
 
 const CreedEditorSheet = lazy(() => import('../../components/discipleship/CreedEditorSheet'))
 const BiblePassageSheet = lazy(() => import('../../components/discipleship/BiblePassageSheet'))
@@ -223,9 +222,7 @@ export default function BekenntnisView() {
   const filteredPublic = publicCreeds.filter(c => !publicSearch.trim() || c.title.toLowerCase().includes(publicSearch.trim().toLowerCase()))
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
-      <DiscipleshipTabs active="/juengerschaft/bekenntnis" />
-
+    <>
       {historyOpenId && (
         <div onClick={() => setHistoryOpenId(null)} style={{ position: 'fixed', inset: 0, zIndex: 25 }} />
       )}
@@ -307,6 +304,6 @@ export default function BekenntnisView() {
           <ReportSheet contentType="creed" contentId={reportTarget} onClose={() => setReportTarget(null)} />
         )}
       </Suspense>
-    </div>
+    </>
   )
 }

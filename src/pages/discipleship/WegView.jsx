@@ -1,7 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
-import DiscipleshipTabs from '../../components/discipleship/DiscipleshipTabs'
 import PathSvg from '../../components/discipleship/PathSvg'
 import StationNode from '../../components/discipleship/StationNode'
 import { useDiscipleshipPath } from '../../hooks/useDiscipleshipPath'
@@ -55,9 +54,7 @@ export default function WegView() {
   }
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
-      <DiscipleshipTabs active="/juengerschaft" />
-
+    <>
       {loading && (
         <p className="text-center py-10" style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>
       )}
@@ -89,7 +86,7 @@ export default function WegView() {
       {previewStation && (
         <StationPreview station={previewStation} onClose={() => setPreviewStation(null)} />
       )}
-    </div>
+    </>
   )
 }
 

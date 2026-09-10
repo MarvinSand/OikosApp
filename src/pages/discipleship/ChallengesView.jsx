@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Users, User } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
-import DiscipleshipTabs from '../../components/discipleship/DiscipleshipTabs'
 
 const CreateChallengeSheet = lazy(() => import('../../components/discipleship/CreateChallengeSheet'))
 
@@ -61,9 +60,7 @@ export default function ChallengesView() {
   useEffect(() => { if (user) load() }, [user?.id])
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
-      <DiscipleshipTabs active="/juengerschaft/challenges" />
-
+    <>
       <div className="px-4 py-4" style={{ paddingBottom: 16 }}>
         <button
           onClick={() => setShowCreate(true)}
@@ -87,7 +84,7 @@ export default function ChallengesView() {
       <Suspense fallback={null}>
         {showCreate && <CreateChallengeSheet onClose={() => setShowCreate(false)} onCreated={load} />}
       </Suspense>
-    </div>
+    </>
   )
 }
 

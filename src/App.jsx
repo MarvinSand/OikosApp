@@ -39,6 +39,7 @@ const ConversationView = lazy(() => import('./pages/ConversationView'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const NotificationSettingsView = lazy(() => import('./pages/NotificationSettingsView'))
 const BibleView = lazy(() => import('./pages/BibleView'))
+const DiscipleshipLayout = lazy(() => import('./pages/discipleship/DiscipleshipLayout'))
 const DiscipleshipWeg = lazy(() => import('./pages/discipleship/WegView'))
 const DiscipleshipStationDetail = lazy(() => import('./pages/discipleship/StationDetailView'))
 const DiscipleshipWerkzeuge = lazy(() => import('./pages/discipleship/WerkzeugeView'))
@@ -117,12 +118,14 @@ function AppShellInner() {
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
           <Route path="/discipleship" element={<Navigate to="/juengerschaft" replace />} />
-          <Route path="/juengerschaft" element={<DiscipleshipWeg />} />
-          <Route path="/juengerschaft/werkzeuge" element={<DiscipleshipWerkzeuge />} />
+          <Route path="/juengerschaft" element={<DiscipleshipLayout />}>
+            <Route index element={<DiscipleshipWeg />} />
+            <Route path="werkzeuge" element={<DiscipleshipWerkzeuge />} />
+            <Route path="bibliothek" element={<DiscipleshipBibliothek />} />
+            <Route path="bekenntnis" element={<DiscipleshipBekenntnis />} />
+            <Route path="challenges" element={<DiscipleshipChallenges />} />
+          </Route>
           <Route path="/juengerschaft/werkzeuge/:slug" element={<DiscipleshipToolPresenter />} />
-          <Route path="/juengerschaft/bibliothek" element={<DiscipleshipBibliothek />} />
-          <Route path="/juengerschaft/bekenntnis" element={<DiscipleshipBekenntnis />} />
-          <Route path="/juengerschaft/challenges" element={<DiscipleshipChallenges />} />
           <Route path="/juengerschaft/challenges/:id" element={<DiscipleshipChallengeDetail />} />
           <Route path="/juengerschaft/station/:slug" element={<DiscipleshipStationDetail />} />
           <Route path="/bible" element={<BibleView />} />
