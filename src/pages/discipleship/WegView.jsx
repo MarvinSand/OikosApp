@@ -8,6 +8,12 @@ import { useDiscipleshipPath } from '../../hooks/useDiscipleshipPath'
 
 const ROW_HEIGHT = 168
 const TOP_PADDING = 70
+// Kleinerer Abstand unter Station 1 als über der letzten Station: die
+// Bottom-Nav-Freifläche kommt schon über .mobile-nav-padding vom
+// App-Wrapper (App.jsx) - TOP_PADDING zusätzlich auch unten zu verwenden
+// hätte beides addiert und einen unnötig großen schwarzen Bereich vor der
+// Bottom-Nav erzeugt.
+const BOTTOM_PADDING = 24
 const X_LEFT = 24
 const X_RIGHT = 76
 
@@ -24,11 +30,11 @@ export default function WegView() {
   const scrolledRef = useRef(false)
   const [previewStation, setPreviewStation] = useState(null)
 
-  const totalHeight = TOP_PADDING * 2 + Math.max(stations.length - 1, 0) * ROW_HEIGHT
+  const totalHeight = TOP_PADDING + BOTTOM_PADDING + Math.max(stations.length - 1, 0) * ROW_HEIGHT
 
   const layout = useMemo(() => {
     return stations.map((s, idx) => {
-      const y = totalHeight - TOP_PADDING - idx * ROW_HEIGHT
+      const y = totalHeight - BOTTOM_PADDING - idx * ROW_HEIGHT
       const x = idx % 2 === 0 ? X_LEFT : X_RIGHT
       return { station: s, x, y }
     })
@@ -57,10 +63,7 @@ export default function WegView() {
       )}
 
       {!loading && (
-        <div
-          className="relative"
-          style={{ height: totalHeight, paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))' }}
-        >
+        <div className="relative" style={{ height: totalHeight }}>
           <PathSvg
             stationPoints={layout.map(l => ({ x: l.x, y: l.y }))}
             challengeLines={[]}

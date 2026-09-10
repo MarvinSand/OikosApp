@@ -127,7 +127,7 @@ export default function ChallengeDetailView() {
         <h1 className="font-bold truncate flex-1" style={{ color: 'var(--color-text)' }}>{challenge.title}</h1>
       </div>
 
-      <div className="px-4 py-4" style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="px-4 py-4" style={{ paddingBottom: 16 }}>
         {challenge.description && (
           <p className="mb-4" style={{ fontSize: 14.5, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{challenge.description}</p>
         )}

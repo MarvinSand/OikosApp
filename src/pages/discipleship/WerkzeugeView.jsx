@@ -19,7 +19,7 @@ export default function WerkzeugeView() {
   return (
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
       <DiscipleshipTabs active="/juengerschaft/werkzeuge" />
-      <div className="px-4 py-4" style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="px-4 py-4" style={{ paddingBottom: 16 }}>
         <p className="mb-4" style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
           Öffne ein Werkzeug im Präsentationsmodus, um es direkt am Handy jemand anderem zu zeigen.
         </p>

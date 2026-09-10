@@ -230,7 +230,7 @@ export default function BekenntnisView() {
         <div onClick={() => setHistoryOpenId(null)} style={{ position: 'fixed', inset: 0, zIndex: 25 }} />
       )}
 
-      <div className="px-4 py-4" style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="px-4 py-4" style={{ paddingBottom: 16 }}>
         {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
 
         {!loading && (

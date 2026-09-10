@@ -64,7 +64,7 @@ export default function ChallengesView() {
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
       <DiscipleshipTabs active="/juengerschaft/challenges" />
 
-      <div className="px-4 py-4" style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="px-4 py-4" style={{ paddingBottom: 16 }}>
         <button
           onClick={() => setShowCreate(true)}
           className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl font-semibold mb-6"

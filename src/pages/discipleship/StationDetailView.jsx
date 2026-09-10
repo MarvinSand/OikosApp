@@ -136,7 +136,7 @@ export default function StationDetailView() {
         </div>
       </div>
 
-      <div className="px-4 py-4" style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="px-4 py-4" style={{ paddingBottom: 16 }}>
         <Section title="Kopf">
           {passageLoading && <p style={{ color: 'var(--color-text-tertiary)' }}>Bibeltext lädt…</p>}
           {passageError && (
