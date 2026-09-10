@@ -35,7 +35,11 @@ export default function DiscipleshipLayout() {
     >
       <DiscipleshipTabs active={location.pathname} />
 
-      <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
+      {/* data-discipleship-scroll: WegView scrollt beim Öffnen gezielt
+          DIESEN Container zur aktiven Station (siehe dort) - bewusst nicht
+          über scrollIntoView, das würde auch übergeordnete Container
+          mitscrollen und die Leiste aus dem Bild schieben. */}
+      <div data-discipleship-scroll className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
         <Outlet />
       </div>
     </div>

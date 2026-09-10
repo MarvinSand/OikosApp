@@ -39,10 +39,21 @@ export default function WegView() {
     })
   }, [stations, totalHeight])
 
+  // Beim Öffnen zur aktiven Station scrollen. Bewusst per scrollTop auf dem
+  // Scroll-Container von DiscipleshipLayout statt per scrollIntoView:
+  // scrollIntoView scrollt JEDEN scrollbaren Vorfahren mit (auf iOS Safari
+  // auch das Dokument) und hat damit die Segment-Leiste oben aus dem Bild
+  // geschoben.
   useEffect(() => {
     if (scrolledRef.current || loading || !activeNodeRef.current) return
-    activeNodeRef.current.scrollIntoView({ block: 'center' })
+    const node = activeNodeRef.current
+    const scroller = node.closest('[data-discipleship-scroll]')
+    if (!scroller) return
     scrolledRef.current = true
+    const nodeRect = node.getBoundingClientRect()
+    const scrollerRect = scroller.getBoundingClientRect()
+    const delta = (nodeRect.top + nodeRect.height / 2) - (scrollerRect.top + scrollerRect.height / 2)
+    scroller.scrollTop += delta
   }, [loading])
 
   function handleOpen(station, state) {
