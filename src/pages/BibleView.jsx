@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNot
 import { useAuth } from '../hooks/useAuth'
 import {
   useChapterText, useBibleMarkers, useBibleVersions, useFavoriteBibleVersions,
-  useSavedBibleColors, useRecentBibleColors, saveReadingProgress, DEFAULT_BIBLE_ID,
+  useSavedBibleColors, useRecentBibleColors, useReadingProgress, saveReadingProgress, DEFAULT_BIBLE_ID,
 } from '../hooks/useBible'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { useToast } from '../context/ToastContext'
@@ -56,8 +56,34 @@ export default function BibleView() {
   const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(bibleId, book, chapter)
   const { colors: savedColors, isSaved: isColorSaved, toggleColor: toggleSaveColor } = useSavedBibleColors()
   const { colors: recentColors, reload: reloadRecentColors } = useRecentBibleColors()
+  const readingProgress = useReadingProgress()
   const yv = useYouVersionAccount()
   const currentVersion = bibleVersions?.find(v => String(v.id) === String(bibleId))
+
+  // Schreibt die aktuelle Position (Buch/Kapitel/Übersetzung) in die URL, damit
+  // sie einen Tab-Reload übersteht (mobile/Desktop-Browser können einen im
+  // Hintergrund liegenden Tab bei Speicherdruck verwerfen und beim
+  // Zurückwechseln neu laden - ohne Query-Params bliebe dann nur der
+  // Hardcoded-Default JHN/3 übrig).
+  function syncPositionToUrl(nextBook, nextChapter, nextBibleId) {
+    const params = new URLSearchParams()
+    params.set('book', nextBook)
+    params.set('chapter', String(nextChapter))
+    if (nextBibleId && String(nextBibleId) !== String(DEFAULT_BIBLE_ID)) params.set('bibleId', String(nextBibleId))
+    setSearchParams(params, { replace: true })
+  }
+
+  // Kein Deep-Link in der URL (z.B. Einstieg über die Bottom-Nav) -> letzte
+  // gelesene Stelle statt Johannes 3 laden, sobald sie geladen ist.
+  useEffect(() => {
+    if (parseBibleLinkParams(searchParams)) return
+    if (!readingProgress) return
+    setBook(readingProgress.book)
+    setChapter(readingProgress.chapter)
+    if (readingProgress.bible_id) setBibleId(String(readingProgress.bible_id))
+    syncPositionToUrl(readingProgress.book, readingProgress.chapter, readingProgress.bible_id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readingProgress])
 
   // Router remountet BibleView bei /bible?... -> /bible?...-Navigation NICHT
   // (z.B. wenn man aus dem bereits offenen Reader einen zweiten Chip antippt)
@@ -96,6 +122,8 @@ export default function BibleView() {
     setBibleId(String(id))
     try { localStorage.setItem(BIBLE_ID_STORAGE_KEY, String(id)) } catch { /* ignore */ }
     setShowVersionPicker(false)
+    syncPositionToUrl(book, chapter, id)
+    if (user) saveReadingProgress(user.id, { bibleId: String(id), book, chapter })
   }
 
   function handleContentClick(e) {
@@ -166,6 +194,7 @@ export default function BibleView() {
     setSelectedVerses(new Set())
     setShowBookPicker(false)
     setPendingVerses(null)
+    syncPositionToUrl(nextBook, nextChapter, bibleId)
     if (user) saveReadingProgress(user.id, { bibleId, book: nextBook, chapter: nextChapter })
   }
 
