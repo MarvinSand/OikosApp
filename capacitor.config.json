@@ -1,6 +1,6 @@
 {
   "appId": "app.oikos.mobile",
-  "appName": "Oikos",
+  "appName": "Oikos Connect",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
