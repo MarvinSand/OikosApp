@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader, Polyline } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
-import { Plus, Navigation, Settings, Users2 } from 'lucide-react'
+import { Plus, Navigation, Settings } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorldMap, haversine } from '../../hooks/useWorldMap'
 import { useOikosWorldMapSource } from '../../hooks/useOikosWorldMapSource'
@@ -14,7 +14,6 @@ import ActivitySheet from './ActivitySheet'
 import CreateActivitySheet from './CreateActivitySheet'
 import GemeindePinSheet from './GemeindePinSheet'
 import LocationSettingsSheet from './LocationSettingsSheet'
-import OikosWorldMapSourceSheet from './OikosWorldMapSourceSheet'
 import OikosPersonPinSheet from './OikosPersonPinSheet'
 import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
 
@@ -485,14 +484,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
   const [showLocationSettings, setShowLocationSettings] = useState(false)
-  const [showOikosSourceSheet, setShowOikosSourceSheet] = useState(false)
   const [selectedOikosPerson, setSelectedOikosPerson] = useState(null)
-  const oikosSource = useOikosWorldMapSource({ enabled: showOikosSourceSheet })
-
-  // Sheet automatisch schließen, sobald eine Auswahl bestätigt wurde
-  useEffect(() => {
-    if (oikosSource.active) setShowOikosSourceSheet(false)
-  }, [oikosSource.active])
+  const oikosSource = useOikosWorldMapSource({ enabled: false })
   // Zwei unabhängige Ebenen – beide können gleichzeitig aktiv sein.
   // ?layer=siblings (z.B. von "Auf der Map suchen") → nur Geschwister, keine Events.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -784,20 +777,6 @@ export default function WorldMapView({ onNavigateToProfile }) {
           <Settings size={18} />
         </button>
 
-        {/* Oikos Verbindungen anzeigen: oben mittig */}
-        <button
-          onClick={() => { oikosSource.active ? oikosSource.reset() : setShowOikosSourceSheet(true) }}
-          style={{
-            ...mapBtnStyle, position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 500, width: 'auto', padding: '0 14px', gap: 6,
-          }}
-          title="Oikos Verbindungen anzeigen"
-        >
-          <Users2 size={15} />
-          <span style={{ fontSize: 13, fontWeight: 600 }}>Oikos Verbindungen anzeigen</span>
-          {oikosSource.active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />}
-        </button>
-
         {/* Rechter Bedien-Stapel: Zoom-Leiste + "Event hosten"-Button fest
             untereinander mit festem Abstand – überlappen dadurch nie, egal
             wie klein der sichtbare Kartenbereich ist. Bottom-verankert über
@@ -950,12 +929,6 @@ export default function WorldMapView({ onNavigateToProfile }) {
           updateLocationSettings={updateLocationSettings}
           updateLocationVisibility={updateLocationVisibility}
           onClose={() => setShowLocationSettings(false)}
-        />
-      )}
-      {showOikosSourceSheet && (
-        <OikosWorldMapSourceSheet
-          source={oikosSource}
-          onClose={() => setShowOikosSourceSheet(false)}
         />
       )}
       {selectedOikosPerson && (

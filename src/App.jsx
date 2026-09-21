@@ -107,7 +107,6 @@ function AppShellInner() {
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
-          <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
           <Route path="/bible" element={<BibleView />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/feed/saved" element={<SavedPostsView />} />
@@ -208,33 +207,6 @@ function RecoveryRedirect() {
 function OwnMapPage() {
   const { mapId } = useParams()
   return <MapView initialMapId={mapId} hideWorldMapToggle />
-}
-
-function DiscipleshipComingSoon() {
-  const navigate = useNavigate()
-  return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center px-6 text-center">
-      <div
-        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
-        style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-      >
-        <span className="text-4xl">📖</span>
-      </div>
-      <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
-        Jüngerschaft
-      </h1>
-      <p style={{ color: 'var(--color-text-secondary)', maxWidth: 360, marginBottom: 24 }}>
-        Coming soon – dieser Bereich ist gerade in Arbeit. Bald kannst du hier deinen Weg im Glauben begleiten lassen.
-      </p>
-      <button
-        onClick={() => navigate('/bible')}
-        className="px-5 py-2.5 rounded-xl font-medium"
-        style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
-      >
-        Bibel öffnen
-      </button>
-    </div>
-  )
 }
 
 async function checkBirthdays(userId) {
