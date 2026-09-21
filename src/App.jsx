@@ -289,7 +289,10 @@ export default function App() {
     <ErrorBoundary>
       <ToastProvider>
         <div className="min-h-screen bg-bg w-full flex justify-center md:block">
-          <div className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg">
+          <div
+            className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg"
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          >
             <BrowserRouter>
               <RecoveryRedirect />
               <Routes>
