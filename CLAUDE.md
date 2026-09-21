@@ -1,5 +1,23 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## iOS App Store: Capacitor + Fastlane match + GitHub Actions macOS-Runner (kein Mac nötig)
+
+**Ausgangslage (Sep. 2026):** Reine Vite/React-Web-App, Apple-Developer-Account vorhanden, aber kein Mac – Xcode kann nicht lokal laufen.
+
+**Lösung:** `ios/App` ist jetzt ein Capacitor-iOS-Projekt (`npx cap add ios`, App-ID `app.oikos.mobile`, Capacitor 8 → **Swift Package Manager**, kein CocoaPods/Podfile). Bauen + Signieren + Hochladen läuft komplett **nicht-interaktiv** über `.github/workflows/ios-release.yml` (macOS-14-Runner) + `ios/App/fastlane/Fastfile` (Lane `beta`):
+- Signierung über `fastlane match` (Typ `appstore`), authentifiziert per **App Store Connect API Key** – kein Apple-ID-Passwort/2FA nötig, funktioniert deshalb aus CI heraus vollautomatisch, auch beim allerersten Lauf.
+- Zertifikate/Profile landen in einem separaten privaten Git-Repo (`MATCH_GIT_URL`), verschlüsselt mit `MATCH_PASSWORD`.
+- Upload nach TestFlight via `upload_to_testflight`.
+
+**Nötige GitHub-Secrets** (Repo → Settings → Secrets and variables → Actions):
+`APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT` (Base64 des `.p8`-Keys), `MATCH_GIT_URL`, `MATCH_GIT_BASIC_AUTHORIZATION` (Base64 `user:PAT` fürs Match-Repo), `MATCH_PASSWORD`, plus die Vite-Env-Vars `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_MAPS_API_KEY`. Optional Repo-Variable `APP_IDENTIFIER` (Default `app.oikos.mobile`).
+
+**Workflow starten:** GitHub → Actions → „iOS TestFlight Release" → „Run workflow" (manueller Trigger, `workflow_dispatch`).
+
+**Offen/manuell (kann nicht von Claude erledigt werden):** App-ID + App-Store-Connect-App-Eintrag anlegen, API-Key erzeugen, Match-Repo anlegen, echtes App-Icon (`ios/App/App/Assets.xcassets/AppIcon.appiconset`, aktuell Capacitor-Platzhalter) + Store-Listing (Screenshots, Beschreibung, Datenschutzerklärung, Altersfreigabe) sowie die finale Einreichung zur Review in App Store Connect.
+
+**Lektion:** Ein fehlender Mac blockiert nicht den gesamten iOS-Release-Weg – `fastlane match` mit App-Store-Connect-API-Key-Auth plus ein macOS-GitHub-Actions-Runner deckt Signierung, Build und Upload vollständig ab, ohne dass irgendwo eine interaktive Apple-ID-Anmeldung nötig wird.
+
 ## Mobil weiterhin langsam trotz weniger Requests: Home zog heimlich den Google-Maps-Loader mit
 
 **Problem:** Nach den Request-Reduzierungen (siehe Eintrag unten) fühlte sich die App auf dem Handy trotzdem noch langsam an. Ursache war kein Netzwerk-/Query-Problem mehr, sondern Bundle-Gewicht: `HomeCommunityTab.jsx` (**statisch** von der eagerly geladenen `Home.jsx` importiert) importierte `{ CreateCommunitySheet, JoinCommunityModal }` **statisch** aus `pages/FriendsView.jsx` – einer 2200-Zeilen-Datei mit Feed/Chat/Community-Logik. Ein statischer Import zwingt den Browser, das komplette Zielmodul zu laden und auszuführen, *bevor* das importierende Modul fertig ist – unabhängig davon, ob `lazy()`/`Suspense` irgendwo anders in der Kette verwendet wird. Da `CreateCommunitySheet` zusätzlich `AddressAutocomplete` (→ `@react-google-maps/api`, ~161 kB / 37 kB gzip) einbindet, lud **jeder** App-Start diesen kompletten Google-Maps-Loader mit – obwohl der Community-Tab auf Home gar nicht der Standard-Tab ist und die Sheets nur nach einem Tap auf "Erstellen"/"Beitreten" gebraucht werden. Ein vorheriger Fix-Versuch (`preloadLandingRoute` in `vite.config.js`) hatte das Symptom schon dokumentiert, aber nur die *Preload-Priorität* entschärft – am eigentlichen Zwangsimport änderte das nichts.

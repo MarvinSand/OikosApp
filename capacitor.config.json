@@ -1,0 +1,8 @@
+{
+  "appId": "app.oikos.mobile",
+  "appName": "Oikos",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
