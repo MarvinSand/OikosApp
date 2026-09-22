@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Settings, Camera, MapPin, Church, Map as MapIcon, Newspaper, HandHeart,
-  Loader2, Maximize2, X, Repeat2,
+  Loader2, Maximize2, X, Repeat2, ScrollText,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
@@ -16,6 +16,10 @@ import NewMapModal from '../components/map/NewMapModal'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
 import ConnectionsOverlay from '../components/feed/ConnectionsOverlay'
 import { Avatar, MapsTab, PostsTab, RepostsTab, PrayersTab } from '../components/profile/ProfileTabs'
+
+// Bekenntnisse ziehen den Bibelstellen-/Editor-Code nach – erst laden, wenn
+// der Tab wirklich geöffnet wird.
+const CreedsTab = lazy(() => import('../components/profile/CreedsTab'))
 
 // ─── Inline map preview ───────────────────────────────────────
 function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
@@ -336,6 +340,7 @@ export default function ProfileView() {
           { key: 'posts',   icon: Newspaper, label: 'Posts' },
           { key: 'reposts', icon: Repeat2,   label: 'Reposts' },
           { key: 'prayers', icon: HandHeart, label: 'Gebete' },
+          { key: 'creeds',  icon: ScrollText, label: 'Bekenntnis' },
         ].map(t => {
           const isActive = activeTab === t.key
           const Icon = t.icon
@@ -410,6 +415,13 @@ export default function ProfileView() {
               onChanged={reload}
               onCreatePrayer={() => navigate('/prayers?create=1')}
             />
+          )}
+          {activeTab === 'creeds' && (
+            <Suspense fallback={
+              <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>Lade…</p>
+            }>
+              <CreedsTab />
+            </Suspense>
           )}
         </>
       )}

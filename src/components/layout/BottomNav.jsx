@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, BookOpen, Globe, Book, User } from 'lucide-react'
 
@@ -25,7 +25,7 @@ export default function BottomNav() {
 
   // Echte Nav-Höhe (inkl. Safe-Area) als CSS-Variable bereitstellen, damit
   // Seiten exakt den Bottom-Nav-Platz reservieren können (keine Lücke/Overlap).
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = navRef.current
     if (!el) return
     const setVar = () => document.documentElement.style.setProperty('--bottom-nav-h', el.offsetHeight + 'px')
