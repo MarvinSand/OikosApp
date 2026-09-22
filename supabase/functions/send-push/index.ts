@@ -18,7 +18,9 @@ const APNS_BUNDLE_ID = Deno.env.get('APNS_BUNDLE_ID') ?? 'app.oikos.mobile'
 // TestFlight- und App-Store-Builds sprechen beide den Produktions-Host an;
 // nur ein per Xcode aufs Gerät geladener Debug-Build braucht die Sandbox.
 const APNS_HOST = Deno.env.get('APNS_HOST') ?? 'api.push.apple.com'
-const WEBHOOK_SECRET = Deno.env.get('PUSH_WEBHOOK_SECRET') ?? ''
+// .trim(): beim Einfügen ins Dashboard rutscht leicht ein Zeilenumbruch oder
+// Leerzeichen mit – der Vergleich würde dann stillschweigend immer scheitern.
+const WEBHOOK_SECRET = (Deno.env.get('PUSH_WEBHOOK_SECRET') ?? '').trim()
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -89,7 +91,12 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
-  if (!WEBHOOK_SECRET || req.headers.get('X-Webhook-Secret') !== WEBHOOK_SECRET) {
+  if (!WEBHOOK_SECRET) {
+    // Deutlich vom Secret-Mismatch unterscheidbar – sonst sucht man beim
+    // Einrichten ewig nach einem Tippfehler, der gar nicht existiert.
+    return new Response('Webhook secret not configured', { status: 503 })
+  }
+  if ((req.headers.get('X-Webhook-Secret') ?? '').trim() !== WEBHOOK_SECRET) {
     return new Response('Unauthorized', { status: 401 })
   }
   if (!APNS_KEY_ID || !APNS_TEAM_ID || !APNS_PRIVATE_KEY) {
