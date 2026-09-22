@@ -5,6 +5,7 @@ import { useAuth } from './hooks/useAuth'
 import { useSwipeNav } from './hooks/useSwipeNav'
 import { ToastProvider } from './context/ToastContext'
 import { supabase } from './lib/supabase'
+import { registerForPush } from './lib/nativePush'
 // Public pages stay eager so the login screen renders without a second fetch
 import Auth from './pages/Auth'
 import ResetPassword from './pages/ResetPassword'
@@ -89,6 +90,7 @@ function LoadingSpinner() {
 function AppShellInner() {
   const location = useLocation()
   useSwipeNav()
+  useNativePushRegistration()
   // Routes where the inner container should not be vertically scrollable
   // (full-bleed map views)
   const isFullScreenRoute =
@@ -152,13 +154,26 @@ function AppShell() {
     checkBirthdays(user.id)
   }, [user?.id])
 
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {})
-    }
-  }, [])
-
   return <AppShellInner />
+}
+
+// Push-Registrierung braucht den Router (Tap auf eine Benachrichtigung soll
+// zum passenden Screen springen), deshalb sitzt sie in AppShellInner statt
+// in AppShell.
+function useNativePushRegistration() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
+  useEffect(() => {
+    if (!user) return
+    let cleanup = () => {}
+    let cancelled = false
+
+    registerForPush(user.id, { onOpen: (url) => navigate(url) })
+      .then(fn => { if (cancelled) fn(); else cleanup = fn })
+
+    return () => { cancelled = true; cleanup() }
+  }, [user?.id, navigate])
 }
 
 // Supabase liest den Recovery-Code beim Laden automatisch aus der URL (egal auf
