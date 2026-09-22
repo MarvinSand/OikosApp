@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "cap:sync": "vite build && npx cap sync ios"
+    "cap:sync": "vite build && npx cap sync ios",
+    "cap:sync:android": "vite build && npx cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/ios": "^8.5.2",
     "@googlemaps/markerclusterer": "^2.6.2",

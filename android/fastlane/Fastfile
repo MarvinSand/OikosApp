@@ -1,0 +1,36 @@
+default_platform(:android)
+
+platform :android do
+  desc "Build a signed App Bundle and upload it to the Play Store Internal Testing track"
+  lane :internal do
+    package_name = ENV["APP_IDENTIFIER"] || "app.oikos.mobile"
+    json_key_path = ENV["PLAY_STORE_JSON_KEY_PATH"]
+
+    existing_version_codes = google_play_track_version_codes(
+      package_name: package_name,
+      track: "internal",
+      json_key: json_key_path
+    )
+    next_version_code = (existing_version_codes.max || 0) + 1
+
+    increment_version_code(
+      gradle_file_path: "app/build.gradle",
+      version_code: next_version_code
+    )
+
+    gradle(
+      task: "bundle",
+      build_type: "Release"
+    )
+
+    upload_to_play_store(
+      track: "internal",
+      json_key: json_key_path,
+      aab: lane_context[SharedValues::GRADLE_AAB_OUTPUT_PATH],
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      release_status: "completed"
+    )
+  end
+end
