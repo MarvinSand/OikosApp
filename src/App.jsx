@@ -55,9 +55,19 @@ const idle = typeof requestIdleCallback === 'function'
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     idle(() => {
-      import('./pages/FriendsView')
-      import('./pages/Prayers')
-      import('./pages/ProfileView')
+      // Alle Bottom-Nav-Ziele vorladen – sonst beginnt der Chunk erst beim Tap
+      // zu laden und der Tab-Wechsel hängt sichtbar (betraf v. a. Weltkarte,
+      // deren Chunk inkl. Google-Maps-Bindings mit Abstand der größte ist).
+      // Nacheinander statt gleichzeitig: parallel konkurrieren die Parses auf
+      // dem Handy mit dem, was gerade auf dem Schirm passiert.
+      const queue = [
+        () => import('./pages/Prayers'),
+        () => import('./pages/ProfileView'),
+        () => import('./pages/BibleView'),
+        () => import('./pages/WorldMap'),
+        () => import('./pages/FriendsView'),
+      ]
+      queue.reduce((p, next) => p.then(next).catch(() => {}), Promise.resolve())
     })
   }, { once: true })
 }
