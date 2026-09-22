@@ -1,5 +1,19 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Android Play Store (Internal Testing): Capacitor + Fastlane supply + GitHub Actions ubuntu-Runner
+
+**Analog zum iOS-Weg (siehe Eintrag unten), aber einfacher:** `android/` ist ein Capacitor-Android-Projekt (`npx cap add android`). `.github/workflows/android-release.yml` (normaler `ubuntu-latest`-Runner, kein Mac/macOS-Minuten nötig) baut die Web-App, synct sie nach Android, signiert das App Bundle mit einem Keystore aus Secrets und lädt es per `android/fastlane/Fastfile` (Lane `internal`) über `upload_to_play_store` auf den **Internal Testing Track** hoch – das Android-Pendant zu TestFlight (Tester per Link, kein Review nötig).
+
+**Nötige GitHub-Secrets:** `ANDROID_KEYSTORE_BASE64` (Base64 der `.keystore`-Datei), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` (bei PKCS12-Keystores identisch mit `ANDROID_KEYSTORE_PASSWORD`), `PLAY_STORE_JSON_KEY_BASE64` (Base64 des Google-Play-Service-Account-JSON), plus dieselben Vite-Env-Vars wie beim iOS-Workflow. Optional Repo-Variable `APP_IDENTIFIER` (Default `app.oikos.mobile`).
+
+**Wichtig – Keystore niemals verlieren:** Der Release-Keystore signiert alle künftigen Play-Store-Uploads; geht er verloren, kann die App unter dieser `applicationId` nie wieder aktualisiert werden (nur komplett neu veröffentlichen). Deshalb Backup außerhalb von GitHub aufbewahren, nie ins Repo committen (siehe `android/.gitignore`: `*.keystore`, `*.jks`, `play-store-key.json`).
+
+**Workflow starten:** GitHub → Actions → „Android Play Store Release" → „Run workflow".
+
+**Offen/manuell (kann nicht von Claude erledigt werden):** Google-Play-Console-Account anlegen (einmalig 25$), App-Eintrag + Internal-Testing-Track anlegen, Service-Account in Play Console mit API-Zugriff erstellen und dessen JSON-Key herunterladen, Tester-E-Mail-Liste im Internal-Testing-Track pflegen und den Opt-in-Link an Tester schicken, echtes App-Icon (`android/app/src/main/res/mipmap-*`, aktuell Capacitor-Platzhalter) + Store-Listing (Screenshots, Beschreibung, Datenschutzerklärung, Content-Rating-Fragebogen) sowie die finale Freigabe für Produktion.
+
+**Lektion:** Der Play-Store-Weg ist deutlich leichter zu automatisieren als iOS – kein Mac, keine interaktive Signierung, ein Google-Service-Account reicht für vollautomatische CI-Uploads. Fastlane erwartet für Play-Store-Uploads einen monoton steigenden `versionCode`; die Lane liest ihn vor jedem Upload per `google_play_track_version_codes` aus und erhöht ihn automatisch, damit kein manuelles Versions-Pflegen nötig ist.
+
 ## iOS App Store: Capacitor + Fastlane match + GitHub Actions macOS-Runner (kein Mac nötig)
 
 **Ausgangslage (Sep. 2026):** Reine Vite/React-Web-App, Apple-Developer-Account vorhanden, aber kein Mac – Xcode kann nicht lokal laufen.
