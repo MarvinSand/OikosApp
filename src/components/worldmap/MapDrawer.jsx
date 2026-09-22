@@ -218,7 +218,12 @@ export default function MapDrawer({
     <div style={{
       position: 'absolute', left: 0, right: 0, top: 0,
       bottom: 'var(--bottom-nav-h, 64px)',
-      overflow: 'hidden', pointerEvents: 'none', zIndex: 520,
+      // z-index unter der Bottom-Nav (z-40 in BottomNav.jsx) halten: die
+      // Begrenzung durch `bottom`/`overflow: hidden` soll das Sheet ohnehin
+      // oberhalb der Nav halten, aber falls --bottom-nav-h die reale
+      // (safe-area-abhängige) Nav-Höhe je einmal unterschätzt, gewinnt so
+      // trotzdem immer die echte Nav statt dass das Sheet sie überdeckt.
+      overflow: 'hidden', pointerEvents: 'none', zIndex: 35,
     }}>
       {/* Klick auf die Karte bei ausgeklapptem Menü schließt es wieder */}
       {level !== 'closed' && (
