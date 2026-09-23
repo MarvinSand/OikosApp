@@ -4,11 +4,12 @@
 
 @layer base {
   :root {
-    /* Höhe der Bottom-Nav inkl. Home-Indicator. BottomNav.jsx überschreibt das
-       mit der exakt gemessenen Höhe; dieser Default greift in den ersten Frames
-       davor. Ohne env() wäre er auf Geräten mit Home-Indicator ~34px zu klein –
-       dann schiebt sich z.B. das Weltkarten-Drawer über die Nav-Icons. */
-    --bottom-nav-h: calc(64px + env(safe-area-inset-bottom, 0px));
+    /* Höhe der Bottom-Nav inkl. Home-Indicator. Bewusst eine feste Formel statt
+       einer zur Laufzeit gemessenen Höhe (siehe BottomNav.jsx, NAV_HEIGHT) –
+       zwei unabhängig berechnete Werte klaffen sonst um 1-2px auseinander,
+       genug damit sich z.B. das Weltkarten-Drawer sichtbar mit der Nav
+       überlappt. Beide Stellen MÜSSEN exakt dieselbe Formel verwenden. */
+    --bottom-nav-h: calc(72px + env(safe-area-inset-bottom, 0px));
 
     /* Phase 27: clean black/white/babyblue palette */
     --color-bg:             #FFFFFF;

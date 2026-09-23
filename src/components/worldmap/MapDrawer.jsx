@@ -66,7 +66,7 @@ export default function MapDrawer({
   users, activities, gemeinden = [], myProfile, hasOwnLocation,
   radiusKm, onRadiusChange,
   onSelectUser, onSelectActivity, onSelectGemeinde, reopenListKey,
-  onCreateEvent,
+  onCreateEvent, onVisibleHeightChange,
 }) {
   // 'closed' = nur Kopf sichtbar · 'half' = + Suchleiste (Tap auf Geschwister/
   // Events landet hier) · 'full' = komplettes Sheet mit Liste (Tap in die
@@ -88,6 +88,13 @@ export default function MapDrawer({
   const halfTranslate = Math.max(0, expandedH - (DRAWER_PEEK + HALF_PANEL_H))
   const LEVEL_TRANSLATE = { closed: closedTranslate, half: halfTranslate, full: 0 }
   const currentTranslate = dragY != null ? dragY : LEVEL_TRANSLATE[level]
+
+  // Meldet die aktuell sichtbare Höhe über der Nav nach oben (z.B. für den
+  // "Event hosten"-Button daneben, der beim Aufziehen mitwandern soll statt
+  // starr auf Peek-Höhe stehen zu bleiben).
+  useEffect(() => {
+    onVisibleHeightChange?.(expandedH - currentTranslate)
+  }, [expandedH, currentTranslate, onVisibleHeightChange])
 
   // Beim Tab-Wechsel Suche/Filter zurücksetzen
   useEffect(() => {

@@ -380,36 +380,12 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
   }, [map, users, activities, gemeinden, oikosPeople, showUsers, showEvents, showGemeinden, showOikosPeople, onUserClick, onActivityClick, onGemeindeClick, onOikosPersonClick])
 }
 
-// ─── Snapchat-style Zoom Sidebar ─────────────────────────
-// Zoom levels 2–20 mapped to emojis like Snapchat's travel modes
-const ZOOM_ICONS = [
-  { minZoom: 2,  emoji: '🌌', label: 'Weltall'    },
-  { minZoom: 4,  emoji: '🌍', label: 'Welt'       },
-  { minZoom: 6,  emoji: '🗺️', label: 'Kontinent'  },
-  { minZoom: 8,  emoji: '✈️', label: 'Land'       },
-  { minZoom: 10, emoji: '🚂', label: 'Region'     },
-  { minZoom: 12, emoji: '🚗', label: 'Stadt'      },
-  { minZoom: 14, emoji: '🛵', label: 'Viertel'    },
-  { minZoom: 16, emoji: '🚶', label: 'Straße'     },
-  { minZoom: 18, emoji: '🔍', label: 'Nahansicht' },
-]
-
-function getZoomIcon(zoom) {
-  let best = ZOOM_ICONS[0]
-  for (const z of ZOOM_ICONS) {
-    if (zoom >= z.minZoom) best = z
-  }
-  return best
-}
-
-function useSnapchatZoom({ map, minZoom = 2 }) {
-  const trackRef     = useRef(null)
-  const draggingRef  = useRef(false)
-  const startYRef    = useRef(0)
-  const startZoomRef = useRef(0)
+// Zoom-Level der Karte für Marker-Clustering & Pin-Größe; die frühere
+// Zieh-Leiste zum Zoomen ist entfernt (Pinch-Geste auf der Karte reicht),
+// dieser Hook bildet nur noch das aktuelle Zoom-Level nach.
+function useSnapchatZoom({ map }) {
   const [currentZoom, setCurrentZoom] = useState(10)
 
-  // Sync zoom state when Google Maps changes zoom externally
   useEffect(() => {
     if (!map) return
     const listener = map.addListener('zoom_changed', () => setCurrentZoom(map.getZoom()))
@@ -417,44 +393,7 @@ function useSnapchatZoom({ map, minZoom = 2 }) {
     return () => window.google.maps.event.removeListener(listener)
   }, [map])
 
-  // Global move/up listeners so dragging outside the track still works (PC + Mobile)
-  useEffect(() => {
-    function move(e) {
-      if (!draggingRef.current || !map || !trackRef.current) return
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY
-      const dy = startYRef.current - clientY   // up = positive = zoom in
-      const trackH = trackRef.current.getBoundingClientRect().height || 220
-      const zoomRange = 20 - minZoom
-      const delta = (dy / trackH) * zoomRange
-      const newZoom = Math.min(20, Math.max(minZoom, startZoomRef.current + delta))
-      map.setZoom(Math.round(newZoom))
-    }
-    function up() { draggingRef.current = false }
-
-    window.addEventListener('mousemove', move)
-    window.addEventListener('mouseup',   up)
-    window.addEventListener('touchmove', move, { passive: true })
-    window.addEventListener('touchend',  up)
-    return () => {
-      window.removeEventListener('mousemove', move)
-      window.removeEventListener('mouseup',   up)
-      window.removeEventListener('touchmove', move)
-      window.removeEventListener('touchend',  up)
-    }
-  }, [map, minZoom])
-
-  function onDragStart(e) {
-    if (!map) return
-    draggingRef.current = true
-    startYRef.current   = e.touches ? e.touches[0].clientY : e.clientY
-    startZoomRef.current = map.getZoom()
-    // Nur für Maus-Events: React hängt `touchstart` passiv an den Root,
-    // dort ist preventDefault wirkungslos und löst nur eine Konsolen-Warnung
-    // aus. Für Touch übernimmt `touch-action: none` am Track dieselbe Aufgabe.
-    if (e.type === 'mousedown') e.preventDefault?.()
-  }
-
-  return { trackRef, currentZoom, onDragStart }
+  return { currentZoom }
 }
 
 // ─── Main Component ───────────────────────────────────────
@@ -472,7 +411,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const [map, setMap] = useState(null)
   const minZoomRef = useRef(2)
   const didInitCenterRef = useRef(false)
-  const snapZoom = useSnapchatZoom({ map, minZoom: minZoomRef.current })
+  const snapZoom = useSnapchatZoom({ map })
   const [selectedUser, setSelectedUser] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
   const [selectedGemeinde, setSelectedGemeinde] = useState(null)
@@ -482,6 +421,11 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const openedFromListRef = useRef(false)
   const [reopenListKey, setReopenListKey] = useState(0)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
+  // Sichtbare Höhe des Weltkarte-Drawers über der Nav (Kopf allein im
+  // eingeklappten Zustand, mehr beim Hochziehen) - der rechte Button-Stapel
+  // (Standort/Event hosten) hängt daran, damit er beim Aufziehen mitwandert
+  // statt starr auf Höhe des eingeklappten Drawers stehen zu bleiben.
+  const [drawerLift, setDrawerLift] = useState(DRAWER_PEEK)
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
   const [showLocationSettings, setShowLocationSettings] = useState(false)
   const [selectedOikosPerson, setSelectedOikosPerson] = useState(null)
@@ -777,24 +721,35 @@ export default function WorldMapView({ onNavigateToProfile }) {
           <Settings size={18} />
         </button>
 
-        {/* Rechter Bedien-Stapel: Zoom-Leiste + "Event hosten"-Button fest
-            untereinander mit festem Abstand – überlappen dadurch nie, egal
-            wie klein der sichtbare Kartenbereich ist. Bottom-verankert über
-            der schwebenden Ebenen-Kapsel statt vertikal zentriert. */}
+        {/* Rechter Bedien-Stapel: Standort-Button + "Event hosten"-Button.
+            Hängt an drawerLift (sichtbare Drawer-Höhe über der Nav) statt an
+            einem festen Wert, damit der Stapel beim Aufziehen des Drawers
+            mitwandert statt auf Peek-Höhe stehen zu bleiben. */}
         <div style={{
           position: 'absolute', right: 12,
-          bottom: `calc(var(--bottom-nav-h, 64px) + ${DRAWER_PEEK}px + 14px)`,
+          bottom: `calc(var(--bottom-nav-h, 64px) + ${drawerLift}px + 14px)`,
           zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         }}>
-          <ZoomSidebar
-            snapZoom={snapZoom}
-            minZoom={minZoomRef.current}
-            onCenterSelf={myProfile?.latitude ? () => {
-              if (!map) return
-              map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
-              map.setZoom(13)
-            } : null}
-          />
+          {myProfile?.latitude && (
+            <button
+              onClick={() => {
+                if (!map) return
+                map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
+                map.setZoom(13)
+              }}
+              style={{
+                width: 40, height: 40, borderRadius: 12,
+                background: C.surfaceBlur, border: `1px solid ${C.border}`,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: C.accentDark, padding: 0,
+                backdropFilter: 'blur(6px)',
+              }}
+              title="Zu meinem Standort"
+            >
+              <Navigation size={17} />
+            </button>
+          )}
 
           {/* Create Event FAB */}
           <button
@@ -849,6 +804,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
           radiusKm={radiusKm}
           onRadiusChange={setRadiusKm}
           reopenListKey={reopenListKey}
+          onVisibleHeightChange={setDrawerLift}
           onCreateEvent={() => setShowCreateSheet(true)}
           onSelectUser={(u) => { focusOn(u.latitude, u.longitude); openedFromListRef.current = true; setSelectedUser(u) }}
           onSelectActivity={(a) => { focusOn(a.latitude, a.longitude); openedFromListRef.current = true; setSelectedActivity(a) }}
@@ -975,93 +931,6 @@ function OwnPinContent({ user }) {
         }}>
           Du
         </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Snapchat Zoom Sidebar Component ─────────────────────
-function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
-  const { trackRef, currentZoom, onDragStart } = snapZoom
-  const maxZoom = 20
-  const zoomRange = maxZoom - minZoom
-  const progress = Math.max(0, Math.min(1, (currentZoom - minZoom) / zoomRange))
-  const currentIcon = getZoomIcon(currentZoom)
-
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 8,
-      userSelect: 'none',
-      WebkitUserSelect: 'none',
-    }}>
-      {/* Mein Standort button */}
-      {onCenterSelf && (
-        <button
-          onClick={onCenterSelf}
-          style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: C.surfaceBlur,
-            border: `1px solid ${C.border}`,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: C.accentDark, padding: 0,
-            backdropFilter: 'blur(6px)',
-          }}
-          title="Zu meinem Standort"
-        >
-          <Navigation size={17} />
-        </button>
-      )}
-
-      {/* Current zoom emoji – no label */}
-      <div style={{ fontSize: 22, lineHeight: 1, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))' }}>
-        {currentIcon.emoji}
-      </div>
-
-      {/* Drag track – schmaler & länger, global mouse/touch listeners handle the drag */}
-      <div
-        ref={trackRef}
-        style={{
-          width: 22,
-          height: 320,
-          borderRadius: 11,
-          background: C.surfaceBlur,
-          border: `1px solid ${C.border}`,
-          boxShadow: '0 2px 14px rgba(0,0,0,0.13)',
-          backdropFilter: 'blur(8px)',
-          position: 'relative',
-          touchAction: 'none',
-          cursor: 'ns-resize',
-          overflow: 'hidden',
-        }}
-        onMouseDown={onDragStart}
-        onTouchStart={onDragStart}
-      >
-        {/* Filled bar – grows from bottom as you zoom in */}
-        <div style={{
-          position: 'absolute',
-          bottom: 0, left: 0, right: 0,
-          height: `${progress * 100}%`,
-          background: `linear-gradient(to top, ${C.accentDark}, ${C.accent})`,
-          borderRadius: 11,
-        }} />
-
-        {/* Thumb knob */}
-        <div style={{
-          position: 'absolute',
-          left: '50%',
-          bottom: `calc(${progress * 100}% - 11px)`,
-          transform: 'translateX(-50%)',
-          width: 22, height: 22,
-          borderRadius: '50%',
-          background: C.bg,
-          border: `2.5px solid ${C.accent}`,
-          boxShadow: '0 2px 8px rgba(90,200,250,0.4)',
-          pointerEvents: 'none',
-        }} />
       </div>
     </div>
   )
