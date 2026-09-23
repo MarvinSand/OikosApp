@@ -1,14 +1,6 @@
+import { useLayoutEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, BookOpen, Globe, Book, User } from 'lucide-react'
-
-// Feste statt gemessene Höhe: eine per ResizeObserver gemessene Höhe kann
-// minimal vom Wert abweichen, den andere Stellen (z.B. der Weltkarte-Drawer)
-// über die CSS-Variable --bottom-nav-h annehmen - je nach Timing gewinnt mal
-// der eine, mal der andere Wert, und schon 1-2px Differenz reichen, damit
-// sich Nav und Drawer sichtbar überlappen. Beide benutzen deshalb exakt
-// dieselbe fest verdrahtete Formel (in index.css für --bottom-nav-h
-// gespiegelt) statt einer zur Laufzeit gemessenen.
-const NAV_HEIGHT = 'calc(72px + env(safe-area-inset-bottom, 0px))'
 
 const tabs = [
   { path: '/',                   icon: Home,       label: 'Home',         match: ['/']                          },
@@ -29,14 +21,29 @@ function isPathActive(currentPath, match) {
 export default function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
+  const navRef = useRef(null)
+
+  // Echte (intrinsische) Nav-Höhe messen statt zu erraten - eine erzwungene
+  // Fixhöhe hatte hier zuletzt selbst einen sichtbaren schwarzen Leerraum
+  // unter Icons/Labels erzeugt, weil sie größer war als tatsächlich gebraucht.
+  useLayoutEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    const setVar = () => document.documentElement.style.setProperty('--bottom-nav-h', el.offsetHeight + 'px')
+    setVar()
+    const ro = new ResizeObserver(setVar)
+    ro.observe(el)
+    window.addEventListener('resize', setVar)
+    return () => { ro.disconnect(); window.removeEventListener('resize', setVar) }
+  }, [])
 
   return (
     <nav
+      ref={navRef}
       className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md flex justify-around items-stretch px-1 z-40"
       style={{
         backgroundColor: 'var(--color-bg)',
         borderTop: '1px solid var(--color-border)',
-        minHeight: NAV_HEIGHT,
         paddingTop: 8,
         paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
       }}

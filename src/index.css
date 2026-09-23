@@ -4,12 +4,13 @@
 
 @layer base {
   :root {
-    /* Höhe der Bottom-Nav inkl. Home-Indicator. Bewusst eine feste Formel statt
-       einer zur Laufzeit gemessenen Höhe (siehe BottomNav.jsx, NAV_HEIGHT) –
-       zwei unabhängig berechnete Werte klaffen sonst um 1-2px auseinander,
-       genug damit sich z.B. das Weltkarten-Drawer sichtbar mit der Nav
-       überlappt. Beide Stellen MÜSSEN exakt dieselbe Formel verwenden. */
-    --bottom-nav-h: calc(72px + env(safe-area-inset-bottom, 0px));
+    /* Höhe der Bottom-Nav inkl. Home-Indicator. BottomNav.jsx misst die echte
+       Höhe per ResizeObserver und überschreibt diesen Wert synchron vor dem
+       ersten Paint (useLayoutEffect) - dieser Default greift praktisch nie
+       sichtbar, nur als Absicherung falls die Nav aus irgendeinem Grund noch
+       nicht gemountet ist. Bewusst eher knapp (64px) statt großzügig: ein zu
+       hoher Wert erzeugt selbst einen sichtbaren Leerraum unter der Nav. */
+    --bottom-nav-h: calc(64px + env(safe-area-inset-bottom, 0px));
 
     /* Phase 27: clean black/white/babyblue palette */
     --color-bg:             #FFFFFF;

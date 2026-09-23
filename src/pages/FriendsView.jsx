@@ -897,7 +897,7 @@ function ChatsTab() {
       <button
         onClick={() => setShowNewChat(true)}
         disabled={starting}
-        style={{ position: 'fixed', bottom: 90, right: 20, width: 52, height: 52, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(58,46,36,0.25)', zIndex: 10, color: 'var(--color-bg)' }}
+        style={{ position: 'fixed', bottom: 'calc(var(--bottom-nav-h, 64px) + 26px)', right: 20, width: 52, height: 52, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(58,46,36,0.25)', zIndex: 10, color: 'var(--color-bg)' }}
       >
         <Plus size={24} />
       </button>
@@ -1486,7 +1486,7 @@ function FeedTab() {
         aria-label="Neuen Beitrag erstellen"
         style={{
           position: 'fixed',
-          bottom: 80,
+          bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)',
           right: 20,
           width: 52,
           height: 52,

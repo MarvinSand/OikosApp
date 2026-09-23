@@ -845,7 +845,7 @@ export default function Prayers() {
         onClick={() => setShowCreate(true)}
         aria-label="Gebet teilen"
         style={{
-          position: 'fixed', bottom: 80, right: 20,
+          position: 'fixed', bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)', right: 20,
           width: 52, height: 52, borderRadius: '50%',
           backgroundColor: 'var(--color-accent)', color: '#fff',
           border: 'none', cursor: 'pointer',
