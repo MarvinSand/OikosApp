@@ -12,6 +12,7 @@ import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
 import { HIGHLIGHT_COLORS, resolveHighlightColor } from '../lib/bibleColors'
 import { formatReferenceLabel, parseBibleLinkParams } from '../lib/bibleLink'
 import { verseTextFromContainer } from '../lib/biblePassageHtml'
+import { DEFAULT_STARRED_VERSIONS, groupVersionsByLanguage } from '../lib/bibleVersionDefaults'
 import { createFeedPost } from '../hooks/useFeed'
 import FeedPostSheet from '../components/feed/FeedPostSheet'
 import BookChapterPicker from '../components/bible/BookChapterPicker'
@@ -51,14 +52,21 @@ export default function BibleView() {
 
   const bookInfo = findBook(book)
   const { html, loading, error } = useChapterText(bibleId, book, chapter)
-  const { versions: bibleVersions, loading: versionsLoading } = useBibleVersions()
+  // Der volle ~1479-Übersetzungen-Katalog wird erst geladen, wenn der Picker
+  // tatsächlich geöffnet wird - nicht schon beim Öffnen des Bibel-Tabs.
+  const { versions: bibleVersions, loading: versionsLoading } = useBibleVersions({ enabled: showVersionPicker })
   const { favorites: favoriteVersionIds, toggleFavorite: toggleFavoriteVersion } = useFavoriteBibleVersions()
   const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(bibleId, book, chapter)
   const { colors: savedColors, isSaved: isColorSaved, toggleColor: toggleSaveColor } = useSavedBibleColors()
   const { colors: recentColors, reload: reloadRecentColors } = useRecentBibleColors()
   const readingProgress = useReadingProgress()
   const yv = useYouVersionAccount()
+  // Solange der volle Katalog nicht geladen ist (Normalfall: Picker war noch
+  // nie offen), reicht die Chip-Anzeige der aktuellen Übersetzung aus den
+  // Defaults - deckt HFA (Standardwert) und die anderen Standard-Favoriten
+  // ohne jeden Netzwerk-Call ab.
   const currentVersion = bibleVersions?.find(v => String(v.id) === String(bibleId))
+    ?? DEFAULT_STARRED_VERSIONS.find(v => String(v.id) === String(bibleId))
 
   // Schreibt die aktuelle Position (Buch/Kapitel/Übersetzung) in die URL, damit
   // sie einen Tab-Reload übersteht (mobile/Desktop-Browser können einen im
@@ -562,11 +570,25 @@ function VersionPicker({ versions, loading, currentId, favorites, onToggleFavori
     || (v.localized_abbreviation || v.abbreviation || '').toLowerCase().includes(q)
 
   const all = versions || []
-  const favoriteVersions = all.filter(v => favorites?.has(String(v.id)) && (!q || matches(v)))
+  // Defaults zuerst, dann die echten API-Daten drüber (falls der Katalog
+  // inzwischen geladen ist) - so zeigt die Favoriten-Zeile schon vor dem
+  // ersten Laden Titel/Abkürzung, statt leer zu bleiben.
+  const versionById = new Map([...DEFAULT_STARRED_VERSIONS, ...all].map(v => [String(v.id), v]))
+  const favoriteVersions = [...(favorites || [])]
+    .map(id => versionById.get(id))
+    .filter(v => v && (!q || matches(v)))
+
   const rest = all.filter(v => !favorites?.has(String(v.id)) && (!q || matches(v)))
-  const RESULT_CAP = q ? 200 : 100
-  const restShown = rest.slice(0, RESULT_CAP)
-  const hiddenCount = rest.length - restShown.length
+  // Pro Sprachgruppe gedeckelt statt einer flachen Liste: verhindert, dass
+  // eine einzelne Sprache mit hunderten Einträgen den Rest verdrängt, UND
+  // hält die Anzahl gerenderter Zeilen (~1479 Übersetzungen insgesamt)
+  // niedrig genug, um auf dem Handy flüssig zu bleiben.
+  const PER_LANGUAGE_CAP = q ? 60 : 15
+  const groups = groupVersionsByLanguage(rest).map(g => ({
+    ...g,
+    shown: g.items.slice(0, PER_LANGUAGE_CAP),
+    hiddenCount: g.items.length - Math.min(g.items.length, PER_LANGUAGE_CAP),
+  }))
 
   function VersionRow(v) {
     const isFavorite = favorites?.has(String(v.id))
@@ -611,29 +633,35 @@ function VersionPicker({ versions, loading, currentId, favorites, onToggleFavori
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-2">
-        {loading && !all.length && <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Lädt Übersetzungen…</p>}
-        {!loading && all.length > 0 && favoriteVersions.length === 0 && restShown.length === 0 && (
-          <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Keine Übersetzung gefunden.</p>
-        )}
         {favoriteVersions.length > 0 && (
           <>
             <p className="text-xs font-semibold uppercase tracking-wide pt-2 pb-1" style={{ color: 'var(--color-text-tertiary)' }}>Favoriten</p>
             {favoriteVersions.map(VersionRow)}
           </>
         )}
-        {restShown.length > 0 && (
-          <>
-            {favoriteVersions.length > 0 && (
-              <p className="text-xs font-semibold uppercase tracking-wide pt-3 pb-1" style={{ color: 'var(--color-text-tertiary)' }}>Alle Übersetzungen</p>
+
+        {/* Der volle Katalog lädt erst jetzt (Picker gerade geöffnet) - bis
+            dahin bleiben die Favoriten oben trotzdem sofort sichtbar. */}
+        {loading && !all.length && (
+          <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Lädt weitere Übersetzungen…</p>
+        )}
+        {!loading && all.length > 0 && favoriteVersions.length === 0 && groups.length === 0 && (
+          <p style={{ color: 'var(--color-text-tertiary)', padding: '16px 0' }}>Keine Übersetzung gefunden.</p>
+        )}
+
+        {groups.map(g => (
+          <div key={g.tag}>
+            <p className="text-xs font-semibold uppercase tracking-wide pt-3 pb-1" style={{ color: 'var(--color-text-tertiary)' }}>
+              {g.label}
+            </p>
+            {g.shown.map(VersionRow)}
+            {g.hiddenCount > 0 && (
+              <p className="text-xs py-2" style={{ color: 'var(--color-text-tertiary)' }}>
+                +{g.hiddenCount} weitere auf {g.label} – Suche verfeinern, um sie zu finden.
+              </p>
             )}
-            {restShown.map(VersionRow)}
-          </>
-        )}
-        {hiddenCount > 0 && (
-          <p className="text-xs text-center py-3" style={{ color: 'var(--color-text-tertiary)' }}>
-            +{hiddenCount} weitere – Suche verfeinern, um sie zu finden.
-          </p>
-        )}
+          </div>
+        ))}
       </div>
     </div>
   )

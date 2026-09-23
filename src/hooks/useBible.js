@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { fetchBiblePath } from '../lib/youversion'
 import { wrapVersesInHtml } from '../lib/biblePassageHtml'
 import { HIGHLIGHT_COLORS } from '../lib/bibleColors'
+import { DEFAULT_STARRED_IDS } from '../lib/bibleVersionDefaults'
 
 // Numerische YouVersion-Bibel-ID. 73 = "Hoffnung für alle" (Default). Alle
 // ~1479 verfügbaren Übersetzungen liefert useBibleVersions() – darüber lässt
@@ -79,12 +80,17 @@ const BIBLE_VERSIONS_CACHE_MS = 6 * 60 * 60 * 1000
 // page_token (~65 Einträge pro Seite). Ohne language_ranges[] lehnt die API
 // mit 422 ab - "*" ist der (undokumentierte, aber funktionierende) Wildcard-
 // Language-Range.
-export function useBibleVersions() {
+// `enabled: false` lädt nichts (auch nicht aus dem Cache) - Standard-Favoriten
+// + aktuell gewählte Übersetzung kommen ohne API-Call aus
+// bibleVersionDefaults.js, der ~1479 Einträge umfassende Katalog wird erst
+// abgerufen, sobald der Nutzer den Version-Picker tatsächlich öffnet.
+export function useBibleVersions({ enabled = true } = {}) {
   const [versions, setVersions] = useState(bibleVersionsCache?.versions ?? null)
-  const [loading, setLoading] = useState(!bibleVersionsCache)
+  const [loading, setLoading] = useState(enabled && !bibleVersionsCache)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (!enabled) return
     if (bibleVersionsCache && Date.now() - bibleVersionsCache.timestamp < BIBLE_VERSIONS_CACHE_MS) {
       setVersions(bibleVersionsCache.versions)
       setLoading(false)
@@ -115,23 +121,37 @@ export function useBibleVersions() {
       }
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [enabled])
 
   return { versions, loading, error }
 }
 
 // ─── Favoriten-Übersetzungen ───
 
+// Nutzer ohne eigene Auswahl (noch nie einen Stern gesetzt) sehen
+// standardmäßig HFA/Elberfelder 1871/Berean Standard Bible markiert - siehe
+// bibleVersionDefaults.js. Sobald der Nutzer selbst einen Stern setzt/
+// entfernt, übernimmt dessen eigene (dann nicht mehr leere) Liste komplett;
+// wird sie durch Entfernen aller Sterne wieder leer, greifen beim nächsten
+// Laden erneut die Defaults - ein bewusst einfacher Kompromiss ohne
+// zusätzliches "hat schon angepasst"-Flag in der DB.
 export function useFavoriteBibleVersions() {
   const { user } = useAuth()
-  const [favorites, setFavorites] = useState(new Set())
+  const [favorites, setFavorites] = useState(new Set(DEFAULT_STARRED_IDS))
   const [loading, setLoading] = useState(true)
+  // true = die DB hat für diesen Nutzer noch keine eigene Zeile; `favorites`
+  // zeigt nur die Defaults an. Erst bei der ersten Änderung materialisieren
+  // wir sie als echte Zeilen - sonst würde ein Entfernen eines Defaults beim
+  // nächsten Laden sofort wieder zurückkommen (DB wäre ja weiterhin leer).
+  const usingDefaultsRef = useRef(true)
 
   const load = useCallback(async () => {
     if (!user) { setLoading(false); return }
     setLoading(true)
     const { data } = await supabase.from('bible_favorite_versions').select('bible_id').eq('user_id', user.id)
-    setFavorites(new Set((data || []).map(r => String(r.bible_id))))
+    const own = new Set((data || []).map(r => String(r.bible_id)))
+    usingDefaultsRef.current = own.size === 0
+    setFavorites(own.size > 0 ? own : new Set(DEFAULT_STARRED_IDS))
     setLoading(false)
   }, [user?.id])
 
@@ -140,12 +160,25 @@ export function useFavoriteBibleVersions() {
   async function toggleFavorite(bibleId) {
     const id = String(bibleId)
     const wasFavorite = favorites.has(id)
-    setFavorites(prev => {
-      const next = new Set(prev)
-      if (wasFavorite) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    const next = new Set(favorites)
+    if (wasFavorite) next.delete(id)
+    else next.add(id)
+    setFavorites(next)
+
+    if (usingDefaultsRef.current) {
+      // Erste Änderung überhaupt: die komplette neue Liste (nicht nur den
+      // einen Eintrag) als echte Zeilen schreiben, damit die DB ab jetzt die
+      // Wahrheit ist statt weiterhin leer zu sein.
+      usingDefaultsRef.current = false
+      await supabase.from('bible_favorite_versions').delete().eq('user_id', user.id)
+      if (next.size > 0) {
+        await supabase.from('bible_favorite_versions').insert(
+          [...next].map(bible_id => ({ user_id: user.id, bible_id }))
+        )
+      }
+      return
+    }
+
     if (wasFavorite) {
       await supabase.from('bible_favorite_versions').delete().eq('user_id', user.id).eq('bible_id', id)
     } else {
