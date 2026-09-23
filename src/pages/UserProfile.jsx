@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, UserCheck, UserPlus, Clock, X, MessageCircle, Bell,
-  MapPin, Church, Map as MapIcon, Newspaper, HandHeart, Repeat2,
+  MapPin, Church, Map as MapIcon, Newspaper, HandHeart, Repeat2, ScrollText,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -14,6 +14,8 @@ import { countryToFlag, COUNTRIES } from '../lib/countries'
 import { NOTIFICATION_PREF_FIELDS } from '../lib/notificationPrefFields'
 import { Avatar, MapsTab, PostsTab, RepostsTab, PrayersTab } from '../components/profile/ProfileTabs'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
+
+const UserCreedsTab = lazy(() => import('../components/profile/UserCreedsTab'))
 
 // ─── Helpers ─────────────────────────────────────────────────
 function formatLastActive(ts) {
@@ -369,9 +371,10 @@ export default function UserProfile() {
       >
         {[
           { key: 'maps',    icon: MapIcon,   label: 'OIKOS Map' },
+          { key: 'creeds',  icon: ScrollText, label: 'Bekenntnis' },
           { key: 'posts',   icon: Newspaper, label: 'Posts' },
-          { key: 'reposts', icon: Repeat2,   label: 'Reposts' },
           { key: 'prayers', icon: HandHeart, label: 'Gebete' },
+          { key: 'reposts', icon: Repeat2,   label: 'Reposts' },
         ].map(t => {
           const isActive = activeTab === t.key
           const Icon = t.icon
@@ -435,6 +438,13 @@ export default function UserProfile() {
             />
           )}
           {activeTab === 'prayers' && <PrayersTab prayers={prayerRequests} />}
+          {activeTab === 'creeds' && (
+            <Suspense fallback={
+              <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>Lade…</p>
+            }>
+              <UserCreedsTab userId={targetId} displayName={profile?.full_name || profile?.username} />
+            </Suspense>
+          )}
         </>
       )}
 
