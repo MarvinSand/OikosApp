@@ -336,11 +336,11 @@ export default function ProfileView() {
         }}
       >
         {[
-          { key: 'creeds',  icon: ScrollText, label: 'Bekenntnis' },
           { key: 'maps',    icon: MapIcon,   label: 'OIKOS Map' },
+          { key: 'creeds',  icon: ScrollText, label: 'Bekenntnis' },
           { key: 'posts',   icon: Newspaper, label: 'Posts' },
-          { key: 'reposts', icon: Repeat2,   label: 'Reposts' },
           { key: 'prayers', icon: HandHeart, label: 'Gebete' },
+          { key: 'reposts', icon: Repeat2,   label: 'Reposts' },
         ].map(t => {
           const isActive = activeTab === t.key
           const Icon = t.icon
