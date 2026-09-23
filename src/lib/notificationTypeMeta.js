@@ -14,4 +14,5 @@ export const NOTIFICATION_TYPE_META = {
   prayer_reminder: { icon: '⏰', label: 'Lange nicht gebetet' },
   sibling_requests_reminder: { icon: '📋', label: 'Offene Anliegen von Geschwistern' },
   weekly_digest: { icon: '📊', label: 'Wochenrückblick' },
+  message: { icon: '💬', label: 'Direktnachrichten' },
 }

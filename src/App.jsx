@@ -3,7 +3,7 @@ import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
 import { useSwipeNav } from './hooks/useSwipeNav'
-import { ToastProvider } from './context/ToastContext'
+import { ToastProvider, useToast } from './context/ToastContext'
 import { supabase } from './lib/supabase'
 import { registerForPush } from './lib/nativePush'
 // Public pages stay eager so the login screen renders without a second fetch
@@ -163,17 +163,18 @@ function AppShell() {
 function useNativePushRegistration() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (!user) return
     let cleanup = () => {}
     let cancelled = false
 
-    registerForPush(user.id, { onOpen: (url) => navigate(url) })
+    registerForPush(user.id, { onOpen: (url) => navigate(url), showToast })
       .then(fn => { if (cancelled) fn(); else cleanup = fn })
 
     return () => { cancelled = true; cleanup() }
-  }, [user?.id, navigate])
+  }, [user?.id, navigate, showToast])
 }
 
 // Supabase liest den Recovery-Code beim Laden automatisch aus der URL (egal auf

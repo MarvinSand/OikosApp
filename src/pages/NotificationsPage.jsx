@@ -10,8 +10,9 @@ import { NOTIFICATION_TYPE_META } from '../lib/notificationTypeMeta'
 function resolveDestination(n, currentUserId) {
   // oikos_entry / prayer_shared / prayer_log carry map_id + person_id in `data`
   // so we can deep-link straight into the map and open that person's sheet
-  const { map_id, person_id, map_owner_id, request_id, requester_id, post_id } = n.data || {}
+  const { map_id, person_id, map_owner_id, request_id, requester_id, post_id, conversation_id } = n.data || {}
 
+  if (n.type === 'message' && conversation_id) return `/chat/${conversation_id}`
   if (n.type === 'feed_post' && post_id) return `/feed/post/${post_id}`
   if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log' || n.type === 'prayer_reminder')) {
     const base = map_owner_id && map_owner_id !== currentUserId
