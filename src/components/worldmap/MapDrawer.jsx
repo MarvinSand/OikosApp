@@ -225,12 +225,14 @@ export default function MapDrawer({
     <div style={{
       position: 'absolute', left: 0, right: 0, top: 0,
       bottom: 'var(--bottom-nav-h, 64px)',
-      // z-index unter der Bottom-Nav (z-40 in BottomNav.jsx) halten: die
-      // Begrenzung durch `bottom`/`overflow: hidden` soll das Sheet ohnehin
-      // oberhalb der Nav halten, aber falls --bottom-nav-h die reale
-      // (safe-area-abhängige) Nav-Höhe je einmal unterschätzt, gewinnt so
-      // trotzdem immer die echte Nav statt dass das Sheet sie überdeckt.
-      overflow: 'hidden', pointerEvents: 'none', zIndex: 35,
+      // z-index ÜBER der Bottom-Nav (z-40 in BottomNav.jsx): ein z-index
+      // unter der Nav wurde kurzzeitig versucht, hat aber bei jeder auch nur
+      // kleinen Unterschätzung von --bottom-nav-h die komplette Pill-Leiste
+      // (Geschwister/Events/Gemeinden) hinter der Nav verschwinden lassen -
+      // ein viel schlimmerer Ausfall als der ursprüngliche, seltene Fall
+      // (Nav überdeckt ein paar Pixel des Sheets). Die Begrenzung durch
+      // `bottom`/`overflow: hidden` verhindert Overlap ohnehin in der Praxis.
+      overflow: 'hidden', pointerEvents: 'none', zIndex: 45,
     }}>
       {/* Klick auf die Karte bei ausgeklapptem Menü schließt es wieder */}
       {level !== 'closed' && (
