@@ -6,11 +6,13 @@ import { useSwipeNav } from './hooks/useSwipeNav'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { supabase } from './lib/supabase'
 import { registerForPush } from './lib/nativePush'
+import { isNativeApp } from './lib/platform'
 // Public pages stay eager so the login screen renders without a second fetch
 import Auth from './pages/Auth'
 import ResetPassword from './pages/ResetPassword'
 import AuthCallback from './pages/AuthCallback'
 import YouVersionCallback from './pages/YouVersionCallback'
+import LegalPage from './pages/LegalPage'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -327,6 +329,11 @@ export default function App() {
                   element={recovery ? <Navigate to="/reset-password" replace /> : (user ? <Navigate to="/" replace /> : <Auth />)}
                 />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                {/* Öffentlich (auch ohne Login), damit dieselben URLs in App
+                    Store Connect als Datenschutz-/Nutzungsbedingungen-Link
+                    hinterlegt werden können */}
+                <Route path="/terms" element={<LegalPage kind="terms" />} />
+                <Route path="/privacy" element={<LegalPage kind="privacy" />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 {/* Beide möglichen YouVersion-Callback-Pfade (je nach Domain,
                     siehe resolveYouVersionRedirectUri) müssen öffentlich sein:
@@ -342,7 +349,9 @@ export default function App() {
             </BrowserRouter>
           </div>
         </div>
-        <Analytics />
+        {/* Vercel Analytics lädt /_vercel/insights/script.js von der eigenen
+            Origin – in der iOS-App (capacitor://localhost) gibt es die nicht. */}
+        {!isNativeApp && <Analytics />}
       </ToastProvider>
     </ErrorBoundary>
   )

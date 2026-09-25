@@ -26,6 +26,8 @@ import { CreateCommunitySheet, JoinCommunityModal } from '../components/communit
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import { verseAttachmentFromRow } from '../lib/bibleLink'
 import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
+import ModerationSheet from '../components/common/ModerationSheet'
+import { useBlocks } from '../hooks/useBlocks'
 
 // ─── Avatar ────────────────────────────────────────────────
 function Avatar({ name, size = 40, isChristian, avatarUrl }) {
@@ -994,7 +996,9 @@ function FeedAvatar({ profile, size = 36 }) {
 export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
+  const [showModeration, setShowModeration] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
+  const { isBlocked } = useBlocks()
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
   const TypeIcon = cfg.icon
   // Klares Kategorie-Badge aus dem echten category-Feld (Frage, Bibelstelle, …)
@@ -1010,6 +1014,10 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   const [expanded, setExpanded] = useState(false)
   const bodyLong = post.body && post.body.length > 240
   const displayBody = bodyLong && !expanded ? post.body.slice(0, 240) + '…' : post.body
+
+  // Nach dem Blockieren sofort ausblenden (serverseitig filtert ab dem
+  // nächsten Laden ohnehin RLS)
+  if (!isOwn && isBlocked(post.author_id)) return null
 
   return (
     <FeedCardFrame threadLineAfter={threadLineAfter}>
@@ -1042,6 +1050,20 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'Lora, serif', fontWeight: 700, color: 'var(--color-text-secondary)', padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)', whiteSpace: 'nowrap' }}>
               <TypeIcon size={11} /> {cfg.label}
             </span>
+          )}
+          {!isOwn && (
+            <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+              <MoreHorizontal size={16} />
+            </button>
+          )}
+          {showModeration && (
+            <ModerationSheet
+              contentType="feed_post"
+              contentId={post.id}
+              authorId={post.author_id}
+              authorName={author?.full_name || author?.username}
+              onClose={() => setShowModeration(false)}
+            />
           )}
           {isOwn && (
             <div style={{ position: 'relative' }}>

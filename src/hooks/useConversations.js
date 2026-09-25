@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { subscribeShared } from '../lib/realtime'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 // Modul-Cache + In-Flight-Dedupe wie in useNotifications.js: Home, FriendsView
 // und ConversationView nutzen diesen Hook gleichzeitig bzw. kurz nacheinander.
@@ -14,6 +15,11 @@ let inFlight = null
 export function useConversations() {
   const { user } = useAuth()
   const userId = user?.id ?? null
+  // Nach App-Start aus dem persistenten Cache vorbefüllen (siehe swrCache.js)
+  if (userId && cache.userId !== userId) {
+    const persisted = readCache(userId, 'conversations')
+    if (persisted) cache = { userId, lists: persisted }
+  }
   const cached = cache.userId === userId ? cache.lists : null
   const [directChats, setDirectChats] = useState(cached?.directChats || [])
   const [communityChats, setCommunityChats] = useState(cached?.communityChats || [])
@@ -29,29 +35,27 @@ export function useConversations() {
   const load = useCallback(async () => {
     if (!user) return
 
-    if (inFlight && cache.userId === user.id) {
-      setLoading(true)
-      const lists = await inFlight
-      if (!mounted.current) return
-      setDirectChats(lists.directChats)
-      setCommunityChats(lists.communityChats)
-      setActivityChats(lists.activityChats)
-      setLoading(false)
-      return
-    }
+    // Vorhandene Listen stehen lassen und still aktualisieren – vorher wurde
+    // der Cache vor jedem Reload geleert, jeder Tab-Wechsel zeigte den Spinner.
+    const hasLists = cache.userId === user.id && !!cache.lists
+    if (!hasLists) setLoading(true)
 
-    setLoading(true)
-    cache = { userId: user.id, lists: null }
-    inFlight = fetchConversations().finally(() => { inFlight = null })
+    if (!(inFlight && cache.userId === user.id)) {
+      if (cache.userId !== user.id) cache = { userId: user.id, lists: null }
+      inFlight = fetchConversations().finally(() => { inFlight = null })
+    }
     try {
       const lists = await inFlight
       cache = { userId: user.id, lists }
+      writeCache(user.id, 'conversations', lists)
       if (!mounted.current) return
       setDirectChats(lists.directChats)
       setCommunityChats(lists.communityChats)
       setActivityChats(lists.activityChats)
+    } catch (err) {
+      console.error('[useConversations] Laden fehlgeschlagen:', err)
     } finally {
-      setLoading(false)
+      if (mounted.current) setLoading(false)
     }
   }, [user?.id])
 

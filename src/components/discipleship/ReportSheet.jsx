@@ -17,11 +17,12 @@ export default function ReportSheet({ contentType, contentId, onClose }) {
 
   async function submit(reason) {
     setSaving(true)
-    await supabase.from('content_reports').insert({
+    const { error } = await supabase.from('content_reports').insert({
       reporter_id: user.id, content_type: contentType, content_id: contentId, reason,
     })
     setSaving(false)
-    showToast('Danke, wir prüfen das.')
+    if (error) { showToast('Meldung konnte nicht gesendet werden', 'error'); return }
+    showToast('Danke – wir prüfen die Meldung innerhalb von 24 Stunden.')
     onClose()
   }
 

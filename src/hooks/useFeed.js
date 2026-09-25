@@ -237,7 +237,10 @@ export async function createFeedPost(userId, {
     try {
       photo_url = await uploadPhoto(photoFile, userId)
     } catch (err) {
+      // Nicht still ohne Foto posten – der Aufrufer zeigt „Fehler beim
+      // Posten", der Entwurf bleibt erhalten und kann erneut gesendet werden.
       console.error('Photo upload failed', err)
+      return null
     }
   }
 

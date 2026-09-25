@@ -2,12 +2,18 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { subscribeShared } from '../lib/realtime'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 // Kleiner Modul-Cache: `useNotifications` wird gleichzeitig von Home,
 // FriendsView und der NotificationsPage genutzt. Ohne Cache lädt jede
 // Instanz dieselben 50 Zeilen erneut. Der Cache liefert sofort einen
 // Startwert (kein Spinner beim Tab-Wechsel) und bündelt parallele Ladungen.
 let cache = { userId: null, rows: null }
+
+function updateCache(userId, rows) {
+  cache = { userId, rows }
+  writeCache(userId, 'notifications', rows)
+}
 let inFlight = null
 
 // Aufräumen alter gelesener Benachrichtigungen: höchstens einmal pro Session
@@ -35,6 +41,11 @@ export function useNotifications() {
   const { user } = useAuth()
   const userId = user?.id ?? null
 
+  // Beim ersten Mount nach App-Start aus dem persistenten Cache vorbefüllen
+  if (userId && cache.userId !== userId) {
+    const persisted = readCache(userId, 'notifications')
+    if (Array.isArray(persisted)) cache = { userId, rows: persisted }
+  }
   const initial = cache.userId === userId && cache.rows ? cache.rows : []
   const [notifications, setNotifications] = useState(initial)
   const [unreadCount, setUnreadCount] = useState(initial.filter(n => !n.is_read).length)
@@ -63,21 +74,26 @@ export function useNotifications() {
       pruneOldNotifications(userId)
 
       inFlight = (async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('notifications')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(50)
 
+        // Bei einem Fehler (z. B. offline) den bisherigen Stand behalten
+        // statt die Liste zu leeren
+        if (error) return cache.userId === userId && cache.rows ? cache.rows : []
         const rows = data || []
         cache = { userId, rows }
+        writeCache(userId, 'notifications', rows)
         return rows
-      })().catch(() => [])
+      })().catch(() => (cache.userId === userId && cache.rows ? cache.rows : []))
         .finally(() => { inFlight = null })
     }
 
-    setLoading(true)
+    // Vorhandene (gecachte) Einträge stehen lassen und still aktualisieren
+    if (!(cache.userId === userId && cache.rows)) setLoading(true)
     const rows = await inFlight
     if (!mounted.current) return
     setNotifications(rows)
@@ -107,7 +123,7 @@ export function useNotifications() {
         seenIds.current.add(payload.new.id)
 
         if (cache.userId === userId && cache.rows) {
-          cache = { userId, rows: [payload.new, ...cache.rows] }
+          updateCache(userId, [payload.new, ...cache.rows])
         }
         setNotifications(prev => [payload.new, ...prev])
         if (!payload.new.is_read) setUnreadCount(c => c + 1)
@@ -123,7 +139,7 @@ export function useNotifications() {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
     setUnreadCount(0)
     if (cache.userId === userId && cache.rows) {
-      cache = { userId, rows: cache.rows.map(n => ({ ...n, is_read: true })) }
+      updateCache(userId, cache.rows.map(n => ({ ...n, is_read: true })))
     }
     await supabase
       .from('notifications')
@@ -137,7 +153,7 @@ export function useNotifications() {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
     setUnreadCount(prev => Math.max(0, prev - 1))
     if (cache.userId === userId && cache.rows) {
-      cache = { userId, rows: cache.rows.map(n => n.id === id ? { ...n, is_read: true } : n) }
+      updateCache(userId, cache.rows.map(n => n.id === id ? { ...n, is_read: true } : n))
     }
     await supabase.from('notifications').update({ is_read: true }).eq('id', id)
   }, [userId])
@@ -148,7 +164,7 @@ export function useNotifications() {
     setNotifications(prev => prev.filter(n => n.id !== id))
     if (wasUnread) setUnreadCount(prev => Math.max(0, prev - 1))
     if (cache.userId === userId && cache.rows) {
-      cache = { userId, rows: cache.rows.filter(n => n.id !== id) }
+      updateCache(userId, cache.rows.filter(n => n.id !== id))
     }
     await supabase.from('notifications').delete().eq('id', id)
   }, [userId, notifications])

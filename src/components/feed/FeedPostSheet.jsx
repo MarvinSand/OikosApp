@@ -227,7 +227,7 @@ export default function FeedPostSheet({
                 {photoFile ? photoFile.name : 'Bild oder Video hinzufügen'}
               </span>
             </button>
-            <input ref={fileRef} type="file" accept="image/*,video/*" onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = '' }} style={{ display: 'none' }} />
+            <input ref={fileRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = '' }} style={{ display: 'none' }} />
 
             {/* Bibelstelle verknüpfen */}
             {verse ? (

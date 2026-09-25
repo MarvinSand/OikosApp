@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
+import { readCache, writeCache } from '../../lib/swrCache'
 import GuidedPrayerMode from '../prayer/GuidedPrayerMode'
 
 // Öffentliches Gebetsanliegen mit den meisten Interaktionen HEUTE
 // (🙏-Gebete + Kommentare von heute) – prominent auf der Home-Seite.
 export default function TopPrayerToday() {
-  const [request, setRequest] = useState(null)
-  const [interactions, setInteractions] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  // Gecachter Stand nur vom selben Tag – „heute" von gestern wäre falsch
+  const [cached] = useState(() => {
+    const c = readCache(user?.id, 'topPrayerToday')
+    return c && c.day === new Date().toDateString() ? c : null
+  })
+  const [request, setRequest] = useState(cached?.request ?? null)
+  const [interactions, setInteractions] = useState(cached?.interactions ?? 0)
+  const [loading, setLoading] = useState(!cached)
   const [showPrayer, setShowPrayer] = useState(false)
 
   // Vorher: 2 parallele Queries (Logs/Kommentare von heute) für's Ranking,
@@ -15,15 +23,16 @@ export default function TopPrayerToday() {
   // Kandidaten – 3 Requests mit echter Abhängigkeit dazwischen. Die
   // `get_top_prayer_today()`-RPC rankt und wählt serverseitig in einem Zug.
   async function load() {
-    setLoading(true)
     try {
-      const { data } = await supabase.rpc('get_top_prayer_today')
+      const { data, error } = await supabase.rpc('get_top_prayer_today')
+      if (error) return
       const top = data?.[0]
-      if (!top?.request) { setRequest(null); return }
-      setRequest(top.request)
-      setInteractions(top.interactions || 0)
+      const next = top?.request ? { request: top.request, interactions: top.interactions || 0 } : { request: null, interactions: 0 }
+      writeCache(user?.id, 'topPrayerToday', { ...next, day: new Date().toDateString() })
+      setRequest(next.request)
+      setInteractions(next.interactions)
     } catch {
-      setRequest(null)
+      /* Netzwerkfehler: bisherigen Stand behalten */
     } finally {
       setLoading(false)
     }

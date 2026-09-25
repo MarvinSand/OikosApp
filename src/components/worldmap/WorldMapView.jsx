@@ -406,7 +406,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
     updateLocationVisibility, updateLocationSettings,
   } = useWorldMap()
 
-  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
+  const { isLoaded, loadError } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
 
   const [map, setMap] = useState(null)
   const minZoomRef = useRef(2)
@@ -651,6 +651,23 @@ export default function WorldMapView({ onNavigateToProfile }) {
     showOikosPeople: oikosSource.active && isLoaded,
     zoom: snapZoom.currentZoom,
   })
+
+  // Google-Maps-Skript nicht ladbar (offline, oder API-Key lässt die App-
+  // Herkunft nicht zu): statt endlosem Spinner eine verständliche Meldung
+  if (loadError) {
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 32, textAlign: 'center', background: C.bgSec }}>
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }}>Die Karte konnte nicht geladen werden.</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>Bitte prüfe deine Internetverbindung und versuche es erneut.</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{ padding: '10px 20px', borderRadius: 24, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Erneut versuchen
+        </button>
+      </div>
+    )
+  }
 
   if (loading || !isLoaded) {
     return (

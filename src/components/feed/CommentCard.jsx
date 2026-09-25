@@ -5,6 +5,8 @@ import PostEngagementBar from './PostEngagementBar'
 import ShareSheet from './ShareSheet'
 import SavePostSheet from './SavePostSheet'
 import FeedCardFrame, { CONTENT_INSET } from './FeedCardFrame'
+import ModerationSheet from '../common/ModerationSheet'
+import { useBlocks } from '../../hooks/useBlocks'
 
 function timeAgo(iso) {
   const d = new Date(iso)
@@ -43,8 +45,10 @@ function CommentAvatar({ profile, size = 36 }) {
 export default function CommentCard({ comment, currentUserId, onLike, onRepost, onBookmark, onBookmarkSaved, onDelete, onClick, threadLineBefore, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
+  const [showModeration, setShowModeration] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const [showShareSheet, setShowShareSheet] = useState(false)
+  const { isBlocked } = useBlocks()
   const isOwn = comment.author_id === currentUserId
   const author = comment.profiles
 
@@ -52,6 +56,8 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
   const likeCount = (comment.likes || []).length
   const reposted = (comment.reposts || []).some(r => r.user_id === currentUserId)
   const repostCount = (comment.reposts || []).length
+
+  if (!isOwn && isBlocked(comment.author_id)) return null
 
   return (
     <FeedCardFrame threadLineBefore={threadLineBefore} threadLineAfter={threadLineAfter}>
@@ -75,6 +81,20 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
             {timeAgo(comment.created_at)}
           </span>
         </div>
+        {!isOwn && (
+          <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+            <MoreHorizontal size={16} />
+          </button>
+        )}
+        {showModeration && (
+          <ModerationSheet
+            contentType="feed_comment"
+            contentId={comment.id}
+            authorId={comment.author_id}
+            authorName={author?.full_name || author?.username}
+            onClose={() => setShowModeration(false)}
+          />
+        )}
         {isOwn && (
           <div style={{ position: 'relative' }}>
             <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>

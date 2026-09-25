@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare, MoreHorizontal } from 'lucide-react'
+import ModerationSheet from '../components/common/ModerationSheet'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import ShareSheet from '../components/feed/ShareSheet'
@@ -65,6 +66,7 @@ export default function FeedPostView() {
   const { user } = useAuth()
 
   const [post, setPost] = useState(null)
+  const [showModeration, setShowModeration] = useState(false)
   const [reactions, setReactions] = useState([])
   const [reposts, setReposts] = useState([])
   const [bookmarked, setBookmarked] = useState(false)
@@ -256,7 +258,22 @@ export default function FeedPostView() {
                 </span>
               )
             })()}
+            {post.author_id !== user?.id && (
+              <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+                <MoreHorizontal size={18} />
+              </button>
+            )}
           </div>
+          {showModeration && (
+            <ModerationSheet
+              contentType="feed_post"
+              contentId={post.id}
+              authorId={post.author_id}
+              authorName={post.profiles?.full_name || post.profiles?.username}
+              onClose={() => setShowModeration(false)}
+              onBlocked={() => navigate(-1)}
+            />
+          )}
 
           {/* Content */}
           <div style={{ padding: '0 16px 14px' }}>

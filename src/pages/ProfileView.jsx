@@ -104,7 +104,7 @@ function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
 export default function ProfileView() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { profile, loading: profileLoading, uploadAvatar } = useProfile()
+  const { profile, loading: profileLoading, uploadAvatar } = useProfile({ useCache: true })
   const {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
     loading: tabsLoading, reload, reactToPost, deletePost, toggleRepost, removeBookmark, markBookmarked,

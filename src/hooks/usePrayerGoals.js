@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 // Lädt Gebetsziele für Discover/Home/Meine/Community und erstellt neue.
 //
@@ -11,35 +12,48 @@ import { useAuth } from './useAuth'
 // serverseitig – ein einzelner Select auf der `my_prayer_goals`-View (die
 // nur ein `bucket`-Label ergänzt, RLS via security_invoker aber weiter
 // greifen lässt) liefert dieselbe Ergebnismenge in einem Request.
+function splitGoals(rows) {
+  if (!Array.isArray(rows)) return null
+  return {
+    myGoals: rows.filter(g => g.bucket === 'mine'),
+    communityGoals: rows.filter(g => g.bucket === 'community'),
+    sharedGoals: rows.filter(g => g.bucket === 'shared'),
+    publicGoals: sortByParticipants(rows.filter(g => g.bucket === 'public')),
+  }
+}
+
+function sortByParticipants(goals) {
+  return goals.sort((a, b) => (b.participant_count || 0) - (a.participant_count || 0) || b.created_at.localeCompare(a.created_at))
+}
+
 export function usePrayerGoals() {
   const { user } = useAuth()
-  const [publicGoals, setPublicGoals] = useState([])
-  const [myGoals, setMyGoals] = useState([])
-  const [communityGoals, setCommunityGoals] = useState([])
-  const [sharedGoals, setSharedGoals] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Zuletzt geladener Stand als Startwert (siehe swrCache.js)
+  const [cached] = useState(() => splitGoals(readCache(user?.id, 'prayerGoals')))
+  const [publicGoals, setPublicGoals] = useState(cached?.publicGoals ?? [])
+  const [myGoals, setMyGoals] = useState(cached?.myGoals ?? [])
+  const [communityGoals, setCommunityGoals] = useState(cached?.communityGoals ?? [])
+  const [sharedGoals, setSharedGoals] = useState(cached?.sharedGoals ?? [])
+  const [loading, setLoading] = useState(!cached)
 
   const load = useCallback(async () => {
     if (!user) return
-    setLoading(true)
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('my_prayer_goals')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(300)
 
+    if (error) { setLoading(false); return }
     const rows = data || []
+    writeCache(user.id, 'prayerGoals', rows)
     setMyGoals(rows.filter(g => g.bucket === 'mine'))
     setCommunityGoals(rows.filter(g => g.bucket === 'community'))
     setSharedGoals(rows.filter(g => g.bucket === 'shared'))
     // Featured/Discover-Ansicht sortiert nach Teilnehmerzahl statt Datum –
     // auf dem bereits geladenen (kleinen) Array, nicht per Extra-Query.
-    setPublicGoals(
-      rows
-        .filter(g => g.bucket === 'public')
-        .sort((a, b) => (b.participant_count || 0) - (a.participant_count || 0) || b.created_at.localeCompare(a.created_at))
-    )
+    setPublicGoals(sortByParticipants(rows.filter(g => g.bucket === 'public')))
 
     setLoading(false)
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -68,6 +82,7 @@ export function usePrayerGoals() {
     if (error) throw error
     setMyGoals(prev => [data, ...prev])
     if (data.visibility === 'public') setPublicGoals(prev => [data, ...prev])
+    load() // Cache (und bucket-Zuordnung) im Hintergrund auffrischen
     return data
   }
 
@@ -84,6 +99,7 @@ export function usePrayerGoals() {
     setMyGoals(p => p.filter(g => g.id !== goalId))
     setCommunityGoals(p => p.filter(g => g.id !== goalId))
     setSharedGoals(p => p.filter(g => g.id !== goalId))
+    load()
     return goal
   }
 

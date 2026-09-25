@@ -11,33 +11,91 @@ import { DEFAULT_STARRED_IDS } from '../lib/bibleVersionDefaults'
 // sich die Version wie in der YouVersion-App umschalten.
 export const DEFAULT_BIBLE_ID = '73'
 
+// ─── Kapitel-Cache ───
+// Jeder Kapitelabruf läuft über die bible-api Edge Function zu YouVersion
+// (in den Logs ~0,7 s, bei kalter Function deutlich mehr). Bibeltext ändert
+// sich nicht – zuletzt gelesene Kapitel deshalb lokal vorhalten: der Bibel-
+// Tab öffnet so sofort an der letzten Stelle, Zurückblättern ist instant.
+const CHAPTER_CACHE_KEY = 'oikos_bible_chapters_v1'
+const CHAPTER_CACHE_MAX = 30
+const chapterMem = new Map() // key -> html (Einfügereihenfolge = LRU)
+let chapterCacheLoaded = false
+
+function loadChapterCache() {
+  if (chapterCacheLoaded) return
+  chapterCacheLoaded = true
+  try {
+    const entries = JSON.parse(localStorage.getItem(CHAPTER_CACHE_KEY) || '[]')
+    for (const [k, v] of entries) chapterMem.set(k, v)
+  } catch { /* ignore */ }
+}
+
+function getCachedChapter(key) {
+  loadChapterCache()
+  if (!chapterMem.has(key)) return null
+  const html = chapterMem.get(key)
+  chapterMem.delete(key)
+  chapterMem.set(key, html)
+  return html
+}
+
+function putCachedChapter(key, html) {
+  loadChapterCache()
+  chapterMem.delete(key)
+  chapterMem.set(key, html)
+  while (chapterMem.size > CHAPTER_CACHE_MAX) chapterMem.delete(chapterMem.keys().next().value)
+  try {
+    localStorage.setItem(CHAPTER_CACHE_KEY, JSON.stringify([...chapterMem.entries()]))
+  } catch {
+    // Speicher voll: persistente Kopie verwerfen, im Speicher weitermachen
+    try { localStorage.removeItem(CHAPTER_CACHE_KEY) } catch { /* ignore */ }
+  }
+}
+
 // GET /v1/bibles/{id}/books/{book}/chapters/{chapter}/verses liefert nur eine
 // Referenzliste (id/passage_id/title) OHNE Bibeltext. Der eigentliche Text
 // kommt über GET /v1/bibles/{id}/passages/{referenz}?format=html (Feld
 // `content`), mit <span class="yv-v" v="N"> als Versmarker – siehe
 // wrapVersesInHtml für die Aufbereitung zu antippbaren Vers-Elementen.
 export function useChapterText(bibleId, book, chapter) {
-  const [html, setHtml] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const key = `${bibleId}:${book}.${chapter}`
+  const [state, setState] = useState(() => {
+    const cached = book && chapter ? getCachedChapter(key) : null
+    return { key, html: cached, loading: !cached, error: null }
+  })
+  const [retryToken, setRetryToken] = useState(0)
 
   useEffect(() => {
     if (!book || !chapter) return
+    const cached = getCachedChapter(key)
+    if (cached) {
+      setState({ key, html: cached, loading: false, error: null })
+      return
+    }
     let cancelled = false
-    setLoading(true)
-    setError(null)
+    setState({ key, html: null, loading: true, error: null })
     fetchBiblePath(`/v1/bibles/${bibleId}/passages/${book}.${chapter}?format=html`)
       .then(data => {
         if (cancelled) return
         const content = data?.data?.content ?? data?.content ?? ''
-        setHtml(wrapVersesInHtml(content))
+        const html = wrapVersesInHtml(content)
+        if (content) putCachedChapter(key, html)
+        setState({ key, html, loading: false, error: null })
       })
-      .catch(e => { if (!cancelled) setError(e.message) })
-      .finally(() => { if (!cancelled) setLoading(false) })
+      .catch(e => { if (!cancelled) setState({ key, html: null, loading: false, error: e.message }) })
     return () => { cancelled = true }
-  }, [bibleId, book, chapter])
+  }, [key, bibleId, book, chapter, retryToken])
 
-  return { html, loading, error }
+  // Beim Kapitelwechsel nie kurz den Text des vorherigen Kapitels zeigen –
+  // ein gecachtes Kapitel aber sofort (ohne „Lädt…"-Frame bis zum Effekt)
+  let current = state
+  if (state.key !== key) {
+    const cachedNow = book && chapter ? getCachedChapter(key) : null
+    current = cachedNow
+      ? { html: cachedNow, loading: false, error: null }
+      : { html: null, loading: true, error: null }
+  }
+  return { ...current, retry: () => setRetryToken(t => t + 1) }
 }
 
 function passageIdFor(book, chapter, verseStart, verseEnd) {
@@ -272,7 +330,7 @@ export function useRecentBibleColors(limit = 6) {
 
 // ─── Lokale Marker (eigene + aus YouVersion synchronisierte) ───
 
-export function useBibleMarkers(bibleId, book, chapter) {
+export function useBibleMarkers(bibleId, book, chapter, { youversionConnected = false } = {}) {
   const { user } = useAuth()
   const [highlights, setHighlights] = useState([])
   const [notes, setNotes] = useState([])
@@ -283,12 +341,29 @@ export function useBibleMarkers(bibleId, book, chapter) {
     if (!user || !book || !chapter) return
     setLoading(true)
 
+    const loadLocal = async () => {
+      const [h, n, b] = await Promise.all([
+        supabase.from('bible_highlights').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
+        supabase.from('bible_notes').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
+        supabase.from('bible_bookmarks').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
+      ])
+      if (!h.error) setHighlights(h.data || [])
+      if (!n.error) setNotes(n.data || [])
+      if (!b.error) setBookmarks(b.data || [])
+      setLoading(false)
+    }
+
+    // Eigene Marker sofort laden – vorher warteten sie auf den YouVersion-
+    // Sync unten (in den Logs ~1,8 s, teils mit 500ern).
+    await loadLocal()
+
     // Highlights aus der YouVersion-App für dieses Kapitel spiegeln. Die
     // YouVersion Platform API kennt keine "alle Highlights des Nutzers"-Liste,
     // nur GET /v1/highlights?bible_id=&passage_id=<BUCH>.<KAPITEL> - deshalb
     // bei jedem Kapitelaufruf synchronisieren statt über einen globalen
-    // "Sync"-Button. Nicht verbunden/Fehler -> einfach überspringen, lokale
-    // Highlights werden trotzdem geladen.
+    // "Sync"-Button. Nur für verbundene Konten (sonst wäre es ein garantiert
+    // fehlschlagender Round-Trip pro Kapitel); Fehler -> einfach überspringen.
+    if (!youversionConnected) return
     try {
       const data = await fetchBiblePath(`/v1/highlights?bible_id=${bibleId}&passage_id=${book}.${chapter}`, { asUser: true })
       const items = data?.data ?? []
@@ -308,22 +383,16 @@ export function useBibleMarkers(bibleId, book, chapter) {
             youversion_id: String(h.passage_id),
           }
         })
-        await supabase.from('bible_highlights').upsert(rows, { onConflict: 'user_id,source,youversion_id' })
+        const { error } = await supabase.from('bible_highlights').upsert(rows, { onConflict: 'user_id,source,youversion_id' })
+        if (!error) {
+          const { data } = await supabase.from('bible_highlights').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter)
+          if (data) setHighlights(data)
+        }
       }
     } catch {
-      /* nicht verbunden oder YouVersion-API-Fehler - lokale Highlights reichen */
+      /* YouVersion-API-Fehler - lokale Highlights reichen */
     }
-
-    const [h, n, b] = await Promise.all([
-      supabase.from('bible_highlights').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
-      supabase.from('bible_notes').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
-      supabase.from('bible_bookmarks').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
-    ])
-    setHighlights(h.data || [])
-    setNotes(n.data || [])
-    setBookmarks(b.data || [])
-    setLoading(false)
-  }, [user?.id, bibleId, book, chapter])
+  }, [user?.id, bibleId, book, chapter, youversionConnected])
 
   useEffect(() => { load() }, [load])
 
@@ -373,7 +442,23 @@ export function useBibleMarkers(bibleId, book, chapter) {
   return { highlights, notes, bookmarks, loading, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark, reload: load }
 }
 
+// Letzte Leseposition zusätzlich lokal: der Bibel-Tab kann so sofort an der
+// richtigen Stelle öffnen, statt erst Johannes 3 zu laden und nach dem
+// DB-Round-Trip zur gespeicherten Stelle zu springen (doppelter Kapitel-
+// Abruf + sichtbarer Sprung).
+const LOCAL_POSITION_KEY = 'oikos_bible_position'
+
+export function getLocalReadingPosition() {
+  try {
+    const pos = JSON.parse(localStorage.getItem(LOCAL_POSITION_KEY) || 'null')
+    return pos?.book && pos?.chapter ? pos : null
+  } catch {
+    return null
+  }
+}
+
 export async function saveReadingProgress(userId, { bibleId = DEFAULT_BIBLE_ID, book, chapter }) {
+  try { localStorage.setItem(LOCAL_POSITION_KEY, JSON.stringify({ book, chapter, bibleId: String(bibleId) })) } catch { /* ignore */ }
   await supabase.from('bible_reading_progress').upsert({
     user_id: userId, bible_id: bibleId, book, chapter, updated_at: new Date().toISOString(),
   })

@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
-  Moon, Globe, KeyRound, Camera, BookMarked,
+  Moon, Globe, KeyRound, Camera, BookMarked, Ban, FileText, Lock, Mail,
 } from 'lucide-react'
+import BlockedUsersSheet from '../components/common/BlockedUsersSheet'
+import { LEGAL, TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
@@ -11,6 +13,7 @@ import { useChangePassword } from '../hooks/useChangePassword'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
+import { isNativeApp } from '../lib/platform'
 import AddressAutocomplete from '../components/common/AddressAutocomplete'
 import { Avatar } from '../components/profile/ProfileTabs'
 
@@ -322,6 +325,7 @@ export default function SettingsView() {
   const [deleting, setDeleting] = useState(false)
   const [resending, setResending] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [showBlocked, setShowBlocked] = useState(false)
 
   // Datenschutz-Toggles
   const [showOnMap, setShowOnMap] = useState(false)
@@ -513,13 +517,18 @@ export default function SettingsView() {
               title="Ansicht & Datenschutz"
               onClick={() => setSection('privacy')}
             />
-            <SettingToggle
-              icon={BookMarked}
-              title="YouVersion"
-              desc={yv.connected ? (yv.email || 'Verbunden') : 'Nicht verbunden'}
-              checked={!!yv.connected}
-              onChange={() => yv.connected ? yv.disconnect() : yv.connect()}
-            />
+            {/* Verbinden läuft über einen OAuth-Redirect, der in der iOS-App
+                nicht zurückfindet – dort nur eine bestehende Verbindung
+                anzeigen/trennen. */}
+            {(!isNativeApp || yv.connected) && (
+              <SettingToggle
+                icon={BookMarked}
+                title="YouVersion"
+                desc={yv.connected ? (yv.email || 'Verbunden') : 'Nicht verbunden'}
+                checked={!!yv.connected}
+                onChange={() => yv.connected ? yv.disconnect() : yv.connect()}
+              />
+            )}
           </div>
 
           {/* Account */}
@@ -533,6 +542,22 @@ export default function SettingsView() {
               desc="Code per E-Mail erhalten"
               onClick={() => setShowChangePassword(true)}
             />
+            <MenuRow
+              icon={Ban}
+              title="Blockierte Nutzer"
+              desc="Blockierungen ansehen und aufheben"
+              onClick={() => setShowBlocked(true)}
+            />
+            <MenuRow icon={FileText} title="Nutzungsbedingungen" onClick={() => navigate(TERMS_PATH)} />
+            <MenuRow icon={Lock} title="Datenschutzerklärung" onClick={() => navigate(PRIVACY_PATH)} />
+            {LEGAL.contactEmail && (
+              <MenuRow
+                icon={Mail}
+                title="Kontakt & Hilfe"
+                desc={LEGAL.contactEmail}
+                onClick={() => { window.location.href = `mailto:${LEGAL.contactEmail}` }}
+              />
+            )}
             <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
               Ausloggen
             </button>
@@ -713,6 +738,8 @@ export default function SettingsView() {
       {showDelete && (
         <DeleteModal loading={deleting} onCancel={() => setShowDelete(false)} onConfirm={handleDelete} />
       )}
+
+      {showBlocked && <BlockedUsersSheet onClose={() => setShowBlocked(false)} />}
 
       {showChangePassword && (
         <ChangePasswordModal email={user?.email} onClose={() => setShowChangePassword(false)} />

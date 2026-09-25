@@ -1,5 +1,29 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Kaltstart: erste Requests nach Leerlauf 6–20 s – Ursache Backend, Abhilfe Cache + Warmhalten (Sep. 2026)
+
+**Befund (Supabase Edge-/PostgREST-Logs):** Warm antworten die Home-Requests in 50–150 ms, die RPCs selbst brauchen in der DB 1–26 ms. Nach ein paar Stunden ohne Nutzung brauchten beim ersten App-Start aber **alle** Requests 6–20 s (sogar ein simples `friendships`-Select). Zusätzlich: Jede erste Realtime-Verbindung nach Leerlauf weckt den Realtime-Dienst, der Replikations-Slots und `realtime.messages`-Partitionen anlegt – diese DDL feuert das `pgrst_ddl_watch`-Event-Trigger → PostgREST lädt den kompletten Schema-Cache neu (auf der kleinen Instanz 1–27 s, ~350 Reloads in 4 Wochen). Genau in diesen Fenstern hingen die Requests.
+
+**Fix/Abmilderung:**
+- `src/lib/swrCache.js`: Stale-while-revalidate-Cache (Speicher + localStorage, pro User, beim Logout geleert). Home, Gebete, Profil, Chats, Communities, Weltkarte rendern sofort den letzten Stand und aktualisieren still. Fehlgeschlagene Requests überschreiben den Cache **nie** mit leeren Listen (Fetcher werfen bei `error`).
+- `useAuth`: gespeicherte Session synchron aus localStorage → App rendert sofort, statt auf den Token-Refresh (nach >1 h der Normalfall) zu warten.
+- `realtime.js`: Realtime-Abos erst 4 s nach App-Start, damit der Realtime-Kaltstart nicht mit den ersten Queries konkurriert.
+- `useProfileTabs`: 6 unabhängige Bereiche parallel statt ~10 Round-Trips in Reihe. Bibel: Kapitel-Cache (LRU, 30 Kapitel) + letzte Leseposition lokal; eigene Marker nicht mehr hinter dem YouVersion-Sync.
+- `phase72_keep_warm.sql`: pg_cron pingt alle 4 Min. PostgREST + Auth über das API-Gateway.
+- Schriften lokal gebündelt (`src/fonts.css`) statt Google Fonts (render-blockierender externer Request, DSGVO).
+
+**Lektion:**
+- Bei „erster Start langsam" die **Edge-Logs nach Zeit gruppiert** ansehen (`response.origin_time`): Sind *alle* Requests gleichzeitig langsam, liegt es am Backend-Kaltstart, nicht an einzelnen Queries.
+- Die dauerhafte Lösung ist mehr Compute (Supabase → Settings → Compute). Client-seitig hilft nur: sofort aus Cache rendern, nichts Wichtiges hinter Realtime oder Token-Refresh blockieren.
+- Neue Hooks für Haupt-Tabs: Startwert aus `readCache`, nach Erfolg `writeCache`, bei Fehler alten Stand behalten. Formulare (z. B. SettingsView) **nicht** aus dem Cache befüllen – das spätere Eintreffen frischer Daten überschreibt sonst Eingaben.
+
+## App Store: Richtlinien-Pflichtpunkte (Stand Sep. 2026)
+
+- **Nutzerinhalte (1.2):** Melden (`ModerationSheet` → `content_reports`) an Beiträgen, Kommentaren, Gebeten, Chat-Nachrichten, Profilen; **Blockieren** (`user_blocks`, `phase71_user_blocks.sql`, RESTRICTIVE-RLS blendet Inhalte in beide Richtungen aus; SECURITY-DEFINER-RPCs filtern explizit über `is_blocked_pair()`); Zustimmung zu Nutzungsbedingungen mit Null-Toleranz bei der Registrierung. Neue Tabellen mit Nutzerinhalten → ebenfalls eine „Hide blocked users"-Policy anlegen, neue SECURITY-DEFINER-RPCs, die fremde Inhalte liefern → `is_blocked_pair()` filtern.
+- **Datenschutz (5.1.1):** `/privacy` und `/terms` sind öffentliche Routen (URLs für App Store Connect). Betreiberangaben kommen aus `VITE_LEGAL_NAME`, `VITE_LEGAL_ADDRESS`, `VITE_SUPPORT_EMAIL`. Privacy Manifest: `ios/App/App/PrivacyInfo.xcprivacy`.
+- **Native vs. Web:** `src/lib/platform.js` (`isNativeApp`, `publicOrigin()`). In der App ist `window.location.origin` = `capacitor://localhost` → nie für geteilte Links/E-Mail-Redirects verwenden. OAuth-Redirect-Flows (YouVersion) funktionieren in der App nicht → dort ausgeblendet (außerdem 4.8 „Mit Apple anmelden").
+- **KRITISCH – Migrationen wirklich ausführen:** phase44/45 lagen im Repo, waren aber nie in der DB → jeder App-Start produzierte einen 400er. Nach neuen Migrationen prüfen, ob Spalten/Funktionen live existieren (information_schema / Postgres-Logs „does not exist").
+
 ## iOS App Store: Capacitor + Fastlane match + GitHub Actions macOS-Runner (kein Mac nötig)
 
 **Ausgangslage (Sep. 2026):** Reine Vite/React-Web-App, Apple-Developer-Account vorhanden, aber kein Mac – Xcode kann nicht lokal laufen.

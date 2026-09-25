@@ -4,9 +4,10 @@ import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNot
 import { useAuth } from '../hooks/useAuth'
 import {
   useChapterText, useBibleMarkers, useBibleVersions, useFavoriteBibleVersions,
-  useSavedBibleColors, useRecentBibleColors, useReadingProgress, saveReadingProgress, DEFAULT_BIBLE_ID,
+  useSavedBibleColors, useRecentBibleColors, useReadingProgress, saveReadingProgress, getLocalReadingPosition, DEFAULT_BIBLE_ID,
 } from '../hooks/useBible'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
+import { isNativeApp } from '../lib/platform'
 import { useToast } from '../context/ToastContext'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
 import { HIGHLIGHT_COLORS, resolveHighlightColor } from '../lib/bibleColors'
@@ -26,13 +27,18 @@ export default function BibleView() {
   const { showToast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const contentRef = useRef(null)
-  const [book, setBook] = useState(() => parseBibleLinkParams(searchParams)?.book ?? 'JHN')
-  const [chapter, setChapter] = useState(() => parseBibleLinkParams(searchParams)?.chapter ?? 3)
+  const [book, setBook] = useState(() => parseBibleLinkParams(searchParams)?.book ?? getLocalReadingPosition()?.book ?? 'JHN')
+  const [chapter, setChapter] = useState(() => parseBibleLinkParams(searchParams)?.chapter ?? getLocalReadingPosition()?.chapter ?? 3)
   const [bibleId, setBibleId] = useState(() => {
     const fromLink = parseBibleLinkParams(searchParams)?.bibleId
     if (fromLink) return fromLink
+    if (!parseBibleLinkParams(searchParams) && getLocalReadingPosition()?.bibleId) return getLocalReadingPosition().bibleId
     try { return localStorage.getItem(BIBLE_ID_STORAGE_KEY) || DEFAULT_BIBLE_ID } catch { return DEFAULT_BIBLE_ID }
   })
+  // Hat der Nutzer schon selbst geblättert, darf die (bei kaltem Backend
+  // evtl. erst Sekunden später eintreffende) DB-Leseposition ihn nicht mehr
+  // zurückspringen lassen.
+  const userNavigatedRef = useRef(false)
   // Vers(e), auf die nach dem Laden des Kapitels gesprungen + kurz geflasht
   // werden soll (aus einem Deep-Link wie /bible?book=JHN&chapter=3&verse=16).
   const [pendingVerses, setPendingVerses] = useState(() => {
@@ -51,16 +57,16 @@ export default function BibleView() {
   const [sharePayload, setSharePayload] = useState(null) // { attachment, body } | null
 
   const bookInfo = findBook(book)
-  const { html, loading, error } = useChapterText(bibleId, book, chapter)
+  const { html, loading, error, retry: retryChapter } = useChapterText(bibleId, book, chapter)
   // Der volle ~1479-Übersetzungen-Katalog wird erst geladen, wenn der Picker
   // tatsächlich geöffnet wird - nicht schon beim Öffnen des Bibel-Tabs.
   const { versions: bibleVersions, loading: versionsLoading } = useBibleVersions({ enabled: showVersionPicker })
   const { favorites: favoriteVersionIds, toggleFavorite: toggleFavoriteVersion } = useFavoriteBibleVersions()
-  const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(bibleId, book, chapter)
+  const yv = useYouVersionAccount()
+  const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(bibleId, book, chapter, { youversionConnected: !!yv.connected })
   const { colors: savedColors, isSaved: isColorSaved, toggleColor: toggleSaveColor } = useSavedBibleColors()
   const { colors: recentColors, reload: reloadRecentColors } = useRecentBibleColors()
   const readingProgress = useReadingProgress()
-  const yv = useYouVersionAccount()
   // Solange der volle Katalog nicht geladen ist (Normalfall: Picker war noch
   // nie offen), reicht die Chip-Anzeige der aktuellen Übersetzung aus den
   // Defaults - deckt HFA (Standardwert) und die anderen Standard-Favoriten
@@ -85,7 +91,11 @@ export default function BibleView() {
   // gelesene Stelle statt Johannes 3 laden, sobald sie geladen ist.
   useEffect(() => {
     if (parseBibleLinkParams(searchParams)) return
-    if (!readingProgress) return
+    if (!readingProgress || userNavigatedRef.current) return
+    const sameSpot = readingProgress.book === book
+      && Number(readingProgress.chapter) === Number(chapter)
+      && (!readingProgress.bible_id || String(readingProgress.bible_id) === String(bibleId))
+    if (sameSpot) return
     setBook(readingProgress.book)
     setChapter(readingProgress.chapter)
     if (readingProgress.bible_id) setBibleId(String(readingProgress.bible_id))
@@ -127,6 +137,7 @@ export default function BibleView() {
   }, [html, pendingVerses])
 
   function selectVersion(id) {
+    userNavigatedRef.current = true
     setBibleId(String(id))
     try { localStorage.setItem(BIBLE_ID_STORAGE_KEY, String(id)) } catch { /* ignore */ }
     setShowVersionPicker(false)
@@ -197,6 +208,7 @@ export default function BibleView() {
   }
 
   function goToChapter(nextBook, nextChapter) {
+    userNavigatedRef.current = true
     setBook(nextBook)
     setChapter(nextChapter)
     setSelectedVerses(new Set())
@@ -286,8 +298,14 @@ export default function BibleView() {
         {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
         {error && (
           <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}>
-            Bibeltext konnte nicht geladen werden. Falls das dauerhaft passiert: der YouVersion-API-Pfad für
-            Bibeltext muss ggf. noch gegen die echte Doku (developers.youversion.com) angepasst werden.
+            Der Bibeltext konnte gerade nicht geladen werden. Bitte prüfe deine Internetverbindung.
+            <button
+              onClick={retryChapter}
+              className="block mt-3 px-4 py-2 rounded-full text-sm font-semibold"
+              style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
+            >
+              Erneut versuchen
+            </button>
           </div>
         )}
 
@@ -385,6 +403,8 @@ export default function BibleView() {
 
 function YouVersionBadge({ yv }) {
   if (yv.connected === null) return null
+  // Verbinden per OAuth-Redirect funktioniert nur im Browser (siehe Auth.jsx)
+  if (!yv.connected && isNativeApp) return null
   if (yv.connected) {
     return (
       <span

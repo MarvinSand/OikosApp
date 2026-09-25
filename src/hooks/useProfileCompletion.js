@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 // Schritte zur Profil-Vervollständigung mit Gewichtung (Summe = 100).
 // Jeder Schritt hat ein Ziel (Route), zu dem die Home-Karte navigiert.
@@ -62,14 +63,17 @@ const STEPS = [
 // serverseitig in einem Request.
 export function useProfileCompletion() {
   const { user } = useAuth()
-  const [status, setStatus] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [status, setStatus] = useState(() => readCache(user?.id, 'profileCompletion') ?? null)
+  const [loading, setLoading] = useState(() => readCache(user?.id, 'profileCompletion') === undefined)
 
   const load = useCallback(async () => {
     if (!user) { setLoading(false); return }
-    setLoading(true)
-    const { data } = await supabase.rpc('get_profile_completion_status')
-    setStatus(data?.[0] || null)
+    const { data, error } = await supabase.rpc('get_profile_completion_status')
+    if (!error) {
+      const next = data?.[0] || null
+      setStatus(next)
+      writeCache(user.id, 'profileCompletion', next)
+    }
     setLoading(false)
   }, [user?.id])
 

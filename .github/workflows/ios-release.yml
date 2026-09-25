@@ -27,6 +27,14 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          # Betreiber-/Kontaktangaben für Datenschutz & Nutzungsbedingungen
+          # (Repo → Settings → Secrets and variables → Actions → Variables)
+          VITE_LEGAL_NAME: ${{ vars.VITE_LEGAL_NAME }}
+          VITE_LEGAL_ADDRESS: ${{ vars.VITE_LEGAL_ADDRESS }}
+          VITE_SUPPORT_EMAIL: ${{ vars.VITE_SUPPORT_EMAIL }}
+          # Öffentliche Web-Adresse für geteilte Links/E-Mail-Bestätigungen
+          # aus der App (Default: https://oikosapp.net)
+          VITE_PUBLIC_APP_URL: ${{ vars.VITE_PUBLIC_APP_URL }}
 
       - name: Sync Capacitor iOS project
         run: npx cap sync ios

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 export function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371
@@ -29,17 +30,25 @@ function computeExpiresAt(data) {
   return null
 }
 
+// Gecachte Aktivitäten ohne die inzwischen abgelaufenen
+function withoutExpired(acts) {
+  const now = Date.now()
+  return (acts || []).filter(a => !a.expires_at || new Date(a.expires_at).getTime() > now)
+}
+
 export function useWorldMap() {
   const { user } = useAuth()
-  const [visibleUsers, setVisibleUsers] = useState([])
-  const [activities, setActivities] = useState([])
-  const [gemeinden, setGemeinden] = useState([])
-  const [myProfile, setMyProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Zuletzt geladener Stand als Startwert (siehe swrCache.js)
+  const [cached] = useState(() => readCache(user?.id, 'worldMap'))
+  const [visibleUsers, setVisibleUsers] = useState(cached?.visibleUsers ?? [])
+  const [activities, setActivities] = useState(() => withoutExpired(cached?.activities))
+  const [gemeinden, setGemeinden] = useState(cached?.gemeinden ?? [])
+  const [myProfile, setMyProfile] = useState(cached?.myProfile ?? null)
+  const [loading, setLoading] = useState(!cached)
 
   const loadData = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    if (!readCache(user.id, 'worldMap')) setLoading(true)
     try {
       const now = new Date().toISOString()
 
@@ -80,10 +89,18 @@ export function useWorldMap() {
           .not('longitude', 'is', null)
           .limit(500),
       ])
+      // Profil-Request fehlgeschlagen (z. B. offline): bisherigen Stand behalten
+      if (!profile) return
       setMyProfile(profile)
       setActivities(acts || [])
       setGemeinden(gems || [])
       setVisibleUsers(worldMapUsers || [])
+      writeCache(user.id, 'worldMap', {
+        myProfile: profile,
+        activities: acts || [],
+        gemeinden: gems || [],
+        visibleUsers: worldMapUsers || [],
+      })
     } finally {
       setLoading(false)
     }

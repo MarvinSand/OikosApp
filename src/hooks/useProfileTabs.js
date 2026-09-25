@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
@@ -52,13 +53,21 @@ async function attachReactions(rawPosts, currentUserId) {
  */
 export function useProfileTabs(profileUserId) {
   const { user } = useAuth()
-  const [maps, setMaps] = useState([])
-  const [posts, setPosts] = useState([])
-  const [reposts, setReposts] = useState([])
-  const [prayerRequests, setPrayerRequests] = useState([])
-  const [connectionsCount, setConnectionsCount] = useState(0)
-  const [publicCommunities, setPublicCommunities] = useState([])
-  const [loading, setLoading] = useState(true)
+  const cacheName = `profileTabs:${profileUserId}`
+  // Zuletzt geladener Stand als Startwert (siehe swrCache.js)
+  const [initial] = useState(() => (profileUserId ? readCache(user?.id, cacheName) : undefined))
+  const [maps, setMaps] = useState(initial?.maps ?? [])
+  const [posts, setPosts] = useState(initial?.posts ?? [])
+  const [reposts, setReposts] = useState(initial?.reposts ?? [])
+  const [prayerRequests, setPrayerRequests] = useState(initial?.prayerRequests ?? [])
+  const [connectionsCount, setConnectionsCount] = useState(initial?.connectionsCount ?? 0)
+  const [publicCommunities, setPublicCommunities] = useState(initial?.publicCommunities ?? [])
+  const [loading, setLoading] = useState(!initial)
+  // Zu welchem Profil die angezeigten Daten gehören – beim Wechsel von
+  // /user/A zu /user/B (gleiche Komponente) darf weder A's Stand unter B
+  // gecacht werden noch eine verspätete Antwort für A die Ansicht von B füllen.
+  const [dataFor, setDataFor] = useState(initial ? profileUserId : null)
+  const latestLoadRef = useRef(null)
 
   const isOwn = user?.id && profileUserId && user.id === profileUserId
 
@@ -68,42 +77,107 @@ export function useProfileTabs(profileUserId) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, profileUserId])
 
-  async function load() {
-    setLoading(true)
+  // Cache mit jedem Stand (auch nach Likes/Reposts/Löschen) synchron halten,
+  // damit beim nächsten Öffnen nichts Veraltetes aufblitzt. Eigenes Profil
+  // überlebt den App-Start, fremde Profile nur die Session.
+  useEffect(() => {
+    if (loading || !user || !profileUserId || dataFor !== profileUserId) return
+    writeCache(user.id, cacheName, {
+      maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
+    }, { persist: !!isOwn })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, dataFor, maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities])
 
-    // 1. Connections count (accepted friendships).
-    // Use the SECURITY-DEFINER RPC so the count also works on other users'
-    // profiles, where the friendships RLS would otherwise expose only the
-    // single connection shared with the current user (phase34 migration).
+  async function load() {
+    const forId = profileUserId
+    latestLoadRef.current = forId
+    const cached = readCache(user.id, cacheName)
+    if (cached) applySnapshot(cached, forId)
+    else setLoading(true)
+
+    // Die sechs Bereiche sind voneinander unabhängig und laufen parallel.
+    // Vorher lief alles nacheinander (~10 Round-Trips in Reihe) – der
+    // Profil-Tab brauchte dadurch ein Vielfaches der Zeit eines einzelnen
+    // Requests, bei kaltem Backend entsprechend viele Sekunden.
+    let results
+    try {
+      results = await Promise.all([
+        loadConnectionsCount(),
+        loadPublicCommunities(),
+        loadVisibleMaps(),
+        loadPosts(),
+        loadReposts(),
+        loadPrayerRequests(),
+      ])
+    } catch (err) {
+      // Netzwerk-/Serverfehler: gecachten Stand behalten statt leerer Tabs
+      console.error('[useProfileTabs] Laden fehlgeschlagen:', err)
+      if (latestLoadRef.current !== forId) return
+      if (cached) setLoading(false)
+      else applySnapshot({ connectionsCount: 0, publicCommunities: [], maps: [], posts: [], reposts: [], prayerRequests: [] }, forId)
+      return
+    }
+    // Inzwischen wurde ein anderes Profil geöffnet
+    if (latestLoadRef.current !== forId) return
+    const [connectionsCountNext, publicCommunitiesNext, mapsNext, postsNext, repostsNext, prayersNext] = results
+
+    const snapshot = {
+      connectionsCount: connectionsCountNext,
+      publicCommunities: publicCommunitiesNext,
+      maps: mapsNext,
+      posts: postsNext,
+      reposts: repostsNext,
+      prayerRequests: prayersNext,
+    }
+    applySnapshot(snapshot, forId)
+  }
+
+  function applySnapshot(snap, forId) {
+    setDataFor(forId)
+    setConnectionsCount(snap.connectionsCount)
+    setPublicCommunities(snap.publicCommunities)
+    setMaps(snap.maps)
+    setPosts(snap.posts)
+    setReposts(snap.reposts)
+    setPrayerRequests(snap.prayerRequests)
+    setLoading(false)
+  }
+
+  // 1. Connections count (accepted friendships).
+  // Use the SECURITY-DEFINER RPC so the count also works on other users'
+  // profiles, where the friendships RLS would otherwise expose only the
+  // single connection shared with the current user (phase34 migration).
+  async function loadConnectionsCount() {
     const { data: conns, error: connError } = await supabase
       .rpc('get_user_connections', { target_id: profileUserId })
-    if (connError) {
-      const { data: fr } = await supabase
-        .from('friendships')
-        .select('id')
-        .or(`requester_id.eq.${profileUserId},addressee_id.eq.${profileUserId}`)
-        .eq('status', 'accepted')
-      setConnectionsCount((fr || []).length)
-    } else {
-      setConnectionsCount((conns || []).length)
-    }
+    if (!connError) return (conns || []).length
+    const { data: fr } = await supabase
+      .from('friendships')
+      .select('id')
+      .or(`requester_id.eq.${profileUserId},addressee_id.eq.${profileUserId}`)
+      .eq('status', 'accepted')
+    return (fr || []).length
+  }
 
-    // 1b. Public communities the user is a member of
-    const { data: memberships } = await supabase
+  // 1b. Public communities the user is a member of
+  async function loadPublicCommunities() {
+    const { data: memberships, error } = await supabase
       .from('community_members')
       .select('communities(id, name, is_public)')
       .eq('user_id', profileUserId)
-    setPublicCommunities(
-      (memberships || [])
-        .map(m => m.communities)
-        .filter(c => c && c.is_public)
-    )
+    if (error) throw error
+    return (memberships || [])
+      .map(m => m.communities)
+      .filter(c => c && c.is_public)
+  }
 
-    // 2. Maps for visibility filtering
+  // 2. Maps for visibility filtering
+  async function loadVisibleMaps() {
     const mapsQuery = isOwn
       ? supabase.from('oikos_maps').select('*').eq('user_id', profileUserId).order('created_at')
       : supabase.from('oikos_maps').select('*').eq('user_id', profileUserId).neq('visibility', 'private').order('created_at')
-    const { data: mapsRaw } = await mapsQuery
+    const { data: mapsRaw, error: mapsError } = await mapsQuery
+    if (mapsError) throw mapsError
 
     let visibleMaps = mapsRaw || []
     if (!isOwn) {
@@ -138,9 +212,11 @@ export function useProfileTabs(profileUserId) {
       ;(peopleCounts || []).forEach(p => { countMap[p.map_id] = (countMap[p.map_id] || 0) + 1 })
       visibleMaps = visibleMaps.map(m => ({ ...m, personCount: countMap[m.id] || 0 }))
     }
-    setMaps(visibleMaps)
+    return visibleMaps
+  }
 
-    // 3. Posts (RLS handles visibility for non-public posts)
+  // 3. Posts (RLS handles visibility for non-public posts)
+  async function loadPosts() {
     let postsQuery = supabase
       .from('feed_posts')
       .select(POST_SELECT)
@@ -148,30 +224,33 @@ export function useProfileTabs(profileUserId) {
       .order('created_at', { ascending: false })
       .limit(50)
     if (!isOwn) postsQuery = postsQuery.eq('is_public', true)
-    const { data: postsData } = await postsQuery
-    setPosts(await attachReactions(postsData || [], user.id))
+    const { data: postsData, error } = await postsQuery
+    if (error) throw error
+    return attachReactions(postsData || [], user.id)
+  }
 
-    // 3b. Reposts (Beiträge, die dieser Nutzer geteilt/repostet hat)
-    const { data: repostRows } = await supabase
+  // 3b. Reposts (Beiträge, die dieser Nutzer geteilt/repostet hat)
+  async function loadReposts() {
+    const { data: repostRows, error } = await supabase
       .from('feed_reposts')
       .select('post_id, created_at')
       .eq('user_id', profileUserId)
       .order('created_at', { ascending: false })
+    if (error) throw error
     const repostPostIds = (repostRows || []).map(r => r.post_id)
-    if (repostPostIds.length > 0) {
-      const { data: repostedPosts } = await supabase
-        .from('feed_posts')
-        .select(POST_SELECT)
-        .in('id', repostPostIds)
-      const withEngagement = await attachReactions(repostedPosts || [], user.id)
-      const orderMap = new Map(repostPostIds.map((id, i) => [id, i]))
-      withEngagement.sort((a, b) => orderMap.get(a.id) - orderMap.get(b.id))
-      setReposts(withEngagement)
-    } else {
-      setReposts([])
-    }
+    if (repostPostIds.length === 0) return []
+    const { data: repostedPosts } = await supabase
+      .from('feed_posts')
+      .select(POST_SELECT)
+      .in('id', repostPostIds)
+    const withEngagement = await attachReactions(repostedPosts || [], user.id)
+    const orderMap = new Map(repostPostIds.map((id, i) => [id, i]))
+    withEngagement.sort((a, b) => orderMap.get(a.id) - orderMap.get(b.id))
+    return withEngagement
+  }
 
-    // 4. Prayer requests (personal + per-person)
+  // 4. Prayer requests (personal + per-person)
+  async function loadPrayerRequests() {
     const [personalQ, perPersonQ] = await Promise.all([
       isOwn
         ? supabase
@@ -188,23 +267,21 @@ export function useProfileTabs(profileUserId) {
       isOwn
         ? supabase
             .from('prayer_requests')
-            .select('id, content, is_answered, is_public, created_at')
+            .select('id, title, description, is_answered, is_public, created_at')
             .eq('owner_id', profileUserId)
             .order('created_at', { ascending: false })
         : supabase
             .from('prayer_requests')
-            .select('id, content, is_answered, is_public, created_at')
+            .select('id, title, description, is_answered, is_public, created_at')
             .eq('owner_id', profileUserId)
             .eq('is_public', true)
             .order('created_at', { ascending: false }),
     ])
-    const normalised = [
+    if (personalQ.error) throw personalQ.error
+    return [
       ...((personalQ.data || []).map(r => ({ id: r.id, title: r.title, description: r.description, category: r.category, is_answered: r.is_answered, is_public: r.visibility !== 'private', created_at: r.created_at, source: 'personal' }))),
-      ...((perPersonQ.data || []).map(r => ({ id: r.id, title: r.content, description: null, category: null, is_answered: r.is_answered, is_public: r.is_public, created_at: r.created_at, source: 'person' }))),
+      ...((perPersonQ.data || []).map(r => ({ id: r.id, title: r.title, description: r.description, category: null, is_answered: r.is_answered, is_public: r.is_public, created_at: r.created_at, source: 'person' }))),
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    setPrayerRequests(normalised)
-
-    setLoading(false)
   }
 
   async function reactToPost(postId, type) {

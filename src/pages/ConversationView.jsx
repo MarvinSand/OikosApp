@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye } from 'lucide-react'
+import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye, Flag } from 'lucide-react'
+import ModerationSheet from '../components/common/ModerationSheet'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChat } from '../hooks/useChat'
@@ -555,6 +556,7 @@ function MessageContextMenu({ msg, isOwn, anchorRect, onClose, onAction }) {
     { key: 'copy',    icon: Copy,         label: 'Kopieren', show: !!(msg.text || msg.bible_verse_text) },
     { key: msg.is_pinned ? 'unpin' : 'pin', icon: msg.is_pinned ? PinOff : Pin, label: msg.is_pinned ? 'Lösen' : 'Pinnen', show: true },
     { key: 'delete',  icon: Trash2,       label: 'Löschen', show: isOwn, danger: true },
+    { key: 'report',  icon: Flag,         label: 'Melden / Blockieren', show: !isOwn && !msg.is_deleted, danger: true },
   ].filter(a => a.show)
 
   return (
@@ -774,7 +776,7 @@ function PrayerAttachSheet({ onClose, onSelect }) {
       const { data } = await supabase
         .from('personal_prayer_requests')
         .select('id, title, description')
-        .eq('user_id', user.id)
+        .eq('owner_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50)
       setItems(data || [])
@@ -1441,6 +1443,7 @@ export default function ConversationView() {
 
   // Long-press / right-click menu state
   const [menuMsg, setMenuMsg] = useState(null)
+  const [reportMsg, setReportMsg] = useState(null)
   const [menuRect, setMenuRect] = useState(null)
   const [replyTo, setReplyTo] = useState(null)
   const [forwardMsg, setForwardMsg] = useState(null)
@@ -1621,6 +1624,10 @@ export default function ConversationView() {
     }
     if (action === 'forward') {
       setForwardMsg(m)
+      return
+    }
+    if (action === 'report') {
+      setReportMsg(m)
       return
     }
     if (action === 'copy') {
@@ -1959,6 +1966,16 @@ export default function ConversationView() {
           anchorRect={menuRect}
           onClose={closeMenu}
           onAction={handleMenuAction}
+        />
+      )}
+
+      {reportMsg && (
+        <ModerationSheet
+          contentType="message"
+          contentId={reportMsg.id}
+          authorId={reportMsg.sender_id}
+          authorName={reportMsg.profiles?.full_name || reportMsg.profiles?.username}
+          onClose={() => setReportMsg(null)}
         />
       )}
 

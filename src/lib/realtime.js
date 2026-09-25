@@ -19,6 +19,27 @@ import { supabase } from './supabase'
 
 const GRACE_MS = 30_000
 
+// Beim App-Start das Realtime-Abo kurz zurückstellen: Die erste Verbindung
+// nach Leerlauf weckt den Realtime-Dienst von Supabase, der dann in der
+// Datenbank Replikations-Slots und Tabellen-Partitionen anlegt. Das kostet
+// auf der kleinen Instanz viel CPU und löst außerdem ein Neuladen des
+// PostgREST-Schema-Caches aus – genau in dem Moment, in dem die Queries für
+// den ersten Bildschirm laufen (in den Logs: 9–20 s statt ~100 ms). Die paar
+// Sekunden Verzögerung sind unkritisch, weil jeder Hook seine Daten beim
+// Mount ohnehin frisch lädt; Realtime liefert nur spätere Änderungen.
+const STARTUP_DELAY_MS = 4000
+const appStartedAt = Date.now()
+
+function subscribeWhenReady(key, entry) {
+  const wait = appStartedAt + STARTUP_DELAY_MS - Date.now()
+  if (wait <= 0) { entry.channel.subscribe(); return }
+  setTimeout(() => {
+    // Kanal wurde in der Zwischenzeit wieder abgebaut
+    if (entries.get(key) !== entry) return
+    entry.channel.subscribe()
+  }, wait)
+}
+
 const entries = new Map() // key -> { channel, listeners:Set, closeTimer }
 
 export function subscribeShared(key, bindings, handler) {
@@ -40,9 +61,9 @@ export function subscribeShared(key, bindings, handler) {
         }
       })
     }
-    channel.subscribe()
     entry = { channel, listeners, closeTimer: null }
     entries.set(key, entry)
+    subscribeWhenReady(key, entry)
   }
 
   entry.listeners.add(handler)

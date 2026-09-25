@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  MoreVertical, Pencil, Check, Trash2, Pin, Lock, Globe,
+  MoreVertical, Pencil, Check, Trash2, Pin, Lock, Globe, Flag,
   MessageCircle, BookmarkPlus, Forward, ChevronDown, ChevronUp,
   CornerUpLeft,
 } from 'lucide-react'
@@ -13,6 +13,7 @@ import CommentInput from './CommentInput'
 import { useToast } from '../../context/ToastContext'
 import { summarizeLogs } from '../../hooks/usePrayerEngagement'
 import BibleReferenceChip from '../bible/BibleReferenceChip'
+import ModerationSheet from '../common/ModerationSheet'
 import {
   timeAgo, formatLastPrayed, getInitials, authorName as displayName, KIND_OIKOS,
   prayerContext,
@@ -178,6 +179,7 @@ export default function PrayerCard({
   const navigate = useNavigate()
   const [showPrayedBy, setShowPrayedBy] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [showModeration, setShowModeration] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [confetti, setConfetti] = useState(false)
@@ -442,11 +444,25 @@ export default function PrayerCard({
                       </button>
                     </>
                   )}
+                  {!isOwner && prayer.ownerId && (
+                    <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...menuItem, borderTop: '1px solid var(--color-border)', color: 'var(--color-error)' }}>
+                      <Flag size={15} /> Melden / Blockieren
+                    </button>
+                  )}
                 </div>
               </>
             )}
           </div>
         </div>
+        {showModeration && (
+          <ModerationSheet
+            contentType={prayer.kind === KIND_OIKOS ? 'prayer_request' : 'personal_prayer_request'}
+            contentId={prayer.id}
+            authorId={prayer.ownerId}
+            authorName={author?.full_name || author?.username}
+            onClose={() => setShowModeration(false)}
+          />
+        )}
 
         {/* Kommentar-Bereich */}
         {showComments && (

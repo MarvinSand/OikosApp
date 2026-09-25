@@ -2,8 +2,10 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, UserCheck, UserPlus, Clock, X, MessageCircle, Bell,
-  MapPin, Church, Map as MapIcon, Newspaper, HandHeart, Repeat2, ScrollText,
+  MapPin, Church, Map as MapIcon, Newspaper, HandHeart, Repeat2, ScrollText, MoreHorizontal, Ban,
 } from 'lucide-react'
+import ModerationSheet from '../components/common/ModerationSheet'
+import { useBlocks } from '../hooks/useBlocks'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
@@ -65,6 +67,8 @@ export default function UserProfile() {
   const [showNotifPrefs, setShowNotifPrefs] = useState(false)
   const [activeTab, setActiveTab] = useState('maps')
   const [overlay, setOverlay] = useState(null) // 'communities' | null
+  const [showModeration, setShowModeration] = useState(false)
+  const { isBlocked, unblock } = useBlocks()
   const { prefs, updatePref } = useNotificationPrefs(targetId)
   const birthdayBannerKey = `birthday_banner_${targetId}_${new Date().toDateString()}`
   const [bannerDismissed, setBannerDismissed] = useState(() => !!localStorage.getItem(birthdayBannerKey))
@@ -100,8 +104,8 @@ export default function UserProfile() {
       const { data: convId, error } = await supabase.rpc('start_direct_chat', { other_user_id: targetId })
       if (error) throw error
       navigate(`/chat/${convId}`)
-    } catch {
-      showToast('Fehler beim Öffnen des Chats', 'error')
+    } catch (e) {
+      showToast(e?.message?.includes('user_blocked') ? 'Chat nicht möglich – einer von euch hat den anderen blockiert' : 'Fehler beim Öffnen des Chats', 'error')
     } finally {
       setChatLoading(false)
     }
@@ -209,18 +213,49 @@ export default function UserProfile() {
             @{profile.username || '…'}
           </h2>
         </div>
-        <button
-          onClick={() => setShowNotifPrefs(true)}
-          aria-label="Benachrichtigungen"
-          title="Benachrichtigungen"
-          style={{ ...iconBtnStyle, position: 'relative', color: hasNotifPrefs ? 'var(--color-accent)' : 'var(--color-text)' }}
-        >
-          <Bell size={20} />
-          {hasNotifPrefs && (
-            <div style={{ position: 'absolute', top: 8, right: 8, width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-accent)' }} />
-          )}
-        </button>
+        <div className="flex items-center">
+          <button
+            onClick={() => setShowNotifPrefs(true)}
+            aria-label="Benachrichtigungen"
+            title="Benachrichtigungen"
+            style={{ ...iconBtnStyle, position: 'relative', color: hasNotifPrefs ? 'var(--color-accent)' : 'var(--color-text)' }}
+          >
+            <Bell size={20} />
+            {hasNotifPrefs && (
+              <div style={{ position: 'absolute', top: 8, right: 8, width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-accent)' }} />
+            )}
+          </button>
+          <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" title="Melden oder blockieren" style={iconBtnStyle}>
+            <MoreHorizontal size={20} />
+          </button>
+        </div>
       </header>
+
+      {showModeration && (
+        <ModerationSheet
+          contentType="user"
+          contentId={targetId}
+          authorId={targetId}
+          authorName={profile.full_name || profile.username}
+          onClose={() => setShowModeration(false)}
+          onBlocked={() => navigate(-1)}
+        />
+      )}
+
+      {isBlocked(targetId) && (
+        <div style={{ margin: '12px 16px 0', padding: '12px 14px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10, backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)', fontSize: 13 }}>
+          <Ban size={16} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>Du hast diese Person blockiert. Ihr seht gegenseitig keine Inhalte.</span>
+          <button
+            onClick={async () => {
+              try { await unblock(targetId); showToast('Blockierung aufgehoben') } catch { showToast('Aufheben fehlgeschlagen', 'error') }
+            }}
+            style={{ border: 'none', background: 'none', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+          >
+            Aufheben
+          </button>
+        </div>
+      )}
 
       {/* Geburtstags-Banner */}
       {showBirthdayBanner && (

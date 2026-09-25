@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 import {
   normalizePrayer, dedupePrayers, sortByCreatedDesc,
   KIND_OIKOS, KIND_PERSONAL,
@@ -24,6 +25,14 @@ export const PRAYER_SOURCES = [
 
 const PROFILE_SELECT = 'profiles!owner_id(id, username, full_name, gender, is_christian, avatar_url)'
 
+// Fehler weiterwerfen statt still als „keine Gebete" zu behandeln – sonst
+// würde ein Netzwerkfehler den gecachten Feed mit einer leeren Liste
+// überschreiben.
+function rowsOrThrow({ data, error }) {
+  if (error) throw error
+  return data || []
+}
+
 function applyStatus(query, statusFilter) {
   if (statusFilter === 'answered') return query.eq('is_answered', true)
   if (statusFilter === 'all') return query
@@ -32,23 +41,23 @@ function applyStatus(query, statusFilter) {
 
 // Verbundene Geschwister (akzeptierte Freundschaften).
 async function fetchSiblingIds(userId) {
-  const { data } = await supabase
+  const data = rowsOrThrow(await supabase
     .from('friendships')
     .select('requester_id, addressee_id')
     .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
-    .eq('status', 'accepted')
-  return (data || []).map(f => (f.requester_id === userId ? f.addressee_id : f.requester_id))
+    .eq('status', 'accepted'))
+  return data.map(f => (f.requester_id === userId ? f.addressee_id : f.requester_id))
 }
 
 // ── Einzelne Quellen ────────────────────────────────────────────────────
 
 // Öffentliche Anliegen (inkl. eigener) – der klassische For-You-Feed.
 async function fetchForYou(statusFilter, limit) {
-  const { data } = await applyStatus(
+  const data = rowsOrThrow(await applyStatus(
     supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`),
     statusFilter,
-  ).eq('visibility', 'public').order('created_at', { ascending: false }).limit(limit)
-  return (data || []).map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'personal' }))
+  ).eq('visibility', 'public').order('created_at', { ascending: false }).limit(limit))
+  return data.map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'personal' }))
 }
 
 // Öffentliche Oikos-Anliegen verbundener Geschwister.
@@ -58,12 +67,12 @@ async function fetchSiblingOikos(siblingIds, statusFilter, limit, source) {
   // auth.users, nicht auf profiles – PostgREST kann den Join nicht auflösen
   // und lässt die ganze Abfrage leer laufen. Profile werden in
   // attachPrayerContext() separat nachgeladen (wie usePrayerRequests.js).
-  const { data } = await applyStatus(
+  const data = rowsOrThrow(await applyStatus(
     supabase.from('prayer_requests').select('*'),
     statusFilter,
   ).in('owner_id', siblingIds).not('person_id', 'is', null).eq('is_public', true)
-    .order('created_at', { ascending: false }).limit(limit)
-  return (data || []).map(r => normalizePrayer(r, { kind: KIND_OIKOS, source }))
+    .order('created_at', { ascending: false }).limit(limit))
+  return data.map(r => normalizePrayer(r, { kind: KIND_OIKOS, source }))
 }
 
 // Anliegen verbundener Geschwister – persönliche und Oikos-Anliegen.
@@ -71,7 +80,7 @@ async function fetchSiblings(userId, statusFilter, limit) {
   const siblingIds = await fetchSiblingIds(userId)
   if (siblingIds.length === 0) return []
 
-  const [{ data: personal }, oikos] = await Promise.all([
+  const [personalRes, oikos] = await Promise.all([
     applyStatus(
       supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`),
       statusFilter,
@@ -79,6 +88,7 @@ async function fetchSiblings(userId, statusFilter, limit) {
       .order('created_at', { ascending: false }).limit(limit),
     fetchSiblingOikos(siblingIds, statusFilter, limit, 'sibling'),
   ])
+  const personal = rowsOrThrow(personalRes)
 
   return [
     ...(personal || []).map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'sibling' })),
@@ -99,56 +109,56 @@ async function fetchOikos(userId, statusFilter, limit) {
 }
 
 async function fetchOwnOikos(userId, statusFilter, limit) {
-  const { data: maps } = await supabase.from('oikos_maps').select('id').eq('user_id', userId)
-  const mapIds = (maps || []).map(m => m.id)
+  const maps = rowsOrThrow(await supabase.from('oikos_maps').select('id').eq('user_id', userId))
+  const mapIds = maps.map(m => m.id)
   if (mapIds.length === 0) return []
 
-  const { data: people } = await supabase.from('oikos_people').select('id').in('map_id', mapIds)
-  const peopleIds = (people || []).map(p => p.id)
+  const people = rowsOrThrow(await supabase.from('oikos_people').select('id').in('map_id', mapIds))
+  const peopleIds = people.map(p => p.id)
   if (peopleIds.length === 0) return []
 
-  const { data } = await applyStatus(
+  const data = rowsOrThrow(await applyStatus(
     supabase.from('prayer_requests').select('*'),
     statusFilter,
-  ).in('person_id', peopleIds).order('created_at', { ascending: false }).limit(limit)
+  ).in('person_id', peopleIds).order('created_at', { ascending: false }).limit(limit))
 
-  return (data || []).map(r => normalizePrayer(r, { kind: KIND_OIKOS, source: 'oikos' }))
+  return data.map(r => normalizePrayer(r, { kind: KIND_OIKOS, source: 'oikos' }))
 }
 
 // Anliegen aus allen Communities, in denen der Nutzer Mitglied ist.
 async function fetchCommunities(userId, statusFilter, limit) {
-  const { data: memberships } = await supabase
-    .from('community_members').select('community_id').eq('user_id', userId)
-  const communityIds = (memberships || []).map(m => m.community_id)
+  const memberships = rowsOrThrow(await supabase
+    .from('community_members').select('community_id').eq('user_id', userId))
+  const communityIds = memberships.map(m => m.community_id)
   if (communityIds.length === 0) return []
 
-  const { data } = await applyStatus(
+  const data = rowsOrThrow(await applyStatus(
     supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`),
     statusFilter,
   ).eq('visibility', 'community').in('visibility_community_id', communityIds)
-    .order('created_at', { ascending: false }).limit(limit)
+    .order('created_at', { ascending: false }).limit(limit))
 
-  return (data || []).map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'community' }))
+  return data.map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'community' }))
 }
 
 // Gebete, die in einem Chat geteilt wurden (Direktnachricht oder Community).
 async function fetchShared(userId, statusFilter, limit) {
-  const { data: memberships } = await supabase
-    .from('conversation_members').select('conversation_id').eq('user_id', userId)
-  const convIds = (memberships || []).map(m => m.conversation_id)
+  const memberships = rowsOrThrow(await supabase
+    .from('conversation_members').select('conversation_id').eq('user_id', userId))
+  const convIds = memberships.map(m => m.conversation_id)
   if (convIds.length === 0) return []
 
-  const { data: msgs } = await supabase
+  const msgs = rowsOrThrow(await supabase
     .from('messages')
     .select('personal_prayer_request_id, prayer_request_id, created_at')
     .in('conversation_id', convIds)
     .eq('type', 'prayer_request')
     .neq('is_deleted', true)
     .order('created_at', { ascending: false })
-    .limit(limit)
+    .limit(limit))
 
-  const personalIds = [...new Set((msgs || []).map(m => m.personal_prayer_request_id).filter(Boolean))]
-  const oikosIds = [...new Set((msgs || []).map(m => m.prayer_request_id).filter(Boolean))]
+  const personalIds = [...new Set(msgs.map(m => m.personal_prayer_request_id).filter(Boolean))]
+  const oikosIds = [...new Set(msgs.map(m => m.prayer_request_id).filter(Boolean))]
   if (personalIds.length === 0 && oikosIds.length === 0) return []
 
   const [{ data: personal }, { data: oikos }] = await Promise.all([
@@ -259,21 +269,36 @@ export async function fetchPrayersBySource(source, userId, statusFilter = 'open'
 
 export function usePrayerFeed(source = 'all', statusFilter = 'open') {
   const { user } = useAuth()
-  const [prayers, setPrayers] = useState([])
-  const [loading, setLoading] = useState(true)
+  const cacheName = `prayerFeed:${source}:${statusFilter}`
+  const [prayers, setPrayers] = useState(() => readCache(user?.id, cacheName) ?? [])
+  const [loading, setLoading] = useState(() => readCache(user?.id, cacheName) === undefined)
+  // Beim schnellen Filterwechsel darf eine verspätete Antwort für den alten
+  // Filter nicht die Liste des neuen überschreiben
+  const latestRef = useRef(cacheName)
 
   const load = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    latestRef.current = cacheName
+    // Gecachten Stand (siehe swrCache.js) sofort zeigen, still aktualisieren
+    const cached = readCache(user.id, cacheName)
+    if (cached !== undefined) {
+      setPrayers(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     try {
-      setPrayers(await fetchPrayersBySource(source, user.id, statusFilter))
+      const fresh = await fetchPrayersBySource(source, user.id, statusFilter)
+      writeCache(user.id, cacheName, fresh)
+      if (latestRef.current !== cacheName) return
+      setPrayers(fresh)
     } catch (err) {
       console.error('[usePrayerFeed] Laden fehlgeschlagen:', err)
-      setPrayers([])
+      if (latestRef.current === cacheName && cached === undefined) setPrayers([])
     } finally {
-      setLoading(false)
+      if (latestRef.current === cacheName) setLoading(false)
     }
-  }, [source, statusFilter, user?.id])
+  }, [cacheName, source, statusFilter, user?.id])
 
   useEffect(() => { load() }, [load])
 

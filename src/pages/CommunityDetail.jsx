@@ -789,9 +789,15 @@ function SettingsSheet({
     showToast('Code erneuert ✓')
   }
 
-  function copyCode() {
-    navigator.clipboard.writeText(community.invite_code || '')
-    showToast('Code kopiert ✓')
+  async function copyCode() {
+    // Vorher „kopiert" auch dann, wenn die Zwischenablage (z. B. im iOS-
+    // WebView ohne Nutzergeste) den Zugriff verweigert hat
+    try {
+      await navigator.clipboard.writeText(community.invite_code || '')
+      showToast('Code kopiert ✓')
+    } catch {
+      showToast(`Code: ${community.invite_code || ''}`, 'info')
+    }
   }
 
   return (
