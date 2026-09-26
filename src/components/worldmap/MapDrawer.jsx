@@ -224,15 +224,21 @@ export default function MapDrawer({
     // damit es im eingeklappten Zustand nicht hinter/über der Nav hervorschaut.
     <div style={{
       position: 'absolute', left: 0, right: 0, top: 0,
-      bottom: 'var(--bottom-nav-h, 64px)',
-      // z-index ÜBER der Bottom-Nav (z-40 in BottomNav.jsx): ein z-index
-      // unter der Nav wurde kurzzeitig versucht, hat aber bei jeder auch nur
-      // kleinen Unterschätzung von --bottom-nav-h die komplette Pill-Leiste
-      // (Geschwister/Events/Gemeinden) hinter der Nav verschwinden lassen -
-      // ein viel schlimmerer Ausfall als der ursprüngliche, seltene Fall
-      // (Nav überdeckt ein paar Pixel des Sheets). Die Begrenzung durch
-      // `bottom`/`overflow: hidden` verhindert Overlap ohnehin in der Praxis.
-      overflow: 'hidden', pointerEvents: 'none', zIndex: 45,
+      // +8px Puffer über der Nav statt direkt an --bottom-nav-h zu enden:
+      // die letzten beiden Versuche (zIndex über vs. unter der Nav, siehe
+      // Git-Historie) haben nur verschoben, WER bei einer Unterschätzung von
+      // --bottom-nav-h gewinnt (Nav verdeckt Sheet-Pixel vs. Sheet verdeckt
+      // Nav-Icons) - das eigentliche Problem war die fehlende Distanz
+      // zwischen beiden. Mit 8px Abstand bleibt eine kleine Messungenauigkeit
+      // (z.B. iOS WKWebView, bei dem env(safe-area-inset-bottom) beim allerersten
+      // Layout kurzzeitig 0 statt des echten Werts liefert) folgenlos, statt
+      // sofort in eines der beiden Overlap-Symptome zu kippen.
+      bottom: 'calc(var(--bottom-nav-h, 64px) + 8px)',
+      // z-index UNTER der Bottom-Nav: sollte der Puffer oben trotzdem einmal
+      // nicht reichen, gewinnt die echte (undurchsichtige) Nav und schneidet
+      // höchstens ein paar Pixel vom Sheet ab - sichtbar unauffälliger als
+      // wenn das Sheet die Nav-Icons verdeckt.
+      overflow: 'hidden', pointerEvents: 'none', zIndex: 35,
     }}>
       {/* Klick auf die Karte bei ausgeklapptem Menü schließt es wieder */}
       {level !== 'closed' && (

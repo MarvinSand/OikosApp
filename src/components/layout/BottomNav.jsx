@@ -26,15 +26,31 @@ export default function BottomNav() {
   // Echte (intrinsische) Nav-Höhe messen statt zu erraten - eine erzwungene
   // Fixhöhe hatte hier zuletzt selbst einen sichtbaren schwarzen Leerraum
   // unter Icons/Labels erzeugt, weil sie größer war als tatsächlich gebraucht.
+  //
+  // In der iOS-App (Capacitor/WKWebView) liefert env(safe-area-inset-bottom)
+  // beim allerersten Layout-Pass manchmal noch 0 und springt erst kurz danach
+  // auf den echten Wert (bekannter WebKit-Timing-Bug) - ohne dass sich dabei
+  // die Größe des Elements nochmal ändert (die geänderte Padding-Berechnung
+  // fällt in denselben Frame), wodurch der ResizeObserver das nicht als neue
+  // Größe registriert. Der Nav-Höhe misst deshalb zusätzlich verzögert nach
+  // (zwei rAF-Ticks + ein 300ms-Timeout als Netz), damit --bottom-nav-h sich
+  // notfalls noch korrigiert statt dauerhaft zu klein zu bleiben.
   useLayoutEffect(() => {
     const el = navRef.current
     if (!el) return
     const setVar = () => document.documentElement.style.setProperty('--bottom-nav-h', el.offsetHeight + 'px')
     setVar()
+    const raf1 = requestAnimationFrame(() => requestAnimationFrame(setVar))
+    const timeout = setTimeout(setVar, 300)
     const ro = new ResizeObserver(setVar)
     ro.observe(el)
     window.addEventListener('resize', setVar)
-    return () => { ro.disconnect(); window.removeEventListener('resize', setVar) }
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', setVar)
+      cancelAnimationFrame(raf1)
+      clearTimeout(timeout)
+    }
   }, [])
 
   return (
