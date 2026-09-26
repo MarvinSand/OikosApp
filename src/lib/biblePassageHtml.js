@@ -8,14 +8,21 @@
 // Vers hier in einen eigenen <span data-verse="N" class="bible-verse">
 // gewrappt – danach lässt sich Vers N direkt per closest('[data-verse]')
 // treffen und farblich hinterlegen.
+//
+// Poesie (Psalmen etc.) verteilt EINEN Vers über mehrere Zeilen-<div>s
+// (class="q1"/"q2"/…) - nur die ERSTE Zeile enthält den "yv-v"-Marker, die
+// Fortsetzungszeile(n) haben gar keinen eigenen Marker. `currentVerse` läuft
+// deshalb über alle Container hinweg weiter (statt pro Container neu bei
+// null zu starten), sonst bleiben Fortsetzungszeilen nach einem Komma/
+// Zeilenumbruch unmarkiert und lassen sich nicht mit auswählen.
 export function wrapVersesInHtml(html) {
   if (!html) return html
   const doc = new DOMParser().parseFromString(html, 'text/html')
+  let currentVerse = null
 
   doc.querySelectorAll('div.p, div.m, div.q, div.q1, div.q2, div.li, div.li1').forEach(container => {
     const children = Array.from(container.childNodes)
     let currentWrapper = null
-    let currentVerse = null
 
     for (const node of children) {
       if (node.nodeType === 1 && node.classList?.contains('yv-v')) {
@@ -26,6 +33,12 @@ export function wrapVersesInHtml(html) {
         container.insertBefore(currentWrapper, node)
         currentWrapper.appendChild(node)
         continue
+      }
+      if (!currentWrapper && currentVerse != null) {
+        currentWrapper = doc.createElement('span')
+        currentWrapper.className = 'bible-verse'
+        currentWrapper.setAttribute('data-verse', currentVerse)
+        container.insertBefore(currentWrapper, node)
       }
       if (currentWrapper) {
         currentWrapper.appendChild(node)
@@ -64,11 +77,19 @@ export function verseTextFromContainer(container, verseNums) {
   if (!container || !verseNums?.length) return ''
   return verseNums
     .map(n => {
-      const el = container.querySelector(`[data-verse="${n}"]`)
-      if (!el) return ''
-      const clone = el.cloneNode(true)
-      clone.querySelectorAll('.yv-v, .yv-vlbl').forEach(m => m.remove())
-      return clone.textContent.trim()
+      // Ein Vers kann (Poesie, siehe wrapVersesInHtml) über mehrere
+      // Zeilen-Container verteilt sein - also ALLE Spans mit dieser
+      // Versnummer sammeln, nicht nur die erste (querySelector).
+      const els = container.querySelectorAll(`[data-verse="${n}"]`)
+      if (!els.length) return ''
+      return Array.from(els)
+        .map(el => {
+          const clone = el.cloneNode(true)
+          clone.querySelectorAll('.yv-v, .yv-vlbl').forEach(m => m.remove())
+          return clone.textContent.trim()
+        })
+        .filter(Boolean)
+        .join(' ')
     })
     .filter(Boolean)
     .join(' ')
