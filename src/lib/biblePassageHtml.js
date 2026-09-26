@@ -77,11 +77,19 @@ export function verseTextFromContainer(container, verseNums) {
   if (!container || !verseNums?.length) return ''
   return verseNums
     .map(n => {
-      const el = container.querySelector(`[data-verse="${n}"]`)
-      if (!el) return ''
-      const clone = el.cloneNode(true)
-      clone.querySelectorAll('.yv-v, .yv-vlbl').forEach(m => m.remove())
-      return clone.textContent.trim()
+      // Ein Vers kann (Poesie, siehe wrapVersesInHtml) über mehrere
+      // Zeilen-Container verteilt sein - also ALLE Spans mit dieser
+      // Versnummer sammeln, nicht nur die erste (querySelector).
+      const els = container.querySelectorAll(`[data-verse="${n}"]`)
+      if (!els.length) return ''
+      return Array.from(els)
+        .map(el => {
+          const clone = el.cloneNode(true)
+          clone.querySelectorAll('.yv-v, .yv-vlbl').forEach(m => m.remove())
+          return clone.textContent.trim()
+        })
+        .filter(Boolean)
+        .join(' ')
     })
     .filter(Boolean)
     .join(' ')

@@ -16,7 +16,11 @@ export const DEFAULT_BIBLE_ID = '73'
 // (in den Logs ~0,7 s, bei kalter Function deutlich mehr). Bibeltext ändert
 // sich nicht – zuletzt gelesene Kapitel deshalb lokal vorhalten: der Bibel-
 // Tab öffnet so sofort an der letzten Stelle, Zurückblättern ist instant.
-const CHAPTER_CACHE_KEY = 'oikos_bible_chapters_v1'
+// v2: wrapVersesInHtml wurde gefixt (Poesie-Zeilen ohne eigenen Vers-Marker
+// wurden nicht mehr markiert) - alte v1-Cache-Einträge enthalten noch das
+// falsch gewrappte HTML und müssen verworfen werden, sonst bleibt der Bug
+// trotz Code-Fix für bereits besuchte Kapitel bestehen.
+const CHAPTER_CACHE_KEY = 'oikos_bible_chapters_v2'
 const CHAPTER_CACHE_MAX = 30
 const chapterMem = new Map() // key -> html (Einfügereihenfolge = LRU)
 let chapterCacheLoaded = false
