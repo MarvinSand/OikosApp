@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, ArrowDownNarrowWide, ArrowUpNarrowWide, Clock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { parseGermanReference } from '../../lib/bibleBooks'
@@ -13,12 +13,41 @@ const ReportSheet = lazy(() => import('../discipleship/ReportSheet'))
 // für die reine Anzeige (toggleExpand) reicht bible_reference als Label.
 const CREED_LINE_SELECT = 'body, bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end'
 
+// Sortierung für "Meine Bekenntnisse" - analog zur Sortierung im Gebetsmodus
+// (PrayerModeSetupSheet), nur mit "am längsten nicht bekannt" statt Zufällig,
+// weil hier ein Abhak-Zähler pro Bekenntnis existiert.
+const SORTS = [
+  { key: 'newest', label: 'Zuletzt hochgeladen',      icon: ArrowDownNarrowWide },
+  { key: 'oldest', label: 'Zuerst hochgeladen',        icon: ArrowUpNarrowWide },
+  { key: 'stale',  label: 'Am längsten nicht bekannt', icon: Clock },
+]
+
+function sortOwnCreeds(creeds, sortBy, confessionByCreed) {
+  const sorted = [...creeds]
+  if (sortBy === 'oldest') {
+    sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  } else if (sortBy === 'stale') {
+    sorted.sort((a, b) => {
+      const la = confessionByCreed[a.id]?.lastConfessedAt
+      const lb = confessionByCreed[b.id]?.lastConfessedAt
+      if (!la && !lb) return 0
+      if (!la) return -1
+      if (!lb) return 1
+      return new Date(la) - new Date(lb)
+    })
+  } else {
+    sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  }
+  return sorted
+}
+
 export default function CreedsTab() {
   const { user } = useAuth()
 
   const [ownCreeds, setOwnCreeds] = useState([])
   const [publicCreeds, setPublicCreeds] = useState([])
   const [publicSearch, setPublicSearch] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
   const [loading, setLoading] = useState(true)
   const [confessionByCreed, setConfessionByCreed] = useState({})
   const [expandedId, setExpandedId] = useState(null)
@@ -34,7 +63,7 @@ export default function CreedsTab() {
   async function loadAll() {
     setLoading(true)
     const [{ data: mine }, { data: allPublic }] = await Promise.all([
-      supabase.from('creeds').select('id, title, visibility, visibility_community_id, visibility_user_ids, updated_at').eq('user_id', user.id).order('updated_at', { ascending: false }),
+      supabase.from('creeds').select('id, title, visibility, visibility_community_id, visibility_user_ids, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('creeds').select('id, title, user_id, updated_at, profiles:user_id (username, full_name)').eq('visibility', 'public').order('updated_at', { ascending: false }),
     ])
 
@@ -48,10 +77,12 @@ export default function CreedsTab() {
 
     const allIds = [...(mine || []).map(c => c.id), ...others.map(c => c.id)]
     if (allIds.length > 0) {
-      const { data: confessions } = await supabase.from('creed_confessions').select('creed_id, count').eq('user_id', user.id).in('creed_id', allIds)
+      const { data: confessions } = await supabase.from('creed_confessions').select('creed_id, count, last_confessed_at').eq('user_id', user.id).in('creed_id', allIds)
       const map = {}
-      for (const c of confessions || []) map[c.creed_id] = c.count
+      for (const c of confessions || []) map[c.creed_id] = { count: c.count, lastConfessedAt: c.last_confessed_at }
       setConfessionByCreed(map)
+    } else {
+      setConfessionByCreed({})
     }
     setLoading(false)
   }
@@ -89,8 +120,8 @@ export default function CreedsTab() {
 
   async function confess(creedId) {
     const nowIso = new Date().toISOString()
-    const next = (confessionByCreed[creedId] || 0) + 1
-    setConfessionByCreed(prev => ({ ...prev, [creedId]: next }))
+    const next = (confessionByCreed[creedId]?.count || 0) + 1
+    setConfessionByCreed(prev => ({ ...prev, [creedId]: { count: next, lastConfessedAt: nowIso } }))
     setHistoryByCreed(prev => prev[creedId]
       ? { ...prev, [creedId]: [{ id: `optimistic-${nowIso}`, confessed_at: nowIso }, ...prev[creedId]] }
       : prev)
@@ -120,6 +151,7 @@ export default function CreedsTab() {
   }
 
   const filteredPublic = publicCreeds.filter(c => !publicSearch.trim() || c.title.toLowerCase().includes(publicSearch.trim().toLowerCase()))
+  const sortedOwnCreeds = sortOwnCreeds(ownCreeds, sortBy, confessionByCreed)
 
   return (
     <>
@@ -141,12 +173,36 @@ export default function CreedsTab() {
             {ownCreeds.length === 0 && (
               <p className="mb-6" style={{ fontSize: 13.5, color: 'var(--color-text-tertiary)' }}>Du hast noch kein eigenes Bekenntnis erstellt.</p>
             )}
+            {ownCreeds.length > 1 && (
+              <div className="flex items-center gap-1.5 mb-3 overflow-x-auto">
+                {SORTS.map(s => {
+                  const Icon = s.icon
+                  const active = sortBy === s.key
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => setSortBy(s.key)}
+                      className="flex items-center gap-1.5 flex-shrink-0"
+                      style={{
+                        padding: '6px 12px', borderRadius: 999,
+                        border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                        backgroundColor: active ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
+                        color: active ? '#fff' : 'var(--color-text-secondary)',
+                        fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <Icon size={13} /> {s.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             <div className="space-y-2 mb-6">
-              {ownCreeds.map(c => (
+              {sortedOwnCreeds.map(c => (
                 <CreedRow
                   key={c.id} creed={c} isOwn isOfficial={false}
                   expanded={expandedId === c.id} lines={linesByCreed[c.id]}
-                  confessionCount={confessionByCreed[c.id] || 0}
+                  confessionCount={confessionByCreed[c.id]?.count || 0}
                   historyOpen={historyOpenId === c.id} history={historyByCreed[c.id]}
                   onToggleExpand={() => toggleExpand(c)}
                   onEdit={() => openOwnCreed(c)}
@@ -173,7 +229,7 @@ export default function CreedsTab() {
                 <CreedRow
                   key={c.id} creed={c} isOwn={false} isOfficial={c.user_id === null}
                   expanded={expandedId === c.id} lines={linesByCreed[c.id]}
-                  confessionCount={confessionByCreed[c.id] || 0}
+                  confessionCount={confessionByCreed[c.id]?.count || 0}
                   historyOpen={historyOpenId === c.id} history={historyByCreed[c.id]}
                   onToggleExpand={() => toggleExpand(c)}
                   onAdopt={() => adoptCreed(c)}

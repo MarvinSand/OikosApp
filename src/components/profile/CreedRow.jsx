@@ -17,7 +17,7 @@ export function CreedRow({
   onToggleExpand, onEdit, onAdopt, onReport, onConfess, onToggleHistory, onOpenLine,
 }) {
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+    <div className="rounded-2xl" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
       <div className="flex items-center gap-1.5 pl-1 pr-3 py-2">
         <button onClick={onToggleExpand} className="flex-1 flex items-center gap-2 min-w-0 text-left px-2.5 py-1.5">
           <ChevronDown size={16} style={{ color: 'var(--color-text-tertiary)', transform: expanded ? 'rotate(180deg)' : 'none', flexShrink: 0, transition: 'transform 0.15s' }} />

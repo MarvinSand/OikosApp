@@ -208,10 +208,15 @@ export default function CreedEditorSheet({ initial, onClose, onSaved }) {
       </div>
 
       {versePickerFor !== null && (
-        <VersePickerSheet
-          onClose={() => setVersePickerFor(null)}
-          onSelect={(att) => { updateLine(versePickerFor, { verse: att }); setVersePickerFor(null) }}
-        />
+        // Eigener Stacking-Kontext mit höherem z-index als das Editor-Sheet
+        // (z-50 oben) - VersePickerSheet selbst ist fest auf z-40 gesetzt und
+        // würde sonst hinter dem Editor-Sheet verschwinden.
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
+          <VersePickerSheet
+            onClose={() => setVersePickerFor(null)}
+            onSelect={(att) => { updateLine(versePickerFor, { verse: att }); setVersePickerFor(null) }}
+          />
+        </div>
       )}
     </>
   )
