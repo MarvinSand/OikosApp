@@ -10,7 +10,7 @@
        sichtbar, nur als Absicherung falls die Nav aus irgendeinem Grund noch
        nicht gemountet ist. Bewusst eher knapp (64px) statt großzügig: ein zu
        hoher Wert erzeugt selbst einen sichtbaren Leerraum unter der Nav. */
-    --bottom-nav-h: calc(64px + env(safe-area-inset-bottom, 0px));
+    --bottom-nav-h: calc(55px + env(safe-area-inset-bottom, 0px));
 
     /* Phase 27: clean black/white/babyblue palette */
     --color-bg:             #FFFFFF;
@@ -43,6 +43,9 @@
     --color-text-light:     #AEAEB2;
 
     --color-surface-blur:   rgba(255,255,255,0.92);
+    /* Bottom-Nav (Glas + Slider) */
+    --nav-glass:            rgba(255,255,255,0.86);
+    --nav-pill:             rgba(0,0,0,0.06);
 
     /* ── Premium elevation scale (theme-aware, soft & consistent) ── */
     --shadow-xs:     0 1px 2px rgba(16,24,40,0.05);
@@ -96,6 +99,8 @@
     --color-text-light:     #6E6E73;
 
     --color-surface-blur:   rgba(28,28,30,0.92);
+    --nav-glass:            rgba(12,12,14,0.86);
+    --nav-pill:             rgba(255,255,255,0.11);
 
     /* ── Premium elevation (dark needs deeper, softer shadows) ── */
     --shadow-xs:     0 1px 2px rgba(0,0,0,0.40);
@@ -224,7 +229,7 @@
 
 /* Bottom-Padding only on Mobile (for the Bottom-Nav) */
 .mobile-nav-padding {
-  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--bottom-nav-h, calc(55px + env(safe-area-inset-bottom, 0px))) + 24px);
 }
 @media (min-width: 768px) {
   .mobile-nav-padding {
@@ -248,7 +253,7 @@
 /* Bodenfreiheit im Chat, damit die Eingabeleiste direkt über der Bottom-Nav
    sitzt (Höhe der Nav inkl. Safe-Area). Auf Desktop keine Nav -> 0. */
 .chat-nav-clearance {
-  padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: var(--bottom-nav-h, calc(55px + env(safe-area-inset-bottom, 0px)));
 }
 @media (min-width: 768px) {
   .chat-nav-clearance {
@@ -264,7 +269,7 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 42rem; /* = md:max-w-2xl */
-  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  bottom: var(--bottom-nav-h, calc(55px + env(safe-area-inset-bottom, 0px)));
   z-index: 35;
 }
 @media (min-width: 768px) {
@@ -330,3 +335,60 @@
 .legal-content a { color: var(--color-accent); text-decoration: underline; }
 .legal-content strong { color: var(--color-text); }
 .legal-content .legal-meta { font-size: 12px; color: var(--color-text-tertiary); }
+
+/* ─── Bottom-Nav: Instagram-Stil (Glas, nur Icons, gleitender Slider) ─── */
+.bottom-nav {
+  background: var(--nav-glass);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+  border-top: 0.5px solid var(--color-border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.bottom-nav-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  height: 54px;
+  padding: 0 6px;
+}
+.bottom-nav-slider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  width: calc((100% - 12px) / 5); /* 5 Tabs */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  /* leichter Overshoot = „federnd" wie native iOS-Animationen */
+  transition: transform 0.45s cubic-bezier(0.34, 1.36, 0.64, 1), opacity 0.2s ease;
+  will-change: transform;
+}
+.bottom-nav-slider-pill {
+  width: 54px;
+  height: 36px;
+  border-radius: 18px;
+  background: var(--nav-pill);
+}
+.bottom-nav-item {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease;
+}
+.bottom-nav-item.is-active { color: var(--color-text); }
+.bottom-nav-item svg { transition: transform 0.18s ease; }
+.bottom-nav-item:active svg { transform: scale(0.86); }
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav-slider, .bottom-nav-item svg { transition: none; }
+}

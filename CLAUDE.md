@@ -1,5 +1,12 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Nav-/Weltkarten-Overlap nur in TestFlight (Sep. 2026) – zwei echte Ursachen
+
+1. **Doppelte Viewport-Höhe:** `App.jsx` gibt dem äußeren Container `h-[100dvh]` + `padding-top: env(safe-area-inset-top)`. Shell/Seiten darin hatten nochmal `100dvh` → in der iOS-App ragte alles ~59pt (Dynamic Island) unten aus dem Bild, die Weltkarten-Leiste lag über den Nav-Icons. Im Browser ist die Safe-Area 0 → nie reproduzierbar. Fix: innen überall `h-full`/`100%`.
+2. **ResizeObserver sah die Safe-Area nicht:** Standard-Beobachtung ist die Content-Box; die Safe-Area steckt im `padding-bottom` der Nav. Greift sie verspätet, bleibt `--bottom-nav-h` dauerhaft zu klein. Fix: `ro.observe(el, { box: 'border-box' })`.
+
+**Lektion:** Native-only Layoutbugs mit simulierten Safe-Areas im Headless-Browser prüfen (Container-Padding 59px oben / 34px unten setzen, `getBoundingClientRect()` gegen `innerHeight` messen) – statt z-index hin und her zu drehen.
+
 ## Kaltstart: erste Requests nach Leerlauf 6–20 s – Ursache Backend, Abhilfe Cache + Warmhalten (Sep. 2026)
 
 **Befund (Supabase Edge-/PostgREST-Logs):** Warm antworten die Home-Requests in 50–150 ms, die RPCs selbst brauchen in der DB 1–26 ms. Nach ein paar Stunden ohne Nutzung brauchten beim ersten App-Start aber **alle** Requests 6–20 s (sogar ein simples `friendships`-Select). Zusätzlich: Jede erste Realtime-Verbindung nach Leerlauf weckt den Realtime-Dienst, der Replikations-Slots und `realtime.messages`-Partitionen anlegt – diese DDL feuert das `pgrst_ddl_watch`-Event-Trigger → PostgREST lädt den kompletten Schema-Cache neu (auf der kleinen Instanz 1–27 s, ~350 Reloads in 4 Wochen). Genau in diesen Fenstern hingen die Requests.
@@ -186,7 +193,7 @@ useEffect(() => {
 
 **Lösung (bewährt, in `ConversationView` + `CommunityDetail`):**
 1. Seite muss eine **full-screen route** sein → in `src/App.jsx` zu `isFullScreenRoute` hinzufügen (sonst greift `.mobile-nav-padding` zusätzlich und erzeugt die Lücke).
-2. Root-Container: `style={{ height: '100dvh' }}` + `flex flex-col` — **nicht** `h-full`, und **kein** Nav-Padding am Root.
+2. Root-Container: `style={{ height: '100%' }}` + `flex flex-col`, **kein** Nav-Padding am Root. **Nie `100dvh` innerhalb der App-Shell** – der App-Container hat oben `padding: env(safe-area-inset-top)`, eine weitere volle Viewport-Höhe ragt in der iOS-App um die Notch-Höhe (~59pt) unten aus dem Bildschirm (im Browser ist der Wert 0 → Bug nur in TestFlight sichtbar).
 3. Eingabeleiste bekommt `className="chat-input-bar"` → `position: fixed; bottom: calc(68px + safe-area)` (genau über der Nav), zentriert, `max-width: 42rem`, `z-index: 35`. Definiert in `src/index.css` (`.chat-input-bar`). Dadurch klebt sie unten und bewegt sich nie.
 4. Scrollbare Nachrichtenliste: `paddingBottom: calc(132px + env(safe-area-inset-bottom, 0px))`, damit die letzte Nachricht nicht hinter Leiste + Nav verschwindet.
 5. Weitere scrollbare Tabs derselben Seite (ohne fixe Leiste): `paddingBottom: calc(~84px + env(safe-area-inset-bottom, 0px))` für Nav-Freiraum.

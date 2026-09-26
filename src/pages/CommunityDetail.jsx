@@ -1242,7 +1242,7 @@ export default function CommunityDetail() {
   const hasBanner = !!community.banner_url
 
   return (
-    <div className="flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full" style={{ height: '100dvh', paddingBottom: 'var(--bottom-nav-h, 64px)' }}>
+    <div className="flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full" style={{ height: '100%', paddingBottom: 'var(--bottom-nav-h, 64px)' }}>
 
       {/* ── Header ───────────────────────────────────────────── */}
       {/* Ohne eigenes Bannerbild bleibt der Kopf ruhig und theme-abhängig –

@@ -103,7 +103,12 @@ function AppShellInner() {
     location.pathname.startsWith('/community/')
 
   return (
-    <div className="h-[100dvh] flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
+    // h-full statt h-[100dvh]: der Eltern-Container (App) hat oben
+    // padding: env(safe-area-inset-top). Eine weitere volle Viewport-Höhe
+    // darin ragte in der iOS-App um genau diese Notch-Höhe (~59pt) unten aus
+    // dem Bildschirm – im Browser ist der Wert 0, deshalb trat der Versatz
+    // (Weltkarte-Leiste über den Nav-Icons) nur in TestFlight auf.
+    <div className="h-full flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
       <SideNav />
 
       <div

@@ -1,13 +1,16 @@
 import { useLayoutEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, BookOpen, Globe, Book, User } from 'lucide-react'
+import { Home, HandHeart, Globe, BookOpen, User } from 'lucide-react'
 
+// Instagram-artige Tab-Leiste: nur Icons, halbtransparentes „Glas" über dem
+// Inhalt und ein Slider, der dem aktiven Tab federnd hinterhergleitet.
+// Labels stehen weiterhin als aria-label für VoiceOver bereit.
 const tabs = [
-  { path: '/',                   icon: Home,       label: 'Home',         match: ['/']                          },
-  { path: '/prayers',            icon: BookOpen,   label: 'For You',      match: ['/friends', '/prayer', '/prayers'] },
-  { path: '/worldmap',           icon: Globe,      label: 'Weltkarte',    match: ['/worldmap'], featured: true  },
-  { path: '/bible',              icon: Book,       label: 'Bibel',        match: ['/bible']                     },
-  { path: '/profile',            icon: User,       label: 'Profil',       match: ['/profile']                   },
+  { path: '/',         icon: Home,      label: 'Home',      match: ['/'] },
+  { path: '/prayers',  icon: HandHeart, label: 'For You',   match: ['/friends', '/prayer', '/prayers'] },
+  { path: '/worldmap', icon: Globe,     label: 'Weltkarte', match: ['/worldmap'] },
+  { path: '/bible',    icon: BookOpen,  label: 'Bibel',     match: ['/bible'] },
+  { path: '/profile',  icon: User,      label: 'Profil',    match: ['/profile'] },
 ]
 
 function isPathActive(currentPath, match) {
@@ -23,79 +26,69 @@ export default function BottomNav() {
   const navigate = useNavigate()
   const navRef = useRef(null)
 
-  // Echte (intrinsische) Nav-Höhe messen statt zu erraten - eine erzwungene
-  // Fixhöhe hatte hier zuletzt selbst einen sichtbaren schwarzen Leerraum
-  // unter Icons/Labels erzeugt, weil sie größer war als tatsächlich gebraucht.
-  //
-  // In der iOS-App (Capacitor/WKWebView) liefert env(safe-area-inset-bottom)
-  // beim allerersten Layout-Pass manchmal noch 0 und springt erst kurz danach
-  // auf den echten Wert (bekannter WebKit-Timing-Bug) - ohne dass sich dabei
-  // die Größe des Elements nochmal ändert (die geänderte Padding-Berechnung
-  // fällt in denselben Frame), wodurch der ResizeObserver das nicht als neue
-  // Größe registriert. Der Nav-Höhe misst deshalb zusätzlich verzögert nach
-  // (zwei rAF-Ticks + ein 300ms-Timeout als Netz), damit --bottom-nav-h sich
-  // notfalls noch korrigiert statt dauerhaft zu klein zu bleiben.
+  // Echte Nav-Höhe (inkl. Home-Indicator) als --bottom-nav-h bereitstellen –
+  // Weltkarten-Sheet, FABs und Chat-Leisten richten sich danach. In der
+  // iOS-App kann env(safe-area-inset-bottom) beim allerersten Layout noch 0
+  // sein, deshalb zusätzlich verzögert nachmessen.
   useLayoutEffect(() => {
     const el = navRef.current
     if (!el) return
     const setVar = () => document.documentElement.style.setProperty('--bottom-nav-h', el.offsetHeight + 'px')
     setVar()
-    const raf1 = requestAnimationFrame(() => requestAnimationFrame(setVar))
+    const raf = requestAnimationFrame(() => requestAnimationFrame(setVar))
     const timeout = setTimeout(setVar, 300)
     const ro = new ResizeObserver(setVar)
-    ro.observe(el)
+    // border-box: die Safe-Area steckt im padding-bottom. Standardmäßig
+    // meldet ResizeObserver nur Änderungen der Content-Box – wenn die
+    // Safe-Area in der iOS-App verspätet greift, blieb --bottom-nav-h
+    // dadurch dauerhaft ~34px zu klein (Weltkarten-Leiste über der Nav).
+    ro.observe(el, { box: 'border-box' })
     window.addEventListener('resize', setVar)
     return () => {
       ro.disconnect()
       window.removeEventListener('resize', setVar)
-      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf)
       clearTimeout(timeout)
     }
   }, [])
 
+  const activeIndex = tabs.findIndex(t => isPathActive(location.pathname, t.match))
+
   return (
     <nav
       ref={navRef}
-      className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md flex justify-around items-stretch px-1 z-40"
-      style={{
-        backgroundColor: 'var(--color-bg)',
-        borderTop: '1px solid var(--color-border)',
-        paddingTop: 8,
-        paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
-      }}
+      aria-label="Hauptnavigation"
+      className="bottom-nav md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40"
     >
-      {tabs.map(({ path, icon: Icon, label, featured, match }) => {
-        const isActive = isPathActive(location.pathname, match)
+      <div className="bottom-nav-row">
+        {/* Slider: gleitet per transform zum aktiven Tab (GPU, kein Layout) */}
+        <span
+          aria-hidden="true"
+          className="bottom-nav-slider"
+          style={{
+            transform: `translateX(${Math.max(activeIndex, 0) * 100}%)`,
+            opacity: activeIndex < 0 ? 0 : 1,
+          }}
+        >
+          <span className="bottom-nav-slider-pill" />
+        </span>
 
-        return (
-          <button
-            key={path}
-            onClick={() => navigate(path)}
-            className="flex flex-col items-center justify-center gap-1 flex-1 py-1.5"
-            style={{
-              color: isActive ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <Icon
-              size={featured ? 26 : 22}
-              strokeWidth={isActive ? 2.4 : 2}
-            />
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: isActive ? 600 : 500,
-                lineHeight: 1,
-                letterSpacing: '-0.01em',
-              }}
+        {tabs.map(({ path, icon: Icon, label, match }) => {
+          const isActive = isPathActive(location.pathname, match)
+          return (
+            <button
+              key={path}
+              type="button"
+              onClick={() => navigate(path)}
+              aria-label={label}
+              aria-current={isActive ? 'page' : undefined}
+              className={`bottom-nav-item${isActive ? ' is-active' : ''}`}
             >
-              {label}
-            </span>
-          </button>
-        )
-      })}
+              <Icon size={25} strokeWidth={isActive ? 2.3 : 1.7} />
+            </button>
+          )
+        })}
+      </div>
     </nav>
   )
 }
