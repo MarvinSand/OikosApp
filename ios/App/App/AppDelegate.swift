@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,6 +8,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Zwei Anzeige-Fixes (Weltkarte/Nav-Overlap, Gebetsziel-Fortschritt)
+        // blieben nach einem TestFlight-Update reproduzierbar unverändert,
+        // obwohl das hochgeladene Build das gefixte JS/CSS nachweislich
+        // enthielt (im Xcode-Log geprüft). Ursache: bei einem In-Place-
+        // Update (nicht Löschen+Neuinstallieren) bleibt der App-Container
+        // erhalten, inkl. WKWebViews eigenem Disk-Cache. WKWebView cached
+        // Antworten des lokalen Bundle-Handlers teils wie normale HTTP-
+        // Antworten (bekanntes Capacitor/WebKit-Verhalten) - die App führt
+        // dadurch stillschweigend weiter die JS/CSS-Version der vorherigen
+        // Installation aus, unabhängig davon, wie oft neue Builds hochgeladen
+        // werden. Deshalb bei jedem Kaltstart, BEVOR die WebView irgendetwas
+        // lädt, gezielt nur den Cache leeren - NICHT localStorage/Cookies/
+        // IndexedDB, damit die Login-Session (siehe useAuth.js) erhalten
+        // bleibt.
+        let cacheTypes: Set<String> = [
+            WKWebsiteDataTypeDiskCache,
+            WKWebsiteDataTypeMemoryCache,
+            WKWebsiteDataTypeOfflineWebApplicationCache,
+            WKWebsiteDataTypeFetchCache,
+        ]
+        WKWebsiteDataStore.default().removeData(ofTypes: cacheTypes, modifiedSince: .distantPast) {}
+        URLCache.shared.removeAllCachedResponses()
+
         // Override point for customization after application launch.
         return true
     }
