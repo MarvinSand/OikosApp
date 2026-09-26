@@ -173,7 +173,7 @@ export default function CreedsTab() {
             {ownCreeds.length === 0 && (
               <p className="mb-6" style={{ fontSize: 13.5, color: 'var(--color-text-tertiary)' }}>Du hast noch kein eigenes Bekenntnis erstellt.</p>
             )}
-            {ownCreeds.length > 1 && (
+            {ownCreeds.length > 0 && (
               <div className="flex items-center gap-1.5 mb-3 overflow-x-auto">
                 {SORTS.map(s => {
                   const Icon = s.icon

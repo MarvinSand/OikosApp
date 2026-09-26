@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { X } from 'lucide-react'
-import { useChapterText, DEFAULT_BIBLE_ID } from '../../hooks/useBible'
+import { useChapterText, useBibleVersions, useFavoriteBibleVersions, DEFAULT_BIBLE_ID } from '../../hooks/useBible'
 import { formatReferenceLabel } from '../../lib/bibleLink'
 import { verseTextFromContainer } from '../../lib/biblePassageHtml'
+import { DEFAULT_STARRED_VERSIONS } from '../../lib/bibleVersionDefaults'
 import BookChapterPicker from './BookChapterPicker'
+import VersionPicker from './VersionPicker'
 
 const BIBLE_ID_STORAGE_KEY = 'oikos_bible_version_id'
 
@@ -17,19 +19,30 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
   const [book, setBook] = useState(null)
   const [chapter, setChapter] = useState(null)
   const [selectedVerses, setSelectedVerses] = useState(new Set())
+  const [showVersionPicker, setShowVersionPicker] = useState(false)
+  const [bibleId, setBibleId] = useState(() => initialBibleId
+    ?? (() => { try { return localStorage.getItem(BIBLE_ID_STORAGE_KEY) } catch { return null } })()
+    ?? DEFAULT_BIBLE_ID)
   const contentRef = useRef(null)
 
-  const effectiveBibleId = initialBibleId
-    ?? (() => { try { return localStorage.getItem(BIBLE_ID_STORAGE_KEY) } catch { return null } })()
-    ?? DEFAULT_BIBLE_ID
+  const { versions: bibleVersions, loading: versionsLoading } = useBibleVersions({ enabled: showVersionPicker })
+  const { favorites: favoriteVersionIds, toggleFavorite: toggleFavoriteVersion } = useFavoriteBibleVersions()
+  const currentVersionMeta = DEFAULT_STARRED_VERSIONS.find(v => String(v.id) === String(bibleId))
+    ?? bibleVersions?.find(v => String(v.id) === String(bibleId))
 
-  const { html, loading, error } = useChapterText(effectiveBibleId, book, chapter)
+  const { html, loading, error } = useChapterText(bibleId, book, chapter)
 
   function handleBookSelect(code, ch) {
     setBook(code)
     setChapter(ch)
     setSelectedVerses(new Set())
     setStep('verse')
+  }
+
+  function selectVersion(id) {
+    setBibleId(id)
+    try { localStorage.setItem(BIBLE_ID_STORAGE_KEY, String(id)) } catch { /* ignore */ }
+    setShowVersionPicker(false)
   }
 
   function handleContentClick(e) {
@@ -70,7 +83,7 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
   function handleConfirm() {
     const verseText = nums.length ? verseTextFromContainer(contentRef.current, nums) : ''
     onSelect({
-      bibleId: effectiveBibleId,
+      bibleId,
       book, chapter,
       verseStart: verseStart ?? null,
       verseEnd: verseEnd ?? null,
@@ -85,12 +98,21 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <button onClick={() => setStep('book')} className="text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
           Buch wechseln
         </button>
-        <h2 className="font-bold" style={{ color: 'var(--color-text)' }}>{referenceLabel}</h2>
         <button onClick={onClose}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
+      </div>
+      <div className="flex items-center justify-between px-4 pb-3">
+        <h2 className="font-bold" style={{ color: 'var(--color-text)' }}>{referenceLabel}</h2>
+        <button
+          onClick={() => setShowVersionPicker(true)}
+          className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+          style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-accent)' }}
+        >
+          {currentVersionMeta?.localized_abbreviation || currentVersionMeta?.abbreviation || 'Übersetzung'}
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
@@ -125,6 +147,18 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
           Vers übernehmen
         </button>
       </div>
+
+      {showVersionPicker && (
+        <VersionPicker
+          versions={bibleVersions}
+          loading={versionsLoading}
+          currentId={bibleId}
+          favorites={favoriteVersionIds}
+          onToggleFavorite={toggleFavoriteVersion}
+          onSelect={selectVersion}
+          onClose={() => setShowVersionPicker(false)}
+        />
+      )}
     </div>
   )
 }
