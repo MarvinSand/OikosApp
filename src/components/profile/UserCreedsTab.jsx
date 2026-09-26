@@ -8,6 +8,10 @@ const BiblePassageSheet = lazy(() => import('../discipleship/BiblePassageSheet')
 const ReportSheet = lazy(() => import('../discipleship/ReportSheet'))
 const CreedEditorSheet = lazy(() => import('../discipleship/CreedEditorSheet'))
 
+// Volle Bibelstellen-Spalten (siehe phase74) fürs Übernehmen ins eigene
+// Bekenntnis - für die reine Anzeige (toggleExpand) reicht bible_reference.
+const CREED_LINE_SELECT = 'body, bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end'
+
 // Öffentliche Bekenntnisse eines ANDEREN Nutzers - read-only bis auf
 // Bekennen/Übernehmen/Melden (kein Bearbeiten, kein "Neu"). Die RLS-Policy
 // "Read public creeds" erlaubt jedem Nutzer visibility='public'-Zeilen zu
@@ -98,7 +102,7 @@ export default function UserCreedsTab({ userId, displayName }) {
   }
 
   async function adoptCreed(creed) {
-    const { data: lines } = await supabase.from('creed_lines').select('body, bible_reference').eq('creed_id', creed.id).order('order_index')
+    const { data: lines } = await supabase.from('creed_lines').select(CREED_LINE_SELECT).eq('creed_id', creed.id).order('order_index')
     setEditorInitial({ title: `${creed.title} (Kopie)`, visibility: 'private', lines: lines || [], sourceCreedId: creed.id })
     setShowEditor(true)
   }

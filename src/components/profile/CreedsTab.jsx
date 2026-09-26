@@ -9,6 +9,10 @@ const CreedEditorSheet = lazy(() => import('../discipleship/CreedEditorSheet'))
 const BiblePassageSheet = lazy(() => import('../discipleship/BiblePassageSheet'))
 const ReportSheet = lazy(() => import('../discipleship/ReportSheet'))
 
+// Volle Bibelstellen-Spalten (siehe phase74) fürs Bearbeiten/Übernehmen -
+// für die reine Anzeige (toggleExpand) reicht bible_reference als Label.
+const CREED_LINE_SELECT = 'body, bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end'
+
 export default function CreedsTab() {
   const { user } = useAuth()
 
@@ -30,7 +34,7 @@ export default function CreedsTab() {
   async function loadAll() {
     setLoading(true)
     const [{ data: mine }, { data: allPublic }] = await Promise.all([
-      supabase.from('creeds').select('id, title, visibility, updated_at').eq('user_id', user.id).order('updated_at', { ascending: false }),
+      supabase.from('creeds').select('id, title, visibility, visibility_community_id, visibility_user_ids, updated_at').eq('user_id', user.id).order('updated_at', { ascending: false }),
       supabase.from('creeds').select('id, title, user_id, updated_at, profiles:user_id (username, full_name)').eq('visibility', 'public').order('updated_at', { ascending: false }),
     ])
 
@@ -100,13 +104,17 @@ export default function CreedsTab() {
   }
 
   async function openOwnCreed(creed) {
-    const { data: lines } = await supabase.from('creed_lines').select('body, bible_reference').eq('creed_id', creed.id).order('order_index')
-    setEditorInitial({ id: creed.id, title: creed.title, visibility: creed.visibility, lines: lines || [] })
+    const { data: lines } = await supabase.from('creed_lines').select(CREED_LINE_SELECT).eq('creed_id', creed.id).order('order_index')
+    setEditorInitial({
+      id: creed.id, title: creed.title, visibility: creed.visibility,
+      visibility_community_id: creed.visibility_community_id, visibility_user_ids: creed.visibility_user_ids,
+      lines: lines || [],
+    })
     setShowEditor(true)
   }
 
   async function adoptCreed(creed) {
-    const { data: lines } = await supabase.from('creed_lines').select('body, bible_reference').eq('creed_id', creed.id).order('order_index')
+    const { data: lines } = await supabase.from('creed_lines').select(CREED_LINE_SELECT).eq('creed_id', creed.id).order('order_index')
     setEditorInitial({ title: `${creed.title} (Kopie)`, visibility: 'private', lines: lines || [], sourceCreedId: creed.id })
     setShowEditor(true)
   }
