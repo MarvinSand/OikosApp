@@ -3,6 +3,7 @@ import { Plus, Search, ArrowDownNarrowWide, ArrowUpNarrowWide, Clock } from 'luc
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { parseGermanReference } from '../../lib/bibleBooks'
+import { readCache, writeCache } from '../../lib/swrCache'
 import { CreedRow } from './CreedRow'
 
 const CreedEditorSheet = lazy(() => import('../discipleship/CreedEditorSheet'))
@@ -44,12 +45,17 @@ function sortOwnCreeds(creeds, sortBy, confessionByCreed) {
 export default function CreedsTab() {
   const { user } = useAuth()
 
-  const [ownCreeds, setOwnCreeds] = useState([])
-  const [publicCreeds, setPublicCreeds] = useState([])
+  // Tab ist lazy-geladen (eigener Chunk) UND lud bisher bei jedem Öffnen
+  // zwei abhängige Requests (Creeds, dann Confessions) neu, bevor irgendwas
+  // sichtbar war - deshalb wie die anderen Haupt-Tabs sofort den zuletzt
+  // geladenen Stand aus dem Cache zeigen und im Hintergrund aktualisieren.
+  const [cached] = useState(() => readCache(user?.id, 'creedsTab'))
+  const [ownCreeds, setOwnCreeds] = useState(cached?.ownCreeds ?? [])
+  const [publicCreeds, setPublicCreeds] = useState(cached?.publicCreeds ?? [])
   const [publicSearch, setPublicSearch] = useState('')
   const [sortBy, setSortBy] = useState('newest')
-  const [loading, setLoading] = useState(true)
-  const [confessionByCreed, setConfessionByCreed] = useState({})
+  const [loading, setLoading] = useState(!cached)
+  const [confessionByCreed, setConfessionByCreed] = useState(cached?.confessionByCreed ?? {})
   const [expandedId, setExpandedId] = useState(null)
   const [linesByCreed, setLinesByCreed] = useState({})
   const [historyOpenId, setHistoryOpenId] = useState(null)
@@ -61,30 +67,40 @@ export default function CreedsTab() {
   const [reportTarget, setReportTarget] = useState(null)
 
   async function loadAll() {
-    setLoading(true)
-    const [{ data: mine }, { data: allPublic }] = await Promise.all([
-      supabase.from('creeds').select('id, title, visibility, visibility_community_id, visibility_user_ids, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('creeds').select('id, title, user_id, updated_at, profiles:user_id (username, full_name)').eq('visibility', 'public').order('updated_at', { ascending: false }),
-    ])
+    // Kein setLoading(true) hier: beim ersten Öffnen ohne Cache steht loading
+    // schon auf true (Initialwert oben), bei einer Hintergrund-Aktualisierung
+    // (oder nach dem Speichern im Editor) soll der bereits sichtbare Stand
+    // nicht wieder durch das Skelett ersetzt werden.
+    try {
+      const [{ data: mine, error: mineError }, { data: allPublic, error: publicError }] = await Promise.all([
+        supabase.from('creeds').select('id, title, visibility, visibility_community_id, visibility_user_ids, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('creeds').select('id, title, user_id, updated_at, profiles:user_id (username, full_name)').eq('visibility', 'public').order('updated_at', { ascending: false }),
+      ])
+      if (mineError || publicError) throw mineError || publicError
 
-    // .neq('user_id', ...) würde die offizielle Zeile (user_id IS NULL)
-    // wegen SQL-NULL-Semantik mit rausfiltern - deshalb client-seitig filtern.
-    const others = (allPublic || []).filter(c => c.user_id !== user.id)
-    others.sort((a, b) => (a.user_id === null ? -1 : b.user_id === null ? 1 : 0))
+      // .neq('user_id', ...) würde die offizielle Zeile (user_id IS NULL)
+      // wegen SQL-NULL-Semantik mit rausfiltern - deshalb client-seitig filtern.
+      const others = (allPublic || []).filter(c => c.user_id !== user.id)
+      others.sort((a, b) => (a.user_id === null ? -1 : b.user_id === null ? 1 : 0))
 
-    setOwnCreeds(mine || [])
-    setPublicCreeds(others)
+      let confessionMap = {}
+      const allIds = [...(mine || []).map(c => c.id), ...others.map(c => c.id)]
+      if (allIds.length > 0) {
+        const { data: confessions, error: confError } = await supabase.from('creed_confessions').select('creed_id, count, last_confessed_at').eq('user_id', user.id).in('creed_id', allIds)
+        if (confError) throw confError
+        for (const c of confessions || []) confessionMap[c.creed_id] = { count: c.count, lastConfessedAt: c.last_confessed_at }
+      }
 
-    const allIds = [...(mine || []).map(c => c.id), ...others.map(c => c.id)]
-    if (allIds.length > 0) {
-      const { data: confessions } = await supabase.from('creed_confessions').select('creed_id, count, last_confessed_at').eq('user_id', user.id).in('creed_id', allIds)
-      const map = {}
-      for (const c of confessions || []) map[c.creed_id] = { count: c.count, lastConfessedAt: c.last_confessed_at }
-      setConfessionByCreed(map)
-    } else {
-      setConfessionByCreed({})
+      setOwnCreeds(mine || [])
+      setPublicCreeds(others)
+      setConfessionByCreed(confessionMap)
+      writeCache(user.id, 'creedsTab', { ownCreeds: mine || [], publicCreeds: others, confessionByCreed: confessionMap })
+    } catch {
+      // Netzwerk-/Backend-Fehler: bisherigen (ggf. gecachten) Stand behalten
+      // statt ihn mit leeren Listen zu überschreiben.
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => { if (user) loadAll() }, [user?.id])
