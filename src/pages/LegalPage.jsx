@@ -171,6 +171,47 @@ function Privacy() {
   )
 }
 
+function Support() {
+  return (
+    <>
+      <h1>Support &amp; Hilfe</h1>
+      <p>
+        Hast du eine Frage zu Oikos Connect, ein Problem oder einen Verbesserungsvorschlag? Wir helfen dir gern.
+      </p>
+
+      <h2>Kontakt</h2>
+      <Operator />
+      <p>Wir antworten in der Regel innerhalb von 2 Werktagen.</p>
+
+      <h2>Häufige Fragen</h2>
+      <h3>Wie lösche ich mein Konto?</h3>
+      <p>In der App unter Einstellungen → Account löschen. Dabei werden deine Daten gelöscht.</p>
+      <h3>Wie melde ich einen Beitrag oder blockiere eine Person?</h3>
+      <p>
+        Tippe an Beiträgen, Kommentaren, Gebeten, Nachrichten oder Profilen auf das Menü (⋯) und
+        wähle „Melden“ oder „Blockieren“. Wir prüfen Meldungen innerhalb von 24 Stunden.
+      </p>
+      <h3>Wer sieht meinen Standort?</h3>
+      <p>
+        Das bestimmst du selbst: In den Einstellungen der Weltkarte legst du fest, wie genau dein
+        Standort für Freunde und andere Nutzer angezeigt wird – oder ob er ganz verborgen bleibt.
+      </p>
+      <h3>Ich bekomme keine Benachrichtigungen.</h3>
+      <p>
+        Prüfe in den iPhone-Einstellungen unter Mitteilungen → Oikos Connect, ob Mitteilungen erlaubt
+        sind, und in der App unter Einstellungen → Benachrichtigungen, welche Arten aktiv sind.
+      </p>
+      <h3>Ich habe mein Passwort vergessen.</h3>
+      <p>Tippe auf der Anmeldeseite auf „Passwort vergessen“. Du erhältst einen Link per E-Mail.</p>
+
+      <h2>Rechtliches</h2>
+      <p>
+        <a href="/privacy">Datenschutzerklärung</a> · <a href="/terms">Nutzungsbedingungen</a>
+      </p>
+    </>
+  )
+}
+
 export default function LegalPage({ kind }) {
   const navigate = useNavigate()
   return (
@@ -187,11 +228,11 @@ export default function LegalPage({ kind }) {
           <ArrowLeft size={20} />
         </button>
         <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>
-          {kind === 'privacy' ? 'Datenschutz' : 'Nutzungsbedingungen'}
+          {kind === 'privacy' ? 'Datenschutz' : kind === 'support' ? 'Support' : 'Nutzungsbedingungen'}
         </span>
       </header>
       <article className="legal-content" style={{ padding: '8px 20px', maxWidth: 680, margin: '0 auto' }}>
-        {kind === 'privacy' ? <Privacy /> : <Terms />}
+        {kind === 'privacy' ? <Privacy /> : kind === 'support' ? <Support /> : <Terms />}
       </article>
     </div>
   )

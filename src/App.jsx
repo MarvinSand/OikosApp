@@ -271,6 +271,7 @@ export default function App() {
                     hinterlegt werden können */}
                 <Route path="/terms" element={<LegalPage kind="terms" />} />
                 <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+                <Route path="/support" element={<LegalPage kind="support" />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 {/* Beide möglichen YouVersion-Callback-Pfade (je nach Domain,
                     siehe resolveYouVersionRedirectUri) müssen öffentlich sein:

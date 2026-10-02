@@ -329,6 +329,7 @@
 .legal-content { color: var(--color-text); font-size: 14px; line-height: 1.6; }
 .legal-content h1 { font-size: 22px; font-weight: 800; margin: 16px 0 4px; }
 .legal-content h2 { font-size: 16px; font-weight: 700; margin: 22px 0 6px; }
+.legal-content h3 { font-size: 14px; font-weight: 700; margin: 14px 0 2px; }
 .legal-content p { margin: 0 0 10px; color: var(--color-text-secondary); }
 .legal-content ul { margin: 0 0 10px; padding-left: 20px; list-style: disc; color: var(--color-text-secondary); }
 .legal-content li { margin-bottom: 4px; }
