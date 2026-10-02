@@ -2,12 +2,17 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { compressImage } from '../lib/image'
+import { readCache, writeCache } from '../lib/swrCache'
 
-export function useProfile() {
+// `useCache: true` zeigt sofort den zuletzt geladenen Stand (Profil-Tab).
+// Bewusst NICHT für Formulare wie SettingsView: dort würde das spätere
+// Eintreffen der frischen Daten bereits getippte Eingaben überschreiben.
+export function useProfile({ useCache = false } = {}) {
   const { user } = useAuth()
-  const [profile, setProfile] = useState(null)
-  const [stats, setStats] = useState({ peopleCount: 0, prayerCount: 0, maxStage: 0 })
-  const [loading, setLoading] = useState(true)
+  const [cached] = useState(() => (useCache ? readCache(user?.id, 'profile') : undefined))
+  const [profile, setProfile] = useState(cached?.profile ?? null)
+  const [stats, setStats] = useState(cached?.stats ?? { peopleCount: 0, prayerCount: 0, maxStage: 0 })
+  const [loading, setLoading] = useState(!cached)
 
   useEffect(() => {
     if (!user) return
@@ -15,7 +20,7 @@ export function useProfile() {
   }, [user?.id])
 
   async function load() {
-    setLoading(true)
+    if (!cached) setLoading(true)
     const [
       { data: profileData },
       { count: peopleCount },
@@ -33,12 +38,16 @@ export function useProfile() {
         .limit(1),
     ])
 
-    setProfile(profileData)
-    setStats({
+    // Fehlgeschlagener Profil-Request (z. B. offline): gecachten Stand behalten
+    if (!profileData && cached) { setLoading(false); return }
+    const nextStats = {
       peopleCount: peopleCount || 0,
       prayerCount: prayerCount || 0,
       maxStage: stageData?.[0]?.stage || 0,
-    })
+    }
+    setProfile(profileData)
+    setStats(nextStats)
+    if (profileData) writeCache(user.id, 'profile', { profile: profileData, stats: nextStats })
     setLoading(false)
   }
 
@@ -50,7 +59,11 @@ export function useProfile() {
       .select()
       .single()
     if (error) throw error
-    setProfile(p => ({ ...p, ...data }))
+    setProfile(p => {
+      const next = { ...p, ...data }
+      writeCache(user.id, 'profile', { profile: next, stats })
+      return next
+    })
     return data
   }
 
@@ -76,7 +89,10 @@ export function useProfile() {
   }
 
   async function deleteAccount() {
-    await supabase.rpc('delete_user')
+    // Fehler weiterreichen – sonst meldet die UI „gelöscht", obwohl das
+    // Konto noch existiert (App-Store-Prüfer testen genau diesen Flow).
+    const { error } = await supabase.rpc('delete_user')
+    if (error) throw error
     await supabase.auth.signOut()
   }
 

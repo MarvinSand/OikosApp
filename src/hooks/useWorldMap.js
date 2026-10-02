@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 export function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371
@@ -29,61 +30,77 @@ function computeExpiresAt(data) {
   return null
 }
 
+// Gecachte Aktivitäten ohne die inzwischen abgelaufenen
+function withoutExpired(acts) {
+  const now = Date.now()
+  return (acts || []).filter(a => !a.expires_at || new Date(a.expires_at).getTime() > now)
+}
+
 export function useWorldMap() {
   const { user } = useAuth()
-  const [visibleUsers, setVisibleUsers] = useState([])
-  const [activities, setActivities] = useState([])
-  const [myProfile, setMyProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Zuletzt geladener Stand als Startwert (siehe swrCache.js)
+  const [cached] = useState(() => readCache(user?.id, 'worldMap'))
+  const [visibleUsers, setVisibleUsers] = useState(cached?.visibleUsers ?? [])
+  const [activities, setActivities] = useState(() => withoutExpired(cached?.activities))
+  const [gemeinden, setGemeinden] = useState(cached?.gemeinden ?? [])
+  const [myProfile, setMyProfile] = useState(cached?.myProfile ?? null)
+  const [loading, setLoading] = useState(!cached)
 
   const loadData = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    if (!readCache(user.id, 'worldMap')) setLoading(true)
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
-        .eq('id', user.id)
-        .single()
-      setMyProfile(profile)
+      const now = new Date().toISOString()
 
-      // Gegenseitige (akzeptierte) Freundschaften → nur diese Geschwister erscheinen auf der Karte
-      const { data: friendships } = await supabase
-        .from('friendships')
-        .select('requester_id, addressee_id')
-        .eq('status', 'accepted')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-      const friendIds = [...new Set(
-        (friendships || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
-      )]
-
-      if (friendIds.length > 0) {
-        const { data: users } = await supabase
+      // Profil, sichtbare Nutzer und Aktivitäten hängen nicht voneinander ab –
+      // vorher liefen sie teils seriell. Wer auf der Karte sichtbar ist und mit
+      // welcher Präzision entscheidet serverseitig get_world_map_users() (RPC):
+      // Freunde sehen die Präzisionsstufe aus location_precision_friends, alle
+      // anderen App-Nutzer die aus location_precision_public – 'hidden' schließt
+      // die jeweilige Zielgruppe komplett aus. Das ersetzt den früheren
+      // Freundschafts-Only-Filter (nur akzeptierte Freunde sahen überhaupt etwas).
+      const [{ data: profile }, { data: worldMapUsers }, { data: acts }, { data: gems }] = await Promise.all([
+        supabase
           .from('profiles')
-          .select('id, full_name, username, avatar_url, latitude, longitude, is_christian, gender, city, country, church_name, bio, bio_text, show_bio')
-          .in('id', friendIds)
-          .eq('show_on_world_map', true)
+          .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio, address_full, address_street, address_district, location_precision_public, location_precision_friends')
+          .eq('id', user.id)
+          .single(),
+        supabase.rpc('get_world_map_users'),
+        // Kein is_public-Filter mehr – Row Level Security entscheidet, welche Events
+        // (öffentlich / Geschwister / Gemeinde / eigene) der Nutzer sehen darf.
+        supabase
+          .from('world_map_activities')
+          .select(`
+            *,
+            author:profiles!author_id(id, full_name, username, avatar_url),
+            participants:activity_participants(user_id, joined_at, profile:profiles!user_id(id, full_name, username, avatar_url, is_christian))
+          `)
+          .or(`expires_at.is.null,expires_at.gt.${now}`)
+          .order('created_at', { ascending: false })
+          .limit(500),
+        // Öffentliche Gemeinden/Hausgemeinden mit Standort – RLS erlaubt
+        // public.communities Lesen für alle (is_public = true), siehe phase58b.
+        supabase
+          .from('communities')
+          .select('id, name, description, avatar_url, address, latitude, longitude, meeting_info')
+          .eq('community_type', 'gemeinde')
+          .eq('is_public', true)
           .not('latitude', 'is', null)
           .not('longitude', 'is', null)
-        setVisibleUsers(users || [])
-      } else {
-        setVisibleUsers([])
-      }
-
-      const now = new Date().toISOString()
-      // Kein is_public-Filter mehr – Row Level Security entscheidet, welche Events
-      // (öffentlich / Geschwister / Gemeinde / eigene) der Nutzer sehen darf.
-      const { data: acts } = await supabase
-        .from('world_map_activities')
-        .select(`
-          *,
-          author:profiles!author_id(id, full_name, username, avatar_url),
-          participants:activity_participants(user_id, joined_at, profile:profiles!user_id(id, full_name, username, avatar_url, is_christian))
-        `)
-        .or(`expires_at.is.null,expires_at.gt.${now}`)
-        .order('created_at', { ascending: false })
-        .limit(500)
+          .limit(500),
+      ])
+      // Profil-Request fehlgeschlagen (z. B. offline): bisherigen Stand behalten
+      if (!profile) return
+      setMyProfile(profile)
       setActivities(acts || [])
+      setGemeinden(gems || [])
+      setVisibleUsers(worldMapUsers || [])
+      writeCache(user.id, 'worldMap', {
+        myProfile: profile,
+        activities: acts || [],
+        gemeinden: gems || [],
+        visibleUsers: worldMapUsers || [],
+      })
     } finally {
       setLoading(false)
     }
@@ -145,10 +162,20 @@ export function useWorldMap() {
         const { error: commError } = await supabase.from('activity_communities').insert(rows)
         if (commError) console.error('activity_communities insert failed:', commError)
       }
-      // Automatically create the activity chat and add creator as member
-      const { data: convId, error: chatError } = await supabase.rpc('create_activity_chat', { p_activity_id: act.id })
-      if (chatError) console.error('create_activity_chat failed:', chatError)
-      const actWithConv = { ...act, conversation_id: convId || null }
+      // join_activity() statt create_activity_chat(): legt zusätzlich zur
+      // Chat-Mitgliedschaft auch den activity_participants-Eintrag für den
+      // Ersteller an, damit er selbst als "beigetreten" gezählt wird (strikte
+      // Obermenge derselben RPC-Signatur/Rückgabe).
+      const { data: convId, error: chatError } = await supabase.rpc('join_activity', { p_activity_id: act.id })
+      if (chatError) console.error('join_activity (on create) failed:', chatError)
+      const actWithConv = {
+        ...act,
+        conversation_id: convId || null,
+        participants: [
+          ...(act.participants || []),
+          { user_id: user.id, joined_at: new Date().toISOString(), profile: act.author },
+        ],
+      }
       setActivities(prev => [actWithConv, ...prev])
       return { act: actWithConv, error, chatError }
     }
@@ -241,11 +268,26 @@ export function useWorldMap() {
     return !error
   }
 
+  // Adresse + Präzisions-Einstellungen (öffentlich/Freunde) speichern – patch
+  // enthält nur die tatsächlich geänderten Felder (Auto-Save pro Feld in der
+  // LocationSettingsSheet), analog zu updateLocationVisibility oben.
+  async function updateLocationSettings(patch) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ ...patch, world_map_last_updated: new Date().toISOString() })
+      .eq('id', user.id)
+    if (!error) {
+      setMyProfile(prev => ({ ...prev, ...patch }))
+    }
+    return !error
+  }
+
   const myActivities = activities.filter(a => a.author_id === user?.id)
 
   return {
     visibleUsers,
     activities,
+    gemeinden,
     nearbyUsers,
     myProfile,
     loading,
@@ -256,6 +298,7 @@ export function useWorldMap() {
     deleteActivity,
     updateActivity,
     updateLocationVisibility,
+    updateLocationSettings,
     myActivities,
     reload: loadData,
   }

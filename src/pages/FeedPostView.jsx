@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Send, BookOpen, HandHeart, HelpCircle, MessageSquare, MoreHorizontal } from 'lucide-react'
+import ModerationSheet from '../components/common/ModerationSheet'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import ShareSheet from '../components/feed/ShareSheet'
@@ -9,6 +10,9 @@ import PostEngagementBar from '../components/feed/PostEngagementBar'
 import CommentCard from '../components/feed/CommentCard'
 import FeedCardFrame from '../components/feed/FeedCardFrame'
 import { COMMENT_SELECT, attachCommentEngagement } from '../lib/commentEngagement'
+import BibleReferenceChip from '../components/bible/BibleReferenceChip'
+import { verseAttachmentFromRow } from '../lib/bibleLink'
+import { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 
 // ─── Helpers ─────────────────────────────────────────────────
 const TYPE_CONFIG = {
@@ -51,18 +55,10 @@ function UserAvatar({ profile, size = 36 }) {
 
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
-  bible_reference, bible_verse, is_public, view_count, bookmark_count, created_at,
+  bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end,
+  is_public, view_count, bookmark_count, created_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
-
-const FEED_CATEGORIES = [
-  { key: 'bibelstelle', label: 'Bibelstelle', emoji: '📖' },
-  { key: 'zeugnis',     label: 'Zeugnis',     emoji: '🙌' },
-  { key: 'frage',       label: 'Frage',       emoji: '❓' },
-  { key: 'meilenstein', label: 'Meilenstein', emoji: '🏔' },
-  { key: 'ermutigung',  label: 'Ermutigung',  emoji: '💛' },
-  { key: 'sonstiges',   label: 'Sonstiges',   emoji: '💬' },
-]
 
 export default function FeedPostView() {
   const { id: postId } = useParams()
@@ -70,6 +66,7 @@ export default function FeedPostView() {
   const { user } = useAuth()
 
   const [post, setPost] = useState(null)
+  const [showModeration, setShowModeration] = useState(false)
   const [reactions, setReactions] = useState([])
   const [reposts, setReposts] = useState([])
   const [bookmarked, setBookmarked] = useState(false)
@@ -261,20 +258,30 @@ export default function FeedPostView() {
                 </span>
               )
             })()}
+            {post.author_id !== user?.id && (
+              <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+                <MoreHorizontal size={18} />
+              </button>
+            )}
           </div>
+          {showModeration && (
+            <ModerationSheet
+              contentType="feed_post"
+              contentId={post.id}
+              authorId={post.author_id}
+              authorName={post.profiles?.full_name || post.profiles?.username}
+              onClose={() => setShowModeration(false)}
+              onBlocked={() => navigate(-1)}
+            />
+          )}
 
           {/* Content */}
           <div style={{ padding: '0 16px 14px' }}>
             {post.title && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 8px' }}>{post.title}</p>
             )}
-            {post.type === 'bible' && (
-              <div style={{ borderLeft: '3px solid var(--color-accent)', paddingLeft: 12, marginBottom: 10 }}>
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-accent)', margin: '0 0 5px' }}>📖 {post.bible_reference}</p>
-                {post.bible_verse && (
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontStyle: 'italic', color: 'var(--color-text)', margin: '0 0 8px', lineHeight: 1.6 }}>„{post.bible_verse}"</p>
-                )}
-              </div>
+            {post.bible_reference && (
+              <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" />
             )}
             {post.type === 'photo' && post.photo_url && (
               <img src={post.photo_url} alt="" style={{ width: '100%', maxHeight: 360, objectFit: 'cover', borderRadius: 12, marginBottom: 10, display: 'block' }} />

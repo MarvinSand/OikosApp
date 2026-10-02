@@ -9,6 +9,7 @@ export function usePublicMap(userId, mapId) {
   const [placeConnections, setPlaceConnections] = useState([])
   const [ownerName, setOwnerName] = useState('')
   const [linkedProfiles, setLinkedProfiles] = useState({})
+  const [overlayData, setOverlayData] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export function usePublicMap(userId, mapId) {
 
     supabase
       .from('profiles')
-      .select('id, full_name, username, avatar_url')
+      .select('id, full_name, username, avatar_url, bio_text, bio, city, country, church_name, show_bio, show_city, show_church, latitude, longitude')
       .in('id', linkedIds)
       .then(({ data }) => {
         if (!data) return
@@ -87,5 +88,31 @@ export function usePublicMap(userId, mapId) {
     setLoading(false)
   }
 
-  return { map, people, connections, places, placeConnections, ownerName, linkedProfiles, loading }
+  // Session-only Vorschau: eine fremde Oikos-Map eines verlinkten Accounts
+  // als Overlay über der gerade offenen (fremden) Map anzeigen. Wird nicht
+  // gespeichert — RLS verbietet ohnehin das Schreiben auf fremde Personen-
+  // Knoten, und es ergibt inhaltlich keinen Sinn, Fremddaten dauerhaft zu
+  // verändern, nur weil man sie ansieht (siehe Plan-Entscheidung 1).
+  async function togglePersonMapOverlay(personId, mapId) {
+    const alreadyShown = overlayData.some(od => od.parentPersonId === personId && od.overlayMapId === mapId)
+    if (alreadyShown) {
+      setOverlayData(prev => prev.filter(od => !(od.parentPersonId === personId && od.overlayMapId === mapId)))
+      return
+    }
+    const [{ data: persons }, { data: conns }] = await Promise.all([
+      supabase.from('oikos_people').select('*').eq('map_id', mapId).order('created_at'),
+      supabase.from('oikos_connections').select('*').eq('map_id', mapId),
+    ])
+    setOverlayData(prev => [...prev, {
+      parentPersonId: personId,
+      overlayMapId: mapId,
+      persons: persons || [],
+      personCount: (persons || []).length,
+      connections: conns || [],
+      showChristian: true,
+      showNonChristian: true,
+    }])
+  }
+
+  return { map, people, connections, places, placeConnections, ownerName, linkedProfiles, overlayData, togglePersonMapOverlay, loading }
 }

@@ -1,53 +1,38 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
+import { readCache, writeCache } from '../../lib/swrCache'
 import GuidedPrayerMode from '../prayer/GuidedPrayerMode'
 
 // Öffentliches Gebetsanliegen mit den meisten Interaktionen HEUTE
 // (🙏-Gebete + Kommentare von heute) – prominent auf der Home-Seite.
 export default function TopPrayerToday() {
-  const [request, setRequest] = useState(null)
-  const [interactions, setInteractions] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  // Gecachter Stand nur vom selben Tag – „heute" von gestern wäre falsch
+  const [cached] = useState(() => {
+    const c = readCache(user?.id, 'topPrayerToday')
+    return c && c.day === new Date().toDateString() ? c : null
+  })
+  const [request, setRequest] = useState(cached?.request ?? null)
+  const [interactions, setInteractions] = useState(cached?.interactions ?? 0)
+  const [loading, setLoading] = useState(!cached)
   const [showPrayer, setShowPrayer] = useState(false)
 
+  // Vorher: 2 parallele Queries (Logs/Kommentare von heute) für's Ranking,
+  // dann eine dritte, vom Ranking-Ergebnis abhängige Query für die
+  // Kandidaten – 3 Requests mit echter Abhängigkeit dazwischen. Die
+  // `get_top_prayer_today()`-RPC rankt und wählt serverseitig in einem Zug.
   async function load() {
-    setLoading(true)
     try {
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      const todayISO = todayStart.toISOString()
-
-      // Heutige Interaktionen: Gebete + Kommentare
-      const [{ data: logs }, { data: notes }] = await Promise.all([
-        supabase.from('personal_prayer_logs').select('request_id').gte('created_at', todayISO),
-        supabase.from('prayer_notes').select('request_id').gte('created_at', todayISO),
-      ])
-
-      const counts = {}
-      for (const l of (logs || [])) counts[l.request_id] = (counts[l.request_id] || 0) + 1
-      for (const n of (notes || [])) counts[n.request_id] = (counts[n.request_id] || 0) + 1
-
-      const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1])
-      if (ranked.length === 0) { setRequest(null); return }
-
-      const topIds = ranked.slice(0, 10).map(([id]) => id)
-      const { data: candidates } = await supabase
-        .from('personal_prayer_requests')
-        .select('*, profiles!owner_id(id, username, full_name, gender, is_christian)')
-        .in('id', topIds)
-        .eq('visibility', 'public')
-        .eq('is_answered', false)
-
-      const byId = {}
-      for (const r of (candidates || [])) byId[r.id] = r
-
-      // erstes (höchstgewichtetes) öffentliches Anliegen wählen
-      const top = ranked.map(([id]) => id).find(id => byId[id])
-      if (!top) { setRequest(null); return }
-      setRequest(byId[top])
-      setInteractions(counts[top] || 0)
+      const { data, error } = await supabase.rpc('get_top_prayer_today')
+      if (error) return
+      const top = data?.[0]
+      const next = top?.request ? { request: top.request, interactions: top.interactions || 0 } : { request: null, interactions: 0 }
+      writeCache(user?.id, 'topPrayerToday', { ...next, day: new Date().toDateString() })
+      setRequest(next.request)
+      setInteractions(next.interactions)
     } catch {
-      setRequest(null)
+      /* Netzwerkfehler: bisherigen Stand behalten */
     } finally {
       setLoading(false)
     }

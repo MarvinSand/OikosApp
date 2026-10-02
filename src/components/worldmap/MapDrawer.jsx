@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Search, SlidersHorizontal, Users, CalendarDays, X, MapPin, Repeat } from 'lucide-react'
+import { Search, SlidersHorizontal, Users, CalendarDays, X, MapPin, Repeat, Home, Plus } from 'lucide-react'
 import { nextOccurrence, formatRecurrenceLabel, isRecurring } from '../../lib/recurrence'
 
 const C = {
@@ -62,10 +62,11 @@ function formatEventDate(startsAt) {
 }
 
 export default function MapDrawer({
-  tab, showGeschwister, showEvents, onPillTap,
-  users, activities, myProfile, hasOwnLocation,
+  tab, showGeschwister, showEvents, showGemeinden, onPillTap,
+  users, activities, gemeinden = [], myProfile, hasOwnLocation,
   radiusKm, onRadiusChange,
-  onSelectUser, onSelectActivity, reopenListKey,
+  onSelectUser, onSelectActivity, onSelectGemeinde, reopenListKey,
+  onCreateEvent, onVisibleHeightChange,
 }) {
   // 'closed' = nur Kopf sichtbar · 'half' = + Suchleiste (Tap auf Geschwister/
   // Events landet hier) · 'full' = komplettes Sheet mit Liste (Tap in die
@@ -87,6 +88,13 @@ export default function MapDrawer({
   const halfTranslate = Math.max(0, expandedH - (DRAWER_PEEK + HALF_PANEL_H))
   const LEVEL_TRANSLATE = { closed: closedTranslate, half: halfTranslate, full: 0 }
   const currentTranslate = dragY != null ? dragY : LEVEL_TRANSLATE[level]
+
+  // Meldet die aktuell sichtbare Höhe über der Nav nach oben (z.B. für den
+  // "Event hosten"-Button daneben, der beim Aufziehen mitwandern soll statt
+  // starr auf Peek-Höhe stehen zu bleiben).
+  useEffect(() => {
+    onVisibleHeightChange?.(expandedH - currentTranslate)
+  }, [expandedH, currentTranslate, onVisibleHeightChange])
 
   // Beim Tab-Wechsel Suche/Filter zurücksetzen
   useEffect(() => {
@@ -179,6 +187,18 @@ export default function MapDrawer({
         (a.full_name || '').localeCompare(b.full_name || '')
       )
     }
+    if (tab === 'gemeinden') {
+      let arr = gemeinden
+      if (q) {
+        arr = arr.filter(g =>
+          [g.name, g.description, g.address].filter(Boolean).some(s => s.toLowerCase().includes(q))
+        )
+      }
+      return [...arr].sort((a, b) =>
+        (a.distance ?? Infinity) - (b.distance ?? Infinity) ||
+        (a.name || '').localeCompare(b.name || '')
+      )
+    }
     let arr = activities
     if (q) {
       arr = arr.filter(a =>
@@ -195,17 +215,30 @@ export default function MapDrawer({
       (a.distance ?? Infinity) - (b.distance ?? Infinity) ||
       (nextOccurrence(a)?.getTime() ?? 0) - (nextOccurrence(b)?.getTime() ?? 0)
     )
-  }, [tab, users, activities, search, filter, myProfile?.city, myProfile?.church_name])
+  }, [tab, users, activities, gemeinden, search, filter, myProfile?.city, myProfile?.church_name])
 
-  const filters = tab === 'siblings' ? SIBLING_FILTERS : EVENT_FILTERS
+  const filters = tab === 'siblings' ? SIBLING_FILTERS : tab === 'gemeinden' ? [] : EVENT_FILTERS
 
   return (
     // Wrapper endet an der Oberkante der Bottom-Nav und clippt das Sheet,
     // damit es im eingeklappten Zustand nicht hinter/über der Nav hervorschaut.
     <div style={{
       position: 'absolute', left: 0, right: 0, top: 0,
-      bottom: 'var(--bottom-nav-h, 64px)',
-      overflow: 'hidden', pointerEvents: 'none', zIndex: 520,
+      // +8px Puffer über der Nav statt direkt an --bottom-nav-h zu enden:
+      // die letzten beiden Versuche (zIndex über vs. unter der Nav, siehe
+      // Git-Historie) haben nur verschoben, WER bei einer Unterschätzung von
+      // --bottom-nav-h gewinnt (Nav verdeckt Sheet-Pixel vs. Sheet verdeckt
+      // Nav-Icons) - das eigentliche Problem war die fehlende Distanz
+      // zwischen beiden. Mit 8px Abstand bleibt eine kleine Messungenauigkeit
+      // (z.B. iOS WKWebView, bei dem env(safe-area-inset-bottom) beim allerersten
+      // Layout kurzzeitig 0 statt des echten Werts liefert) folgenlos, statt
+      // sofort in eines der beiden Overlap-Symptome zu kippen.
+      bottom: 'calc(var(--bottom-nav-h, 64px) + 8px)',
+      // z-index UNTER der Bottom-Nav: sollte der Puffer oben trotzdem einmal
+      // nicht reichen, gewinnt die echte (undurchsichtige) Nav und schneidet
+      // höchstens ein paar Pixel vom Sheet ab - sichtbar unauffälliger als
+      // wenn das Sheet die Nav-Icons verdeckt.
+      overflow: 'hidden', pointerEvents: 'none', zIndex: 35,
     }}>
       {/* Klick auf die Karte bei ausgeklapptem Menü schließt es wieder */}
       {level !== 'closed' && (
@@ -273,6 +306,13 @@ export default function MapDrawer({
             icon={<CalendarDays size={15} />}
             label="Events"
           />
+          <LayerPill
+            active={showGemeinden}
+            selected={tab === 'gemeinden'}
+            onClick={() => onPillTap('gemeinden')}
+            icon={<Home size={15} />}
+            label="Gemeinden"
+          />
         </div>
       </div>
 
@@ -298,7 +338,7 @@ export default function MapDrawer({
             value={search}
             onChange={e => setSearch(e.target.value)}
             onFocus={() => setLevel('full')}
-            placeholder={tab === 'siblings' ? 'Geschwister suchen…' : 'Events suchen…'}
+            placeholder={tab === 'siblings' ? 'Geschwister suchen…' : tab === 'gemeinden' ? 'Gemeinden suchen…' : 'Events suchen…'}
             style={{
               flex: 1, border: 'none', outline: 'none', background: 'transparent',
               fontSize: 14, color: C.text, minWidth: 0,
@@ -383,21 +423,35 @@ export default function MapDrawer({
       {/* Ergebnisliste */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 12px calc(16px + env(safe-area-inset-bottom, 0px))' }}>
         <p style={{ fontSize: 11, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, margin: '2px 6px 8px' }}>
-          {list.length} {tab === 'siblings'
-            ? (list.length === 1 ? 'Geschwister' : 'Geschwister')
-            : (list.length === 1 ? 'Event' : 'Events')}
+          {list.length} {tab === 'siblings' ? 'Geschwister' : tab === 'gemeinden' ? (list.length === 1 ? 'Gemeinde' : 'Gemeinden') : (list.length === 1 ? 'Event' : 'Events')}
           {radiusKm != null && hasOwnLocation ? ` im Umkreis von ${radiusKm} km` : ''}
         </p>
 
+        {tab === 'events' && (
+          <button
+            onClick={() => { setLevel('closed'); onCreateEvent() }}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '10px 14px', borderRadius: 12, border: 'none',
+              background: C.accent, color: '#fff', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', marginBottom: 10,
+            }}
+          >
+            <Plus size={16} /> Event erstellen
+          </button>
+        )}
+
         {list.length === 0 && (
           <div style={{ textAlign: 'center', padding: '28px 20px' }}>
-            <div style={{ fontSize: 34, marginBottom: 8 }}>{tab === 'siblings' ? '🧭' : '📅'}</div>
+            <div style={{ fontSize: 34, marginBottom: 8 }}>{tab === 'siblings' ? '🧭' : tab === 'gemeinden' ? '🏠' : '📅'}</div>
             <p style={{ fontSize: 13, color: C.textSec, margin: 0, lineHeight: 1.6 }}>
               {search || filterActive
                 ? 'Keine Treffer – passe Suche, Filter oder Umkreis an.'
                 : tab === 'siblings'
                   ? 'Noch keine Geschwister auf der Karte. Verbinde dich mit Freunden, um sie hier zu sehen.'
-                  : 'Aktuell keine Events. Hoste doch selbst eins über den +‑Button!'}
+                  : tab === 'gemeinden'
+                    ? 'Noch keine Gemeinden in der Nähe. Trage eure Hausgemeinde ein!'
+                    : 'Aktuell keine Events. Hoste doch selbst eins über den +‑Button!'}
             </p>
           </div>
         )}
@@ -406,9 +460,13 @@ export default function MapDrawer({
           ? list.map(u => (
               <SiblingRow key={u.id} user={u} onClick={() => { setLevel('closed'); onSelectUser(u) }} />
             ))
-          : list.map(a => (
-              <EventRow key={a.id} activity={a} onClick={() => { setLevel('closed'); onSelectActivity(a) }} />
-            ))}
+          : tab === 'gemeinden'
+            ? list.map(g => (
+                <GemeindeRow key={g.id} gemeinde={g} onClick={() => { setLevel('closed'); onSelectGemeinde(g) }} />
+              ))
+            : list.map(a => (
+                <EventRow key={a.id} activity={a} onClick={() => { setLevel('closed'); onSelectActivity(a) }} />
+              ))}
       </div>
       </div>
       </div>
@@ -478,6 +536,49 @@ function SiblingRow({ user, onClick }) {
           padding: '4px 9px', borderRadius: 999,
         }}>
           {formatDistance(user.distance)}
+        </span>
+      )}
+    </button>
+  )
+}
+
+// ─── Gemeinde-Zeile ───────────────────────────────────────
+function GemeindeRow({ gemeinde, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+        padding: '10px 8px', border: 'none', background: 'transparent',
+        borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+      }}
+    >
+      <div style={{
+        width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+        background: gemeinde.avatar_url ? 'transparent' : C.accentDark,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: 19,
+      }}>
+        {gemeinde.avatar_url
+          ? <img src={gemeinde.avatar_url} referrerPolicy="no-referrer" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : '🏠'}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {gemeinde.name}
+        </p>
+        {gemeinde.address && (
+          <p style={{ fontSize: 12, color: C.textTer, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <MapPin size={11} style={{ flexShrink: 0 }} />{gemeinde.address}
+          </p>
+        )}
+      </div>
+      {gemeinde.distance != null && (
+        <span style={{
+          fontSize: 11, fontWeight: 700, color: C.accentDark, flexShrink: 0,
+          background: C.bgSec, border: `1px solid ${C.border}`,
+          padding: '4px 9px', borderRadius: 999,
+        }}>
+          {formatDistance(gemeinde.distance)}
         </span>
       )}
     </button>

@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
+import { useSearchParams } from 'react-router-dom'
+import { GoogleMap, useJsApiLoader, Polyline } from '@react-google-maps/api'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
-import { Plus, Navigation } from 'lucide-react'
+import { Plus, Navigation, Settings } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorldMap, haversine } from '../../hooks/useWorldMap'
+import { useOikosWorldMapSource } from '../../hooks/useOikosWorldMapSource'
 import { useToast } from '../../context/ToastContext'
 import { GOOGLE_MAPS_LOADER_OPTIONS, DEFAULT_MAP_ID } from '../../lib/googleMaps'
 import AdvancedMarker from './AdvancedMarker'
 import UserPinSheet from './UserPinSheet'
 import ActivitySheet from './ActivitySheet'
 import CreateActivitySheet from './CreateActivitySheet'
+import GemeindePinSheet from './GemeindePinSheet'
+import LocationSettingsSheet from './LocationSettingsSheet'
+import OikosPersonPinSheet from './OikosPersonPinSheet'
 import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
 
 // ─── Palette (Phase 27: schwarz/weiß + babyblauer Akzent) ──
@@ -153,14 +157,74 @@ function buildActivityPinElement(emoji, participants, { zoom } = {}) {
   return wrap
 }
 
-// Cluster-Icon: zeigt Personenhaufen, Event-Symbol oder beides
-function buildClusterElement(count, isMixed, hasEvent) {
+// Gemeinde-Pin: schlichtes Haus-Icon, damit es sich klar von Personen (rund)
+// und Events (pulsierendes Quadrat) unterscheidet.
+function buildGemeindePinElement(gemeinde, { zoom } = {}) {
+  const size = 50
+  const bg = gemeinde.avatar_url ? 'transparent' : C.accentDark
+
+  const wrap = document.createElement('div')
+  wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translateY(50%);cursor:pointer;`
+
+  const scaleLayer = document.createElement('div')
+  scaleLayer.dataset.pinScale = '1'
+  scaleLayer.style.cssText = `position:relative;width:100%;height:100%;transform-origin:50% 50%;transform:scale(${pinScale(zoom)});transition:transform 0.18s ease;`
+
+  const square = document.createElement('div')
+  square.style.cssText = `width:100%;height:100%;border-radius:30%;background:${bg};border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,0.22);`
+  if (gemeinde.avatar_url) {
+    const img = document.createElement('img')
+    img.src = gemeinde.avatar_url
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;'
+    img.referrerPolicy = 'no-referrer'
+    square.appendChild(img)
+  } else {
+    const span = document.createElement('span')
+    span.style.cssText = 'font-size:22px;'
+    span.textContent = '🏠'
+    square.appendChild(span)
+  }
+  scaleLayer.appendChild(square)
+  wrap.appendChild(scaleLayer)
+  return wrap
+}
+
+// Pin für Personen aus einer Oikos Map ohne eigenen Weltkarten-Profil-Pin
+// (accountlos, oder verknüpft aber anderweitig nicht sichtbar). Gestrichelter
+// Rand grenzt sie optisch klar von echten Account-Pins ab.
+function buildOikosPersonPinElement(person, { zoom } = {}) {
+  const size = 44
+  const borderColor = C.accentDark
+  const initials = getInitials(person.name)
+
+  const wrap = document.createElement('div')
+  wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;transform:translateY(50%);`
+
+  const scaleLayer = document.createElement('div')
+  scaleLayer.dataset.pinScale = '1'
+  scaleLayer.style.cssText = `position:relative;width:100%;height:100%;transform-origin:50% 50%;transform:scale(${pinScale(zoom)});transition:transform 0.18s ease;`
+
+  const circle = document.createElement('div')
+  circle.style.cssText = `width:100%;height:100%;border-radius:50%;background:${C.bg};border:2.5px dashed ${borderColor};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,0.18);cursor:pointer;`
+
+  const span = document.createElement('span')
+  span.style.cssText = `font-size:${Math.floor(size / 3)}px;font-weight:700;color:${borderColor};user-select:none;`
+  span.textContent = initials
+  circle.appendChild(span)
+  scaleLayer.appendChild(circle)
+  wrap.appendChild(scaleLayer)
+  return wrap
+}
+
+// Cluster-Icon: zeigt Personenhaufen, Event-Symbol, Gemeinde-Haus oder eine Mischung
+function buildClusterElement(count, kinds) {
   const wrap = document.createElement('div')
   wrap.style.cssText = `position:relative;width:52px;height:52px;transform:translateY(50%);`
 
+  const isMixed = kinds.size > 1
   const bg = isMixed
     ? `linear-gradient(135deg, ${C.accent} 50%, ${C.accentDark} 50%)`
-    : hasEvent ? C.accent : C.accentDark
+    : kinds.has('activity') ? C.accent : C.accentDark
 
   const circle = document.createElement('div')
   circle.style.cssText = `width:52px;height:52px;border-radius:50%;background:${bg};border:2.5px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.22);gap:1px;`
@@ -171,10 +235,11 @@ function buildClusterElement(count, isMixed, hasEvent) {
   num.textContent = String(count)
   circle.appendChild(num)
 
-  // Icon-Zeile: Person + Kalender wenn gemischt, sonst nur eins
+  // Icon-Zeile: je enthaltener Art ein Symbol
+  const iconMap = { user: '👤', activity: '📅', gemeinde: '🏠', 'oikos-person': '🔗' }
   const icons = document.createElement('span')
   icons.style.cssText = 'font-size:9px;color:rgba(255,255,255,0.9);line-height:1;'
-  icons.textContent = isMixed ? '👤 📅' : hasEvent ? '📅' : '👤'
+  icons.textContent = [...kinds].map(k => iconMap[k]).join(' ')
   circle.appendChild(icons)
 
   wrap.appendChild(circle)
@@ -184,7 +249,7 @@ function buildClusterElement(count, isMixed, hasEvent) {
 // ─── Privacy Banner ──────────────────────────────────────
 const PRIVACY_KEY = 'oikos_worldmap_privacy_seen'
 
-function PrivacyBanner({ onClose }) {
+function PrivacyBanner({ onClose, hasLocation, onSetLocation }) {
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}>
       <div style={{ width: '100%', background: C.bg, borderRadius: '20px 20px 0 0', paddingTop: 28, paddingLeft: 20, paddingRight: 20, paddingBottom: 'max(28px, calc(84px + env(safe-area-inset-bottom, 0px)))', boxShadow: '0 -4px 24px rgba(0,0,0,0.12)' }}>
@@ -193,7 +258,7 @@ function PrivacyBanner({ onClose }) {
           Willkommen auf der Weltkarte
         </h3>
         <p style={{ fontSize: 13, color: C.textSec, textAlign: 'center', lineHeight: 1.65, marginBottom: 22 }}>
-          Hier siehst du deine verbundenen Geschwister und Events in deiner Nähe. Dein Standort wird anderen nur angezeigt, wenn du das in deinen Profil-Einstellungen aktivierst.
+          Hier siehst du andere Christen und Events in deiner Nähe. Wie genau dein eigener Standort anderen angezeigt wird – von „nur Stadt" bis „genaue Adresse" – kannst du oben rechts über das Zahnrad individuell für alle Nutzer und für Freunde einstellen.
         </p>
         <button
           onClick={onClose}
@@ -201,6 +266,14 @@ function PrivacyBanner({ onClose }) {
         >
           Verstanden ✓
         </button>
+        {!hasLocation && (
+          <button
+            onClick={onSetLocation}
+            style={{ width: '100%', padding: '14px', border: `1.5px solid ${C.accent}`, borderRadius: 14, background: 'transparent', color: C.accent, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10 }}
+          >
+            Standort jetzt festlegen
+          </button>
+        )}
       </div>
     </div>
   )
@@ -209,7 +282,7 @@ function PrivacyBanner({ onClose }) {
 // ─── Combined pin clusterer (Personen + Events in einem Cluster) ─────────────
 // Events bekommen höheren zIndex → übertrumpfen Personen-Pins bei Überlappung.
 // Das Cluster-Icon zeigt an, ob nur Personen, nur Events oder beides drin sind.
-function useCombinedClusterer({ map, users, activities, onUserClick, onActivityClick, showUsers, showEvents, zoom }) {
+function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, onUserClick, onActivityClick, onGemeindeClick, onOikosPersonClick, showUsers, showEvents, showGemeinden, showOikosPeople, zoom }) {
   const clustererRef = useRef(null)
   const allMarkersRef = useRef([])
   const zoomRef = useRef(zoom)
@@ -254,7 +327,33 @@ function useCombinedClusterer({ map, users, activities, onUserClick, onActivityC
       return marker
     }) : []
 
-    const allMarkers = [...userMarkers, ...actMarkers]
+    const gemeindeMarkers = showGemeinden ? gemeinden.map(g => {
+      const content = buildGemeindePinElement(g, { zoom: zoomRef.current })
+      content.dataset.pinType = 'gemeinde'
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        position: { lat: g.latitude, lng: g.longitude },
+        content,
+        zIndex: 30,
+        gmpClickable: true,
+      })
+      marker.addListener('gmp-click', () => onGemeindeClick(g))
+      return marker
+    }) : []
+
+    const oikosMarkers = showOikosPeople ? (oikosPeople || []).map(p => {
+      const content = buildOikosPersonPinElement(p, { zoom: zoomRef.current })
+      content.dataset.pinType = 'oikos-person'
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        position: { lat: p.latitude, lng: p.longitude },
+        content,
+        zIndex: 20,
+        gmpClickable: true,
+      })
+      marker.addListener('gmp-click', () => onOikosPersonClick(p))
+      return marker
+    }) : []
+
+    const allMarkers = [...userMarkers, ...actMarkers, ...gemeindeMarkers, ...oikosMarkers]
     allMarkersRef.current = allMarkers
 
     const clusterer = new MarkerClusterer({
@@ -262,9 +361,8 @@ function useCombinedClusterer({ map, users, activities, onUserClick, onActivityC
       markers: allMarkers,
       renderer: {
         render: ({ count, position, markers }) => {
-          const hasEvent = markers.some(m => m.content?.dataset?.pinType === 'activity')
-          const hasUser  = markers.some(m => m.content?.dataset?.pinType === 'user')
-          const content  = buildClusterElement(count, hasEvent && hasUser, hasEvent)
+          const kinds = new Set(markers.map(m => m.content?.dataset?.pinType).filter(Boolean))
+          const content = buildClusterElement(count, kinds)
           return new window.google.maps.marker.AdvancedMarkerElement({
             position, content, zIndex: 200 + count,
           })
@@ -279,39 +377,15 @@ function useCombinedClusterer({ map, users, activities, onUserClick, onActivityC
       clustererRef.current = null
       allMarkersRef.current = []
     }
-  }, [map, users, activities, showUsers, showEvents, onUserClick, onActivityClick])
+  }, [map, users, activities, gemeinden, oikosPeople, showUsers, showEvents, showGemeinden, showOikosPeople, onUserClick, onActivityClick, onGemeindeClick, onOikosPersonClick])
 }
 
-// ─── Snapchat-style Zoom Sidebar ─────────────────────────
-// Zoom levels 2–20 mapped to emojis like Snapchat's travel modes
-const ZOOM_ICONS = [
-  { minZoom: 2,  emoji: '🌌', label: 'Weltall'    },
-  { minZoom: 4,  emoji: '🌍', label: 'Welt'       },
-  { minZoom: 6,  emoji: '🗺️', label: 'Kontinent'  },
-  { minZoom: 8,  emoji: '✈️', label: 'Land'       },
-  { minZoom: 10, emoji: '🚂', label: 'Region'     },
-  { minZoom: 12, emoji: '🚗', label: 'Stadt'      },
-  { minZoom: 14, emoji: '🛵', label: 'Viertel'    },
-  { minZoom: 16, emoji: '🚶', label: 'Straße'     },
-  { minZoom: 18, emoji: '🔍', label: 'Nahansicht' },
-]
-
-function getZoomIcon(zoom) {
-  let best = ZOOM_ICONS[0]
-  for (const z of ZOOM_ICONS) {
-    if (zoom >= z.minZoom) best = z
-  }
-  return best
-}
-
-function useSnapchatZoom({ map, minZoom = 2 }) {
-  const trackRef     = useRef(null)
-  const draggingRef  = useRef(false)
-  const startYRef    = useRef(0)
-  const startZoomRef = useRef(0)
+// Zoom-Level der Karte für Marker-Clustering & Pin-Größe; die frühere
+// Zieh-Leiste zum Zoomen ist entfernt (Pinch-Geste auf der Karte reicht),
+// dieser Hook bildet nur noch das aktuelle Zoom-Level nach.
+function useSnapchatZoom({ map }) {
   const [currentZoom, setCurrentZoom] = useState(10)
 
-  // Sync zoom state when Google Maps changes zoom externally
   useEffect(() => {
     if (!map) return
     const listener = map.addListener('zoom_changed', () => setCurrentZoom(map.getZoom()))
@@ -319,78 +393,51 @@ function useSnapchatZoom({ map, minZoom = 2 }) {
     return () => window.google.maps.event.removeListener(listener)
   }, [map])
 
-  // Global move/up listeners so dragging outside the track still works (PC + Mobile)
-  useEffect(() => {
-    function move(e) {
-      if (!draggingRef.current || !map || !trackRef.current) return
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY
-      const dy = startYRef.current - clientY   // up = positive = zoom in
-      const trackH = trackRef.current.getBoundingClientRect().height || 220
-      const zoomRange = 20 - minZoom
-      const delta = (dy / trackH) * zoomRange
-      const newZoom = Math.min(20, Math.max(minZoom, startZoomRef.current + delta))
-      map.setZoom(Math.round(newZoom))
-    }
-    function up() { draggingRef.current = false }
-
-    window.addEventListener('mousemove', move)
-    window.addEventListener('mouseup',   up)
-    window.addEventListener('touchmove', move, { passive: true })
-    window.addEventListener('touchend',  up)
-    return () => {
-      window.removeEventListener('mousemove', move)
-      window.removeEventListener('mouseup',   up)
-      window.removeEventListener('touchmove', move)
-      window.removeEventListener('touchend',  up)
-    }
-  }, [map, minZoom])
-
-  function onDragStart(e) {
-    if (!map) return
-    draggingRef.current = true
-    startYRef.current   = e.touches ? e.touches[0].clientY : e.clientY
-    startZoomRef.current = map.getZoom()
-    // Nur für Maus-Events: React hängt `touchstart` passiv an den Root,
-    // dort ist preventDefault wirkungslos und löst nur eine Konsolen-Warnung
-    // aus. Für Touch übernimmt `touch-action: none` am Track dieselbe Aufgabe.
-    if (e.type === 'mousedown') e.preventDefault?.()
-  }
-
-  return { trackRef, currentZoom, onDragStart }
+  return { currentZoom }
 }
 
 // ─── Main Component ───────────────────────────────────────
 export default function WorldMapView({ onNavigateToProfile }) {
   const { user } = useAuth()
-  const navigate = useNavigate()
   const { showToast } = useToast()
   const {
-    visibleUsers, activities, myProfile,
+    visibleUsers, activities, gemeinden, myProfile,
     loading, createActivity, joinActivity, joinActivityChat, leaveActivity, deleteActivity, updateActivity,
+    updateLocationVisibility, updateLocationSettings,
   } = useWorldMap()
 
-  const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
+  const { isLoaded, loadError } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
 
   const [map, setMap] = useState(null)
   const minZoomRef = useRef(2)
   const didInitCenterRef = useRef(false)
-  const snapZoom = useSnapchatZoom({ map, minZoom: minZoomRef.current })
+  const snapZoom = useSnapchatZoom({ map })
   const [selectedUser, setSelectedUser] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
+  const [selectedGemeinde, setSelectedGemeinde] = useState(null)
   // Merkt sich, ob das aktuell offene Detail (Person/Event) aus der
   // Drawer-Liste heraus geöffnet wurde. Falls ja, springt das Drawer beim
   // Schließen (X) wieder zurück zur vollen Liste statt eingeklappt zu bleiben.
   const openedFromListRef = useRef(false)
   const [reopenListKey, setReopenListKey] = useState(0)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
+  // Sichtbare Höhe des Weltkarte-Drawers über der Nav (Kopf allein im
+  // eingeklappten Zustand, mehr beim Hochziehen) - der rechte Button-Stapel
+  // (Standort/Event hosten) hängt daran, damit er beim Aufziehen mitwandert
+  // statt starr auf Höhe des eingeklappten Drawers stehen zu bleiben.
+  const [drawerLift, setDrawerLift] = useState(DRAWER_PEEK)
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
+  const [showLocationSettings, setShowLocationSettings] = useState(false)
+  const [selectedOikosPerson, setSelectedOikosPerson] = useState(null)
+  const oikosSource = useOikosWorldMapSource({ enabled: false })
   // Zwei unabhängige Ebenen – beide können gleichzeitig aktiv sein.
   // ?layer=siblings (z.B. von "Auf der Map suchen") → nur Geschwister, keine Events.
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const siblingsOnly = searchParams.get('layer') === 'siblings'
   const [showGeschwister, setShowGeschwister] = useState(true)
   const [showEvents, setShowEvents] = useState(!siblingsOnly)
-  // Drawer: welcher Inhalt (Geschwister/Events) unten im hochziehbaren Menü angezeigt wird
+  const [showGemeinden, setShowGemeinden] = useState(!siblingsOnly)
+  // Drawer: welcher Inhalt (Geschwister/Events/Gemeinden) unten im hochziehbaren Menü angezeigt wird
   const [drawerTab, setDrawerTab] = useState('siblings')
   // Umkreis in km (null = weltweit) – filtert Liste UND Karten-Pins
   const [radiusKm, setRadiusKm] = useState(null)
@@ -431,20 +478,36 @@ export default function WorldMapView({ onNavigateToProfile }) {
     [activitiesWithDistance, radiusKm]
   )
 
+  const gemeindenWithDistance = useMemo(() => {
+    if (!hasOwnLocation) return gemeinden
+    return gemeinden.map(g => ({
+      ...g,
+      distance: haversine(myProfile.latitude, myProfile.longitude, g.latitude, g.longitude),
+    }))
+  }, [gemeinden, hasOwnLocation, myProfile?.latitude, myProfile?.longitude]) // eslint-disable-line react-hooks/exhaustive-deps
+  const gemeindenInRadius = useMemo(
+    () => gemeindenWithDistance.filter(g => radiusKm == null || g.distance == null || g.distance <= radiusKm),
+    [gemeindenWithDistance, radiusKm]
+  )
+
   const usersForMap = useMemo(() => (showGeschwister ? usersInRadius : []), [showGeschwister, usersInRadius])
   const activitiesForMap = useMemo(() => (showEvents ? activitiesInRadius : []), [showEvents, activitiesInRadius])
 
   // Erster Tap wählt die Ebene (und den Drawer-Tab), zweiter Tap auf die
   // bereits ausgewählte Ebene blendet sie aus.
+  const LAYERS = {
+    siblings: [showGeschwister, setShowGeschwister],
+    events: [showEvents, setShowEvents],
+    gemeinden: [showGemeinden, setShowGemeinden],
+  }
   function handlePillTap(tabKey) {
-    if (tabKey === 'siblings') {
-      if (!showGeschwister) { setShowGeschwister(true); setDrawerTab('siblings') }
-      else if (drawerTab !== 'siblings') setDrawerTab('siblings')
-      else { setShowGeschwister(false); if (showEvents) setDrawerTab('events') }
-    } else {
-      if (!showEvents) { setShowEvents(true); setDrawerTab('events') }
-      else if (drawerTab !== 'events') setDrawerTab('events')
-      else { setShowEvents(false); if (showGeschwister) setDrawerTab('siblings') }
+    const [isShown, setShown] = LAYERS[tabKey]
+    if (!isShown) { setShown(true); setDrawerTab(tabKey) }
+    else if (drawerTab !== tabKey) setDrawerTab(tabKey)
+    else {
+      setShown(false)
+      const fallback = Object.keys(LAYERS).find(k => k !== tabKey && LAYERS[k][0])
+      if (fallback) setDrawerTab(fallback)
     }
   }
 
@@ -487,17 +550,124 @@ export default function WorldMapView({ onNavigateToProfile }) {
 
   const handleUserClick = useMemo(() => (u) => setSelectedUser(u), [])
   const handleActivityClick = useMemo(() => (a) => setSelectedActivity(a), [])
+  const handleGemeindeClick = useMemo(() => (g) => setSelectedGemeinde(g), [])
+  const handleOikosPersonClick = useMemo(() => (p) => setSelectedOikosPerson(p), [])
+
+  // "Oikos Verbindungen anzeigen" – bereits über einen echten Profil-Pin
+  // abgedeckte Accounts (eigener Pin + alle sichtbaren Nutzer). Grundlage für
+  // Dedup (Modus B) und für Modus A ("nur bereits Sichtbare").
+  const coveredAccountIds = useMemo(() => {
+    const set = new Set()
+    if (myProfile?.id) set.add(myProfile.id)
+    for (const u of visibleUsers) set.add(u.id)
+    return set
+  }, [myProfile?.id, visibleUsers])
+
+  // Neue Pins nur für Personen ohne eigenen Profil-Pin (accountlos, oder
+  // verknüpft aber anderweitig nicht sichtbar) – Modus A fügt nie neue Pins hinzu.
+  const oikosPersonPins = useMemo(() => {
+    if (!oikosSource.active || oikosSource.whoMode !== 'all_assigned') return []
+    return oikosSource.locationPins
+      .filter(p => !p.linked_user_id || !coveredAccountIds.has(p.linked_user_id))
+      .map(p => ({
+        id: p.person_id, name: p.name, latitude: p.lat, longitude: p.lng,
+        address: p.address, relationship_type: p.relationship_type, linked_user_id: p.linked_user_id,
+      }))
+  }, [oikosSource.active, oikosSource.whoMode, oikosSource.locationPins, coveredAccountIds])
+
+  // person_id → {lat,lng} für Beziehungslinien. Deckt sowohl Personen mit
+  // echtem Profil-Pin (über linked_user_id → visibleUsers/myProfile) als auch
+  // neue Oikos-Pins ab; nur Kanten, bei denen BEIDE Enden aufgelöst sind, werden gezeichnet.
+  const oikosPersonPositions = useMemo(() => {
+    const positions = new Map()
+    if (!oikosSource.active) return positions
+
+    const linkedList = oikosSource.whoMode === 'linked_visible' ? oikosSource.linkedPeople : oikosSource.locationPins
+    for (const p of linkedList) {
+      const pid = p.person_id ?? p.id
+      const linkedId = p.linked_user_id
+      if (!linkedId || !coveredAccountIds.has(linkedId)) continue
+      const pos = linkedId === myProfile?.id
+        ? { lat: myProfile.latitude, lng: myProfile.longitude }
+        : (visibleUsers.find(u => u.id === linkedId) || null)
+      if (pos?.lat != null || pos?.latitude != null) {
+        positions.set(pid, { lat: pos.lat ?? pos.latitude, lng: pos.lng ?? pos.longitude })
+      }
+    }
+    for (const pin of oikosPersonPins) {
+      positions.set(pin.id, { lat: pin.latitude, lng: pin.longitude })
+    }
+    return positions
+  }, [oikosSource.active, oikosSource.whoMode, oikosSource.linkedPeople, oikosSource.locationPins, oikosPersonPins, coveredAccountIds, myProfile, visibleUsers])
+
+  const oikosConnectionLines = useMemo(() => {
+    if (!oikosSource.active) return []
+    const lines = []
+    for (const c of oikosSource.connections) {
+      const from = oikosPersonPositions.get(c.source_person_id)
+      const to = oikosPersonPositions.get(c.target_person_id)
+      if (from && to) lines.push({ id: `${c.source_person_id}-${c.target_person_id}`, from, to, color: c.color })
+    }
+    return lines
+  }, [oikosSource.active, oikosSource.connections, oikosPersonPositions])
+
+  function focusOn(lat, lng) {
+    if (!map || lat == null || lng == null) return
+    map.panTo({ lat, lng })
+    if (map.getZoom() < 11) map.setZoom(11)
+  }
+
+  // Deep-link: ?focus=<userId> (aus der Mini-Profilvorschau auf der Oikos-
+  // Map) → diese Person fokussieren, sobald Karte + Geschwister-Liste bereit
+  // sind. Ist die Person hier nicht sichtbar (keine Freundschaft,
+  // show_on_world_map=false, kein Standort), nur ein Hinweis statt Absturz.
+  useEffect(() => {
+    const focusId = searchParams.get('focus')
+    if (!focusId || loading || !map) return
+    const target = visibleUsers.find(u => u.id === focusId)
+    if (target) {
+      focusOn(target.latitude, target.longitude)
+      setSelectedUser(target)
+    } else {
+      showToast('Diese Person ist auf der Weltkarte nicht sichtbar')
+    }
+    setSearchParams(prev => { prev.delete('focus'); return prev }, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, visibleUsers, loading, map])
 
   useCombinedClusterer({
     map,
     users: visibleUsers,
     activities,
+    gemeinden,
+    oikosPeople: oikosPersonPins,
     onUserClick: handleUserClick,
     onActivityClick: handleActivityClick,
+    onGemeindeClick: handleGemeindeClick,
+    onOikosPersonClick: handleOikosPersonClick,
     showUsers: showGeschwister && isLoaded,
     showEvents: showEvents && isLoaded,
+    showGemeinden: showGemeinden && isLoaded,
+    showOikosPeople: oikosSource.active && isLoaded,
     zoom: snapZoom.currentZoom,
   })
+
+  // Google-Maps-Skript nicht ladbar (offline, oder API-Key lässt die App-
+  // Herkunft nicht zu): statt endlosem Spinner eine verständliche Meldung
+  if (loadError) {
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 32, textAlign: 'center', background: C.bgSec }}>
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }}>Die Karte konnte nicht geladen werden.</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>Bitte prüfe deine Internetverbindung und versuche es erneut.</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{ padding: '10px 20px', borderRadius: 24, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Erneut versuchen
+        </button>
+      </div>
+    )
+  }
 
   if (loading || !isLoaded) {
     return (
@@ -547,26 +717,56 @@ export default function WorldMapView({ onNavigateToProfile }) {
               <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} />
             </AdvancedMarker>
           )}
+
+          {/* Oikos-Beziehungslinien – nur zwischen tatsächlich aufgelösten Personen */}
+          {oikosConnectionLines.map(line => (
+            <Polyline
+              key={line.id}
+              path={[line.from, line.to]}
+              options={{ strokeColor: line.color || C.accent, strokeWeight: 2, strokeOpacity: 0.6, clickable: false }}
+            />
+          ))}
         </GoogleMap>
 
-        {/* Rechter Bedien-Stapel: Zoom-Leiste + "Event hosten"-Button fest
-            untereinander mit festem Abstand – überlappen dadurch nie, egal
-            wie klein der sichtbare Kartenbereich ist. Bottom-verankert über
-            der schwebenden Ebenen-Kapsel statt vertikal zentriert. */}
+        {/* Standort-Einstellungen: Zahnrad oben rechts */}
+        <button
+          onClick={() => setShowLocationSettings(true)}
+          style={{ ...mapBtnStyle, position: 'absolute', top: 12, right: 12, zIndex: 500 }}
+          title="Standort-Einstellungen"
+          aria-label="Standort-Einstellungen"
+        >
+          <Settings size={18} />
+        </button>
+
+        {/* Rechter Bedien-Stapel: Standort-Button + "Event hosten"-Button.
+            Hängt an drawerLift (sichtbare Drawer-Höhe über der Nav) statt an
+            einem festen Wert, damit der Stapel beim Aufziehen des Drawers
+            mitwandert statt auf Peek-Höhe stehen zu bleiben. */}
         <div style={{
           position: 'absolute', right: 12,
-          bottom: `calc(var(--bottom-nav-h, 64px) + ${DRAWER_PEEK}px + 14px)`,
+          bottom: `calc(var(--bottom-nav-h, 64px) + ${drawerLift}px + 14px)`,
           zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         }}>
-          <ZoomSidebar
-            snapZoom={snapZoom}
-            minZoom={minZoomRef.current}
-            onCenterSelf={myProfile?.latitude ? () => {
-              if (!map) return
-              map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
-              map.setZoom(13)
-            } : null}
-          />
+          {myProfile?.latitude && (
+            <button
+              onClick={() => {
+                if (!map) return
+                map.panTo({ lat: myProfile.latitude, lng: myProfile.longitude })
+                map.setZoom(13)
+              }}
+              style={{
+                width: 40, height: 40, borderRadius: 12,
+                background: C.surfaceBlur, border: `1px solid ${C.border}`,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: C.accentDark, padding: 0,
+                backdropFilter: 'blur(6px)',
+              }}
+              title="Zu meinem Standort"
+            >
+              <Navigation size={17} />
+            </button>
+          )}
 
           {/* Create Event FAB */}
           <button
@@ -600,7 +800,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
                 Hinterlege deine Adresse in den Einstellungen.
               </p>
             </div>
-            <button onClick={() => navigate('/settings?section=privacy')} style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setShowLocationSettings(true)} style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
               Standort
             </button>
           </div>
@@ -611,20 +811,31 @@ export default function WorldMapView({ onNavigateToProfile }) {
           tab={drawerTab}
           showGeschwister={showGeschwister}
           showEvents={showEvents}
+          showGemeinden={showGemeinden}
           onPillTap={handlePillTap}
           users={usersInRadius}
           activities={activitiesInRadius}
+          gemeinden={gemeindenInRadius}
           myProfile={myProfile}
           hasOwnLocation={hasOwnLocation}
           radiusKm={radiusKm}
           onRadiusChange={setRadiusKm}
           reopenListKey={reopenListKey}
+          onVisibleHeightChange={setDrawerLift}
+          onCreateEvent={() => setShowCreateSheet(true)}
           onSelectUser={(u) => { focusOn(u.latitude, u.longitude); openedFromListRef.current = true; setSelectedUser(u) }}
           onSelectActivity={(a) => { focusOn(a.latitude, a.longitude); openedFromListRef.current = true; setSelectedActivity(a) }}
+          onSelectGemeinde={(g) => { focusOn(g.latitude, g.longitude); openedFromListRef.current = true; setSelectedGemeinde(g) }}
         />
 
         {/* Privacy banner */}
-        {showPrivacyBanner && <PrivacyBanner onClose={closePrivacyBanner} />}
+        {showPrivacyBanner && (
+          <PrivacyBanner
+            onClose={closePrivacyBanner}
+            hasLocation={hasOwnLocation}
+            onSetLocation={() => { closePrivacyBanner(); setShowLocationSettings(true) }}
+          />
+        )}
       </div>
 
       {/* Bottom Sheets */}
@@ -633,6 +844,15 @@ export default function WorldMapView({ onNavigateToProfile }) {
           setSelectedUser(null)
           if (openedFromListRef.current) { openedFromListRef.current = false; setReopenListKey(k => k + 1) }
         }} />
+      )}
+      {selectedGemeinde && (
+        <GemeindePinSheet
+          gemeinde={selectedGemeinde}
+          onClose={() => {
+            setSelectedGemeinde(null)
+            if (openedFromListRef.current) { openedFromListRef.current = false; setReopenListKey(k => k + 1) }
+          }}
+        />
       )}
       {selectedActivity && (
         <ActivitySheet
@@ -676,6 +896,20 @@ export default function WorldMapView({ onNavigateToProfile }) {
           }}
         />
       )}
+      {showLocationSettings && (
+        <LocationSettingsSheet
+          myProfile={myProfile}
+          updateLocationSettings={updateLocationSettings}
+          updateLocationVisibility={updateLocationVisibility}
+          onClose={() => setShowLocationSettings(false)}
+        />
+      )}
+      {selectedOikosPerson && (
+        <OikosPersonPinSheet
+          person={selectedOikosPerson}
+          onClose={() => setSelectedOikosPerson(null)}
+        />
+      )}
     </div>
   )
 }
@@ -714,93 +948,6 @@ function OwnPinContent({ user }) {
         }}>
           Du
         </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Snapchat Zoom Sidebar Component ─────────────────────
-function ZoomSidebar({ snapZoom, minZoom, onCenterSelf }) {
-  const { trackRef, currentZoom, onDragStart } = snapZoom
-  const maxZoom = 20
-  const zoomRange = maxZoom - minZoom
-  const progress = Math.max(0, Math.min(1, (currentZoom - minZoom) / zoomRange))
-  const currentIcon = getZoomIcon(currentZoom)
-
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 8,
-      userSelect: 'none',
-      WebkitUserSelect: 'none',
-    }}>
-      {/* Mein Standort button */}
-      {onCenterSelf && (
-        <button
-          onClick={onCenterSelf}
-          style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: C.surfaceBlur,
-            border: `1px solid ${C.border}`,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: C.accentDark, padding: 0,
-            backdropFilter: 'blur(6px)',
-          }}
-          title="Zu meinem Standort"
-        >
-          <Navigation size={17} />
-        </button>
-      )}
-
-      {/* Current zoom emoji – no label */}
-      <div style={{ fontSize: 22, lineHeight: 1, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))' }}>
-        {currentIcon.emoji}
-      </div>
-
-      {/* Drag track – schmaler & länger, global mouse/touch listeners handle the drag */}
-      <div
-        ref={trackRef}
-        style={{
-          width: 22,
-          height: 320,
-          borderRadius: 11,
-          background: C.surfaceBlur,
-          border: `1px solid ${C.border}`,
-          boxShadow: '0 2px 14px rgba(0,0,0,0.13)',
-          backdropFilter: 'blur(8px)',
-          position: 'relative',
-          touchAction: 'none',
-          cursor: 'ns-resize',
-          overflow: 'hidden',
-        }}
-        onMouseDown={onDragStart}
-        onTouchStart={onDragStart}
-      >
-        {/* Filled bar – grows from bottom as you zoom in */}
-        <div style={{
-          position: 'absolute',
-          bottom: 0, left: 0, right: 0,
-          height: `${progress * 100}%`,
-          background: `linear-gradient(to top, ${C.accentDark}, ${C.accent})`,
-          borderRadius: 11,
-        }} />
-
-        {/* Thumb knob */}
-        <div style={{
-          position: 'absolute',
-          left: '50%',
-          bottom: `calc(${progress * 100}% - 11px)`,
-          transform: 'translateX(-50%)',
-          width: 22, height: 22,
-          borderRadius: '50%',
-          background: C.bg,
-          border: `2.5px solid ${C.accent}`,
-          boxShadow: '0 2px 8px rgba(90,200,250,0.4)',
-          pointerEvents: 'none',
-        }} />
       </div>
     </div>
   )

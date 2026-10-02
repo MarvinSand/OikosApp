@@ -11,6 +11,7 @@ export function useCommunityDetail(communityId) {
   const [events, setEvents] = useState([])
   const [myRsvps, setMyRsvps] = useState({})
   const [joinRequests, setJoinRequests] = useState([])
+  const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -24,6 +25,7 @@ export function useCommunityDetail(communityId) {
       postsResult,
       eventsResult,
       joinRequestsResult,
+      questionsResult,
     ] = await Promise.all([
       supabase.from('communities').select('*').eq('id', communityId).single(),
       supabase
@@ -59,6 +61,12 @@ export function useCommunityDetail(communityId) {
         .eq('community_id', communityId)
         .eq('status', 'pending')
         .order('created_at'),
+      // RLS lässt nur Fragesteller + Mitglieder sehen.
+      supabase
+        .from('community_questions')
+        .select('id, question, answer, status, asked_by, answered_by, answered_at, created_at')
+        .eq('community_id', communityId)
+        .order('created_at', { ascending: false }),
     ])
 
     setCommunity(communityData)
@@ -94,6 +102,19 @@ export function useCommunityDetail(communityId) {
       setJoinRequests(requests.map(r => ({ ...r, profile: reqProfMap[r.user_id] || null })))
     } else {
       setJoinRequests([])
+    }
+
+    const questionRows = questionsResult.data || []
+    if (questionRows.length > 0) {
+      const askerIds = [...new Set(questionRows.map(q => q.asked_by))]
+      const { data: askerProfiles } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url')
+        .in('id', askerIds)
+      const askerMap = Object.fromEntries((askerProfiles || []).map(p => [p.id, p]))
+      setQuestions(questionRows.map(q => ({ ...q, asker: askerMap[q.asked_by] || null })))
+    } else {
+      setQuestions([])
     }
 
     const ev = eventsResult.data || []
@@ -167,6 +188,32 @@ export function useCommunityDetail(communityId) {
     })
     if (error) { await load(); throw error }
     if (approve) await load()
+  }
+
+  // Frage an eine Gemeinde stellen – auch für Nicht-Mitglieder aufrufbar
+  // (z.B. aus dem Karten-Pin-Sheet), daher kein Zugriff auf `members`.
+  async function askQuestion(question) {
+    const { data, error } = await supabase
+      .from('community_questions')
+      .insert({ community_id: communityId, asked_by: user.id, question })
+      .select('id, question, answer, status, asked_by, answered_by, answered_at, created_at')
+      .single()
+    if (!error && data) {
+      setQuestions(prev => [{ ...data, asker: null }, ...prev])
+    }
+    return { error }
+  }
+
+  async function answerQuestion(questionId, answer) {
+    setQuestions(prev => prev.map(q => q.id === questionId
+      ? { ...q, answer, status: 'answered', answered_by: user.id, answered_at: new Date().toISOString() }
+      : q))
+    const { error } = await supabase
+      .from('community_questions')
+      .update({ answer, status: 'answered', answered_by: user.id, answered_at: new Date().toISOString() })
+      .eq('id', questionId)
+    if (error) await load()
+    return { error }
   }
 
   async function updateCommunity(updates) {
@@ -258,5 +305,6 @@ export function useCommunityDetail(communityId) {
     posts, createPost, deletePost, togglePinPost,
     events, myRsvps, createEvent, deleteEvent, rsvpEvent,
     updateCommunity, joinRequests, respondToJoinRequest,
+    questions, askQuestion, answerQuestion,
   }
 }

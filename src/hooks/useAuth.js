@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabase'
+import { clearAllCaches } from '../lib/swrCache'
+import { publicOrigin } from '../lib/platform'
 
 // ─────────────────────────────────────────────────────────────
 // Ein einziger, geteilter Auth-Store für die ganze App.
@@ -19,14 +21,37 @@ import { supabase } from '../lib/supabase'
 
 const listeners = new Set()
 
-let state = {
-  user: null,
-  session: null,
-  loading: true,
+// Gespeicherte Session synchron aus localStorage lesen. `getSession()` ist
+// asynchron und wartet bei abgelaufenem Access-Token (nach > 1 h ohne App-
+// Nutzung – auf dem Handy der Normalfall) auf den Token-Refresh beim
+// Server. Bis dahin zeigte die App nur einen Spinner – bei kaltem Backend
+// mehrere Sekunden. Mit dem gespeicherten User rendert die App sofort (inkl.
+// der gecachten Tab-Inhalte, siehe swrCache.js); Datenabfragen warten intern
+// ohnehin auf das frische Token. Schlägt der Refresh fehl, meldet
+// `getSession()` bzw. `onAuthStateChange` gleich danach `null` und die App
+// leitet wie bisher auf /auth um.
+function readStoredSession() {
+  try {
+    const raw = localStorage.getItem(supabase.auth.storageKey)
+    if (!raw) return null
+    const session = JSON.parse(raw)
+    return session?.user?.id && session?.refresh_token ? session : null
+  } catch {
+    return null
+  }
 }
+
+const storedSession = readStoredSession()
+
+let state = storedSession
+  ? { user: storedSession.user, session: storedSession, loading: false }
+  : { user: null, session: null, loading: true }
 
 function setState(session, loading) {
   const nextUser = session?.user ?? null
+  // Anderer oder kein User mehr (Logout, Konto gewechselt): gecachte
+  // Tab-Inhalte des vorherigen Kontos verwerfen.
+  if (state.user?.id && state.user.id !== nextUser?.id) clearAllCaches()
   // Nur bei echter Änderung neu rendern – sonst re-rendert jeder
   // Token-Refresh (alle ~50 Min.) die komplette App.
   if (
@@ -84,7 +109,7 @@ async function register(email, password, fullName, gender = null, username = nul
     password,
     options: {
       data: { full_name: fullName },
-      emailRedirectTo: window.location.origin + '/auth/callback',
+      emailRedirectTo: publicOrigin() + '/auth/callback',
     },
   })
   if (error) throw error

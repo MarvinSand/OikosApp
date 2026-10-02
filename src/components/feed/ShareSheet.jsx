@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { X, Link2, Send, Check } from 'lucide-react'
 import ForwardSheet from '../prayer/ForwardSheet'
 import { useToast } from '../../context/ToastContext'
+import { verseAttachmentFromRow, buildBibleLink } from '../../lib/bibleLink'
+import { publicOrigin } from '../../lib/platform'
 
 // Sheet zum Teilen eines Feed-Posts oder Kommentars: entweder app-intern an
 // Geschwister (ForwardSheet) oder als öffentlicher Link zum Kopieren/Teilen
@@ -12,7 +14,7 @@ export default function ShareSheet({ post, comment, onClose }) {
   const [copied, setCopied] = useState(false)
 
   const item = comment || post
-  const postUrl = `${window.location.origin}${comment ? `/feed/comment/${item.id}` : `/feed/post/${item.id}`}`
+  const postUrl = `${publicOrigin()}${comment ? `/feed/comment/${item.id}` : `/feed/post/${item.id}`}`
 
   async function handleCopyLink() {
     try {
@@ -37,9 +39,11 @@ export default function ShareSheet({ post, comment, onClose }) {
   function buildMessage() {
     const parts = []
     if (item.title) parts.push(item.title)
-    if (item.type === 'bible') {
-      if (item.bible_reference) parts.push(`📖 ${item.bible_reference}`)
+    if (item.bible_reference) {
+      parts.push(`📖 ${item.bible_reference}`)
       if (item.bible_verse) parts.push(`„${item.bible_verse}"`)
+      const attachment = verseAttachmentFromRow(item)
+      if (attachment?.book) parts.push(`${publicOrigin()}${buildBibleLink(attachment)}`)
     }
     if (item.body) parts.push(item.body)
     parts.push(postUrl)

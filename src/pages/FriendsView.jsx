@@ -22,6 +22,12 @@ import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 import DateFilterControl from '../components/ui/DateFilterControl'
 import ExpandableSearch from '../components/common/ExpandableSearch'
 import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
+import { CreateCommunitySheet, JoinCommunityModal } from '../components/community/CommunitySheets'
+import BibleReferenceChip from '../components/bible/BibleReferenceChip'
+import { verseAttachmentFromRow } from '../lib/bibleLink'
+import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
+import ModerationSheet from '../components/common/ModerationSheet'
+import { useBlocks } from '../hooks/useBlocks'
 
 // ─── Avatar ────────────────────────────────────────────────
 function Avatar({ name, size = 40, isChristian, avatarUrl }) {
@@ -683,114 +689,6 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
   )
 }
 
-// ─── CreateCommunitySheet ────────────────────────────────────
-export function CreateCommunitySheet({ onClose }) {
-  const navigate = useNavigate()
-  const { createCommunity } = useCommunities()
-  const { showToast } = useToast()
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [isPublic, setIsPublic] = useState(false)
-  const [saving, setSaving] = useState(false)
-
-  async function handleCreate() {
-    if (!name.trim()) return
-    setSaving(true)
-    try {
-      const community = await createCommunity({ name: name.trim(), description: description.trim() || null, is_public: isPublic })
-      showToast('Community erstellt ✓')
-      onClose()
-      navigate(`/community/${community.id}`)
-    } catch (e) {
-      showToast(e?.message || 'Fehler beim Erstellen', 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <>
-      <div onClick={onClose} className="fixed inset-0 bg-dark/40 backdrop-blur-[2px] z-40 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
-        <div style={sheetHandle} />
-        <h3 style={sheetTitleStyle}>Community erstellen</h3>
-
-        <label style={lbl}>Name *</label>
-        <input autoFocus type="text" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. Hausgemeinde Mitte" style={inp} />
-
-        <label style={{ ...lbl, marginTop: 14 }}>Beschreibung</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 200))} placeholder="Worum geht es in eurer Community?" rows={3} style={{ ...inp, resize: 'none' }} />
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', textAlign: 'right', marginTop: 2 }}>{description.length}/200</p>
-
-        {/* Public toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
-          <div>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>Öffentlich</p>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>Für alle sichtbar und beitrittsfähig</p>
-          </div>
-          <button
-            onClick={() => setIsPublic(v => !v)}
-            style={{ width: 44, height: 26, borderRadius: 13, border: 'none', backgroundColor: isPublic ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}
-          >
-            <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: isPublic ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-          </button>
-        </div>
-
-        <button
-          onClick={handleCreate}
-          disabled={!name.trim() || saving}
-          style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 20, backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed' }}
-        >
-          {saving ? 'Erstelle…' : 'Community erstellen'}
-        </button>
-      </div>
-    </>
-  )
-}
-
-// ─── JoinCommunityModal ──────────────────────────────────────
-export function JoinCommunityModal({ onClose }) {
-  const { joinByCode } = useCommunities()
-  const { showToast } = useToast()
-  const navigate = useNavigate()
-  const [code, setCode] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  async function handleJoin() {
-    if (!code.trim()) return
-    setLoading(true)
-    setError('')
-    try {
-      const community = await joinByCode(code.trim())
-      showToast(`Willkommen in ${community.name}!`)
-      onClose()
-      navigate(`/community/${community.id}`)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div style={overlay}>
-      <div style={modal}>
-        <h3 style={sheetTitleStyle}>Community beitreten</h3>
-        <label style={lbl}>Einladungscode</label>
-        <input autoFocus type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setError('') }} placeholder="z.B. 550E8400" onKeyDown={e => e.key === 'Enter' && handleJoin()} style={{ ...inp, letterSpacing: 2, textTransform: 'uppercase' }} />
-        {error && <p style={{ color: '#C0392B', fontFamily: 'Lora, serif', fontSize: 13, marginTop: 6, fontStyle: 'italic' }}>{error}</p>}
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
-          <button onClick={handleJoin} disabled={!code.trim() || loading} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: code.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-            {loading ? 'Beitrete…' : 'Beitreten'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── ChatsTab ────────────────────────────────────────────────
 function ChatsAvatar({ name, size = 40, isChristian, avatarUrl }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -1001,7 +899,7 @@ function ChatsTab() {
       <button
         onClick={() => setShowNewChat(true)}
         disabled={starting}
-        style={{ position: 'fixed', bottom: 90, right: 20, width: 52, height: 52, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(58,46,36,0.25)', zIndex: 10, color: 'var(--color-bg)' }}
+        style={{ position: 'fixed', bottom: 'calc(var(--bottom-nav-h, 64px) + 26px)', right: 20, width: 52, height: 52, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(58,46,36,0.25)', zIndex: 10, color: 'var(--color-bg)' }}
       >
         <Plus size={24} />
       </button>
@@ -1098,7 +996,9 @@ function FeedAvatar({ profile, size = 36 }) {
 export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
+  const [showModeration, setShowModeration] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
+  const { isBlocked } = useBlocks()
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
   const TypeIcon = cfg.icon
   // Klares Kategorie-Badge aus dem echten category-Feld (Frage, Bibelstelle, …)
@@ -1114,6 +1014,10 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   const [expanded, setExpanded] = useState(false)
   const bodyLong = post.body && post.body.length > 240
   const displayBody = bodyLong && !expanded ? post.body.slice(0, 240) + '…' : post.body
+
+  // Nach dem Blockieren sofort ausblenden (serverseitig filtert ab dem
+  // nächsten Laden ohnehin RLS)
+  if (!isOwn && isBlocked(post.author_id)) return null
 
   return (
     <FeedCardFrame threadLineAfter={threadLineAfter}>
@@ -1147,6 +1051,20 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
               <TypeIcon size={11} /> {cfg.label}
             </span>
           )}
+          {!isOwn && (
+            <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+              <MoreHorizontal size={16} />
+            </button>
+          )}
+          {showModeration && (
+            <ModerationSheet
+              contentType="feed_post"
+              contentId={post.id}
+              authorId={post.author_id}
+              authorName={author?.full_name || author?.username}
+              onClose={() => setShowModeration(false)}
+            />
+          )}
           {isOwn && (
             <div style={{ position: 'relative' }}>
               <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
@@ -1176,13 +1094,8 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
           <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{post.title}</p>
         )}
 
-        {post.type === 'bible' && (
-          <div style={{ borderLeft: '3px solid var(--color-accent)', paddingLeft: 10, marginBottom: 8 }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, color: 'var(--color-accent)', margin: '0 0 4px' }}>📖 {post.bible_reference}</p>
-            {post.bible_verse && (
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontStyle: 'italic', color: 'var(--color-text)', margin: '0 0 6px', lineHeight: 1.5 }}>„{post.bible_verse}"</p>
-            )}
-          </div>
+        {post.bible_reference && (
+          <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" />
         )}
 
         {post.type === 'photo' && post.photo_url && (
@@ -1229,472 +1142,6 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         />
       )}
     </FeedCardFrame>
-  )
-}
-
-// ─── Create Post Sheet ───────────────────────────────────────
-export function CreatePostSheet({ onClose, onSubmit }) {
-  const { myCommunities } = useCommunities()
-  const [step, setStep] = useState(1) // 1=type, 2=content, 3=visibility
-  const [type, setType] = useState(null)
-  const [form, setForm] = useState({ title: '', body: '', bibleReference: '', bibleVerse: '', photoUrl: '' })
-  const [isPublic, setIsPublic] = useState(true)
-  const [selectedCommunities, setSelectedCommunities] = useState([])
-  const [saving, setSaving] = useState(false)
-
-  const TYPE_TILES = [
-    { type: 'text',      emoji: '💬', label: 'Gedanke' },
-    { type: 'bible',     emoji: '📖', label: 'Bibelstelle' },
-    { type: 'testimony', emoji: '🙌', label: 'Zeugnis' },
-    { type: 'question',  emoji: '❓', label: 'Frage' },
-  ]
-
-  function valid() {
-    if (!form.body.trim()) return false
-    if (type === 'bible' && !form.bibleReference.trim()) return false
-    return true
-  }
-
-  async function handleSubmit() {
-    if (!valid()) return
-    setSaving(true)
-    await onSubmit({
-      type,
-      body: form.body.trim(),
-      title: form.title.trim() || null,
-      bibleReference: form.bibleReference.trim() || null,
-      bibleVerse: form.bibleVerse.trim() || null,
-      photoUrl: form.photoUrl.trim() || null,
-      isPublic,
-      communityIds: selectedCommunities,
-    })
-    setSaving(false)
-    onClose()
-  }
-
-  return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.4)', zIndex: 40 }} />
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '24px 24px 0 0', zIndex: 50, padding: '16px 20px', paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={sheetHandle} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            {step === 1 ? 'Was möchtest du teilen?' : step === 2 ? 'Inhalt' : 'Sichtbarkeit'}
-          </h3>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <X size={16} color="var(--color-text-muted)" />
-          </button>
-        </div>
-
-        {/* Step 1: type */}
-        {step === 1 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {TYPE_TILES.map(t => (
-              <button
-                key={t.type}
-                onClick={() => { setType(t.type); setStep(2) }}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 12px', borderRadius: 16, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-warm-4)', cursor: 'pointer', fontFamily: 'Lora, serif' }}
-              >
-                <span style={{ fontSize: 28 }}>{t.emoji}</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{t.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Step 2: content */}
-        {step === 2 && type && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {(type === 'testimony' || type === 'question') && (
-              <input
-                autoFocus
-                type="text"
-                value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                placeholder={type === 'testimony' ? 'Titel: Womit hat Gott dich überrascht?' : 'Deine Frage an die Gemeinschaft *'}
-                style={inp}
-              />
-            )}
-            {type === 'bible' && (
-              <>
-                <input autoFocus type="text" value={form.bibleReference} onChange={e => setForm(f => ({ ...f, bibleReference: e.target.value }))} placeholder="Bibelstelle *  z.B. Johannes 3,16" style={inp} />
-                <textarea value={form.bibleVerse} onChange={e => setForm(f => ({ ...f, bibleVerse: e.target.value }))} placeholder="Vers-Text" rows={3} style={{ ...inp, resize: 'none' }} />
-              </>
-            )}
-            <textarea
-              value={form.body}
-              onChange={e => setForm(f => ({ ...f, body: e.target.value.slice(0, 500) }))}
-              placeholder={type === 'bible' ? 'Deine Reflexion dazu…' : type === 'testimony' ? 'Was hat Gott in dir und durch dich gewirkt? *' : type === 'question' ? 'Kontext (optional)' : 'Dein Gedanke… *'}
-              rows={5}
-              style={{ ...inp, resize: 'none' }}
-              autoFocus={type === 'text' || type === 'bible'}
-            />
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', textAlign: 'right', margin: 0 }}>{form.body.length}/500</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setStep(1)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Zurück</button>
-              <button onClick={() => setStep(3)} disabled={!valid()} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: valid() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: valid() ? 'pointer' : 'not-allowed' }}>Weiter</button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: visibility */}
-        {step === 3 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[{ v: true, label: '🌐 Für alle Geschwister', sub: 'Alle eingeloggten Nutzer können es sehen' }, { v: false, label: '🏘 Nur für bestimmte Communities', sub: 'Wähle die Communities unten aus' }].map(o => (
-              <button
-                key={String(o.v)}
-                onClick={() => setIsPublic(o.v)}
-                style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 14, border: `2px solid ${isPublic === o.v ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, backgroundColor: isPublic === o.v ? 'rgba(74,103,65,0.06)' : 'var(--color-warm-4)', cursor: 'pointer', textAlign: 'left' }}
-              >
-                <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${isPublic === o.v ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, flexShrink: 0, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {isPublic === o.v && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)' }} />}
-                </div>
-                <div>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>{o.label}</p>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{o.sub}</p>
-                </div>
-              </button>
-            ))}
-            {!isPublic && myCommunities.length > 0 && (
-              <div style={{ marginTop: 4 }}>
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>Communities auswählen:</p>
-                {myCommunities.map(c => (
-                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)' }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedCommunities.includes(c.id)}
-                      onChange={() => setSelectedCommunities(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
-                      style={{ accentColor: 'var(--color-warm-1)', width: 16, height: 16 }}
-                    />
-                    <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)' }}>{c.name}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-              <button onClick={() => setStep(2)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Zurück</button>
-              <button onClick={handleSubmit} disabled={saving || (!isPublic && selectedCommunities.length === 0)} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Teile…' : 'Teilen 🙌'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </>
-  )
-}
-
-// ─── FeedPostSheet ───────────────────────────────────────────
-
-const FEED_CATEGORIES = [
-  { key: 'bibelstelle', label: 'Bibelstelle', emoji: '📖' },
-  { key: 'zeugnis',     label: 'Zeugnis',     emoji: '🙌' },
-  { key: 'frage',       label: 'Frage',       emoji: '❓' },
-  { key: 'meilenstein', label: 'Meilenstein', emoji: '🏔' },
-  { key: 'ermutigung',  label: 'Ermutigung',  emoji: '💛' },
-  { key: 'sonstiges',   label: 'Sonstiges',   emoji: '💬' },
-]
-
-const FEED_VISIBILITY = [
-  { key: 'public',           label: 'Öffentlich',              icon: Globe,      sub: null },
-  { key: 'communities',      label: 'Community',               icon: Users,      sub: 'community' },
-  { key: 'siblings',         label: 'Meine Geschwister',       icon: UserCheck,  sub: null },
-  { key: 'specific_include', label: 'Ausgewählte Geschwister', icon: Users,      sub: 'siblings' },
-]
-
-function SiblingPickerFeed({ selected, onChange }) {
-  const { user } = useAuth()
-  const [query, setQuery] = useState('')
-  const [siblings, setSiblings] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!user) return
-    ;(async () => {
-      const { data: friendships } = await supabase
-        .from('friendships')
-        .select('requester_id, addressee_id')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-        .eq('status', 'accepted')
-      const ids = (friendships || []).map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
-      if (ids.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles').select('id, username, full_name, avatar_url').in('id', ids).order('full_name')
-        setSiblings(profiles || [])
-      }
-      setLoading(false)
-    })()
-  }, [user?.id])
-
-  const filtered = siblings.filter(s =>
-    (s.full_name || s.username || '').toLowerCase().includes(query.toLowerCase())
-  )
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 10, marginBottom: 10, backgroundColor: 'var(--color-bg)' }}>
-        <Search size={14} color="var(--color-text-tertiary)" />
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Geschwister suchen…"
-          style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, backgroundColor: 'transparent', color: 'var(--color-text)' }} />
-      </div>
-      {loading && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '12px 0' }}>Lade…</p>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
-        {filtered.map(s => {
-          const checked = selected.includes(s.id)
-          const name = s.full_name || s.username || '?'
-          const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-          return (
-            <button key={s.id} onClick={() => onChange(checked ? selected.filter(id => id !== s.id) : [...selected, s.id])}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, textAlign: 'left', border: `1.5px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)10' : 'var(--color-bg)', cursor: 'pointer' }}
-            >
-              {s.avatar_url
-                ? <img src={s.avatar_url} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                : <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, backgroundColor: 'var(--color-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)' }}>{initials}</div>
-              }
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{name}</span>
-              <div style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: `2px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {checked && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
-              </div>
-            </button>
-          )
-        })}
-        {!loading && filtered.length === 0 && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '12px 0' }}>Keine gefunden</p>}
-      </div>
-    </div>
-  )
-}
-
-// Style-Helfer – analog zum Gebete-Erstellen-Flow (CreatePrayerSheet)
-const fSecTitle = { margin: '20px 0 10px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.4px' }
-const fField = { width: '100%', padding: '11px 12px', borderRadius: 10, fontSize: 14, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box', display: 'block' }
-function fChip(active) {
-  return {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-    padding: '12px 6px', borderRadius: 12, cursor: 'pointer',
-    border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
-    background: active ? 'var(--color-bg-secondary)' : 'var(--color-bg)',
-    color: active ? 'var(--color-accent)' : 'var(--color-text)',
-  }
-}
-function fRow(active) {
-  return {
-    display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14,
-    border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
-    background: active ? 'var(--color-bg-secondary)' : 'var(--color-bg)',
-    cursor: 'pointer', textAlign: 'left', width: '100%',
-  }
-}
-function fPrimaryBtn(enabled) {
-  return {
-    width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-    background: enabled ? 'var(--color-accent)' : 'var(--color-border)',
-    color: '#fff', fontSize: 15, fontWeight: 700,
-    cursor: enabled ? 'pointer' : 'default',
-  }
-}
-function FeedSummaryRow({ label, value }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 2px', borderBottom: '1px solid var(--color-border)' }}>
-      <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', textAlign: 'right' }}>{value}</span>
-    </div>
-  )
-}
-
-function FeedPostSheet({ onClose, onSubmit }) {
-  const { myCommunities } = useCommunities()
-  const [phase, setPhase] = useState('form') // 'form' | 'review'
-  const [visibility, setVisibility] = useState('public')
-  const [communityIds, setCommunityIds] = useState([])
-  const [visibilityUserIds, setVisibilityUserIds] = useState([])
-  const [category, setCategory] = useState(null)
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [photoFile, setPhotoFile] = useState(null)
-  const [photoPreview, setPhotoPreview] = useState(null)
-  const [submitting, setSubmitting] = useState(false)
-  const fileRef = useRef(null)
-
-  useEffect(() => {
-    if (!photoFile) { setPhotoPreview(null); return }
-    const url = URL.createObjectURL(photoFile)
-    setPhotoPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [photoFile])
-
-  const catObj = FEED_CATEGORIES.find(c => c.key === category)
-  const visObj = FEED_VISIBILITY.find(o => o.key === visibility)
-  const visOk =
-    (visibility !== 'communities' || communityIds.length > 0) &&
-    (visibility !== 'specific_include' || visibilityUserIds.length > 0)
-  const formValid = body.trim().length > 0 && !!category && visOk
-
-  async function handleSubmit() {
-    if (!formValid || submitting) return
-    setSubmitting(true)
-    try {
-      await onSubmit({
-        title: title.trim() || null,
-        body: body.trim(),
-        category,
-        visibilityMode: visibility || 'public',
-        communityIds,
-        visibilityUserIds,
-        excludedUserIds: [],
-        photoFile,
-      })
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: '100%', maxWidth: 448, margin: '0 auto', backgroundColor: 'var(--color-bg)', borderRadius: '20px 20px 0 0', maxHeight: '92dvh', overflowY: 'auto' }}>
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px', position: 'sticky', top: 0, backgroundColor: 'var(--color-bg)', zIndex: 1 }}>
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-text)' }}>
-            {phase === 'review' ? 'Übersicht' : 'Neuer Beitrag'}
-          </p>
-          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>
-            <X size={16} />
-          </button>
-        </div>
-
-        {phase === 'form' ? (
-          <div style={{ padding: '0 16px 28px' }}>
-            {/* 1) Dein Beitrag */}
-            <p style={fSecTitle}>1 · Dein Beitrag</p>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Überschrift (optional)"
-              style={{ ...fField, fontWeight: 600, marginBottom: 8 }}
-            />
-            <textarea
-              value={body}
-              onChange={e => setBody(e.target.value.slice(0, 1000))}
-              placeholder="Was möchtest du teilen?"
-              rows={4}
-              style={{ ...fField, lineHeight: 1.6, resize: 'vertical' }}
-            />
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: body.length > 900 ? 'var(--color-error)' : 'var(--color-text-tertiary)', textAlign: 'right' }}>{body.length}/1000</p>
-
-            {/* Bild-Vorschau */}
-            {photoPreview && (
-              <div style={{ position: 'relative', marginTop: 10 }}>
-                <img src={photoPreview} alt="" style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 12, display: 'block' }} />
-                <button onClick={() => setPhotoFile(null)} style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-            <button onClick={() => fileRef.current?.click()}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginTop: 10, width: '100%' }}
-            >
-              <Image size={16} color="var(--color-text-secondary)" />
-              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                {photoFile ? photoFile.name : 'Bild oder Video hinzufügen'}
-              </span>
-            </button>
-            <input ref={fileRef} type="file" accept="image/*,video/*" onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = '' }} style={{ display: 'none' }} />
-
-            {/* 2) Kategorie */}
-            <p style={fSecTitle}>2 · Kategorie</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              {FEED_CATEGORIES.map(c => (
-                <button key={c.key} onClick={() => setCategory(category === c.key ? null : c.key)} style={fChip(category === c.key)}>
-                  <span style={{ fontSize: 20 }}>{c.emoji}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>{c.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* 3) Sichtbarkeit */}
-            <p style={fSecTitle}>3 · Wer soll es sehen?</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {FEED_VISIBILITY.map(o => {
-                const Icon = o.icon
-                const active = visibility === o.key
-                return (
-                  <button key={o.key} onClick={() => setVisibility(o.key)} style={fRow(active)}>
-                    <Icon size={18} color={active ? 'var(--color-accent)' : 'var(--color-text-secondary)'} />
-                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: active ? 'var(--color-accent)' : 'var(--color-text)' }}>{o.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Community-Auswahl (inline) */}
-            {visibility === 'communities' && (
-              myCommunities.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '8px 0 0' }}>Du bist noch in keiner Community.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                  {myCommunities.map(c => {
-                    const checked = communityIds.includes(c.id)
-                    return (
-                      <button key={c.id} onClick={() => setCommunityIds(checked ? communityIds.filter(x => x !== c.id) : [...communityIds, c.id])} style={fRow(checked)}>
-                        <span style={{ fontSize: 20 }}>{c.icon || '🏠'}</span>
-                        <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{c.name}</span>
-                        <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {checked && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )
-            )}
-
-            {/* Geschwister-Auswahl (inline) */}
-            {visibility === 'specific_include' && (
-              <div style={{ marginTop: 8 }}>
-                <SiblingPickerFeed selected={visibilityUserIds} onChange={setVisibilityUserIds} />
-              </div>
-            )}
-
-            <button
-              onClick={() => setPhase('review')}
-              disabled={!formValid}
-              style={{ ...fPrimaryBtn(formValid), marginTop: 22 }}
-            >
-              Weiter zur Übersicht
-            </button>
-          </div>
-        ) : (
-          <div style={{ padding: '0 16px 28px' }}>
-            {/* Übersicht */}
-            <div style={{ background: 'var(--color-bg-secondary)', borderRadius: 14, padding: '14px 16px', marginBottom: 14 }}>
-              {title.trim() && <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: 'var(--color-text)' }}>{title.trim()}</p>}
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{body.trim()}</p>
-              {photoPreview && <img src={photoPreview} alt="" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 10, marginTop: 10, display: 'block' }} />}
-            </div>
-            <FeedSummaryRow label="Kategorie" value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
-            <FeedSummaryRow label="Sichtbarkeit" value={
-              visibility === 'communities'
-                ? `${visObj?.label} · ${communityIds.length} ausgewählt`
-                : visibility === 'specific_include'
-                ? `${visObj?.label} · ${visibilityUserIds.length} ausgewählt`
-                : (visObj?.label || '')
-            } />
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-              <button onClick={() => setPhase('form')} disabled={submitting} style={{ padding: '13px 18px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 600, cursor: submitting ? 'default' : 'pointer' }}>
-                ← Zurück
-              </button>
-              <button onClick={handleSubmit} disabled={submitting} style={{ ...fPrimaryBtn(!submitting), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                {submitting && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
-                {submitting ? 'Wird geteilt…' : 'Beitrag teilen'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
   )
 }
 
@@ -2061,7 +1508,7 @@ function FeedTab() {
         aria-label="Neuen Beitrag erstellen"
         style={{
           position: 'fixed',
-          bottom: 80,
+          bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)',
           right: 20,
           width: 52,
           height: 52,
@@ -2164,8 +1611,6 @@ const actionBtn = { width: 32, height: 32, borderRadius: 8, display: 'flex', ali
 const skeleton = { height: 56, borderRadius: 12, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }
 const backdrop = { position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }
 const bottomSheet = { position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.3s ease-out' }
-const overlay = { position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(58,46,36,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }
-const modal = { backgroundColor: 'var(--color-white)', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 380, boxShadow: '0 8px 32px rgba(58,46,36,0.15)' }
 const sheetHandle = { width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 18px' }
 const sheetTitleStyle = { fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 600, color: 'var(--color-text)', marginBottom: 16 }
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }

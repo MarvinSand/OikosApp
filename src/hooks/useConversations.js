@@ -1,206 +1,61 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { subscribeShared } from '../lib/realtime'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
+
+// Modul-Cache + In-Flight-Dedupe wie in useNotifications.js: Home, FriendsView
+// und ConversationView nutzen diesen Hook gleichzeitig bzw. kurz nacheinander.
+// Ohne Cache lief die komplette 4-Runden-Abfragekette (Mitgliedschaften →
+// Konversationen → Nachrichten/Profile) bei jedem Mount erneut – u. a. auf
+// Home nur, um das `hasUnread`-Badge zu berechnen.
+let cache = { userId: null, lists: null }
+let inFlight = null
 
 export function useConversations() {
   const { user } = useAuth()
-  const [directChats, setDirectChats] = useState([])
-  const [communityChats, setCommunityChats] = useState([])
-  const [activityChats, setActivityChats] = useState([])
-  const [loading, setLoading] = useState(true)
+  const userId = user?.id ?? null
+  // Nach App-Start aus dem persistenten Cache vorbefüllen (siehe swrCache.js)
+  if (userId && cache.userId !== userId) {
+    const persisted = readCache(userId, 'conversations')
+    if (persisted) cache = { userId, lists: persisted }
+  }
+  const cached = cache.userId === userId ? cache.lists : null
+  const [directChats, setDirectChats] = useState(cached?.directChats || [])
+  const [communityChats, setCommunityChats] = useState(cached?.communityChats || [])
+  const [activityChats, setActivityChats] = useState(cached?.activityChats || [])
+  const [loading, setLoading] = useState(!cached)
+  const mounted = useRef(true)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
 
   const load = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+
+    // Vorhandene Listen stehen lassen und still aktualisieren – vorher wurde
+    // der Cache vor jedem Reload geleert, jeder Tab-Wechsel zeigte den Spinner.
+    const hasLists = cache.userId === user.id && !!cache.lists
+    if (!hasLists) setLoading(true)
+
+    if (!(inFlight && cache.userId === user.id)) {
+      if (cache.userId !== user.id) cache = { userId: user.id, lists: null }
+      inFlight = fetchConversations().finally(() => { inFlight = null })
+    }
     try {
-      // 1./2. Eigene conversation_members + community_members parallel laden –
-      // die beiden Abfragen hängen nicht voneinander ab.
-      const [{ data: memberRows }, { data: communityMemberRows }] = await Promise.all([
-        supabase
-          .from('conversation_members')
-          .select('conversation_id, last_read_at')
-          .eq('user_id', user.id),
-        supabase
-          .from('community_members')
-          .select('community_id, communities(id, name)')
-          .eq('user_id', user.id),
-      ])
-
-      const convIds = (memberRows || []).map(r => r.conversation_id)
-      const lastReadMap = Object.fromEntries((memberRows || []).map(r => [r.conversation_id, r.last_read_at]))
-
-      const communityIds = (communityMemberRows || []).map(r => r.community_id)
-      const communityMap = Object.fromEntries(
-        (communityMemberRows || []).map(r => [r.community_id, r.communities])
-      )
-
-      // 3./4./4b. Direkt-, Community- und Aktivitäts-Konversationen parallel.
-      const [directRes, communityRes, activityRes] = await Promise.all([
-        convIds.length > 0
-          ? supabase
-              .from('conversations')
-              .select('id, type, community_id')
-              .in('id', convIds)
-              .eq('type', 'direct')
-          : Promise.resolve({ data: [] }),
-        communityIds.length > 0
-          ? supabase
-              .from('conversations')
-              .select('id, type, community_id')
-              .in('community_id', communityIds)
-              .eq('type', 'community')
-          : Promise.resolve({ data: [] }),
-        convIds.length > 0
-          ? supabase
-              .from('conversations')
-              .select('id, type, activity_id, activity:world_map_activities!activity_id(id, title, activity_emoji, activity_type)')
-              .in('id', convIds)
-              .eq('type', 'activity')
-              // activity_id-Spalte existiert evtl. noch nicht – dann leer statt Fehler
-              .then(res => res, () => ({ data: [], error: true }))
-          : Promise.resolve({ data: [] }),
-      ])
-
-      const directConvs = directRes.data || []
-      const communityConvs = communityRes.data || []
-      const activityConvs = activityRes.error ? [] : (activityRes.data || [])
-
-      // 5. Fetch last messages for all conversations
-      const allConvIds = [
-        ...directConvs.map(c => c.id),
-        ...communityConvs.map(c => c.id),
-        ...activityConvs.map(c => c.id),
-      ]
-
-      const communityConvIds = communityConvs.map(c => c.id)
-
-      // 5./6./8. Letzte Nachrichten, Gegenüber der Direkt-Chats und
-      // last_read_at der Community-Chats parallel laden.
-      const [msgRes, otherMembersRes, commMembersRes] = await Promise.all([
-        allConvIds.length > 0
-          ? supabase
-              .from('messages')
-              .select('id, conversation_id, sender_id, type, text, is_deleted, created_at')
-              .in('conversation_id', allConvIds)
-              .order('created_at', { ascending: false })
-              .limit(200)
-          : Promise.resolve({ data: [] }),
-        directConvs.length > 0
-          ? supabase
-              .from('conversation_members')
-              .select('conversation_id, user_id')
-              .in('conversation_id', directConvs.map(c => c.id))
-              .neq('user_id', user.id)
-          : Promise.resolve({ data: [] }),
-        communityConvIds.length > 0
-          ? supabase
-              .from('conversation_members')
-              .select('conversation_id, last_read_at')
-              .in('conversation_id', communityConvIds)
-              .eq('user_id', user.id)
-          : Promise.resolve({ data: [] }),
-      ])
-
-      const lastMessageMap = {}
-      for (const msg of (msgRes.data || [])) {
-        if (!lastMessageMap[msg.conversation_id]) {
-          lastMessageMap[msg.conversation_id] = msg
-        }
-      }
-
-      const otherMemberRows = otherMembersRes.data || []
-      const communityLastReadMap = Object.fromEntries(
-        (commMembersRes.data || []).map(r => [r.conversation_id, r.last_read_at])
-      )
-
-      const otherUserIds = [...new Set(otherMemberRows.map(r => r.user_id))]
-      let profileMap = {}
-      if (otherUserIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, is_christian, gender')
-          .in('id', otherUserIds)
-        profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]))
-      }
-
-      const otherUserByConv = Object.fromEntries(
-        otherMemberRows.map(r => [r.conversation_id, profileMap[r.user_id]])
-      )
-
-      // 7. Build direct chats list
-      const builtDirectChats = directConvs
-        .map(conv => {
-          const lastMessage = lastMessageMap[conv.id] || null
-          const lastReadAt = lastReadMap[conv.id] || '1970-01-01'
-          const unread = lastMessage
-            ? lastMessage.sender_id !== user.id &&
-              lastMessage.created_at > lastReadAt
-            : false
-          return {
-            id: conv.id,
-            type: 'direct',
-            otherUser: otherUserByConv[conv.id] || null,
-            lastMessage,
-            unread,
-          }
-        })
-        .sort((a, b) => {
-          const ta = a.lastMessage?.created_at || '1970-01-01'
-          const tb = b.lastMessage?.created_at || '1970-01-01'
-          return tb.localeCompare(ta)
-        })
-
-      // 8. Community-Chats bauen (last_read_at kam bereits oben parallel mit)
-      const builtCommunityChats = communityConvs
-        .map(conv => {
-          const lastMessage = lastMessageMap[conv.id] || null
-          const lastReadAt = communityLastReadMap[conv.id] || lastReadMap[conv.id] || '1970-01-01'
-          const unread = lastMessage
-            ? lastMessage.sender_id !== user.id &&
-              lastMessage.created_at > lastReadAt
-            : false
-          return {
-            id: conv.id,
-            type: 'community',
-            community: communityMap[conv.community_id] || { id: conv.community_id, name: '?' },
-            lastMessage,
-            unread,
-          }
-        })
-        .sort((a, b) => {
-          const ta = a.lastMessage?.created_at || '1970-01-01'
-          const tb = b.lastMessage?.created_at || '1970-01-01'
-          return tb.localeCompare(ta)
-        })
-
-      // Build activity chats list
-      const builtActivityChats = activityConvs
-        .map(conv => {
-          const lastMessage = lastMessageMap[conv.id] || null
-          const lastReadAt = lastReadMap[conv.id] || '1970-01-01'
-          const unread = lastMessage
-            ? lastMessage.sender_id !== user.id && lastMessage.created_at > lastReadAt
-            : false
-          return {
-            id: conv.id,
-            type: 'activity',
-            activity: conv.activity || { id: conv.activity_id, title: 'Aktivität', activity_emoji: '📍', activity_type: '' },
-            lastMessage,
-            unread,
-          }
-        })
-        .sort((a, b) => {
-          const ta = a.lastMessage?.created_at || '1970-01-01'
-          const tb = b.lastMessage?.created_at || '1970-01-01'
-          return tb.localeCompare(ta)
-        })
-
-      setDirectChats(builtDirectChats)
-      setCommunityChats(builtCommunityChats)
-      setActivityChats(builtActivityChats)
+      const lists = await inFlight
+      cache = { userId: user.id, lists }
+      writeCache(user.id, 'conversations', lists)
+      if (!mounted.current) return
+      setDirectChats(lists.directChats)
+      setCommunityChats(lists.communityChats)
+      setActivityChats(lists.activityChats)
+    } catch (err) {
+      console.error('[useConversations] Laden fehlgeschlagen:', err)
     } finally {
-      setLoading(false)
+      if (mounted.current) setLoading(false)
     }
   }, [user?.id])
 
@@ -254,5 +109,46 @@ export function useConversations() {
     loading,
     startDirectChat,
     reload: load,
+  }
+}
+
+// Vorher: bis zu 9 Requests (Mitgliedschaften → Konversationen je Typ →
+// Nachrichten/Gegenüber/Community-Mitgliedschaften → Profile). Die
+// `get_my_conversations()`-RPC baut dieselbe Mitgliedschafts-Logik (direkt
+// über conversation_members, community-weit über get_my_community_ids())
+// serverseitig per LATERAL JOIN zusammen und liefert pro Konversation schon
+// die letzte Nachricht, das Gegenüber/die Community/Aktivität und ein fertig
+// berechnetes `unread` – ein einziger Request.
+async function fetchConversations() {
+  const { data, error } = await supabase.rpc('get_my_conversations')
+  if (error) throw error
+
+  const byType = { direct: [], community: [], activity: [] }
+  for (const row of (data || [])) {
+    const lastMessage = row.last_message || null
+    const entry = { id: row.id, lastMessage, unread: row.unread }
+    if (row.type === 'direct') {
+      byType.direct.push({ ...entry, type: 'direct', otherUser: row.other_user })
+    } else if (row.type === 'community') {
+      byType.community.push({ ...entry, type: 'community', community: row.community || { id: row.community_id, name: '?' } })
+    } else if (row.type === 'activity') {
+      byType.activity.push({
+        ...entry,
+        type: 'activity',
+        activity: row.activity || { id: row.activity_id, title: 'Aktivität', activity_emoji: '📍', activity_type: '' },
+      })
+    }
+  }
+
+  const byRecency = (a, b) => {
+    const ta = a.lastMessage?.created_at || '1970-01-01'
+    const tb = b.lastMessage?.created_at || '1970-01-01'
+    return tb.localeCompare(ta)
+  }
+
+  return {
+    directChats: byType.direct.sort(byRecency),
+    communityChats: byType.community.sort(byRecency),
+    activityChats: byType.activity.sort(byRecency),
   }
 }

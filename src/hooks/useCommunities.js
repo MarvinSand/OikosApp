@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 // `useCommunities` wird von über zehn Komponenten benutzt, von denen mehrere
 // gleichzeitig auf einer Seite hängen (Sheets, Composer, Modals). Ohne
@@ -10,11 +11,14 @@ let cache = { userId: null, rows: null }
 let inFlight = null
 
 async function fetchCommunities(userId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('community_members')
-    .select('id, role, joined_at, community_id, communities(id, name, description, is_public, join_mode, avatar_url, invite_code, created_by, created_at)')
+    .select('id, role, joined_at, community_id, communities(id, name, description, is_public, join_mode, avatar_url, invite_code, created_by, created_at, community_type, address, latitude, longitude, meeting_info)')
     .eq('user_id', userId)
 
+  // Fehler weiterwerfen: ein Netzwerkfehler soll die (gecachte) Liste nicht
+  // durch eine leere ersetzen
+  if (error) throw error
   if (!data || data.length === 0) return []
 
   // Batch query to prevent N+1 requests
@@ -43,6 +47,11 @@ async function fetchCommunities(userId) {
 export function useCommunities() {
   const { user } = useAuth()
   const userId = user?.id ?? null
+  // Nach App-Start aus dem persistenten Cache vorbefüllen (siehe swrCache.js)
+  if (userId && cache.userId !== userId) {
+    const persisted = readCache(userId, 'communities')
+    if (Array.isArray(persisted)) cache = { userId, rows: persisted }
+  }
   const cached = cache.userId === userId ? cache.rows : null
 
   const [myCommunities, setMyCommunities] = useState(cached || [])
@@ -65,8 +74,8 @@ export function useCommunities() {
       if (force || cache.userId !== userId) inFlight = null
       if (!inFlight) {
         inFlight = fetchCommunities(userId).then(
-          rows => { cache = { userId, rows }; inFlight = null; return rows },
-          () => { inFlight = null; return [] },
+          rows => { cache = { userId, rows }; writeCache(userId, 'communities', rows); inFlight = null; return rows },
+          () => { inFlight = null; return cache.userId === userId && cache.rows ? cache.rows : [] },
         )
       }
     }
@@ -88,7 +97,7 @@ export function useCommunities() {
     load()
   }, [userId, load])
 
-  async function createCommunity({ name, description, is_public = false }) {
+  async function createCommunity({ name, description, is_public = false, community_type = 'group', address = null, latitude = null, longitude = null, meeting_info = null }) {
     const invite_code = Math.random().toString(36).substring(2, 8).toUpperCase()
     const { data, error } = await supabase.rpc('create_community', {
       p_name: name,
@@ -97,7 +106,19 @@ export function useCommunities() {
       p_is_public: is_public,
     })
     if (error) throw error
-    const community = typeof data === 'string' ? JSON.parse(data) : data
+    let community = typeof data === 'string' ? JSON.parse(data) : data
+
+    // Standortfelder gehören nicht zur create_community-RPC – als Admin
+    // dürfen wir die eigene, gerade erstellte Community direkt aktualisieren.
+    if (community_type === 'gemeinde') {
+      const { data: updated, error: updateError } = await supabase
+        .from('communities')
+        .update({ community_type, address, latitude, longitude, meeting_info })
+        .eq('id', community.id)
+        .select('*')
+        .single()
+      if (!updateError && updated) community = updated
+    }
 
     // Create a community conversation (don't throw if this fails)
     try {
@@ -142,6 +163,7 @@ export function useCommunities() {
     // Cache invalidieren, sonst zeigen andere Instanzen die Community weiter an
     if (cache.userId === userId && cache.rows) {
       cache = { userId, rows: cache.rows.filter(c => c.id !== communityId) }
+      writeCache(userId, 'communities', cache.rows)
     }
     await supabase.from('community_members').delete().eq('community_id', communityId).eq('user_id', userId)
   }
@@ -153,6 +175,7 @@ export function useCommunities() {
     setMyCommunities(prev => prev.filter(c => c.id !== communityId))
     if (cache.userId === userId && cache.rows) {
       cache = { userId, rows: cache.rows.filter(c => c.id !== communityId) }
+      writeCache(userId, 'communities', cache.rows)
     }
     const { error } = await supabase.from('communities').delete().eq('id', communityId)
     if (error) throw error

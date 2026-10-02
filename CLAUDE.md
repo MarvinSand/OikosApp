@@ -1,5 +1,99 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Nav-/Weltkarten-Overlap nur in TestFlight (Sep. 2026) – zwei echte Ursachen
+
+1. **Doppelte Viewport-Höhe:** `App.jsx` gibt dem äußeren Container `h-[100dvh]` + `padding-top: env(safe-area-inset-top)`. Shell/Seiten darin hatten nochmal `100dvh` → in der iOS-App ragte alles ~59pt (Dynamic Island) unten aus dem Bild, die Weltkarten-Leiste lag über den Nav-Icons. Im Browser ist die Safe-Area 0 → nie reproduzierbar. Fix: innen überall `h-full`/`100%`.
+2. **ResizeObserver sah die Safe-Area nicht:** Standard-Beobachtung ist die Content-Box; die Safe-Area steckt im `padding-bottom` der Nav. Greift sie verspätet, bleibt `--bottom-nav-h` dauerhaft zu klein. Fix: `ro.observe(el, { box: 'border-box' })`.
+
+**Lektion:** Native-only Layoutbugs mit simulierten Safe-Areas im Headless-Browser prüfen (Container-Padding 59px oben / 34px unten setzen, `getBoundingClientRect()` gegen `innerHeight` messen) – statt z-index hin und her zu drehen.
+
+## Kaltstart: erste Requests nach Leerlauf 6–20 s – Ursache Backend, Abhilfe Cache + Warmhalten (Sep. 2026)
+
+**Befund (Supabase Edge-/PostgREST-Logs):** Warm antworten die Home-Requests in 50–150 ms, die RPCs selbst brauchen in der DB 1–26 ms. Nach ein paar Stunden ohne Nutzung brauchten beim ersten App-Start aber **alle** Requests 6–20 s (sogar ein simples `friendships`-Select). Zusätzlich: Jede erste Realtime-Verbindung nach Leerlauf weckt den Realtime-Dienst, der Replikations-Slots und `realtime.messages`-Partitionen anlegt – diese DDL feuert das `pgrst_ddl_watch`-Event-Trigger → PostgREST lädt den kompletten Schema-Cache neu (auf der kleinen Instanz 1–27 s, ~350 Reloads in 4 Wochen). Genau in diesen Fenstern hingen die Requests.
+
+**Fix/Abmilderung:**
+- `src/lib/swrCache.js`: Stale-while-revalidate-Cache (Speicher + localStorage, pro User, beim Logout geleert). Home, Gebete, Profil, Chats, Communities, Weltkarte rendern sofort den letzten Stand und aktualisieren still. Fehlgeschlagene Requests überschreiben den Cache **nie** mit leeren Listen (Fetcher werfen bei `error`).
+- `useAuth`: gespeicherte Session synchron aus localStorage → App rendert sofort, statt auf den Token-Refresh (nach >1 h der Normalfall) zu warten.
+- `realtime.js`: Realtime-Abos erst 4 s nach App-Start, damit der Realtime-Kaltstart nicht mit den ersten Queries konkurriert.
+- `useProfileTabs`: 6 unabhängige Bereiche parallel statt ~10 Round-Trips in Reihe. Bibel: Kapitel-Cache (LRU, 30 Kapitel) + letzte Leseposition lokal; eigene Marker nicht mehr hinter dem YouVersion-Sync.
+- `phase72_keep_warm.sql`: pg_cron pingt alle 4 Min. PostgREST + Auth über das API-Gateway.
+- Schriften lokal gebündelt (`src/fonts.css`) statt Google Fonts (render-blockierender externer Request, DSGVO).
+
+**Lektion:**
+- Bei „erster Start langsam" die **Edge-Logs nach Zeit gruppiert** ansehen (`response.origin_time`): Sind *alle* Requests gleichzeitig langsam, liegt es am Backend-Kaltstart, nicht an einzelnen Queries.
+- Die dauerhafte Lösung ist mehr Compute (Supabase → Settings → Compute). Client-seitig hilft nur: sofort aus Cache rendern, nichts Wichtiges hinter Realtime oder Token-Refresh blockieren.
+- Neue Hooks für Haupt-Tabs: Startwert aus `readCache`, nach Erfolg `writeCache`, bei Fehler alten Stand behalten. Formulare (z. B. SettingsView) **nicht** aus dem Cache befüllen – das spätere Eintreffen frischer Daten überschreibt sonst Eingaben.
+
+## App Store: Richtlinien-Pflichtpunkte (Stand Sep. 2026)
+
+- **Nutzerinhalte (1.2):** Melden (`ModerationSheet` → `content_reports`) an Beiträgen, Kommentaren, Gebeten, Chat-Nachrichten, Profilen; **Blockieren** (`user_blocks`, `phase71_user_blocks.sql`, RESTRICTIVE-RLS blendet Inhalte in beide Richtungen aus; SECURITY-DEFINER-RPCs filtern explizit über `is_blocked_pair()`); Zustimmung zu Nutzungsbedingungen mit Null-Toleranz bei der Registrierung. Neue Tabellen mit Nutzerinhalten → ebenfalls eine „Hide blocked users"-Policy anlegen, neue SECURITY-DEFINER-RPCs, die fremde Inhalte liefern → `is_blocked_pair()` filtern.
+- **Datenschutz (5.1.1):** `/privacy` und `/terms` sind öffentliche Routen (URLs für App Store Connect). Betreiberangaben kommen aus `VITE_LEGAL_NAME`, `VITE_LEGAL_ADDRESS`, `VITE_SUPPORT_EMAIL`. Privacy Manifest: `ios/App/App/PrivacyInfo.xcprivacy`.
+- **Native vs. Web:** `src/lib/platform.js` (`isNativeApp`, `publicOrigin()`). In der App ist `window.location.origin` = `capacitor://localhost` → nie für geteilte Links/E-Mail-Redirects verwenden. OAuth-Redirect-Flows (YouVersion) funktionieren in der App nicht → dort ausgeblendet (außerdem 4.8 „Mit Apple anmelden").
+- **KRITISCH – Migrationen wirklich ausführen:** phase44/45 lagen im Repo, waren aber nie in der DB → jeder App-Start produzierte einen 400er. Nach neuen Migrationen prüfen, ob Spalten/Funktionen live existieren (information_schema / Postgres-Logs „does not exist").
+
+## iOS App Store: Capacitor + Fastlane match + GitHub Actions macOS-Runner (kein Mac nötig)
+
+**Ausgangslage (Sep. 2026):** Reine Vite/React-Web-App, Apple-Developer-Account vorhanden, aber kein Mac – Xcode kann nicht lokal laufen.
+
+**Lösung:** `ios/App` ist jetzt ein Capacitor-iOS-Projekt (`npx cap add ios`, App-ID `app.oikos.mobile`, Capacitor 8 → **Swift Package Manager**, kein CocoaPods/Podfile). Bauen + Signieren + Hochladen läuft komplett **nicht-interaktiv** über `.github/workflows/ios-release.yml` (macOS-14-Runner) + `ios/App/fastlane/Fastfile` (Lane `beta`):
+- Signierung über `fastlane match` (Typ `appstore`), authentifiziert per **App Store Connect API Key** – kein Apple-ID-Passwort/2FA nötig, funktioniert deshalb aus CI heraus vollautomatisch, auch beim allerersten Lauf.
+- Zertifikate/Profile landen in einem separaten privaten Git-Repo (`MATCH_GIT_URL`), verschlüsselt mit `MATCH_PASSWORD`.
+- Upload nach TestFlight via `upload_to_testflight`.
+
+**Nötige GitHub-Secrets** (Repo → Settings → Secrets and variables → Actions):
+`APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT` (Base64 des `.p8`-Keys), `MATCH_GIT_URL`, `MATCH_GIT_BASIC_AUTHORIZATION` (Base64 `user:PAT` fürs Match-Repo), `MATCH_PASSWORD`, plus die Vite-Env-Vars `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_MAPS_API_KEY`. Optional Repo-Variable `APP_IDENTIFIER` (Default `app.oikos.mobile`).
+
+**Workflow starten:** GitHub → Actions → „iOS TestFlight Release" → „Run workflow" (manueller Trigger, `workflow_dispatch`).
+
+**Offen/manuell (kann nicht von Claude erledigt werden):** App-ID + App-Store-Connect-App-Eintrag anlegen, API-Key erzeugen, Match-Repo anlegen, echtes App-Icon (`ios/App/App/Assets.xcassets/AppIcon.appiconset`, aktuell Capacitor-Platzhalter) + Store-Listing (Screenshots, Beschreibung, Datenschutzerklärung, Altersfreigabe) sowie die finale Einreichung zur Review in App Store Connect.
+
+**Lektion:** Ein fehlender Mac blockiert nicht den gesamten iOS-Release-Weg – `fastlane match` mit App-Store-Connect-API-Key-Auth plus ein macOS-GitHub-Actions-Runner deckt Signierung, Build und Upload vollständig ab, ohne dass irgendwo eine interaktive Apple-ID-Anmeldung nötig wird.
+
+## Mobil weiterhin langsam trotz weniger Requests: Home zog heimlich den Google-Maps-Loader mit
+
+**Problem:** Nach den Request-Reduzierungen (siehe Eintrag unten) fühlte sich die App auf dem Handy trotzdem noch langsam an. Ursache war kein Netzwerk-/Query-Problem mehr, sondern Bundle-Gewicht: `HomeCommunityTab.jsx` (**statisch** von der eagerly geladenen `Home.jsx` importiert) importierte `{ CreateCommunitySheet, JoinCommunityModal }` **statisch** aus `pages/FriendsView.jsx` – einer 2200-Zeilen-Datei mit Feed/Chat/Community-Logik. Ein statischer Import zwingt den Browser, das komplette Zielmodul zu laden und auszuführen, *bevor* das importierende Modul fertig ist – unabhängig davon, ob `lazy()`/`Suspense` irgendwo anders in der Kette verwendet wird. Da `CreateCommunitySheet` zusätzlich `AddressAutocomplete` (→ `@react-google-maps/api`, ~161 kB / 37 kB gzip) einbindet, lud **jeder** App-Start diesen kompletten Google-Maps-Loader mit – obwohl der Community-Tab auf Home gar nicht der Standard-Tab ist und die Sheets nur nach einem Tap auf "Erstellen"/"Beitreten" gebraucht werden. Ein vorheriger Fix-Versuch (`preloadLandingRoute` in `vite.config.js`) hatte das Symptom schon dokumentiert, aber nur die *Preload-Priorität* entschärft – am eigentlichen Zwangsimport änderte das nichts.
+
+**Fix:**
+- `CreateCommunitySheet`/`JoinCommunityModal` aus `FriendsView.jsx` in eine eigene Datei `src/components/community/CommunitySheets.jsx` ausgelagert (dedupliziert `FriendsView.jsx` gleich mit).
+- `HomeCommunityTab.jsx` lädt beide jetzt über `lazy(() => import(...))` + `<Suspense>` – der Google-Maps-Loader wird erst angefordert, wenn eines der beiden Sheets tatsächlich öffnet.
+- `Home.jsx` lädt `HomeCommunityTab` selbst jetzt ebenfalls lazy (vorher statischer Import, obwohl der Community-Tab beim ersten Render meist gar nicht sichtbar ist).
+- Effekt: Home-Chunk 27,6 kB → 19,1 kB gzip; `AddressAutocomplete`/Google-Maps-Bundle (161 kB / 37 kB gzip) komplett aus Homes kritischem Pfad entfernt.
+
+**Lektion:**
+- Ein Component-Baum, der teilweise `lazy()` nutzt, ist **nicht automatisch leichtgewichtig** – ein einziger *statischer* Import irgendwo in der Kette (auch tief verschachtelt) zieht das Zielmodul trotzdem eager mit rein. Bei Bundle-Untersuchungen nach genau solchen Querimporten suchen: `grep -rn "from '.*/pages/" src/components`.
+- Named Exports aus einer Seiten-Datei (`pages/*.jsx`) heraus an anderer Stelle zu importieren ist ein Warnsignal – wenn ein Unterkomponente wie ein Sheet/Modal auch von woanders gebraucht wird, gehört sie in eine eigene Datei außerhalb von `pages/`, nicht als Named Export einer Route.
+- `npm run build` und die Chunk-Größen in der Ausgabe sind der schnellste Weg, sowas zu entdecken – ein unerwartet großer oder unerwartet in einem Chunk gelandeter Import (hier: Google Maps im `Home`-Chunk) fällt dort sofort auf.
+
+## Home-Dashboard: 28+ Requests durch serverseitige Views/RPCs auf ~5 reduziert
+
+**Problem:** Auch nach dem RLS-Fix (siehe Eintrag unten) lud die Home-Seite beim ersten Rendern noch 28+ einzelne Supabase-Requests: `usePrayerGoals` lief als 2 Vorab-Queries (Community-/Freundschafts-IDs) + 5 parallele visibility-Queries (public/mine/specific/community/siblings) = 7 Requests; `useConversations` – auf Home nur für ein `hasUnread`-Badge genutzt – lud bis zu 9 Requests (Mitgliedschaften → Konversationen je Typ → Nachrichten/Gegenüber/Community-Mitgliedschaften → Profile); `TopPrayerToday` brauchte 3 Requests (2 parallele Ranking-Queries, dann eine dritte, vom Ranking abhängige Kandidaten-Query); die Profil-Vervollständigungs-Karte zog über `useProfile` (4 Requests) + `useFriendships` (2 Requests) weitere 6 Requests nur für ein paar Booleans/Zahlen.
+
+**Fix (`supabase/phase64_home_dashboard_rpcs.sql`):** Die Visibility-/Ranking-Logik dorthin verlagert, wo sie ohnehin schon existiert oder klar serverseitig gehört:
+- `my_prayer_goals` – eine View (`security_invoker = true`, damit die bestehende RLS-Policy "Read prayer_goals" weiter pro Nutzer greift) mit einem `bucket`-Label (`mine`/`public`/`community`/`shared`) statt 5 einzelner visibility-Queries. Die RLS-Policy implementierte exakt dieselbe OR-Logik ohnehin schon – ein ungefilterter Select auf der View liefert dieselbe Ergebnismenge in einem Request.
+- `get_my_conversations()` – eine RPC mit LATERAL JOINs, die pro Konversation letzte Nachricht, Gegenüber/Community/Aktivität und ein fertig berechnetes `unread` liefert.
+- `has_unread_conversations()` – eine eigene, sehr leichte RPC (`select bool_or(unread) from get_my_conversations()`) für Home, das nur das Badge-Bit braucht, nicht Nachrichteninhalte/Profile/Community-Namen.
+- `get_top_prayer_today()` – Ranking (Logs+Kommentare von heute) und Kandidatenauswahl in einer Query statt 2+1 Requests mit echter Abhängigkeit dazwischen.
+- `get_profile_completion_status()` – Bio/Avatar/Standort/People-Count/Freundschaftsstatus in einer RPC statt `useProfile` + `useFriendships` (6 Requests) zu kombinieren.
+
+**Lektion:**
+- Wenn eine RLS-Policy schon die komplette Sichtbarkeits-Logik (eigene ODER public ODER Community-Mitglied ODER ...) abbildet, braucht der Client dieselbe Logik **nicht noch einmal** über mehrere gefilterte Queries nachzubauen – ein einzelner ungefilterter Select (ggf. über eine dünne View mit `security_invoker = true`) reicht.
+- Prüfen, ob eine Seite wirklich die volle Datenform eines geteilten Hooks braucht, oder nur ein einzelnes Bit (Beispiel: Home brauchte für's Chat-Badge nur `hasUnread`, nicht die komplette Konversationsliste mit Nachrichteninhalten – dafür lohnt sich eine eigene, schlanke RPC statt des vollen Hooks).
+- Mehrstufige Abhängigkeiten (Query A liefert IDs für Query B) lassen sich oft in eine einzige SQL-Funktion mit CTEs/LATERAL JOINs verlagern, statt sie als sequenzielle Client-Requests nachzubilden.
+
+## Langsamer erster Seitenaufbau: RLS-Policies waren die Hauptursache, nicht Vercel/Supabase-Plan
+
+**Problem (bis Aug. 2026):** Die App fühlte sich beim ersten Öffnen sehr langsam an, unabhängig davon, wie viel client-seitiges Caching/Parallelisieren in den Hooks schon gemacht wurde (siehe `useAuth`-Eintrag unten). Der Supabase Performance Advisor zeigte den eigentlichen Grund: **152 RLS-Policies** riefen `auth.uid()` direkt in `USING`/`WITH CHECK` auf, statt es als `(select auth.uid())` zu wrappen. Postgres wertet einen nackten Funktionsaufruf dort für **jede geprüfte Zeile neu** aus, statt ihn einmal pro Query zu cachen (InitPlan). Dazu kamen **225 Fälle von mehreren permissiven Policies** auf derselben Tabelle/Aktion (u.a. exakte Duplikate wie `notif_select` + `select own notifications` auf `notifications`) – Postgres muss dann alle davon pro Zeile auswerten – sowie **83 fehlende Indizes auf Foreign-Key-Spalten** (`community_members.user_id`, `messages.sender_id`, `friendships.addressee_id`, `personal_prayer_requests.owner_id`, ...), die genau die Spalten sind, über die die App-Hooks filtern/joinen.
+
+Das betraf praktisch jede Tabelle, die beim App-Start oder Navigieren angefasst wird (profiles, friendships, notifications, conversations, messages, community_members, prayer_goals, personal_prayer_requests, world_map_activities, ...). Bei ~15–25 Supabase-Abfragen pro Seitenaufbau addierte sich das zu spürbaren Sekunden – **nicht** der Supabase-Free-Plan oder Vercel als Hosting waren die Ursache, und es gibt keine YouVersion-Bible-API-Anbindung im Code (nur DB-Spalten `bible_reference`/`bible_verse`, keine externen Fetches).
+
+**Fix:** `supabase/phase62_rls_performance_initplan.sql` (alle `auth.uid()` → `(select auth.uid())`, Duplikat-Policies entfernt) und `supabase/phase63_missing_fk_indexes.sql` (fehlende FK-Indizes). Beide idempotent, im Supabase SQL-Editor ausführbar.
+
+**Lektion:**
+- Bei "die App ist langsam" **zuerst den Supabase Performance Advisor prüfen** (`get_advisors` mit `type: "performance"` bzw. Dashboard → Advisors), bevor man Client-Code optimiert. Client-seitiges Query-Batching/Caching (Modul-Caches, `Promise.all` statt serieller Waterfalls) hilft, behebt aber nicht das Grundproblem, wenn jede einzelne Query durch ineffiziente RLS langsam ist.
+- Jede neue RLS-Policy mit `(select auth.uid())` statt nacktem `auth.uid()` schreiben.
+- Vor dem Anlegen einer neuen Policy prüfen, ob für dieselbe Tabelle/Aktion schon eine passende existiert – nicht einfach eine weitere permissive Policy stapeln.
+- Bei neuen Foreign-Key-Spalten direkt einen Index mitanlegen, wenn die Spalte in `.eq()`/`.in()`/`.or()`-Filtern verwendet wird.
+
 ## KRITISCH: Supabase-Spalten müssen vor Nutzung existieren
 
 **Problem:** Wenn eine Spalte in einem `supabase.from('table').update({...})` Payload enthalten ist, die in der Datenbank **nicht existiert**, schlägt das **gesamte Update fehl** – alle anderen Felder werden ebenfalls nicht gespeichert. Der Fehler lautet:
@@ -99,7 +193,7 @@ useEffect(() => {
 
 **Lösung (bewährt, in `ConversationView` + `CommunityDetail`):**
 1. Seite muss eine **full-screen route** sein → in `src/App.jsx` zu `isFullScreenRoute` hinzufügen (sonst greift `.mobile-nav-padding` zusätzlich und erzeugt die Lücke).
-2. Root-Container: `style={{ height: '100dvh' }}` + `flex flex-col` — **nicht** `h-full`, und **kein** Nav-Padding am Root.
+2. Root-Container: `style={{ height: '100%' }}` + `flex flex-col`, **kein** Nav-Padding am Root. **Nie `100dvh` innerhalb der App-Shell** – der App-Container hat oben `padding: env(safe-area-inset-top)`, eine weitere volle Viewport-Höhe ragt in der iOS-App um die Notch-Höhe (~59pt) unten aus dem Bildschirm (im Browser ist der Wert 0 → Bug nur in TestFlight sichtbar).
 3. Eingabeleiste bekommt `className="chat-input-bar"` → `position: fixed; bottom: calc(68px + safe-area)` (genau über der Nav), zentriert, `max-width: 42rem`, `z-index: 35`. Definiert in `src/index.css` (`.chat-input-bar`). Dadurch klebt sie unten und bewegt sich nie.
 4. Scrollbare Nachrichtenliste: `paddingBottom: calc(132px + env(safe-area-inset-bottom, 0px))`, damit die letzte Nachricht nicht hinter Leiste + Nav verschwindet.
 5. Weitere scrollbare Tabs derselben Seite (ohne fixe Leiste): `paddingBottom: calc(~84px + env(safe-area-inset-bottom, 0px))` für Nav-Freiraum.

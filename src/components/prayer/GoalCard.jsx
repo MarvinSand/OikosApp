@@ -3,6 +3,7 @@ import { ChevronRight, Users, Clock, CalendarDays } from 'lucide-react'
 import ProgressBar from './ProgressBar'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
+import { timeAgo } from '../../lib/prayerModel'
 
 // Karte für ein Gebetsziel mit Fortschrittsbalken.
 // onOpenDetail(goal): Karte angeklickt → Detailseite
@@ -19,6 +20,7 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
   const unit = isHours ? 'Std' : isDays ? 'Tage' : 'Pers.'
   const TypeIcon = isHours ? Clock : isDays ? CalendarDays : Users
   const typeLabel = isHours ? 'Stunden-Ziel' : isDays ? 'Tage-Ziel' : 'Personen-Ziel'
+  const authorLabel = goal.author?.full_name || goal.author?.username || null
 
   async function handleJoin(e) {
     e.stopPropagation()
@@ -63,6 +65,11 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
             <TypeIcon size={11} />
             {typeLabel}
           </p>
+          {authorLabel && (
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+              Gepostet von {authorLabel} · {timeAgo(goal.created_at)}
+            </p>
+          )}
         </div>
         <ChevronRight size={18} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
       </div>

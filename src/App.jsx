@@ -1,13 +1,17 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom'
 import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
 import { useSwipeNav } from './hooks/useSwipeNav'
-import { ToastProvider } from './context/ToastContext'
+import { ToastProvider, useToast } from './context/ToastContext'
 import { supabase } from './lib/supabase'
+import { registerForPush } from './lib/nativePush'
+import { isNativeApp } from './lib/platform'
 // Public pages stay eager so the login screen renders without a second fetch
 import Auth from './pages/Auth'
 import AuthCallback from './pages/AuthCallback'
+import YouVersionCallback from './pages/YouVersionCallback'
+import LegalPage from './pages/LegalPage'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -36,6 +40,7 @@ const MapView = lazy(() => import('./pages/MapView'))
 const ConversationView = lazy(() => import('./pages/ConversationView'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const NotificationSettingsView = lazy(() => import('./pages/NotificationSettingsView'))
+const BibleView = lazy(() => import('./pages/BibleView'))
 
 // Der Start lief bisher streng seriell: Entry-Bundle → Session prüfen →
 // *dann erst* den Chunk der Landing-Route holen → dann die Daten laden.
@@ -52,9 +57,19 @@ const idle = typeof requestIdleCallback === 'function'
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     idle(() => {
-      import('./pages/FriendsView')
-      import('./pages/Prayers')
-      import('./pages/ProfileView')
+      // Alle Bottom-Nav-Ziele vorladen – sonst beginnt der Chunk erst beim Tap
+      // zu laden und der Tab-Wechsel hängt sichtbar (betraf v. a. Weltkarte,
+      // deren Chunk inkl. Google-Maps-Bindings mit Abstand der größte ist).
+      // Nacheinander statt gleichzeitig: parallel konkurrieren die Parses auf
+      // dem Handy mit dem, was gerade auf dem Schirm passiert.
+      const queue = [
+        () => import('./pages/Prayers'),
+        () => import('./pages/ProfileView'),
+        () => import('./pages/BibleView'),
+        () => import('./pages/WorldMap'),
+        () => import('./pages/FriendsView'),
+      ]
+      queue.reduce((p, next) => p.then(next).catch(() => {}), Promise.resolve())
     })
   }, { once: true })
 }
@@ -76,6 +91,7 @@ function LoadingSpinner() {
 function AppShellInner() {
   const location = useLocation()
   useSwipeNav()
+  useNativePushRegistration()
   // Routes where the inner container should not be vertically scrollable
   // (full-bleed map views)
   const isFullScreenRoute =
@@ -86,7 +102,12 @@ function AppShellInner() {
     location.pathname.startsWith('/community/')
 
   return (
-    <div className="h-[100dvh] flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
+    // h-full statt h-[100dvh]: der Eltern-Container (App) hat oben
+    // padding: env(safe-area-inset-top). Eine weitere volle Viewport-Höhe
+    // darin ragte in der iOS-App um genau diese Notch-Höhe (~59pt) unten aus
+    // dem Bildschirm – im Browser ist der Wert 0, deshalb trat der Versatz
+    // (Weltkarte-Leiste über den Nav-Icons) nur in TestFlight auf.
+    <div className="h-full flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
       <SideNav />
 
       <div
@@ -104,7 +125,7 @@ function AppShellInner() {
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
-          <Route path="/discipleship" element={<DiscipleshipComingSoon />} />
+          <Route path="/bible" element={<BibleView />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/feed/saved" element={<SavedPostsView />} />
           <Route path="/feed/comment/:id" element={<CommentDetailView />} />
@@ -139,37 +160,32 @@ function AppShell() {
     checkBirthdays(user.id)
   }, [user?.id])
 
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {})
-    }
-  }, [])
-
   return <AppShellInner />
+}
+
+// Push-Registrierung braucht den Router (Tap auf eine Benachrichtigung soll
+// zum passenden Screen springen), deshalb sitzt sie in AppShellInner statt
+// in AppShell.
+function useNativePushRegistration() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const { showToast } = useToast()
+
+  useEffect(() => {
+    if (!user) return
+    let cleanup = () => {}
+    let cancelled = false
+
+    registerForPush(user.id, { onOpen: (url) => navigate(url), showToast })
+      .then(fn => { if (cancelled) fn(); else cleanup = fn })
+
+    return () => { cancelled = true; cleanup() }
+  }, [user?.id, navigate, showToast])
 }
 
 function OwnMapPage() {
   const { mapId } = useParams()
   return <MapView initialMapId={mapId} hideWorldMapToggle />
-}
-
-function DiscipleshipComingSoon() {
-  return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center px-6 text-center">
-      <div
-        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
-        style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-      >
-        <span className="text-4xl">📖</span>
-      </div>
-      <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
-        Jüngerschaft
-      </h1>
-      <p style={{ color: 'var(--color-text-secondary)', maxWidth: 360 }}>
-        Coming soon – dieser Bereich ist gerade in Arbeit. Bald kannst du hier deinen Weg im Glauben begleiten lassen.
-      </p>
-    </div>
-  )
 }
 
 async function checkBirthdays(userId) {
@@ -240,14 +256,28 @@ export default function App() {
     <ErrorBoundary>
       <ToastProvider>
         <div className="min-h-screen bg-bg w-full flex justify-center md:block">
-          <div className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg">
+          <div
+            className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg"
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          >
             <BrowserRouter>
               <Routes>
                 <Route
                   path="/auth"
                   element={user ? <Navigate to="/" replace /> : <Auth />}
                 />
+                {/* Öffentlich (auch ohne Login), damit dieselben URLs in App
+                    Store Connect als Datenschutz-/Nutzungsbedingungen-Link
+                    hinterlegt werden können */}
+                <Route path="/terms" element={<LegalPage kind="terms" />} />
+                <Route path="/privacy" element={<LegalPage kind="privacy" />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                {/* Beide möglichen YouVersion-Callback-Pfade (je nach Domain,
+                    siehe resolveYouVersionRedirectUri) müssen öffentlich sein:
+                    beim Sign-in/up-Flow ist beim Zurückkommen noch niemand bei
+                    Oikos eingeloggt. */}
+                <Route path="/auth/youversion/callback" element={<YouVersionCallback />} />
+                <Route path="/bible/youversion/callback" element={<YouVersionCallback />} />
                 <Route
                   path="/*"
                   element={user ? <AppShell /> : <Navigate to="/auth" replace />}
@@ -256,7 +286,9 @@ export default function App() {
             </BrowserRouter>
           </div>
         </div>
-        <Analytics />
+        {/* Vercel Analytics lädt /_vercel/insights/script.js von der eigenen
+            Origin – in der iOS-App (capacitor://localhost) gibt es die nicht. */}
+        {!isNativeApp && <Analytics />}
       </ToastProvider>
     </ErrorBoundary>
   )

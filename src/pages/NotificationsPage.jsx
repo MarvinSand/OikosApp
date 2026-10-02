@@ -10,8 +10,9 @@ import { NOTIFICATION_TYPE_META } from '../lib/notificationTypeMeta'
 function resolveDestination(n, currentUserId) {
   // oikos_entry / prayer_shared / prayer_log carry map_id + person_id in `data`
   // so we can deep-link straight into the map and open that person's sheet
-  const { map_id, person_id, map_owner_id, request_id, requester_id, post_id } = n.data || {}
+  const { map_id, person_id, map_owner_id, request_id, requester_id, post_id, conversation_id } = n.data || {}
 
+  if (n.type === 'message' && conversation_id) return `/chat/${conversation_id}`
   if (n.type === 'feed_post' && post_id) return `/feed/post/${post_id}`
   if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log' || n.type === 'prayer_reminder')) {
     const base = map_owner_id && map_owner_id !== currentUserId
@@ -234,18 +235,6 @@ export default function NotificationsPage() {
     deleteNotification(n.id)
   }
 
-  // Build ordered groups: preserve insertion order of first occurrence
-  const groupOrder = []
-  const groups = {}
-  for (const n of notifications) {
-    const key = n.type || 'other'
-    if (!groups[key]) {
-      groups[key] = []
-      groupOrder.push(key)
-    }
-    groups[key].push(n)
-  }
-
   return (
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }} className="pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
@@ -282,39 +271,23 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {/* Grouped notifications */}
-      {!loading && groupOrder.map(key => (
-        <div key={key} style={{ marginBottom: 4 }}>
-          {/* Group header */}
-          <p style={{
-            fontFamily: 'Lora, serif',
-            fontSize: 11,
-            fontWeight: 600,
-            color: 'var(--color-text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.6px',
-            margin: 0,
-            padding: '14px 16px 6px',
-          }}>
-            {NOTIFICATION_TYPE_META[key]?.label || 'Sonstiges'}
-          </p>
-
-          {/* Items */}
-          <div style={{ backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)', borderBottom: '1px solid var(--color-warm-3)' }}>
-            {groups[key].map(n => (
-              <NotificationItem
-                key={n.id}
-                n={n}
-                onClick={() => handleNotificationClick(n)}
-                onDelete={() => deleteNotification(n.id)}
-                onViewProfile={() => { if (!n.is_read) markRead(n.id); navigate(`/user/${n.data?.requester_id}`) }}
-                onAccept={() => handleAcceptFriendRequest(n)}
-                onDecline={() => handleDeclineFriendRequest(n)}
-              />
-            ))}
-          </div>
+      {/* Eine durchgehende Liste, neueste zuerst (die Query liefert bereits
+          created_at absteigend sortiert). */}
+      {!loading && notifications.length > 0 && (
+        <div style={{ backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)', borderBottom: '1px solid var(--color-warm-3)' }}>
+          {notifications.map(n => (
+            <NotificationItem
+              key={n.id}
+              n={n}
+              onClick={() => handleNotificationClick(n)}
+              onDelete={() => deleteNotification(n.id)}
+              onViewProfile={() => { if (!n.is_read) markRead(n.id); navigate(`/user/${n.data?.requester_id}`) }}
+              onAccept={() => handleAcceptFriendRequest(n)}
+              onDecline={() => handleDeclineFriendRequest(n)}
+            />
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }

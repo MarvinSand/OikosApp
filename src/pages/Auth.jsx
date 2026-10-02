@@ -1,9 +1,13 @@
 import { useState } from 'react'
-import { Cross, MailCheck, Eye, EyeOff } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Cross, MailCheck, Eye, EyeOff, BookMarked } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useChangePassword } from '../hooks/useChangePassword'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
+import { useYouVersionSignIn } from '../hooks/useYouVersionAccount'
+import { isNativeApp } from '../lib/platform'
+import { TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
 
 export default function Auth() {
   const hasSeenWelcome = typeof window !== 'undefined' && localStorage.getItem('oikos_welcome_seen')
@@ -17,10 +21,14 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [emailNotConfirmed, setEmailNotConfirmed] = useState(false)
+  // App-Store-Richtlinie 1.2: Nutzer müssen bei der Registrierung Bedingungen
+  // mit Null-Toleranz für anstößige Inhalte akzeptieren
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   const { login, register } = useAuth()
   const { showToast } = useToast()
   const resetFlow = useChangePassword('loggedOut')
+  const youversionSignIn = useYouVersionSignIn()
 
   function goToReset() { setError(''); resetFlow.reset(); setView('reset') }
   function goToLogin() { setError(''); setView('login') }
@@ -36,6 +44,10 @@ export default function Auth() {
       if (view === 'login') {
         await login(email, password)
       } else {
+        if (!acceptedTerms) {
+          setError('Bitte akzeptiere die Nutzungsbedingungen.')
+          return
+        }
         // Benutzername-Verfügbarkeit vor der Registrierung prüfen
         const { data: available, error: checkErr } = await supabase.rpc('is_username_available', { p_username: username.trim() })
         if (!checkErr && available === false) {
@@ -98,7 +110,7 @@ export default function Auth() {
   }
 
   return (
-    <div className={`bg-bg flex flex-col items-center relative ${view === 'welcome' ? 'h-[100dvh] overflow-hidden justify-center px-5 py-4' : 'h-[100dvh] justify-start p-6 pt-10 pb-10 overflow-y-auto overflow-x-hidden'}`}>
+    <div className={`bg-bg flex flex-col items-center relative ${view === 'welcome' ? 'h-full overflow-hidden justify-center px-5 py-4' : 'h-full justify-start p-6 pt-10 pb-10 overflow-y-auto overflow-x-hidden'}`}>
       {/* Decorative circles */}
       <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-accent/10 pointer-events-none blur-2xl" />
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/5 pointer-events-none blur-3xl animate-pulse" />
@@ -288,14 +300,66 @@ export default function Auth() {
                 </div>
               )}
 
+              {view === 'register' && (
+                <label className="flex items-start gap-3 text-sm text-dark-light" style={{ cursor: 'pointer', lineHeight: 1.45 }}>
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={e => setAcceptedTerms(e.target.checked)}
+                    style={{ width: 18, height: 18, marginTop: 1, flexShrink: 0, accentColor: 'var(--color-accent)' }}
+                  />
+                  <span>
+                    Ich akzeptiere die{' '}
+                    <Link to={TERMS_PATH} className="font-semibold text-accent underline">Nutzungsbedingungen</Link>
+                    {' '}(keine Toleranz für anstößige Inhalte oder Belästigung) und habe die{' '}
+                    <Link to={PRIVACY_PATH} className="font-semibold text-accent underline">Datenschutzerklärung</Link>
+                    {' '}gelesen.
+                  </span>
+                </label>
+              )}
+
               <button
                 type="submit" 
-                disabled={isLoading || (view === 'register' && (!gender || !username.trim()))}
+                disabled={isLoading || (view === 'register' && (!gender || !username.trim() || !acceptedTerms))}
                 className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}
               </button>
             </form>
+
+            {/* YouVersion-Login nur im Browser: In der iOS-App würde der
+                OAuth-Redirect nach capacitor://localhost zeigen (nicht bei
+                YouVersion registriert) und Safari statt der App öffnen.
+                Außerdem verlangt App-Store-Richtlinie 4.8 neben einem
+                Drittanbieter-Login zusätzlich „Mit Apple anmelden". */}
+            {!isNativeApp && (<>
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-warm-3" />
+              <span className="text-xs font-medium text-dark-light">oder</span>
+              <div className="flex-1 h-px bg-warm-3" />
+            </div>
+
+            <button
+              type="button"
+              onClick={youversionSignIn.start}
+              disabled={youversionSignIn.starting}
+              className="w-full py-3.5 rounded-xl font-semibold text-dark bg-paper border-1.5 border-warm-3 hover:border-warm-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <BookMarked size={18} />
+              {youversionSignIn.starting ? 'Einen Moment...' : (view === 'login' ? 'Mit YouVersion anmelden' : 'Mit YouVersion registrieren')}
+            </button>
+            {youversionSignIn.error && (
+              <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20 mt-3">
+                {youversionSignIn.error}
+              </div>
+            )}
+            </>)}
+
+            <p className="text-xs text-dark-light text-center mt-5" style={{ lineHeight: 1.5 }}>
+              Mit der Nutzung von OIKOS akzeptierst du unsere{' '}
+              <Link to={TERMS_PATH} className="underline">Nutzungsbedingungen</Link> und{' '}
+              <Link to={PRIVACY_PATH} className="underline">Datenschutzerklärung</Link>.
+            </p>
           </>
         )}
 

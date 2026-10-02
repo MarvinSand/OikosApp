@@ -1,16 +1,21 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MessageCircle, Bell } from 'lucide-react'
-import { useConversations } from '../hooks/useConversations'
+import { useHasUnreadConversations } from '../hooks/useHasUnreadConversations'
 import { useNotifications } from '../hooks/useNotifications'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
 import { useSwipeTabs } from '../hooks/useSwipeTabs'
 import TopPrayerToday from '../components/home/TopPrayerToday'
 import WelcomeBanner from '../components/home/WelcomeBanner'
-import HomeCommunityTab from '../components/home/HomeCommunityTab'
+import ProfileCompletionCard from '../components/home/ProfileCompletionCard'
 import GoalCard from '../components/prayer/GoalCard'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
+
+// Lazy: zieht sonst PeopleYouMayKnow, CommunityCard, CreateCommunitySheet
+// (inkl. AddressAutocomplete/Google-Maps-Loader) in Homes kritischen
+// Ladepfad – obwohl der Community-Tab erst nach einem Tap sichtbar wird.
+const HomeCommunityTab = lazy(() => import('../components/home/HomeCommunityTab'))
 
 // ─── Gruppengebet mit meistem Engagement (Top-Goal) ───────────
 function TopGroupGoal() {
@@ -64,7 +69,7 @@ const HOME_TABS = [
 
 export default function Home() {
   const navigate = useNavigate()
-  const { hasUnread } = useConversations()
+  const hasUnread = useHasUnreadConversations()
   const { unreadCount } = useNotifications()
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') === 'community' ? 'community' : 'aktuelles'
@@ -170,6 +175,9 @@ export default function Home() {
       >
         {tab === 'aktuelles' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
+            {/* Profil-Fortschritt (verschwindet, sobald das Profil vollständig ist) */}
+            <ProfileCompletionCard />
+
             {/* Willkommens- & Funktionsübersicht (dauerhaft) */}
             <WelcomeBanner />
 
@@ -181,7 +189,9 @@ export default function Home() {
           </div>
         ) : (
           <div style={{ padding: '20px 16px 0' }}>
-            <HomeCommunityTab />
+            <Suspense fallback={<div style={{ height: 200, borderRadius: 18, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />}>
+              <HomeCommunityTab />
+            </Suspense>
           </div>
         )}
       </div>
