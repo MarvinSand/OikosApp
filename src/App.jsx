@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
@@ -7,7 +7,6 @@ import { ToastProvider } from './context/ToastContext'
 import { supabase } from './lib/supabase'
 // Public pages stay eager so the login screen renders without a second fetch
 import Auth from './pages/Auth'
-import ResetPassword from './pages/ResetPassword'
 import AuthCallback from './pages/AuthCallback'
 import BottomNav from './components/layout/BottomNav'
 import SideNav from './components/layout/SideNav'
@@ -149,59 +148,6 @@ function AppShell() {
   return <AppShellInner />
 }
 
-// Supabase liest den Recovery-Code beim Laden automatisch aus der URL (egal auf
-// welcher Route der Link landet) und meldet den User über die Recovery-Session
-// an. Ohne diese Weiche würde man dadurch einfach in der normalen App landen,
-// statt die Seite zum Passwort-Ändern zu sehen.
-//
-// Mail-Apps öffnen den Recovery-Link oft in einem neuen Tab, während zufällig
-// (oder durch den Klick selbst) ein zweiter Tab auf Home aufgeht. Supabase
-// broadcastet PASSWORD_RECOVERY zwar per BroadcastChannel an alle offenen Tabs
-// derselben Origin, aber ein Tab, der erst NACH dem Broadcast gemountet wird,
-// verpasst die Nachricht (BroadcastChannel liefert nicht nach). Deshalb zieht
-// jeder Tab zusätzlich einen localStorage-Marker, den auch ein später
-// gestarteter Tab beim Start noch sieht.
-const RECOVERY_MARKER_KEY = 'oikos_recovery_redirect_at'
-const RECOVERY_MARKER_TTL_MS = 15000
-
-function RecoveryRedirect() {
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    const redirectToReset = () => {
-      if (window.location.pathname !== '/reset-password') {
-        navigate('/reset-password', { replace: true })
-      }
-    }
-
-    const markerAt = Number(localStorage.getItem(RECOVERY_MARKER_KEY))
-    if (markerAt && Date.now() - markerAt < RECOVERY_MARKER_TTL_MS) {
-      redirectToReset()
-    }
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        localStorage.setItem(RECOVERY_MARKER_KEY, String(Date.now()))
-        redirectToReset()
-      }
-    })
-
-    const onStorage = (e) => {
-      if (e.key === RECOVERY_MARKER_KEY && e.newValue) {
-        redirectToReset()
-      }
-    }
-    window.addEventListener('storage', onStorage)
-
-    return () => {
-      subscription.unsubscribe()
-      window.removeEventListener('storage', onStorage)
-    }
-  }, [navigate])
-
-  return null
-}
-
 function OwnMapPage() {
   const { mapId } = useParams()
   return <MapView initialMapId={mapId} hideWorldMapToggle />
@@ -285,22 +231,10 @@ async function checkBirthdays(userId) {
   }
 }
 
-// Recovery-Links tragen `type=recovery` im URL-Hash (implicit flow) oder in
-// der Query (falls Supabase mal auf PKCE zurückfällt). Das synchron beim
-// ersten Rendern zu prüfen – statt erst auf das asynchrone PASSWORD_RECOVERY-
-// Event zu warten – verhindert, dass Geräte mit bereits bestehender Session
-// (z. B. ein Handy, auf dem man schon eingeloggt ist) kurz Home/AppShell
-// rendern, bevor die Weiche zu /reset-password greift.
-function isRecoveryLink() {
-  return /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search)
-}
-
 export default function App() {
   const { user, loading } = useAuth()
 
   if (loading) return <LoadingSpinner />
-
-  const recovery = isRecoveryLink() && window.location.pathname !== '/reset-password'
 
   return (
     <ErrorBoundary>
@@ -308,17 +242,15 @@ export default function App() {
         <div className="min-h-screen bg-bg w-full flex justify-center md:block">
           <div className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg">
             <BrowserRouter>
-              <RecoveryRedirect />
               <Routes>
                 <Route
                   path="/auth"
-                  element={recovery ? <Navigate to="/reset-password" replace /> : (user ? <Navigate to="/" replace /> : <Auth />)}
+                  element={user ? <Navigate to="/" replace /> : <Auth />}
                 />
-                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route
                   path="/*"
-                  element={recovery ? <Navigate to="/reset-password" replace /> : (user ? <AppShell /> : <Navigate to="/auth" replace />)}
+                  element={user ? <AppShell /> : <Navigate to="/auth" replace />}
                 />
               </Routes>
             </BrowserRouter>
