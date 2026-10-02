@@ -5,7 +5,12 @@ import { supabase } from './supabase'
 // Browser gibt es das Plugin nicht. Web Push ist auf iOS in einer WKWebView
 // nicht verfügbar, deshalb gibt es dafür keinen Fallback.
 export function isNativePushAvailable() {
-  return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('PushNotifications')
+  if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable('PushNotifications')) return false
+  // Android braucht eine Firebase-Konfiguration (google-services.json) und
+  // einen FCM-Versand auf dem Server. Ohne sie würde register() den Start
+  // gefährden – deshalb nur aktiv, wenn der Build bewusst damit gebaut wurde.
+  if (Capacitor.getPlatform() === 'android') return import.meta.env.VITE_ANDROID_PUSH === '1'
+  return true
 }
 
 // Ohne Mac/Safari-Ferndebugging gibt es keine andere Möglichkeit, ein

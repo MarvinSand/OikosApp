@@ -10,3 +10,8 @@ tmp_query.js
 # Python caches (skill tooling)
 __pycache__/
 *.pyc
+
+# Geheime Signier-Dateien (nie committen)
+android-signing-geheim/
+*.keystore
+*.jks
