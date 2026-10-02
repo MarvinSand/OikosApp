@@ -13,6 +13,8 @@ In dieser Reihenfolge in App Store Connect hochladen (Version → iPhone 6,9"-An
 9. `09-chats.png` – Chats & Aktivitäten
 10. `10-startseite.png` – Täglich ermutigt
 
+Für die **6,5"-Anzeige** (1284 × 2778 px) liegen dieselben Bilder im Unterordner `6.5-zoll/`.
+
 `app-icon-1024.png` ist das App-Icon in voller Größe.
 
 Alle Personen, Namen, Orte und Inhalte sind erfunden (Beispieldaten). Die Karte ist im Google-Maps-Stil nachgezeichnet. Der Bibeltext stammt aus der gemeinfreien Elberfelder 1871.
