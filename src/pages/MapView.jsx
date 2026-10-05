@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePlaces } from '../hooks/usePlaces'
 import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
+import { useSiblingsCommunities } from '../hooks/useSiblingsCommunities'
+import SiblingsToggles from '../components/map/SiblingsToggles'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -276,11 +278,18 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   // Systemkarte „Meine Geschwister in Christus": Kanten + Freunde von Freunden
   const isSiblingsMap = activeMap?.kind === 'siblings'
   const [siblingsDepth, setSiblingsDepth] = useState(1)
-  const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap, depth: siblingsDepth, people })
-  const canvasConnections = isSiblingsMap ? [...connections, ...siblingsGraph.connections] : connections
-  const canvasOverlayData = isSiblingsMap ? siblingsGraph.overlayData : overlayData
+  const [showSiblingEdges, setShowSiblingEdges] = useState(true)
+  const [showSiblingCommunities, setShowSiblingCommunities] = useState(false)
+  const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap, depth: siblingsDepth, people, showEdges: showSiblingEdges })
+  const siblingsCommunities = useSiblingsCommunities({ active: isSiblingsMap && showSiblingCommunities, people })
 
   const { places, placeConnections, createPlace, updatePlace, deletePlace, connectPerson: connectPlacePerson, disconnectPerson: disconnectPlacePerson, movePlacePosition } = usePlaces(activeMapId)
+
+  // Systemkarte: virtuelle Kanten, Gen-2/3-Overlay und Community-Knoten einmischen
+  const canvasConnections = isSiblingsMap ? [...connections, ...siblingsGraph.connections] : connections
+  const canvasOverlayData = isSiblingsMap ? [...siblingsGraph.overlayData, ...siblingsCommunities.overlayData] : overlayData
+  const canvasPlaces = isSiblingsMap ? [...places, ...siblingsCommunities.virtualPlaces] : places
+  const canvasPlaceConnections = isSiblingsMap ? [...placeConnections, ...siblingsCommunities.placeConnections] : placeConnections
 
   const [showMapMenu, setShowMapMenu] = useState(false)
   const [showNewMap, setShowNewMap] = useState(false)
@@ -519,27 +528,14 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         </button>
       )}
 
-      {/* Generationen-Schalter der Systemkarte */}
+      {/* Schalter der Systemkarte: Generationen, Verbindungen, Communities */}
       {activeTab === 'oikos' && isSiblingsMap && (
-        <div
-          className="absolute top-[150px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-full border border-warm-3 bg-paper/90 p-1 shadow-md backdrop-blur-md"
-          role="group"
-          aria-label="Freunde von Freunden einblenden"
-        >
-          {[[1, 'Meine'], [2, '+ Freunde von Freunden'], [3, '+ 3. Generation']].map(([d, label]) => (
-            <button
-              key={d}
-              onClick={() => setSiblingsDepth(d)}
-              aria-pressed={siblingsDepth === d}
-              className="rounded-full border-none px-3 py-1.5 font-serif text-[12px] font-medium cursor-pointer whitespace-nowrap transition-colors"
-              style={{
-                background: siblingsDepth === d ? 'var(--color-warm-1)' : 'transparent',
-                color: siblingsDepth === d ? '#fff' : 'var(--color-text-secondary)',
-              }}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="absolute top-[150px] left-1/2 -translate-x-1/2 z-20">
+          <SiblingsToggles
+            depth={siblingsDepth} onDepth={setSiblingsDepth}
+            showEdges={showSiblingEdges} onShowEdges={setShowSiblingEdges}
+            showCommunities={showSiblingCommunities} onShowCommunities={setShowSiblingCommunities}
+          />
         </div>
       )}
 
@@ -620,8 +616,8 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               people={people}
               connections={canvasConnections}
               overlayData={canvasOverlayData}
-              places={places}
-              placeConnections={placeConnections}
+              places={canvasPlaces}
+              placeConnections={canvasPlaceConnections}
               onPersonClick={setSelectedPerson}
               onPersonMoved={(personId, x, y) => movePersonPosition(personId, x, y)}
               onCreateConnection={(sourceId, targetId, label) => createConnection(sourceId, targetId, label)}
@@ -637,7 +633,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                 return newPerson
               }}
               onCenterLineColorChange={(personId, color) => updatePerson(personId, { center_line_color: color })}
-              onPlaceClick={setSelectedPlace}
+              onPlaceClick={(pl) => (pl.is_virtual ? navigate(`/community/${pl.community_id}`) : setSelectedPlace(pl))}
               onPlaceMoved={movePlacePosition}
               onConnectPlacePerson={connectPlacePerson}
               onDisconnectPlacePerson={disconnectPlacePerson}

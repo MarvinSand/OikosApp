@@ -11,7 +11,7 @@ import { readCache, writeCache } from '../lib/swrCache'
 // depth   – 1 = nur Freunde, 2/3 = zusätzlich Freunde von Freunden
 // people  – oikos_people der Systemkarte (Generation 1, mit linked_user_id)
 // ownerId – Besitzer der Karte (Default: ich; für die öffentliche Ansicht fremder Karten)
-export function useSiblingsNetwork({ active, depth, people, ownerId }) {
+export function useSiblingsNetwork({ active, depth, people, ownerId, showEdges = true }) {
   const { user } = useAuth()
   const targetId = ownerId || user?.id
   const cacheKey = `siblings-network:${targetId}:${depth}`
@@ -37,7 +37,7 @@ export function useSiblingsNetwork({ active, depth, people, ownerId }) {
     const nodeById = new Map(nodes.map(n => [n.id, n]))
 
     // Gen-1-Kanten: Linien zwischen verbundenen Freunden (nicht löschbar: auto)
-    const connections = (network.edges || [])
+    const connections = !showEdges ? [] : (network.edges || [])
       .filter(e => personByUser.has(e.a) && personByUser.has(e.b))
       .map(e => ({
         id: `auto_${e.a}_${e.b}`,
@@ -89,5 +89,5 @@ export function useSiblingsNetwork({ active, depth, people, ownerId }) {
     })
 
     return { connections, overlayData }
-  }, [active, network, people, depth])
+  }, [active, network, people, depth, showEdges])
 }

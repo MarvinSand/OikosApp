@@ -104,9 +104,16 @@ export default function MapCanvas({
     setPlacePositions(prev => {
       const next = { ...prev }
       let changed = false
+      const virtualPlaces = places.filter(q => q.is_virtual)
       places.forEach(pl => {
         if (!(pl.id in next)) {
-          next[pl.id] = { x: pl.pos_x ?? cx, y: pl.pos_y ?? cy }
+          if (pl.is_virtual && pl.pos_x == null) {
+            // Community-Knoten: gleichmäßig auf einem Ring außerhalb der Personen
+            const a = (virtualPlaces.indexOf(pl) * 2 * Math.PI / Math.max(virtualPlaces.length, 1)) - Math.PI / 2 + Math.PI / 6
+            next[pl.id] = { x: cx + (ringRadius + 110) * Math.cos(a), y: cy + (ringRadius + 110) * Math.sin(a) }
+          } else {
+            next[pl.id] = { x: pl.pos_x ?? cx, y: pl.pos_y ?? cy }
+          }
           changed = true
         }
       })
@@ -115,10 +122,11 @@ export default function MapCanvas({
       })
       return changed ? next : prev
     })
-  }, [places, cx, cy])
+  }, [places, cx, cy, ringRadius])
 
   useEffect(() => {
     debouncedPlaceMoveRef.current = debounce((placeId, x, y) => {
+      if (String(placeId).startsWith('c:')) return // virtuelle Community-Knoten: nur lokal
       onPlaceMoved?.(placeId, x, y)
     }, 800)
   }, [onPlaceMoved])
@@ -308,6 +316,13 @@ export default function MapCanvas({
     return getDefaultPos(index, people.length, cx, cy, ringRadius)
   }
 
+  // Elternposition eines Overlays: Person (Freund) oder Ort/Community-Knoten
+  function getParentPos(parentId) {
+    const idx = people.findIndex(p => p.id === parentId)
+    if (idx !== -1) return getPos(people[idx], idx)
+    return placePositions[parentId] || null
+  }
+
   // Auto-fit the view when overlays are toggled: a pushed-out overlay group
   // can lie outside the initial viewBox, so zoom out to keep everything visible
   const contentRadiusRef = useRef(vbSize / 2)
@@ -318,7 +333,7 @@ export default function MapCanvas({
       if (pos) maxExtent = Math.max(maxExtent, Math.hypot(pos.x - cx, pos.y - cy) + personR)
     })
     overlayData.forEach(od => {
-      const parentPos = layout[od.parentPersonId]
+      const parentPos = getParentPos(od.parentPersonId)
       if (!parentPos) return
       const bCount = od.personCount ?? od.persons.length
       const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
@@ -332,9 +347,11 @@ export default function MapCanvas({
     contentRadiusRef.current = maxExtent + pad / 2
   }
   const overlayCount = overlayData.length
+  const virtualPlaceCount = places.filter(q => q.is_virtual).length
   useEffect(() => {
-    if (overlayCount > 0) {
-      const r = contentRadiusRef.current
+    if (overlayCount > 0 || virtualPlaceCount > 0) {
+      // placePositions wird erst nach diesem Effekt gesetzt → Ring der Community-Knoten direkt einrechnen
+      const r = Math.max(contentRadiusRef.current, virtualPlaceCount > 0 ? ringRadius + 110 + 80 + pad / 2 : 0)
       const newZoom = Math.min(1, vbSize / (2 * r))
       setZoom(newZoom)
       setViewOrigin({ x: cx - r, y: cy - r })
@@ -343,7 +360,7 @@ export default function MapCanvas({
       setViewOrigin({ x: 0, y: 0 })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overlayCount])
+  }, [overlayCount, virtualPlaceCount])
 
   // Overlay helpers
   function overlayKey(parentId, personId) {
@@ -381,10 +398,8 @@ export default function MapCanvas({
       return { person: people[mainIdx], pos: getPos(people[mainIdx], mainIdx) }
     }
     for (const od of overlayData) {
-      const parentPerson = people.find(p => p.id === od.parentPersonId)
-      if (!parentPerson) continue
-      const parentIdx = people.indexOf(parentPerson)
-      const parentPos = getPos(parentPerson, parentIdx)
+      const parentPos = getParentPos(od.parentPersonId)
+      if (!parentPos) continue
       const visible = od.persons.filter(op =>
         (op.is_christian && od.showChristian) || (!op.is_christian && od.showNonChristian)
       )
@@ -573,7 +588,7 @@ export default function MapCanvas({
       if (dragging.isPlace) {
         setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
       } else if (dragging.overlayKey) {
-        const parentPos = layout[dragging.parentPersonId] || { x: cx, y: cy }
+        const parentPos = getParentPos(dragging.parentPersonId) || { x: cx, y: cy }
         setOverlayPositions(prev => ({
           ...prev,
           [dragging.overlayKey]: { x: newPos.x - parentPos.x, y: newPos.y - parentPos.y },
@@ -661,7 +676,7 @@ export default function MapCanvas({
     if (dragging.isPlace) {
       setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
     } else if (dragging.overlayKey) {
-      const parentPos = layout[dragging.parentPersonId] || { x: cx, y: cy }
+      const parentPos = getParentPos(dragging.parentPersonId) || { x: cx, y: cy }
       setOverlayPositions(prev => ({
         ...prev,
         [dragging.overlayKey]: { x: newPos.x - parentPos.x, y: newPos.y - parentPos.y },
@@ -1053,10 +1068,8 @@ export default function MapCanvas({
 
         {/* Overlay persons (from linked accounts' public maps) */}
         {overlayData.flatMap(od => {
-          const parentPerson = people.find(p => p.id === od.parentPersonId)
-          if (!parentPerson) return []
-          const parentIdx = people.indexOf(parentPerson)
-          const parentPos = getPos(parentPerson, parentIdx)
+          const parentPos = getParentPos(od.parentPersonId)
+          if (!parentPos) return []
 
           // Compute brother's map center so we can translate his saved positions
           const bCount = od.personCount ?? od.persons.length
@@ -1276,7 +1289,7 @@ export default function MapCanvas({
           const isPickerOpen = centerLinePicker?.placeId === pl.id
           return (
             <g key={`cpl_${pl.id}`}>
-              {!readOnly && (
+              {!readOnly && !pl.is_virtual && (
                 <line
                   x1={x1} y1={y1} x2={pos.x} y2={pos.y}
                   stroke="transparent" strokeWidth={14}
@@ -1310,8 +1323,8 @@ export default function MapCanvas({
           const isPickerOpen = placeConnColorPicker?.conn?.id === conn.id
           return (
             <g key={`pc_${conn.id}`}>
-              {/* Wide invisible hit area */}
-              <line
+              {/* Wide invisible hit area (virtuelle Community-Linien nicht färbbar) */}
+              {!pl?.is_virtual && <line
                 x1={placePos.x} y1={placePos.y}
                 x2={personPos.x} y2={personPos.y}
                 stroke="transparent" strokeWidth={14}
@@ -1322,7 +1335,7 @@ export default function MapCanvas({
                   setPlaceConnPickerDraft(placeConnColors[conn.id] || pl?.color || '#8A7060')
                   setPlaceConnColorPicker({ conn, x: e.clientX, y: e.clientY })
                 }}
-              />
+              />}
               <line
                 x1={placePos.x} y1={placePos.y}
                 x2={personPos.x} y2={personPos.y}
@@ -1343,7 +1356,7 @@ export default function MapCanvas({
           const w = 84, h = 46, rx = 9
           const connCount = placeConnections.filter(c => c.place_id === pl.id).length
           const TYPE_EMOJIS = { sport: '🏋️', work: '💼', school: '🏫', church: '⛪', place: '📍', other: '🗺️' }
-          const emoji = TYPE_EMOJIS[pl.type] || '📍'
+          const emoji = pl.is_virtual ? '👥' : (TYPE_EMOJIS[pl.type] || '📍')
           const plName = pl.name.length > 9 ? pl.name.slice(0, 8) + '…' : pl.name
           return (
             <g

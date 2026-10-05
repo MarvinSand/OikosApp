@@ -3,6 +3,8 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { usePublicMap } from '../hooks/usePublicMap'
 import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
+import { useSiblingsCommunities } from '../hooks/useSiblingsCommunities'
+import SiblingsToggles from '../components/map/SiblingsToggles'
 import MapCanvas from '../components/map/MapCanvas'
 import PersonDetailSheet from '../components/map/PersonDetailSheet'
 
@@ -15,7 +17,10 @@ export default function PublicMapView() {
   // Systemkarte „Meine Geschwister in Christus": Auto-Kanten + Freunde von Freunden
   const [siblingsDepth, setSiblingsDepth] = useState(1)
   const isSiblingsMap = map?.kind === 'siblings'
-  const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap, depth: siblingsDepth, people, ownerId: userId })
+  const [showSiblingEdges, setShowSiblingEdges] = useState(true)
+  const [showSiblingCommunities, setShowSiblingCommunities] = useState(false)
+  const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap, depth: siblingsDepth, people, ownerId: userId, showEdges: showSiblingEdges })
+  const siblingsCommunities = useSiblingsCommunities({ active: isSiblingsMap && showSiblingCommunities, ownerId: userId, people })
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Deep-link: ?openPerson=PERSON_ID → open that person's sheet (used by notifications)
@@ -70,22 +75,12 @@ export default function PublicMapView() {
       </div>
 
       {isSiblingsMap && (
-        <div role="group" aria-label="Freunde von Freunden einblenden" style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '8px 8px 0', flexShrink: 0 }}>
-          {[[1, 'Verbundene'], [2, '+ Freunde von Freunden'], [3, '+ 3. Generation']].map(([d, label]) => (
-            <button
-              key={d}
-              onClick={() => setSiblingsDepth(d)}
-              aria-pressed={siblingsDepth === d}
-              style={{
-                border: '1px solid var(--color-warm-3)', borderRadius: 999, padding: '6px 12px', cursor: 'pointer',
-                fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
-                background: siblingsDepth === d ? 'var(--color-warm-1)' : 'var(--color-white)',
-                color: siblingsDepth === d ? '#fff' : 'var(--color-text-secondary)',
-              }}
-            >
-              {label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 8px 0', flexShrink: 0 }}>
+          <SiblingsToggles
+            depth={siblingsDepth} onDepth={setSiblingsDepth}
+            showEdges={showSiblingEdges} onShowEdges={setShowSiblingEdges}
+            showCommunities={showSiblingCommunities} onShowCommunities={setShowSiblingCommunities}
+          />
         </div>
       )}
 
@@ -95,9 +90,10 @@ export default function PublicMapView() {
           userName={ownerName}
           people={people}
           connections={isSiblingsMap ? [...connections, ...siblingsGraph.connections] : connections}
-          places={places}
-          placeConnections={placeConnections}
-          overlayData={isSiblingsMap ? siblingsGraph.overlayData : overlayData}
+          places={isSiblingsMap ? [...places, ...siblingsCommunities.virtualPlaces] : places}
+          placeConnections={isSiblingsMap ? [...placeConnections, ...siblingsCommunities.placeConnections] : placeConnections}
+          overlayData={isSiblingsMap ? [...siblingsGraph.overlayData, ...siblingsCommunities.overlayData] : overlayData}
+          onPlaceClick={(pl) => pl.is_virtual && navigate(`/community/${pl.community_id}`)}
           onPersonClick={setSelectedPerson}
           onOverlayPersonClick={(op) => op.is_virtual && navigate(`/user/${op.user_id}`)}
           readOnly
