@@ -26,33 +26,12 @@ export function useCommunityMembersPreview(communityIds, perCommunity = 4) {
     if (ids.length === 0) { setPreviews({}); return }
 
     ;(async () => {
-      const { data: rows } = await supabase
-        .from('community_members')
-        .select('community_id, user_id')
-        .in('community_id', ids)
-        .limit(400)
-      if (!active) return
-
-      // Je Community auf perCommunity begrenzen
-      const byCommunity = {}
-      const wantedUserIds = new Set()
-      for (const r of (rows || [])) {
-        const arr = (byCommunity[r.community_id] ||= [])
-        if (arr.length < perCommunity) { arr.push(r.user_id); wantedUserIds.add(r.user_id) }
-      }
-      if (wantedUserIds.size === 0) { setPreviews({}); return }
-
-      const { data: profs } = await supabase
-        .from('profiles')
-        .select('id, avatar_url, full_name, username')
-        .in('id', [...wantedUserIds])
-      if (!active) return
-
-      const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]))
+      // RPC statt Selects: RLS verbirgt Nicht-Mitgliedern die Mitgliederzeilen
+      const { data, error } = await supabase.rpc('get_community_members_preview', { p_ids: ids, p_per: perCommunity })
+      if (!active || error) return
       const map = {}
-      for (const [cid, uids] of Object.entries(byCommunity)) {
-        map[cid] = uids.map(uid => profMap[uid]).filter(Boolean)
-          .map(p => ({ id: p.id, avatar_url: p.avatar_url || null, full_name: p.full_name || p.username }))
+      for (const r of (data || [])) {
+        (map[r.community_id] ||= []).push({ id: r.user_id, avatar_url: r.avatar_url || null, full_name: r.full_name || r.username })
       }
       setPreviews(map)
     })()
