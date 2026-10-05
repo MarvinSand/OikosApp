@@ -8,7 +8,7 @@ import FeedCardFrame, { CONTENT_INSET } from '../components/feed/FeedCardFrame'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
-import { useCommunityMembersPreview } from '../hooks/useCommunityMembersPreview'
+import { useCommunityMembersPreview, fetchMemberCounts } from '../hooks/useCommunityMembersPreview'
 import CommunityCard from '../components/community/CommunityCard'
 import MutualAvatars from '../components/common/MutualAvatars'
 import { fetchMutualFriendsMap } from '../lib/mutualFriends'
@@ -582,7 +582,8 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
       .eq('is_public', true)
       .limit(20)
     const filtered = (data || []).filter(c => !myIds.includes(c.id))
-    setPublicCommunities(filtered)
+    const counts = await fetchMemberCounts(filtered.map(c => c.id))
+    setPublicCommunities(filtered.map(c => (c.id in counts ? { ...c, memberCount: counts[c.id] } : c)))
     setLoadingPublic(false)
 
     // Eigene offene Anfragen laden, damit "Angefragt" statt "Anfrage senden"

@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Plus, Compass, Hash } from 'lucide-react'
 import { useCommunities } from '../../hooks/useCommunities'
-import { useCommunityMembersPreview } from '../../hooks/useCommunityMembersPreview'
+import { useCommunityMembersPreview, fetchMemberCounts } from '../../hooks/useCommunityMembersPreview'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
@@ -49,7 +49,9 @@ export default function HomeCommunityTab() {
       .select('id, name, description, is_public')
       .eq('is_public', true)
       .limit(20)
-    setPublicCommunities((data || []).filter(c => !myIds.includes(c.id)).slice(0, 6))
+    const list = (data || []).filter(c => !myIds.includes(c.id)).slice(0, 6)
+    const counts = await fetchMemberCounts(list.map(c => c.id))
+    setPublicCommunities(list.map(c => (c.id in counts ? { ...c, memberCount: counts[c.id] } : c)))
     setLoadingPublic(false)
   }
 
