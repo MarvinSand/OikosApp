@@ -61,7 +61,9 @@ export function normalizePrayer(row, { kind = null, source = null } = {}) {
     isPinned: !!row.is_pinned,
     // Oikos-Anliegen kennen is_public, Feed-Anliegen visibility.
     isPublic: isOikos ? row.is_public !== false : row.visibility !== 'private',
-    visibility: isOikos ? (row.is_public === false ? 'private' : 'public') : (row.visibility || 'private'),
+    visibility: isOikos ? (row.visibility || (row.is_public === false ? 'private' : 'public')) : (row.visibility || 'private'),
+    visibilityCommunityIds: row.visibility_community_ids || [],
+    visibilityUserIds: row.visibility_user_ids || [],
     category: row.category || null,
     // ── Herkunft ──────────────────────────────────────────────────────────
     // Oikos-Anliegen: für welche Person, aus welcher Map, wem gehört die Map.

@@ -70,7 +70,7 @@ async function fetchSiblingOikos(siblingIds, statusFilter, limit, source) {
   const data = rowsOrThrow(await applyStatus(
     supabase.from('prayer_requests').select('*'),
     statusFilter,
-  ).in('owner_id', siblingIds).not('person_id', 'is', null).eq('is_public', true)
+  ).in('owner_id', siblingIds).not('person_id', 'is', null)
     .order('created_at', { ascending: false }).limit(limit))
   return data.map(r => normalizePrayer(r, { kind: KIND_OIKOS, source }))
 }

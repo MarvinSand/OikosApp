@@ -15,14 +15,14 @@ export const FEED_CATEGORIES = [
   { key: 'sonstiges',   label: 'Sonstiges',   emoji: '💬' },
 ]
 
-const FEED_VISIBILITY = [
+export const FEED_VISIBILITY = [
   { key: 'public',           label: 'Öffentlich',              icon: Globe,      sub: null },
   { key: 'communities',      label: 'Community',               icon: Users,      sub: 'community' },
   { key: 'siblings',         label: 'Meine Geschwister',       icon: UserCheck,  sub: null },
   { key: 'specific_include', label: 'Ausgewählte Geschwister', icon: Users,      sub: 'siblings' },
 ]
 
-function SiblingPickerFeed({ selected, onChange }) {
+export function SiblingPickerFeed({ selected, onChange }) {
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [siblings, setSiblings] = useState([])

@@ -24,7 +24,8 @@ export function usePrayerRequests(personId) {
       .order('is_answered')
       .order('created_at')
     if (error) console.error('[usePrayerRequests] load() fehlgeschlagen:', error)
-    const visible = (data || []).filter(r => r.owner_id === user.id || r.is_public === true)
+    // Sichtbarkeit (öffentlich/Geschwister/Community/ausgewählt) entscheidet RLS.
+    const visible = data || []
     setRequests(visible)
     setLoading(false)
 
