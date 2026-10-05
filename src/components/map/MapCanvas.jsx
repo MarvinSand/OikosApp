@@ -1202,8 +1202,8 @@ export default function MapCanvas({
           const isPickerOpen = connColorPicker?.conn?.id === conn.id
           return (
             <g key={conn.id}>
-              {/* Wide invisible hit area for easy clicking */}
-              {!readOnly && (
+              {/* Wide invisible hit area for easy clicking (Auto-Kanten der Systemkarte nicht editierbar) */}
+              {!readOnly && !conn.auto && (
                 <line
                   x1={x1} y1={y1}
                   x2={x2} y2={y2}

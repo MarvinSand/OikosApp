@@ -46,9 +46,21 @@ export function useOikosMaps() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at')
-    setMaps(data || [])
-    if (data?.length > 0) setActiveMapId(data[0].id)
+    // Systemkarte „Meine Geschwister in Christus" immer als erste angepinnt
+    const sorted = [...(data || [])].sort((a, b) =>
+      (b.kind === 'siblings') - (a.kind === 'siblings'))
+    setMaps(sorted)
+    if (sorted.length > 0) setActiveMapId(sorted[0].id)
     setLoading(false)
+
+    // Freunde in die Systemkarte spiegeln, danach Personen neu laden
+    const siblings = sorted.find(m => m.kind === 'siblings')
+    if (siblings) {
+      supabase.rpc('sync_siblings_map').then(({ error }) => {
+        if (error) console.error('sync_siblings_map', error)
+        else loadPeople(siblings.id)
+      })
+    }
   }
 
   async function loadPeople(mapId) {
@@ -127,6 +139,7 @@ export function useOikosMaps() {
   }
 
   async function deleteMap(mapId) {
+    if (maps.find(m => m.id === mapId)?.kind === 'siblings') return
     const { error } = await supabase.from('oikos_maps').delete().eq('id', mapId)
     if (error) throw error
     const remaining = maps.filter(m => m.id !== mapId)
@@ -137,6 +150,8 @@ export function useOikosMaps() {
   }
 
   async function updateMap(mapId, updates) {
+    // Name/Sichtbarkeit der Systemkarte sind fest (privat, „Meine Geschwister in Christus")
+    if (maps.find(m => m.id === mapId)?.kind === 'siblings') return maps.find(m => m.id === mapId)
     const { data, error } = await supabase
       .from('oikos_maps')
       .update(updates)
@@ -193,6 +208,10 @@ export function useOikosMaps() {
   }
 
   async function deletePerson(id) {
+    if (maps.find(m => m.id === activeMapId)?.kind === 'siblings') {
+      showToast?.('Diese Karte wird automatisch aus deinen Verbindungen erstellt', 'error')
+      return
+    }
     const { error } = await supabase.from('oikos_people').delete().eq('id', id)
     if (error) {
       reportError(error, 'Löschen fehlgeschlagen')

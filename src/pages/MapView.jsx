@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePlaces } from '../hooks/usePlaces'
+import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -272,6 +273,13 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
     linkAccount, unlinkAccount, updatePersonOverlay, reloadMap,
   } = useOikosMaps()
 
+  // Systemkarte „Meine Geschwister in Christus": Kanten + Freunde von Freunden
+  const isSiblingsMap = activeMap?.kind === 'siblings'
+  const [siblingsDepth, setSiblingsDepth] = useState(1)
+  const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap, depth: siblingsDepth, people })
+  const canvasConnections = isSiblingsMap ? [...connections, ...siblingsGraph.connections] : connections
+  const canvasOverlayData = isSiblingsMap ? siblingsGraph.overlayData : overlayData
+
   const { places, placeConnections, createPlace, updatePlace, deletePlace, connectPerson: connectPlacePerson, disconnectPerson: disconnectPlacePerson, movePlacePosition } = usePlaces(activeMapId)
 
   const [showMapMenu, setShowMapMenu] = useState(false)
@@ -432,7 +440,18 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           <ChevronDown size={18} className="text-dark-muted shrink-0" />
         </button>
 
-        {activeMap && (
+        {activeMap && isSiblingsMap && (
+          <div className="flex gap-1 items-center">
+            <button
+              onClick={() => setShowColorFilter(v => !v)}
+              title="Nach Farbe filtern"
+              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+            >
+              <Filter size={18} />
+            </button>
+          </div>
+        )}
+        {activeMap && !isSiblingsMap && (
           <div className="flex gap-1 items-center">
             <button
               onClick={() => setConnectionMode(v => !v)}
@@ -500,6 +519,30 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         </button>
       )}
 
+      {/* Generationen-Schalter der Systemkarte */}
+      {activeTab === 'oikos' && isSiblingsMap && (
+        <div
+          className="absolute top-[150px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-full border border-warm-3 bg-paper/90 p-1 shadow-md backdrop-blur-md"
+          role="group"
+          aria-label="Freunde von Freunden einblenden"
+        >
+          {[[1, 'Meine'], [2, '+ Freunde von Freunden'], [3, '+ 3. Generation']].map(([d, label]) => (
+            <button
+              key={d}
+              onClick={() => setSiblingsDepth(d)}
+              aria-pressed={siblingsDepth === d}
+              className="rounded-full border-none px-3 py-1.5 font-serif text-[12px] font-medium cursor-pointer whitespace-nowrap transition-colors"
+              style={{
+                background: siblingsDepth === d ? 'var(--color-warm-1)' : 'transparent',
+                color: siblingsDepth === d ? '#fff' : 'var(--color-text-secondary)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Dropdown-Menü für Map-Auswahl */}
       {showMapMenu && activeTab === 'oikos' && (
         <>
@@ -521,13 +564,17 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                   cursor: 'pointer',
                 }}
               >
-                <span>{m.name}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {m.kind === 'siblings' && <Pin size={13} aria-label="Angepinnt" />}
+                  {m.name}
+                </span>
                 {m.is_public && (
                   <span style={{ fontSize: 11, color: 'var(--color-text-light)' }}>öffentlich</span>
                 )}
               </button>
             ))}
               <div className="border border-warm-3 border-t-0 bg-warm-4 flex">
+                {!isSiblingsMap && (<>
                 <button
                   onClick={() => { setShowMapMenu(false); setShowSettings(true) }}
                   className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors flex items-center justify-center gap-1.5"
@@ -535,6 +582,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                   <SlidersHorizontal size={13} /> Einstellungen
                 </button>
                 <div className="w-[1px] bg-warm-3" />
+                </>)}
                 <button
                   onClick={() => { setShowMapMenu(false); setShowNewMap(true) }}
                   className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-warm-1 font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
@@ -570,15 +618,17 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             <MapCanvas
               userName={userName}
               people={people}
-              connections={connections}
-              overlayData={overlayData}
+              connections={canvasConnections}
+              overlayData={canvasOverlayData}
               places={places}
               placeConnections={placeConnections}
               onPersonClick={setSelectedPerson}
               onPersonMoved={(personId, x, y) => movePersonPosition(personId, x, y)}
               onCreateConnection={(sourceId, targetId, label) => createConnection(sourceId, targetId, label)}
-              onOverlayPersonClick={setSelectedOverlayPerson}
-              connectionMode={connectionMode}
+              onOverlayPersonClick={(op) => (
+                op.is_virtual ? navigate(`/user/${op.user_id}`) : setSelectedOverlayPerson(op)
+              )}
+              connectionMode={connectionMode && !isSiblingsMap}
               onConnectionColorChange={updateConnectionColor}
               onDeleteConnection={deleteConnection}
               onAddConnectedPerson={async (name, connectedToPersonId) => {

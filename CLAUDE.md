@@ -1,5 +1,13 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Systemkarte „Meine Geschwister in Christus" (Okt. 2026, phase75)
+
+- Pro Account genau eine `oikos_maps`-Zeile mit `kind='siblings'` (Unique-Index, Trigger auf `profiles` + Backfill, `ensure_siblings_map`). Immer erste Map im Switcher (Pin), nicht umbenenn-/löschbar, privat.
+- `sync_siblings_map()` (RPC, beim Laden von `useOikosMaps`) spiegelt akzeptierte Freunde als `oikos_people` (`linked_user_id`) → Positionen sind wie bei normalen Maps verschiebbar und persistent. `notify_on_oikos_entry` überspringt diese Map.
+- Kanten zwischen Freunden und Freunde von Freunden (Gen 2/3) sind **virtuell**: `get_siblings_network(depth)` (SECURITY DEFINER, Blocks gefiltert) → `useSiblingsNetwork` baut daraus `connections` (`auto: true`, nicht editierbar) und `overlayData` (bestehender Overlay-Mechanismus von `MapCanvas`, Personen mit `is_virtual`, Tap → `/user/:id`).
+- Die `friendships`-RLS zeigt nur eigene Zeilen: Kanten zwischen Dritten gehen nur per SECURITY-DEFINER-RPC. `lib/mutualFriends.js` (Client-Query) liefert deshalb praktisch nur eigene Kanten.
+- **Lektion Supabase-MCP:** `execute_sql`/`apply_migration` mit `DROP`/`DELETE` laufen in einer nicht-interaktiven Session in ein 60-s-Timeout (Bestätigungsschranke) – solche Statements im SQL-Editor ausführen. DDL-Aufrufe nicht parallel absetzen.
+
 ## Nav-/Weltkarten-Overlap nur in TestFlight (Sep. 2026) – zwei echte Ursachen
 
 1. **Doppelte Viewport-Höhe:** `App.jsx` gibt dem äußeren Container `h-[100dvh]` + `padding-top: env(safe-area-inset-top)`. Shell/Seiten darin hatten nochmal `100dvh` → in der iOS-App ragte alles ~59pt (Dynamic Island) unten aus dem Bild, die Weltkarten-Leiste lag über den Nav-Icons. Im Browser ist die Safe-Area 0 → nie reproduzierbar. Fix: innen überall `h-full`/`100%`.
