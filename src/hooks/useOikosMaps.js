@@ -56,9 +56,12 @@ export function useOikosMaps() {
     // Freunde in die Systemkarte spiegeln, danach Personen neu laden
     const siblings = sorted.find(m => m.kind === 'siblings')
     if (siblings) {
-      supabase.rpc('sync_siblings_map').then(({ error }) => {
-        if (error) console.error('sync_siblings_map', error)
-        else loadPeople(siblings.id)
+      supabase.rpc('sync_siblings_map').then(async ({ data: res, error }) => {
+        if (error) { console.error('sync_siblings_map', error); return }
+        // Personen entfernter/blockierter Freunde aus der Karte nehmen
+        const stale = res?.stale_person_ids || []
+        if (stale.length > 0) await supabase.from('oikos_people').delete().in('id', stale)
+        loadPeople(siblings.id)
       })
     }
   }

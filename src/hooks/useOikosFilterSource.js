@@ -30,7 +30,7 @@ export function useOikosFilterSource({ enabled }) {
   // ── Eigene Maps laden ────────────────────────────────────────────────
   useEffect(() => {
     if (!enabled || !user) return
-    supabase.from('oikos_maps').select('id, name').eq('user_id', user.id).order('created_at')
+    supabase.from('oikos_maps').select('id, name').eq('user_id', user.id).or('kind.is.null,kind.neq.siblings').order('created_at')
       .then(({ data }) => setOwnMaps(data || []))
   }, [enabled, user?.id])
 
@@ -38,7 +38,7 @@ export function useOikosFilterSource({ enabled }) {
   useEffect(() => {
     if (!enabled || siblings.length === 0) { setSiblingMaps([]); return }
     const siblingIds = siblings.map(s => s.id)
-    supabase.from('oikos_maps').select('id, name, user_id').in('user_id', siblingIds).order('created_at')
+    supabase.from('oikos_maps').select('id, name, user_id').in('user_id', siblingIds).or('kind.is.null,kind.neq.siblings').order('created_at')
       .then(({ data }) => setSiblingMaps(data || []))
   }, [enabled, siblings.length])
 

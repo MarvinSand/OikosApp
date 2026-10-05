@@ -55,7 +55,7 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
 
   useEffect(() => {
     if (!user) return
-    supabase.from('oikos_maps').select('id, name').eq('user_id', user.id).order('created_at')
+    supabase.from('oikos_maps').select('id, name').eq('user_id', user.id).or('kind.is.null,kind.neq.siblings').order('created_at')
       .then(({ data }) => setMaps(data || []))
   }, [user?.id])
 

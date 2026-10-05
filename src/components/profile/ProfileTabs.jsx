@@ -68,6 +68,7 @@ export function VisibilityIcon({ visibility }) {
 
 export const VISIBILITY_LABEL = {
   private: 'Privat',
+  public: 'Öffentlich',
   all_siblings: 'Geschwister',
   specific_include: 'Geschwister',
   specific_exclude: 'Geschwister',

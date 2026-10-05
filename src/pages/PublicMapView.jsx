@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { usePublicMap } from '../hooks/usePublicMap'
+import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
 import MapCanvas from '../components/map/MapCanvas'
 import PersonDetailSheet from '../components/map/PersonDetailSheet'
 
@@ -11,6 +12,10 @@ export default function PublicMapView() {
   const navigate = useNavigate()
   const { map, people, connections, places, placeConnections, ownerName, linkedProfiles, overlayData, togglePersonMapOverlay, loading } = usePublicMap(userId, mapId)
   const [selectedPerson, setSelectedPerson] = useState(null)
+  // Systemkarte „Meine Geschwister in Christus": Auto-Kanten + Freunde von Freunden
+  const [siblingsDepth, setSiblingsDepth] = useState(1)
+  const isSiblingsMap = map?.kind === 'siblings'
+  const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap, depth: siblingsDepth, people, ownerId: userId })
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Deep-link: ?openPerson=PERSON_ID → open that person's sheet (used by notifications)
@@ -64,16 +69,37 @@ export default function PublicMapView() {
         <div style={{ width: 36 }} />
       </div>
 
+      {isSiblingsMap && (
+        <div role="group" aria-label="Freunde von Freunden einblenden" style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '8px 8px 0', flexShrink: 0 }}>
+          {[[1, 'Verbundene'], [2, '+ Freunde von Freunden'], [3, '+ 3. Generation']].map(([d, label]) => (
+            <button
+              key={d}
+              onClick={() => setSiblingsDepth(d)}
+              aria-pressed={siblingsDepth === d}
+              style={{
+                border: '1px solid var(--color-warm-3)', borderRadius: 999, padding: '6px 12px', cursor: 'pointer',
+                fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
+                background: siblingsDepth === d ? 'var(--color-warm-1)' : 'var(--color-white)',
+                color: siblingsDepth === d ? '#fff' : 'var(--color-text-secondary)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Canvas */}
       <div style={{ flex: 1, minHeight: 0, padding: 8, overflow: 'hidden' }}>
         <MapCanvas
           userName={ownerName}
           people={people}
-          connections={connections}
+          connections={isSiblingsMap ? [...connections, ...siblingsGraph.connections] : connections}
           places={places}
           placeConnections={placeConnections}
-          overlayData={overlayData}
+          overlayData={isSiblingsMap ? siblingsGraph.overlayData : overlayData}
           onPersonClick={setSelectedPerson}
+          onOverlayPersonClick={(op) => op.is_virtual && navigate(`/user/${op.user_id}`)}
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
         />

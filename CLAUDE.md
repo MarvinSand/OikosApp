@@ -2,11 +2,11 @@
 
 ## Systemkarte „Meine Geschwister in Christus" (Okt. 2026, phase75)
 
-- Pro Account genau eine `oikos_maps`-Zeile mit `kind='siblings'` (Unique-Index, Trigger auf `profiles` + Backfill, `ensure_siblings_map`). Immer erste Map im Switcher (Pin), nicht umbenenn-/löschbar, privat.
-- `sync_siblings_map()` (RPC, beim Laden von `useOikosMaps`) spiegelt akzeptierte Freunde als `oikos_people` (`linked_user_id`) → Positionen sind wie bei normalen Maps verschiebbar und persistent. `notify_on_oikos_entry` überspringt diese Map.
-- Kanten zwischen Freunden und Freunde von Freunden (Gen 2/3) sind **virtuell**: `get_siblings_network(depth)` (SECURITY DEFINER, Blocks gefiltert) → `useSiblingsNetwork` baut daraus `connections` (`auto: true`, nicht editierbar) und `overlayData` (bestehender Overlay-Mechanismus von `MapCanvas`, Personen mit `is_virtual`, Tap → `/user/:id`).
+- Pro Account genau eine `oikos_maps`-Zeile mit `kind='siblings'` (Unique-Index, Trigger auf `profiles` + Backfill, `ensure_siblings_map`). Immer erste Map im Switcher (Pin), nicht umbenenn-/löschbar, **öffentlich** (`visibility='public'`, neuer Wert in Check-Constraint + `is_map_visible_to`; `'public'` bei Sichtbarkeitsfiltern im Client mitbehandeln). Aus Weltkarten-/Gebets-/Filterquellen per `.or('kind.is.null,kind.neq.siblings')` ausgeschlossen (`neq` allein würde NULL-Zeilen verlieren).
+- `_sync_siblings_for(user)` fügt akzeptierte Freunde als `oikos_people` (`linked_user_id`) ein (nur INSERT, auch per Trigger auf `friendships`), `sync_siblings_map()` (RPC beim Laden von `useOikosMaps`) liefert `stale_person_ids`, die der Client löscht → Positionen verschiebbar + persistent. `notify_on_oikos_entry` überspringt diese Map.
+- Kanten zwischen Freunden und Freunde von Freunden (Gen 2/3) sind **virtuell**: `get_user_siblings_network(user, depth)` (SECURITY DEFINER, Blocks gefiltert, auch für fremde Besitzer) → `useSiblingsNetwork` baut `connections` (`auto: true`, nicht editierbar) und `overlayData` (Overlay-Mechanismus von `MapCanvas`, Personen mit `is_virtual`, Tap → `/user/:id`). `PublicMapView` nutzt denselben Hook.
 - Die `friendships`-RLS zeigt nur eigene Zeilen: Kanten zwischen Dritten gehen nur per SECURITY-DEFINER-RPC. `lib/mutualFriends.js` (Client-Query) liefert deshalb praktisch nur eigene Kanten.
-- **Lektion Supabase-MCP:** `execute_sql`/`apply_migration` mit `DROP`/`DELETE` laufen in einer nicht-interaktiven Session in ein 60-s-Timeout (Bestätigungsschranke) – solche Statements im SQL-Editor ausführen. DDL-Aufrufe nicht parallel absetzen.
+- **Lektion:** Eine Funktion, die nie live angelegt wurde, zeigt sich nur als leere Karte (RPC-Fehler landet in der Konsole) – nach jeder Migration `pg_proc`/Zähler live prüfen. Supabase-MCP: einzelne `execute_sql`-Aufrufe mit `DROP TRIGGER/FUNCTION` liefen in ein 60-s-Timeout; `CREATE OR REPLACE`/`ALTER … DROP CONSTRAINT` gingen durch → Funktionen per Wrapper/neuem Namen ersetzen, DDL nie parallel absetzen. `phase75` ist durch `phase76_siblings_map_public.sql` ersetzt (zuerst ausführen/prüfen, ob live schon vorhanden).
 
 ## Nav-/Weltkarten-Overlap nur in TestFlight (Sep. 2026) – zwei echte Ursachen
 

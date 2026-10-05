@@ -34,7 +34,7 @@ export function useOikosWorldMapSource({ enabled }) {
   useEffect(() => {
     if (!enabled || !user) return
     setLoadingMaps(true)
-    supabase.from('oikos_maps').select('id, name').eq('user_id', user.id).order('created_at')
+    supabase.from('oikos_maps').select('id, name').eq('user_id', user.id).or('kind.is.null,kind.neq.siblings').order('created_at')
       .then(({ data }) => {
         setOwnMaps(data || [])
         setLoadingMaps(false)

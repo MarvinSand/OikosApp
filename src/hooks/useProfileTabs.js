@@ -195,6 +195,7 @@ export function useProfileTabs(profileUserId) {
 
       visibleMaps = (mapsRaw || []).filter(map => {
         if (map.visibility === 'private') return false
+        if (map.visibility === 'public') return true
         if (map.visibility === 'all_siblings') return isSibling
         if (map.visibility === 'specific_include') return (map.visibility_user_ids || []).includes(user.id)
         if (map.visibility === 'specific_exclude') return isSibling && !(map.visibility_user_ids || []).includes(user.id)
