@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { verseFieldsFromAttachment } from '../lib/bibleLink'
+import { readCache, writeCache } from '../lib/swrCache'
 
 export function usePersonalPrayer() {
   const { user } = useAuth()
-  const [myRequests, setMyRequests] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [cached] = useState(() => readCache(user?.id, 'myPersonalPrayers'))
+  const [myRequests, setMyRequests] = useState(cached ?? [])
+  const [loading, setLoading] = useState(!cached)
 
   useEffect(() => {
     if (!user) return
@@ -14,12 +16,15 @@ export function usePersonalPrayer() {
   }, [user?.id])
 
   async function load() {
-    const { data: reqs } = await supabase
+    const { data: reqs, error } = await supabase
       .from('personal_prayer_requests')
       .select('*')
       .eq('owner_id', user.id)
       .order('is_answered', { ascending: true })
       .order('created_at', { ascending: false })
+
+    // Fehler: gecachten Stand behalten statt ihn zu leeren
+    if (error) { setLoading(false); return }
 
     if (reqs && reqs.length > 0) {
       const { data: logs } = await supabase
@@ -29,9 +34,12 @@ export function usePersonalPrayer() {
 
       const countMap = {}
       for (const l of (logs || [])) countMap[l.request_id] = (countMap[l.request_id] || 0) + 1
-      setMyRequests(reqs.map(r => ({ ...r, prayerCount: countMap[r.id] || 0 })))
+      const next = reqs.map(r => ({ ...r, prayerCount: countMap[r.id] || 0 }))
+      setMyRequests(next)
+      writeCache(user.id, 'myPersonalPrayers', next)
     } else {
       setMyRequests(reqs || [])
+      writeCache(user.id, 'myPersonalPrayers', reqs || [])
     }
     setLoading(false)
   }

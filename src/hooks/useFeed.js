@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { compressImage } from '../lib/image'
 import { verseFieldsFromAttachment } from '../lib/bibleLink'
+import { readCache, writeCache } from '../lib/swrCache'
 
 const PAGE_SIZE = 20
 
@@ -16,8 +17,10 @@ export const POST_SELECT = `
 
 export function useFeed(filter = 'all') {
   const { user } = useAuth()
-  const [posts, setPosts] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Letzte erste Seite je Filter sofort zeigen (siehe swrCache.js), still aktualisieren
+  const cacheName = `feed:${filter}`
+  const [posts, setPosts] = useState(() => readCache(user?.id, cacheName) ?? [])
+  const [loading, setLoading] = useState(() => readCache(user?.id, cacheName) === undefined)
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
 
@@ -39,16 +42,29 @@ export function useFeed(filter = 'all') {
 
   const loadPosts = useCallback(async () => {
     if (!user) return
-    setLoading(true)
-    setOffset(0)
-    const { data, error } = await buildQuery(0)
-    if (!error) {
-      const withReactions = await attachReactions(data || [])
-      setPosts(withReactions)
-      setHasMore((data || []).length === PAGE_SIZE)
+    const cached = readCache(user.id, cacheName)
+    if (cached !== undefined) {
+      setPosts(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
     }
-    setLoading(false)
-  }, [user?.id, buildQuery])
+    setOffset(0)
+    try {
+      const { data, error } = await buildQuery(0)
+      // Fehler: gecachten Stand behalten statt ihn zu leeren
+      if (!error) {
+        const withReactions = await attachReactions(data || [])
+        setPosts(withReactions)
+        setHasMore((data || []).length === PAGE_SIZE)
+        writeCache(user.id, cacheName, withReactions)
+      }
+    } catch {
+      /* Netzwerkfehler: bisherigen Stand behalten */
+    } finally {
+      setLoading(false)
+    }
+  }, [user?.id, buildQuery, cacheName])
 
   useEffect(() => { loadPosts() }, [loadPosts])
 

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark, ArrowLeft } from 'lucide-react'
 import ShareSheet from '../components/feed/ShareSheet'
@@ -8,7 +8,7 @@ import FeedCardFrame, { CONTENT_INSET } from '../components/feed/FeedCardFrame'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { useCommunities } from '../hooks/useCommunities'
-import { useCommunityMembersPreview, fetchMemberCounts } from '../hooks/useCommunityMembersPreview'
+import { useCommunityMembersPreview } from '../hooks/useCommunityMembersPreview'
 import CommunityCard from '../components/community/CommunityCard'
 import MutualAvatars from '../components/common/MutualAvatars'
 import { fetchMutualFriendsMap } from '../lib/mutualFriends'
@@ -18,6 +18,7 @@ import { useConversations } from '../hooks/useConversations'
 import { useToast } from '../context/ToastContext'
 import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
+import { readCache, writeCache } from '../lib/swrCache'
 import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 import DateFilterControl from '../components/ui/DateFilterControl'
 import ExpandableSearch from '../components/common/ExpandableSearch'
@@ -161,28 +162,38 @@ function FriendsTab() {
   const [myCity, setMyCity] = useState('')
 
   // Discover data
-  const [nearbyUsers, setNearbyUsers] = useState([])
-  const [upcomingBirthdays, setUpcomingBirthdays] = useState([])
-  const [notConnected, setNotConnected] = useState([])
-  const [mutuals, setMutuals] = useState({}) // userId -> { count, people }
+  // Alles auf dieser Seite startet mit dem zuletzt geladenen Stand (siehe
+  // swrCache.js) und lädt still nach. Die Teil-Requests laufen parallel statt
+  // erst nach der Freundesliste (früher: Freunde -> Profile -> Gemeinsame
+  // Freunde nacheinander); „noch nicht verbunden" wird aus den Profilen und
+  // der Freundesliste abgeleitet.
+  const [nearbyUsers, setNearbyUsers] = useState(() => readCache(user?.id, 'siblingsNearby') ?? [])
+  const [upcomingBirthdays, setUpcomingBirthdays] = useState(() => readCache(user?.id, 'siblingsBirthdays') ?? [])
+  const [allProfiles, setAllProfiles] = useState(() => readCache(user?.id, 'siblingsProfiles') ?? [])
+  const [mutuals, setMutuals] = useState(() => readCache(user?.id, 'siblingsMutuals') ?? {}) // userId -> { count, people }
 
+  const friendIdsKey = friends.map(f => f.requester_id === user?.id ? f.addressee_id : f.requester_id).sort().join(',')
+  const notConnected = useMemo(() => {
+    const connectedIds = new Set(friendIdsKey ? friendIdsKey.split(',') : [])
+    return allProfiles.filter(p => !connectedIds.has(p.id))
+  }, [allProfiles, friendIdsKey])
+
+  useEffect(() => {
+    if (!user) return
+    loadMyCity()
+    loadAllProfiles()
+  }, [user?.id])
+
+  // Gemeinsame Freunde (unabhängig von der Profil-Liste, nur von den Freunden abhängig)
   useEffect(() => {
     if (!user || loading) return
-    loadMyCity()
-    loadNotConnected()
-  }, [user?.id, loading, friends.length])
-
-  // Gemeinsame Freunde für die "noch nicht connected"-Liste laden
-  useEffect(() => {
-    if (!user || notConnected.length === 0) { setMutuals({}); return }
-    const myFriendIds = friends.map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
+    const myFriendIds = friendIdsKey ? friendIdsKey.split(',') : []
     if (myFriendIds.length === 0) { setMutuals({}); return }
-    fetchMutualFriendsMap({
-      myFriendIds,
-      excludeIds: [user.id],
-      candidateIds: notConnected.map(u => u.id),
-    }).then(setMutuals)
-  }, [user?.id, notConnected, friends])
+    fetchMutualFriendsMap({ myFriendIds, excludeIds: [user.id] }).then(map => {
+      setMutuals(map)
+      writeCache(user.id, 'siblingsMutuals', map)
+    }).catch(() => {})
+  }, [user?.id, loading, friendIdsKey])
 
   async function loadMyCity() {
     const { data } = await supabase.from('profiles').select('city').eq('id', user.id).single()
@@ -200,7 +211,9 @@ function FriendsTab() {
       .neq('id', user.id)
       .ilike('city', city)
       .limit(10)
-    setNearbyUsers(data || [])
+    if (!data) return
+    setNearbyUsers(data)
+    writeCache(user.id, 'siblingsNearby', data)
   }
 
   async function loadBirthdays() {
@@ -216,18 +229,17 @@ function FriendsTab() {
       .filter(p => p.daysUntil !== null && p.daysUntil <= 7)
       .sort((a, b) => a.daysUntil - b.daysUntil)
     setUpcomingBirthdays(upcoming)
+    writeCache(user.id, 'siblingsBirthdays', upcoming)
   }
 
-  async function loadNotConnected() {
-    const { data: allProfiles } = await supabase
+  async function loadAllProfiles() {
+    const { data, error } = await supabase
       .from('profiles')
       .select('id, username, full_name, is_christian, avatar_url, city, country, church_name')
       .neq('id', user.id)
-    if (!allProfiles) return
-    const connectedIds = new Set(friends.map(f =>
-      f.requester_id === user.id ? f.addressee_id : f.requester_id
-    ))
-    setNotConnected(allProfiles.filter(p => !connectedIds.has(p.id)))
+    if (error || !data) return
+    setAllProfiles(data)
+    writeCache(user.id, 'siblingsProfiles', data)
   }
 
   function handleQuery(val) {
@@ -563,42 +575,43 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
   const { user } = useAuth()
   const { myCommunities, loading, joinByCode } = useCommunities()
   const { showToast } = useToast()
-  const [publicCommunities, setPublicCommunities] = useState([])
-  const [loadingPublic, setLoadingPublic] = useState(false)
+  // Öffentliche Communities: ein Request (RPC) statt Liste + Mitgliederzahlen
+  // nacheinander, unabhängig von „Meine Communities", mit Cache-Startwert.
+  const [allPublic, setAllPublic] = useState(() => readCache(user?.id, 'publicCommunitiesFull') ?? [])
+  const [loadingPublic, setLoadingPublic] = useState(() => readCache(user?.id, 'publicCommunitiesFull') === undefined)
   const [requestedIds, setRequestedIds] = useState(new Set())
   const [joiningId, setJoiningId] = useState(null)
+  const myIdSet = new Set(myCommunities.map(c => c.id))
+  const publicCommunities = allPublic.filter(c => !myIdSet.has(c.id))
   const previews = useCommunityMembersPreview([...myCommunities.map(c => c.id), ...publicCommunities.map(c => c.id)])
 
   useEffect(() => {
-    loadPublic()
-  }, [myCommunities])
+    let cancelled = false
+    supabase.rpc('get_public_communities_full', { p_limit: 20 }).then(({ data, error }) => {
+      if (cancelled) return
+      if (!error) {
+        const list = (data || []).map(({ member_count, ...c }) => ({ ...c, memberCount: Number(member_count) }))
+        setAllPublic(list)
+        writeCache(user?.id, 'publicCommunitiesFull', list)
+      }
+      setLoadingPublic(false)
+    })
+    return () => { cancelled = true }
+  }, [user?.id])
 
-  async function loadPublic() {
-    setLoadingPublic(true)
-    const myIds = myCommunities.map(c => c.id)
-    const { data } = await supabase
-      .from('communities')
-      .select('id, name, description, is_public, join_mode, avatar_url')
-      .eq('is_public', true)
-      .limit(20)
-    const filtered = (data || []).filter(c => !myIds.includes(c.id))
-    const counts = await fetchMemberCounts(filtered.map(c => c.id))
-    setPublicCommunities(filtered.map(c => (c.id in counts ? { ...c, memberCount: counts[c.id] } : c)))
-    setLoadingPublic(false)
-
-    // Eigene offene Anfragen laden, damit "Angefragt" statt "Anfrage senden"
-    // angezeigt wird – auch nach einem Reload der Seite.
-    const requestIds = filtered.filter(c => c.join_mode === 'request').map(c => c.id)
-    if (requestIds.length > 0) {
-      const { data: myRequests } = await supabase
-        .from('community_join_requests')
-        .select('community_id')
-        .eq('user_id', user.id)
-        .eq('status', 'pending')
-        .in('community_id', requestIds)
-      setRequestedIds(new Set((myRequests || []).map(r => r.community_id)))
-    }
-  }
+  // Eigene offene Anfragen laden, damit "Angefragt" statt "Anfrage senden"
+  // angezeigt wird – auch nach einem Reload der Seite.
+  const requestIdsKey = allPublic.filter(c => c.join_mode === 'request').map(c => c.id).join(',')
+  useEffect(() => {
+    if (!user || !requestIdsKey) return
+    supabase
+      .from('community_join_requests')
+      .select('community_id')
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .in('community_id', requestIdsKey.split(','))
+      .then(({ data }) => { if (data) setRequestedIds(new Set(data.map(r => r.community_id))) })
+  }, [user?.id, requestIdsKey])
 
   async function handleJoinPublic(community) {
     setJoiningId(community.id)

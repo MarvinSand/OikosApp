@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { useToast } from '../context/ToastContext'
+import { readCache, writeCache } from '../lib/swrCache'
 
 // LocalStorage helpers for is_secondary persistence (fallback if DB column missing)
 function getSecondaryIds() {
@@ -17,12 +18,15 @@ function saveSecondaryId(id, isSecondary) {
 export function useOikosMaps() {
   const { user } = useAuth()
   const { showToast } = useToast() ?? {}
-  const [maps, setMaps] = useState([])
-  const [activeMapId, setActiveMapId] = useState(null)
-  const [people, setPeople] = useState([])
-  const [connections, setConnections] = useState([])
+  // Karten, Personen und Verbindungen starten mit dem zuletzt geladenen Stand
+  // (siehe swrCache.js) und werden still aktualisiert.
+  const [cachedMaps] = useState(() => readCache(user?.id, 'oikosMaps'))
+  const [maps, setMaps] = useState(cachedMaps ?? [])
+  const [activeMapId, setActiveMapId] = useState(cachedMaps?.[0]?.id ?? null)
+  const [people, setPeople] = useState(() => (cachedMaps?.[0] ? readCache(user?.id, `oikosPeople:${cachedMaps[0].id}`) : null) ?? [])
+  const [connections, setConnections] = useState(() => (cachedMaps?.[0] ? readCache(user?.id, `oikosConn:${cachedMaps[0].id}`) : null) ?? [])
   const [overlayData, setOverlayData] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!cachedMaps)
 
   function reportError(err, msg = 'Speichern fehlgeschlagen') {
     console.error(msg, err)
@@ -41,28 +45,33 @@ export function useOikosMaps() {
   }, [activeMapId])
 
   async function loadMaps() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('oikos_maps')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at')
+    // Fehler: gecachten Stand behalten
+    if (error) { setLoading(false); return }
     setMaps(data || [])
-    if (data?.length > 0) setActiveMapId(data[0].id)
+    writeCache(user.id, 'oikosMaps', data || [])
+    if (data?.length > 0) setActiveMapId(prev => prev ?? data[0].id)
     setLoading(false)
   }
 
   async function loadPeople(mapId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('oikos_people')
       .select('*')
       .eq('map_id', mapId)
       .order('created_at')
+    if (error) return
     const secondaryIds = getSecondaryIds()
     const persons = (data || []).map(p => ({
       ...p,
       is_secondary: p.is_secondary || secondaryIds.has(p.id),
     }))
     setPeople(persons)
+    writeCache(user?.id, `oikosPeople:${mapId}`, persons)
     await loadOverlayPeopleFor(persons)
   }
 
@@ -107,11 +116,13 @@ export function useOikosMaps() {
   }
 
   async function loadConnections(mapId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('oikos_connections')
       .select('*')
       .eq('map_id', mapId)
+    if (error) return
     setConnections(data || [])
+    writeCache(user?.id, `oikosConn:${mapId}`, data || [])
   }
 
   async function createMap({ name, visibility = 'private', visibility_user_ids = [], visibility_community_id = null }) {

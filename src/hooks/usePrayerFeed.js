@@ -40,7 +40,18 @@ function applyStatus(query, statusFilter) {
 }
 
 // Verbundene Geschwister (akzeptierte Freundschaften).
-async function fetchSiblingIds(userId) {
+// 'Alle' lädt Geschwister- UND Oikos-Gebete parallel – beide brauchen die
+// Freundesliste. Kurz gehaltenes Promise, damit nur ein Request rausgeht.
+let siblingIdsMemo = { userId: null, at: 0, promise: null }
+function fetchSiblingIds(userId) {
+  const now = Date.now()
+  if (siblingIdsMemo.userId === userId && now - siblingIdsMemo.at < 3000) return siblingIdsMemo.promise
+  const promise = fetchSiblingIdsRaw(userId).catch(err => { siblingIdsMemo = { userId: null, at: 0, promise: null }; throw err })
+  siblingIdsMemo = { userId, at: now, promise }
+  return promise
+}
+
+async function fetchSiblingIdsRaw(userId) {
   const data = rowsOrThrow(await supabase
     .from('friendships')
     .select('requester_id, addressee_id')
@@ -109,33 +120,20 @@ async function fetchOikos(userId, statusFilter, limit) {
 }
 
 async function fetchOwnOikos(userId, statusFilter, limit) {
-  const maps = rowsOrThrow(await supabase.from('oikos_maps').select('id').eq('user_id', userId))
-  const mapIds = maps.map(m => m.id)
-  if (mapIds.length === 0) return []
-
-  const people = rowsOrThrow(await supabase.from('oikos_people').select('id').in('map_id', mapIds))
-  const peopleIds = people.map(p => p.id)
-  if (peopleIds.length === 0) return []
-
-  const data = rowsOrThrow(await applyStatus(
-    supabase.from('prayer_requests').select('*'),
-    statusFilter,
-  ).in('person_id', peopleIds).order('created_at', { ascending: false }).limit(limit))
-
+  // Maps -> Personen -> Anliegen früher 3 Requests in Reihe; die RPC (phase77)
+  // läuft als SECURITY INVOKER und liefert dieselben Zeilen in einem.
+  const data = rowsOrThrow(await supabase.rpc('get_own_oikos_prayers', { p_status: statusFilter, p_limit: limit }))
   return data.map(r => normalizePrayer(r, { kind: KIND_OIKOS, source: 'oikos' }))
 }
 
 // Anliegen aus allen Communities, in denen der Nutzer Mitglied ist.
 async function fetchCommunities(userId, statusFilter, limit) {
-  const memberships = rowsOrThrow(await supabase
-    .from('community_members').select('community_id').eq('user_id', userId))
-  const communityIds = memberships.map(m => m.community_id)
-  if (communityIds.length === 0) return []
-
+  // Keine Mitgliedschafts-Vorab-Query: die Policy "Read personal_prayer_requests"
+  // zeigt Community-Anliegen ohnehin nur Mitgliedern der jeweiligen Community.
   const data = rowsOrThrow(await applyStatus(
     supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`),
     statusFilter,
-  ).eq('visibility', 'community').in('visibility_community_id', communityIds)
+  ).eq('visibility', 'community').not('visibility_community_id', 'is', null)
     .order('created_at', { ascending: false }).limit(limit))
 
   return data.map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'community' }))
@@ -143,15 +141,11 @@ async function fetchCommunities(userId, statusFilter, limit) {
 
 // Gebete, die in einem Chat geteilt wurden (Direktnachricht oder Community).
 async function fetchShared(userId, statusFilter, limit) {
-  const memberships = rowsOrThrow(await supabase
-    .from('conversation_members').select('conversation_id').eq('user_id', userId))
-  const convIds = memberships.map(m => m.conversation_id)
-  if (convIds.length === 0) return []
-
+  // Keine conversation_members-Vorab-Query: die Policy "conversation members
+  // can read messages" liefert ohnehin nur Nachrichten eigener Chats.
   const msgs = rowsOrThrow(await supabase
     .from('messages')
     .select('personal_prayer_request_id, prayer_request_id, created_at')
-    .in('conversation_id', convIds)
     .eq('type', 'prayer_request')
     .neq('is_deleted', true)
     .order('created_at', { ascending: false })
@@ -190,39 +184,19 @@ async function attachPrayerContext(prayers, userId) {
   const oikosOwnerIds = [...new Set(prayers.filter(p => p.kind === KIND_OIKOS && !p.author).map(p => p.ownerId).filter(Boolean))]
   if (personIds.length === 0 && communityIds.length === 0 && oikosOwnerIds.length === 0) return prayers
 
-  const [{ data: people }, { data: communities }, { data: authors }] = await Promise.all([
-    personIds.length
-      ? supabase.from('oikos_people').select('id, name, map_id').in('id', personIds)
-      : Promise.resolve({ data: [] }),
-    communityIds.length
-      ? supabase.from('communities').select('id, name').in('id', communityIds)
-      : Promise.resolve({ data: [] }),
-    oikosOwnerIds.length
-      ? supabase.from('profiles').select('id, username, full_name, gender, is_christian, avatar_url').in('id', oikosOwnerIds)
-      : Promise.resolve({ data: [] }),
-  ])
-
-  const personById = Object.fromEntries((people || []).map(p => [p.id, p]))
-  const communityById = Object.fromEntries((communities || []).map(c => [c.id, c]))
-  const authorById = Object.fromEntries((authors || []).map(a => [a.id, a]))
-
-  // Maps der gefundenen Personen + deren Besitzer
-  const mapIds = [...new Set((people || []).map(p => p.map_id).filter(Boolean))]
-  let mapById = {}
-  let ownerById = {}
-  if (mapIds.length > 0) {
-    const { data: maps } = await supabase.from('oikos_maps').select('id, name, user_id').in('id', mapIds)
-    mapById = Object.fromEntries((maps || []).map(m => [m.id, m]))
-    const ownerIds = [...new Set((maps || []).map(m => m.user_id).filter(id => id && id !== userId))]
-    if (ownerIds.length > 0) {
-      const { data: owners } = await supabase
-        .from('profiles').select('id, full_name, username').in('id', ownerIds)
-      ownerById = Object.fromEntries((owners || []).map(o => [o.id, o]))
-    }
-  }
+  // Früher 3 Requests in Reihe (Person -> Map -> Besitzer); jetzt eine RPC
+  // (phase77, SECURITY INVOKER). Schlägt sie fehl, fehlt nur die Kontext-Zeile.
+  const { data: ctx } = await supabase.rpc('get_prayer_context', {
+    p_person_ids: personIds, p_community_ids: communityIds, p_owner_ids: oikosOwnerIds,
+  })
+  const byId = list => Object.fromEntries((list || []).map(x => [x.id, x]))
+  const personById = byId(ctx?.people)
+  const communityById = byId(ctx?.communities)
+  const mapById = byId(ctx?.maps)
+  const profileById = byId(ctx?.profiles)
 
   return prayers.map(p => {
-    const withAuthor = !p.author && authorById[p.ownerId] ? { ...p, author: authorById[p.ownerId] } : p
+    const withAuthor = !p.author && profileById[p.ownerId] ? { ...p, author: profileById[p.ownerId] } : p
 
     if (withAuthor.communityId) {
       const community = communityById[withAuthor.communityId]
@@ -231,7 +205,7 @@ async function attachPrayerContext(prayers, userId) {
     const person = withAuthor.personId ? personById[withAuthor.personId] : null
     if (!person) return withAuthor
     const map = person.map_id ? mapById[person.map_id] : null
-    const owner = map?.user_id ? ownerById[map.user_id] : null
+    const owner = map?.user_id && map.user_id !== userId ? profileById[map.user_id] : null
     return {
       ...withAuthor,
       personName: withAuthor.personName || person.name,
