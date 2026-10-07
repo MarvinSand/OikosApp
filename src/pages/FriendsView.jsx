@@ -1177,7 +1177,6 @@ function FeedTab() {
   // Kollabierender Header beim Scrollen (rAF + Sperre gegen Flackern)
   const rootRef = useRef(null)
   const [collapsed, setCollapsed] = useState(false)
-  const [searchRevealed, setSearchRevealed] = useState(false)  // Suche/Filter nur per Overscroll oben
   const collapsedRef = useRef(false)
   const lockUntilRef = useRef(0)
   const tickingRef = useRef(false)
@@ -1198,7 +1197,6 @@ function FeedTab() {
       const st = scroller.scrollTop
       const dy = st - lastY
       lastY = st
-      if (st > 8) setSearchRevealed(false)                   // beim Wegscrollen Suche wieder verstecken
       if (Date.now() < lockUntilRef.current) return
       if (st <= 8) { setCollapsedSafe(false); return }       // ganz oben → Bar offen
       if (dy > 8 && st > 90) setCollapsedSafe(true)           // deutlich runter → einklappen
@@ -1206,11 +1204,6 @@ function FeedTab() {
     }
     function onScroll() {
       if (!tickingRef.current) { tickingRef.current = true; requestAnimationFrame(update) }
-    }
-    // Suche/Filter erscheint nur, wenn man am oberen Rand weiter nach oben zieht
-    function onWheel(e) {
-      if (scroller.scrollTop <= 2 && e.deltaY < -6) setSearchRevealed(true)
-      else if (e.deltaY > 6) setSearchRevealed(false)
     }
     let touchStartX = 0
     let touchStartY = 0
@@ -1230,11 +1223,6 @@ function FeedTab() {
         node = node.parentElement
       }
     }
-    function onTouchMove(e) {
-      const dy = e.touches[0].clientY - touchStartY
-      if (scroller.scrollTop <= 2 && dy > 40) setSearchRevealed(true)
-      else if (dy < -40) setSearchRevealed(false)
-    }
     function onTouchEnd(e) {
       if (swipeBlocked) return
       const t = e.changedTouches[0]
@@ -1243,15 +1231,11 @@ function FeedTab() {
       if (dx > 60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigate('/prayers')
     }
     scroller.addEventListener('scroll', onScroll, { passive: true })
-    scroller.addEventListener('wheel', onWheel, { passive: true })
     scroller.addEventListener('touchstart', onTouchStart, { passive: true })
-    scroller.addEventListener('touchmove', onTouchMove, { passive: true })
     scroller.addEventListener('touchend', onTouchEnd, { passive: true })
     return () => {
       scroller.removeEventListener('scroll', onScroll)
-      scroller.removeEventListener('wheel', onWheel)
       scroller.removeEventListener('touchstart', onTouchStart)
-      scroller.removeEventListener('touchmove', onTouchMove)
       scroller.removeEventListener('touchend', onTouchEnd)
     }
   }, [navigate])
@@ -1313,14 +1297,7 @@ function FeedTab() {
     <div ref={rootRef} style={{ position: 'relative' }}>
       {/* Sticky-Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 30, backgroundColor: 'var(--color-bg)' }}>
-        {/* Suche + Filter – ÜBER der Bar, nur beim Hochziehen am oberen Rand sichtbar */}
-        <div style={{
-          maxHeight: searchRevealed ? (showFilters ? 600 : 64) : 0,
-          opacity: searchRevealed ? 1 : 0,
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease, opacity 0.25s ease',
-        }}>
-      {/* Search + filter */}
+      {/* Search + filter – immer sichtbar, auch beim Runterscrollen */}
       <div style={{
         backgroundColor: 'var(--color-bg)',
         padding: '12px 16px 8px',
@@ -1434,7 +1411,6 @@ function FeedTab() {
           </div>
         )}
       </div>
-        </div>{/* /Suche+Filter Reveal-Wrapper */}
 
         {/* Feed/Gebete-Switcher – darunter; kollabiert beim Runterscrollen */}
         {collapsed && (

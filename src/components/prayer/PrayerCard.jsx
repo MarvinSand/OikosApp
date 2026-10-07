@@ -232,12 +232,32 @@ export default function PrayerCard({
       >
         {/* Kopf: Avatar + Name + Zeit + Menü */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-          <AvatarBubble name={name} size={42} isChristian={author?.is_christian} avatarUrl={author?.avatar_url} />
+          {prayer.ownerId ? (
+            <button
+              onClick={() => navigate(`/user/${prayer.ownerId}`)}
+              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
+            >
+              <AvatarBubble name={name} size={42} isChristian={author?.is_christian} avatarUrl={author?.avatar_url} />
+            </button>
+          ) : (
+            <AvatarBubble name={name} size={42} isChristian={author?.is_christian} avatarUrl={author?.avatar_url} />
+          )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
-                {name}
-              </p>
+              {prayer.ownerId ? (
+                <button
+                  onClick={() => navigate(`/user/${prayer.ownerId}`)}
+                  style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+                >
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
+                    {name}
+                  </p>
+                </button>
+              ) : (
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
+                  {name}
+                </p>
+              )}
               {author?.gender === 'brother' && !isOwner && <span style={genderBadge}>Bruder</span>}
               {author?.gender === 'sister' && !isOwner && <span style={genderBadge}>Schwester</span>}
               {isAnswered && (
