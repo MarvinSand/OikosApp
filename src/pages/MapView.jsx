@@ -269,19 +269,21 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const { user } = useAuth()
   const {
     maps, setMaps, activeMapId, setActiveMapId, activeMap,
-    people, connections, overlayData, loading,
+    people, connections, overlayData, dataMapId, loading,
     createMap, updateMap, deleteMap, addPerson, setPersonSecondary, updatePerson, deletePerson,
     movePersonPosition, createConnection, deleteConnection, updateConnectionColor,
     linkAccount, unlinkAccount, updatePersonOverlay, reloadMap,
-  } = useOikosMaps()
+  } = useOikosMaps({ initialMapId })
 
   // Systemkarte „Meine Geschwister in Christus": Kanten + Freunde von Freunden
   const isSiblingsMap = activeMap?.kind === 'siblings'
+  // Daten (Personen/Verbindungen) gehören wirklich zur aktiven Karte – sonst nichts mischen
+  const dataReady = !!activeMap && dataMapId === activeMapId
   const [siblingsDepth, setSiblingsDepth] = useState(1)
   const [showSiblingEdges, setShowSiblingEdges] = useState(true)
   const [showSiblingCommunities, setShowSiblingCommunities] = useState(false)
-  const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap, depth: siblingsDepth, people, showEdges: showSiblingEdges })
-  const siblingsCommunities = useSiblingsCommunities({ active: isSiblingsMap && showSiblingCommunities, people })
+  const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap && dataReady, depth: siblingsDepth, people, showEdges: showSiblingEdges })
+  const siblingsCommunities = useSiblingsCommunities({ active: isSiblingsMap && dataReady && showSiblingCommunities, people })
 
   const { places, placeConnections, createPlace, updatePlace, deletePlace, connectPerson: connectPlacePerson, disconnectPerson: disconnectPlacePerson, movePlacePosition } = usePlaces(activeMapId)
 
@@ -345,13 +347,6 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       setLoadingPrayerMode(false)
     }
   }
-
-  useEffect(() => {
-    if (initialMapId && maps.length > 0) {
-      const found = maps.find(m => m.id === initialMapId)
-      if (found) setActiveMapId(initialMapId)
-    }
-  }, [initialMapId, maps.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load linked profiles whenever people changes
   useEffect(() => {
@@ -530,7 +525,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
 
       {/* Schalter der Systemkarte: Generationen, Verbindungen, Communities */}
       {activeTab === 'oikos' && isSiblingsMap && (
-        <div className="absolute top-[150px] left-1/2 -translate-x-1/2 z-20">
+        <div className="absolute top-[150px] left-1/2 -translate-x-1/2 z-30">
           <SiblingsToggles
             depth={siblingsDepth} onDepth={setSiblingsDepth}
             showEdges={showSiblingEdges} onShowEdges={setShowSiblingEdges}
@@ -610,8 +605,14 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             </button>
           </div>
         ) : (
+          !dataReady ? (
+            <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid var(--color-warm-3)', borderTopColor: 'var(--color-warm-1)', animation: 'spin 0.8s linear infinite' }}>
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+          ) : (
           <>
             <MapCanvas
+              key={activeMapId}
               userName={userName}
               people={people}
               connections={canvasConnections}
@@ -661,6 +662,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               />
             )}
           </>
+          )
         )}
       </div>
 

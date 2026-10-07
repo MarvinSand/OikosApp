@@ -162,7 +162,7 @@ export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
               </span>
             </button>
 
-            {onSettings && (
+            {onSettings && m.kind !== 'siblings' && (
               <button
                 onClick={() => onSettings(m)}
                 aria-label="Map-Einstellungen"

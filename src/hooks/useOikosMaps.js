@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { useToast } from '../context/ToastContext'
@@ -14,7 +14,7 @@ function saveSecondaryId(id, isSecondary) {
   localStorage.setItem('oikos_secondary_ids', JSON.stringify([...ids]))
 }
 
-export function useOikosMaps() {
+export function useOikosMaps({ initialMapId = null } = {}) {
   const { user } = useAuth()
   const { showToast } = useToast() ?? {}
   const [maps, setMaps] = useState([])
@@ -23,6 +23,10 @@ export function useOikosMaps() {
   const [connections, setConnections] = useState([])
   const [overlayData, setOverlayData] = useState([])
   const [loading, setLoading] = useState(true)
+  // Zu welcher Karte gehören people/connections/overlayData gerade? (verhindert Vermischen)
+  const [dataMapId, setDataMapId] = useState(null)
+  const activeMapIdRef = useRef(null)
+  activeMapIdRef.current = activeMapId
 
   function reportError(err, msg = 'Speichern fehlgeschlagen') {
     console.error(msg, err)
@@ -35,7 +39,9 @@ export function useOikosMaps() {
   }, [user?.id])
 
   useEffect(() => {
-    if (!activeMapId) { setPeople([]); setConnections([]); setOverlayData([]); return }
+    // Beim Wechsel sofort leeren, damit nie Daten der vorherigen Karte stehen bleiben
+    setPeople([]); setConnections([]); setOverlayData([]); setDataMapId(null)
+    if (!activeMapId) return
     loadPeople(activeMapId)
     loadConnections(activeMapId)
   }, [activeMapId])
@@ -50,7 +56,11 @@ export function useOikosMaps() {
     const sorted = [...(data || [])].sort((a, b) =>
       (b.kind === 'siblings') - (a.kind === 'siblings'))
     setMaps(sorted)
-    if (sorted.length > 0) setActiveMapId(sorted[0].id)
+    // Gewählte Karte behalten; sonst gewünschte (Route) oder die angepinnte Systemkarte
+    const keep = activeMapIdRef.current && sorted.some(m => m.id === activeMapIdRef.current)
+      ? activeMapIdRef.current
+      : (sorted.find(m => m.id === initialMapId)?.id ?? sorted[0]?.id ?? null)
+    if (keep) setActiveMapId(keep)
     setLoading(false)
 
     // Freunde in die Systemkarte spiegeln, danach Personen neu laden
@@ -61,7 +71,8 @@ export function useOikosMaps() {
         // Personen entfernter/blockierter Freunde aus der Karte nehmen
         const stale = res?.stale_person_ids || []
         if (stale.length > 0) await supabase.from('oikos_people').delete().in('id', stale)
-        loadPeople(siblings.id)
+        // Nur nachladen, wenn die Systemkarte noch aktiv ist
+        if (activeMapIdRef.current === siblings.id) loadPeople(siblings.id)
       })
     }
   }
@@ -72,16 +83,18 @@ export function useOikosMaps() {
       .select('*')
       .eq('map_id', mapId)
       .order('created_at')
+    if (activeMapIdRef.current !== mapId) return // veraltete Antwort einer anderen Karte
     const secondaryIds = getSecondaryIds()
     const persons = (data || []).map(p => ({
       ...p,
       is_secondary: p.is_secondary || secondaryIds.has(p.id),
     }))
     setPeople(persons)
-    await loadOverlayPeopleFor(persons)
+    setDataMapId(mapId)
+    await loadOverlayPeopleFor(persons, mapId)
   }
 
-  async function loadOverlayPeopleFor(persons) {
+  async function loadOverlayPeopleFor(persons, mapId = activeMapIdRef.current) {
     const withOverlay = persons.filter(p => p.overlay_map_ids?.length > 0)
     if (withOverlay.length === 0) { setOverlayData([]); return }
 
@@ -104,6 +117,7 @@ export function useOikosMaps() {
         )
       ),
     ])
+    if (activeMapIdRef.current !== mapId) return // Karte wurde inzwischen gewechselt
     const secondaryIds = getSecondaryIds()
     setOverlayData(withOverlay.map((p, i) => {
       const persons = (results[i].data || []).map(op => ({
@@ -126,6 +140,7 @@ export function useOikosMaps() {
       .from('oikos_connections')
       .select('*')
       .eq('map_id', mapId)
+    if (activeMapIdRef.current !== mapId) return
     setConnections(data || [])
   }
 
@@ -335,6 +350,7 @@ export function useOikosMaps() {
     people,
     connections,
     overlayData,
+    dataMapId,
     loading,
     createMap,
     updateMap,
