@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, UserPlus, Check } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useFriendships } from '../../hooks/useFriendships'
 import { supabase } from '../../lib/supabase'
-import { fetchMutualFriendsMap } from '../../lib/mutualFriends'
+import { readCache, writeCache } from '../../lib/swrCache'
 import ProfileListOverlay from '../feed/ProfileListOverlay'
 
 function Avatar({ name, size, avatarUrl, isChristian }) {
@@ -35,61 +35,36 @@ function Avatar({ name, size, avatarUrl, isChristian }) {
 export default function PeopleYouMayKnow() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { friends, loading: friendsLoading, getFriendshipStatus, sendRequest } = useFriendships()
-  const [suggestions, setSuggestions] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { getFriendshipStatus, sendRequest } = useFriendships()
+  const [cached] = useState(() => readCache(user?.id, 'peopleYouMayKnow'))
+  const [suggestions, setSuggestions] = useState(cached ?? [])
+  const [loading, setLoading] = useState(!cached)
   const [dismissed, setDismissed] = useState(new Set())
   const [sentIds, setSentIds] = useState(new Set())
   const [sendingId, setSendingId] = useState(null)
   const [mutualSheetFor, setMutualSheetFor] = useState(null)
 
-  // Stabiler Schlüssel statt der Freundes-Liste selbst als Dependency –
-  // sonst würde jede neue Array-Referenz einen erneuten Ladevorgang auslösen.
-  const friendIdsKey = friends.map(f => f.requester_id === user?.id ? f.addressee_id : f.requester_id).sort().join(',')
-
-  const load = useCallback(async () => {
-    if (!user || friendsLoading) return
-    setLoading(true)
-
-    const myFriendIds = friendIdsKey ? friendIdsKey.split(',') : []
-    const connectedIds = new Set([user.id, ...myFriendIds])
-
-    const mutualMap = await fetchMutualFriendsMap({ myFriendIds, excludeIds: [user.id] })
-    const candidateIds = Object.keys(mutualMap)
-
-    let profiles = []
-    if (candidateIds.length > 0) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, is_christian, avatar_url, city')
-        .in('id', candidateIds)
-      profiles = data || []
-    }
-
-    // Auffüllen mit weiteren, noch nicht verbundenen Profilen ohne bekannte Verbindung
-    if (profiles.length < 8) {
-      const { data: more } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, is_christian, avatar_url, city')
-        .neq('id', user.id)
-        .limit(24)
-      for (const p of more || []) {
-        if (connectedIds.has(p.id) || profiles.some(x => x.id === p.id)) continue
-        profiles.push(p)
-        if (profiles.length >= 12) break
+  // Früher ein Wasserfall aus bis zu 6 Requests (erst Freundschaften, dann
+  // Freunde von Freunden, dann Profile ...). Die RPC (phase76) liefert die
+  // fertige Liste in einem Request; Startwert kommt sofort aus dem Cache.
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    supabase.rpc('get_people_you_may_know', { p_limit: 10 }).then(({ data, error }) => {
+      if (cancelled) return
+      if (!error) {
+        const next = (data || []).map(p => ({
+          ...p,
+          mutualCount: p.mutual_count || 0,
+          mutualPeople: p.mutual_people || [],
+        }))
+        setSuggestions(next)
+        writeCache(user.id, 'peopleYouMayKnow', next)
       }
-    }
-
-    profiles.sort((a, b) => (mutualMap[b.id]?.count || 0) - (mutualMap[a.id]?.count || 0))
-    setSuggestions(profiles.slice(0, 10).map(p => ({
-      ...p,
-      mutualCount: mutualMap[p.id]?.count || 0,
-      mutualPeople: mutualMap[p.id]?.people || [],
-    })))
-    setLoading(false)
-  }, [user, friendsLoading, friendIdsKey])
-
-  useEffect(() => { load() }, [load])
+      setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [user?.id])
 
   async function handleAdd(id) {
     setSendingId(id)

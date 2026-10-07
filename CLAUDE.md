@@ -22,6 +22,7 @@
 **Lektion:**
 - Bei „erster Start langsam" die **Edge-Logs nach Zeit gruppiert** ansehen (`response.origin_time`): Sind *alle* Requests gleichzeitig langsam, liegt es am Backend-Kaltstart, nicht an einzelnen Queries.
 - Die dauerhafte Lösung ist mehr Compute (Supabase → Settings → Compute). Client-seitig hilft nur: sofort aus Cache rendern, nichts Wichtiges hinter Realtime oder Token-Refresh blockieren.
+- **Wasserfälle sind nach Leerlauf doppelt teuer:** jeder nacheinander laufende Request zahlt die Kaltstart-Latenz erneut. Home-Community-Tab hatte z. B. 6 Requests in Reihe für „Geschwister-Vorschläge" → jetzt `get_people_you_may_know()` (phase76) + Cache; „Entdecken" → `get_public_communities()`; eigene Communities zählen Mitglieder per eingebettetem `community_members(count)`. Für öffentliche/fremde Communities **kein** eingebetteter Count – RLS verbirgt dort die Mitgliederzeilen (Ergebnis 0), dafür SECURITY-DEFINER-RPC.
 - Neue Hooks für Haupt-Tabs: Startwert aus `readCache`, nach Erfolg `writeCache`, bei Fehler alten Stand behalten. Formulare (z. B. SettingsView) **nicht** aus dem Cache befüllen – das spätere Eintreffen frischer Daten überschreibt sonst Eingaben.
 
 ## App Store: Richtlinien-Pflichtpunkte (Stand Sep. 2026)

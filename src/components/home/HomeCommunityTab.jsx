@@ -2,10 +2,11 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Plus, Compass, Hash } from 'lucide-react'
 import { useCommunities } from '../../hooks/useCommunities'
-import { useCommunityMembersPreview, fetchMemberCounts } from '../../hooks/useCommunityMembersPreview'
+import { useCommunityMembersPreview } from '../../hooks/useCommunityMembersPreview'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
+import { readCache, writeCache } from '../../lib/swrCache'
 import CommunityCard from '../community/CommunityCard'
 import PeopleYouMayKnow from './PeopleYouMayKnow'
 
@@ -26,11 +27,17 @@ export default function HomeCommunityTab() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const { myCommunities, loading } = useCommunities()
-  const [publicCommunities, setPublicCommunities] = useState([])
-  const [loadingPublic, setLoadingPublic] = useState(true)
+  // Öffentliche Communities: sofort aus dem Cache, parallel zu den eigenen
+  // laden (früher erst NACH useCommunities, dann noch ein zweiter Request).
+  const [cachedPublic] = useState(() => readCache(user?.id, 'homePublicCommunities'))
+  const [allPublic, setAllPublic] = useState(cachedPublic ?? [])
+  const [loadingPublic, setLoadingPublic] = useState(!cachedPublic)
   const [joining, setJoining] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
+
+  const myIds = new Set(myCommunities.map(c => c.id))
+  const publicCommunities = allPublic.filter(c => !myIds.has(c.id)).slice(0, 6)
 
   const previews = useCommunityMembersPreview([
     ...myCommunities.map(c => c.id),
@@ -38,22 +45,19 @@ export default function HomeCommunityTab() {
   ])
 
   useEffect(() => {
-    loadPublic()
-  }, [myCommunities]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function loadPublic() {
-    setLoadingPublic(true)
-    const myIds = myCommunities.map(c => c.id)
-    const { data } = await supabase
-      .from('communities')
-      .select('id, name, description, is_public')
-      .eq('is_public', true)
-      .limit(20)
-    const list = (data || []).filter(c => !myIds.includes(c.id)).slice(0, 6)
-    const counts = await fetchMemberCounts(list.map(c => c.id))
-    setPublicCommunities(list.map(c => (c.id in counts ? { ...c, memberCount: counts[c.id] } : c)))
-    setLoadingPublic(false)
-  }
+    let cancelled = false
+    ;(async () => {
+      const { data, error } = await supabase.rpc('get_public_communities', { p_limit: 20 })
+      if (cancelled) return
+      if (!error) {
+        const list = (data || []).map(({ member_count, ...c }) => ({ ...c, memberCount: Number(member_count) }))
+        setAllPublic(list)
+        writeCache(user?.id, 'homePublicCommunities', list)
+      }
+      setLoadingPublic(false)
+    })()
+    return () => { cancelled = true }
+  }, [user?.id])
 
   async function handleJoin(community) {
     setJoining(community.id)
