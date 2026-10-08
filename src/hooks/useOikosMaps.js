@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { useToast } from '../context/ToastContext'
+import { readCache, writeCache } from '../lib/swrCache'
+
+// Pro Karte zuletzt geladener Stand → Kartenwechsel rendert sofort, aktualisiert still.
+const mapCacheKey = (mapId) => `oikos-map:${mapId}`
 
 // LocalStorage helpers for is_secondary persistence (fallback if DB column missing)
 function getSecondaryIds() {
@@ -14,7 +18,7 @@ function saveSecondaryId(id, isSecondary) {
   localStorage.setItem('oikos_secondary_ids', JSON.stringify([...ids]))
 }
 
-export function useOikosMaps({ initialMapId = null } = {}) {
+export function useOikosMaps({ initialMapId = null, skipLoad = false } = {}) {
   const { user } = useAuth()
   const { showToast } = useToast() ?? {}
   const [maps, setMaps] = useState([])
@@ -34,17 +38,58 @@ export function useOikosMaps({ initialMapId = null } = {}) {
   }
 
   useEffect(() => {
-    if (!user) return
+    if (!user || skipLoad) return
     loadMaps()
-  }, [user?.id])
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Route wechselt (/map/A → /map/B) bei gleicher MapView-Instanz → Karte mitwechseln
+  useEffect(() => {
+    if (initialMapId && maps.some(m => m.id === initialMapId)) setActiveMapId(initialMapId)
+  }, [initialMapId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    // Beim Wechsel sofort leeren, damit nie Daten der vorherigen Karte stehen bleiben
-    setPeople([]); setConnections([]); setOverlayData([]); setDataMapId(null)
-    if (!activeMapId) return
-    loadPeople(activeMapId)
-    loadConnections(activeMapId)
-  }, [activeMapId])
+    if (skipLoad) return
+    if (!activeMapId) { setPeople([]); setConnections([]); setOverlayData([]); setDataMapId(null); return }
+    // Gecachten Stand sofort zeigen (kein Spinner), sonst leeren – nie alte Karte stehen lassen
+    const cached = user ? readCache(user.id, mapCacheKey(activeMapId)) : undefined
+    if (cached) {
+      setPeople(cached.people || [])
+      setConnections(cached.connections || [])
+      setOverlayData(cached.overlayData || [])
+      setDataMapId(activeMapId)
+    } else {
+      setPeople([]); setConnections([]); setOverlayData([]); setDataMapId(null)
+    }
+    loadMapData(activeMapId)
+  }, [activeMapId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Aktuellen Stand der aktiven Karte (inkl. lokaler Änderungen) im Cache halten
+  useEffect(() => {
+    if (!user || !dataMapId || dataMapId !== activeMapId) return
+    writeCache(user.id, mapCacheKey(dataMapId), { people, connections, overlayData })
+  }, [people, connections, overlayData, dataMapId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Personen + Verbindungen parallel laden, danach Overlays; veraltete Antworten verwerfen
+  async function loadMapData(mapId) {
+    const [peopleRes, connRes] = await Promise.all([
+      supabase.from('oikos_people').select('*').eq('map_id', mapId).order('created_at'),
+      supabase.from('oikos_connections').select('*').eq('map_id', mapId),
+    ])
+    if (activeMapIdRef.current !== mapId) return
+    if (peopleRes.error || connRes.error) {
+      console.error('Karte laden fehlgeschlagen', peopleRes.error || connRes.error)
+      return // gecachten Stand behalten
+    }
+    const secondaryIds = getSecondaryIds()
+    const persons = (peopleRes.data || []).map(p => ({
+      ...p,
+      is_secondary: p.is_secondary || secondaryIds.has(p.id),
+    }))
+    setPeople(persons)
+    setConnections(connRes.data || [])
+    setDataMapId(mapId)
+    await loadOverlayPeopleFor(persons, mapId)
+  }
 
   async function loadMaps() {
     const { data } = await supabase
@@ -72,26 +117,9 @@ export function useOikosMaps({ initialMapId = null } = {}) {
         const stale = res?.stale_person_ids || []
         if (stale.length > 0) await supabase.from('oikos_people').delete().in('id', stale)
         // Nur nachladen, wenn die Systemkarte noch aktiv ist
-        if (activeMapIdRef.current === siblings.id) loadPeople(siblings.id)
+        if (activeMapIdRef.current === siblings.id) loadMapData(siblings.id)
       })
     }
-  }
-
-  async function loadPeople(mapId) {
-    const { data } = await supabase
-      .from('oikos_people')
-      .select('*')
-      .eq('map_id', mapId)
-      .order('created_at')
-    if (activeMapIdRef.current !== mapId) return // veraltete Antwort einer anderen Karte
-    const secondaryIds = getSecondaryIds()
-    const persons = (data || []).map(p => ({
-      ...p,
-      is_secondary: p.is_secondary || secondaryIds.has(p.id),
-    }))
-    setPeople(persons)
-    setDataMapId(mapId)
-    await loadOverlayPeopleFor(persons, mapId)
   }
 
   async function loadOverlayPeopleFor(persons, mapId = activeMapIdRef.current) {
@@ -135,7 +163,7 @@ export function useOikosMaps({ initialMapId = null } = {}) {
     }))
   }
 
-  async function loadConnections(mapId) {
+  async function loadConnections(mapId = activeMapIdRef.current) {
     const { data } = await supabase
       .from('oikos_connections')
       .select('*')
@@ -233,7 +261,7 @@ export function useOikosMaps({ initialMapId = null } = {}) {
     const { error } = await supabase.from('oikos_people').delete().eq('id', id)
     if (error) {
       reportError(error, 'Löschen fehlgeschlagen')
-      loadPeople(activeMapId)
+      loadMapData(activeMapId)
       return
     }
     setPeople(prev => prev.filter(p => p.id !== id))

@@ -1,38 +1,59 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
+
+const placesCacheKey = (mapId) => `oikos-places:${mapId}`
 
 export function usePlaces(mapId) {
   const { user } = useAuth()
   const [places, setPlaces] = useState([])
   const [placeConnections, setPlaceConnections] = useState([]) // { place_id, person_id, context, id }
   const [loading, setLoading] = useState(true)
+  // Karte, zu der places/placeConnections gehören (verhindert Vermischen beim Wechsel)
+  const [dataMapId, setDataMapId] = useState(null)
+  const mapIdRef = useRef(mapId)
+  mapIdRef.current = mapId
 
   useEffect(() => {
-    if (!mapId || !user) { setPlaces([]); setPlaceConnections([]); setLoading(false); return }
-    load()
-  }, [mapId, user?.id])
+    if (!mapId || !user) { setPlaces([]); setPlaceConnections([]); setDataMapId(null); setLoading(false); return }
+    const cached = readCache(user.id, placesCacheKey(mapId))
+    if (cached) {
+      setPlaces(cached.places || []); setPlaceConnections(cached.placeConnections || []); setDataMapId(mapId)
+    } else {
+      setPlaces([]); setPlaceConnections([]); setDataMapId(null)
+    }
+    load(mapId)
+  }, [mapId, user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function load() {
+  useEffect(() => {
+    if (!user || !dataMapId || dataMapId !== mapId) return
+    writeCache(user.id, placesCacheKey(dataMapId), { places, placeConnections })
+  }, [places, placeConnections, dataMapId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function load(forMapId = mapIdRef.current) {
     setLoading(true)
-    const { data: placesData } = await supabase
+    const { data: placesData, error } = await supabase
       .from('oikos_places')
       .select('*')
-      .eq('map_id', mapId)
+      .eq('map_id', forMapId)
       .order('created_at')
+    if (mapIdRef.current !== forMapId) return
+    if (error) { setLoading(false); return }
 
     const ps = placesData || []
-    setPlaces(ps)
-
+    let conns = []
     if (ps.length > 0) {
-      const { data: conns } = await supabase
+      const { data } = await supabase
         .from('person_place_connections')
         .select('id, person_id, place_id, context, created_at, oikos_people:person_id(id, name)')
         .in('place_id', ps.map(p => p.id))
-      setPlaceConnections(conns || [])
-    } else {
-      setPlaceConnections([])
+      if (mapIdRef.current !== forMapId) return
+      conns = data || []
     }
+    setPlaces(ps)
+    setPlaceConnections(conns)
+    setDataMapId(forMapId)
     setLoading(false)
   }
 
@@ -97,6 +118,7 @@ export function usePlaces(mapId) {
   return {
     places,
     placeConnections,
+    dataMapId,
     loading,
     createPlace,
     updatePlace,

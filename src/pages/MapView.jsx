@@ -20,6 +20,8 @@ import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSh
 import WorldMapView from '../components/worldmap/WorldMapView'
 
 // ─── Farb-Filter Panel ───────────────────────────────────────
+const EMPTY_LIST = []
+
 const COLOR_FILTER_OPTIONS = [
   { label: 'Grün', hex: '#66BB6A' },
   { label: 'Rot', hex: '#EF5350' },
@@ -285,7 +287,10 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap && dataReady, depth: siblingsDepth, people, showEdges: showSiblingEdges })
   const siblingsCommunities = useSiblingsCommunities({ active: isSiblingsMap && dataReady && showSiblingCommunities, people })
 
-  const { places, placeConnections, createPlace, updatePlace, deletePlace, connectPerson: connectPlacePerson, disconnectPerson: disconnectPlacePerson, movePlacePosition } = usePlaces(activeMapId)
+  const { places: rawPlaces, placeConnections: rawPlaceConnections, dataMapId: placesMapId, createPlace, updatePlace, deletePlace, connectPerson: connectPlacePerson, disconnectPerson: disconnectPlacePerson, movePlacePosition } = usePlaces(activeMapId)
+  // Orte nur zeigen, wenn sie zur aktiven Karte gehören
+  const places = placesMapId === activeMapId ? rawPlaces : EMPTY_LIST
+  const placeConnections = placesMapId === activeMapId ? rawPlaceConnections : EMPTY_LIST
 
   // Systemkarte: virtuelle Kanten, Gen-2/3-Overlay und Community-Knoten einmischen
   const canvasConnections = isSiblingsMap ? [...connections, ...siblingsGraph.connections] : connections

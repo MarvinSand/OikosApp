@@ -109,7 +109,7 @@ export default function ProfileView() {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
     loading: tabsLoading, reload, reactToPost, deletePost, toggleRepost, removeBookmark, markBookmarked,
   } = useProfileTabs(user?.id)
-  const { updateMap, deleteMap, createMap } = useOikosMaps()
+  const { updateMap, deleteMap, createMap } = useOikosMaps({ skipLoad: true })
   const { showToast } = useToast()
   const fileInputRef = useRef(null)
   const [activeTab, setActiveTab] = useState('maps')
