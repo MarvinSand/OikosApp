@@ -5,9 +5,11 @@ import { compressImage } from '../lib/image'
 import { readCache, writeCache } from '../lib/swrCache'
 
 // `useCache: true` zeigt sofort den zuletzt geladenen Stand (Profil-Tab).
-// Bewusst NICHT für Formulare wie SettingsView: dort würde das spätere
-// Eintreffen der frischen Daten bereits getippte Eingaben überschreiben.
-export function useProfile({ useCache = false } = {}) {
+// Formulare mit Cache (SettingsView) dürfen frische Daten nur übernehmen,
+// solange der Nutzer noch nichts geändert hat – sonst überschreibt das
+// spätere Eintreffen bereits getippte Eingaben.
+// `withStats: false` spart die drei Zähler-Requests, wo keine Stats nötig sind.
+export function useProfile({ useCache = false, withStats = true } = {}) {
   const { user } = useAuth()
   const [cached] = useState(() => (useCache ? readCache(user?.id, 'profile') : undefined))
   const [profile, setProfile] = useState(cached?.profile ?? null)
@@ -28,19 +30,21 @@ export function useProfile({ useCache = false } = {}) {
       { data: stageData },
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('oikos_people').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-      supabase.from('prayer_logs').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-      supabase.from('impact_map_progress')
-        .select('stage')
-        .eq('owner_id', user.id)
-        .not('completed_at', 'is', null)
-        .order('stage', { ascending: false })
-        .limit(1),
+      ...(withStats ? [
+        supabase.from('oikos_people').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('prayer_logs').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('impact_map_progress')
+          .select('stage')
+          .eq('owner_id', user.id)
+          .not('completed_at', 'is', null)
+          .order('stage', { ascending: false })
+          .limit(1),
+      ] : [{}, {}, {}]),
     ])
 
     // Fehlgeschlagener Profil-Request (z. B. offline): gecachten Stand behalten
     if (!profileData && cached) { setLoading(false); return }
-    const nextStats = {
+    const nextStats = !withStats ? (readCache(user.id, 'profile')?.stats ?? stats) : {
       peopleCount: peopleCount || 0,
       prayerCount: prayerCount || 0,
       maxStage: stageData?.[0]?.stage || 0,

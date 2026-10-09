@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
   Moon, Globe, KeyRound, Camera, BookMarked, Ban, FileText, Lock, Mail,
 } from 'lucide-react'
-import BlockedUsersSheet from '../components/common/BlockedUsersSheet'
 import { LEGAL, TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -14,8 +13,12 @@ import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
-import AddressAutocomplete from '../components/common/AddressAutocomplete'
 import { Avatar } from '../components/profile/ProfileTabs'
+
+// Lazy: AddressAutocomplete zieht den Google-Maps-Loader (~161 kB) mit und
+// wird erst im Unterbereich „Profil bearbeiten" gebraucht.
+const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
+const BlockedUsersSheet = lazy(() => import('../components/common/BlockedUsersSheet'))
 
 function validateUsername(val) {
   if (!val || val.trim().length < 3) return 'Mindestens 3 Zeichen'
@@ -296,7 +299,7 @@ function ChangePasswordModal({ email, onClose }) {
 
 export default function SettingsView() {
   const navigate = useNavigate()
-  const { profile, updateProfile, uploadAvatar, deleteAccount, loading: profileLoading } = useProfile()
+  const { profile, updateProfile, uploadAvatar, deleteAccount, loading: profileLoading } = useProfile({ useCache: true, withStats: false })
   const { user, resendVerificationEmail } = useAuth()
   const { showToast } = useToast()
   const { theme, toggleTheme } = useTheme()
@@ -332,8 +335,11 @@ export default function SettingsView() {
   const [locValue, setLocValue] = useState(null)
   const [savingLoc, setSavingLoc] = useState(false)
 
+  // Startwert kommt aus dem Cache; frische Daten nur übernehmen, solange
+  // noch nichts geändert wurde.
+  const editedRef = useRef(false)
   useEffect(() => {
-    if (!profile) return
+    if (!profile || editedRef.current) return
     setForm({
       full_name: profile.full_name || '',
       username: profile.username || '',
@@ -356,6 +362,7 @@ export default function SettingsView() {
   }, [profile])
 
   function setField(key, value) {
+    editedRef.current = true
     setForm(f => ({ ...f, [key]: value }))
     if (key === 'username') setUsernameError('')
   }
@@ -668,11 +675,13 @@ export default function SettingsView() {
 
           <AnchorSection id="location" activeAnchor={activeAnchor}>
             <FieldRow label="Wohnort">
-              <AddressAutocomplete
-                value={locValue}
-                onChange={handleSelectLocation}
-                placeholder="Adresse oder Ort suchen…"
-              />
+              <Suspense fallback={<div style={{ height: 44, borderRadius: 10, backgroundColor: 'var(--color-bg-secondary)' }} />}>
+                <AddressAutocomplete
+                  value={locValue}
+                  onChange={handleSelectLocation}
+                  placeholder="Adresse oder Ort suchen…"
+                />
+              </Suspense>
               <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', margin: '6px 2px 0', lineHeight: 1.5 }}>
                 {savingLoc ? 'Wird gespeichert…' : 'Wird per Google-Suche automatisch erkannt und gespeichert.'}
               </p>
@@ -739,7 +748,7 @@ export default function SettingsView() {
         <DeleteModal loading={deleting} onCancel={() => setShowDelete(false)} onConfirm={handleDelete} />
       )}
 
-      {showBlocked && <BlockedUsersSheet onClose={() => setShowBlocked(false)} />}
+      {showBlocked && <Suspense fallback={null}><BlockedUsersSheet onClose={() => setShowBlocked(false)} /></Suspense>}
 
       {showChangePassword && (
         <ChangePasswordModal email={user?.email} onClose={() => setShowChangePassword(false)} />

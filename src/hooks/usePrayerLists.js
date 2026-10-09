@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 // Verhindert, dass mehrere Hook-Instanzen gleichzeitig die Standard-Liste anlegen.
 let ensuringDefaultList = false
@@ -8,8 +9,9 @@ export const LATER_LIST_NAME = 'Später beten'
 
 export function usePrayerLists() {
   const { user } = useAuth()
-  const [lists, setLists] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [cached] = useState(() => readCache(user?.id, 'prayerLists'))
+  const [lists, setLists] = useState(cached ?? [])
+  const [loading, setLoading] = useState(!cached)
 
   useEffect(() => {
     if (!user) return
@@ -17,14 +19,14 @@ export function usePrayerLists() {
   }, [user?.id])
 
   async function load() {
-    let { data } = await supabase
+    let { data, error } = await supabase
       .from('prayer_lists')
       .select('*')
       .eq('user_id', user.id)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
 
-    if (!data) { setLoading(false); return }
+    if (error || !data) { setLoading(false); return }
 
     // Standard-Liste "Später beten" für alle sicherstellen (einmalig anlegen).
     if (!data.some(l => (l.name || '').toLowerCase() === LATER_LIST_NAME.toLowerCase()) && !ensuringDefaultList) {
@@ -51,7 +53,9 @@ export function usePrayerLists() {
       }
     }
 
-    setLists(data.map(l => ({ ...l, itemCount: countMap[l.id] || 0 })))
+    const next = data.map(l => ({ ...l, itemCount: countMap[l.id] || 0 }))
+    setLists(next)
+    writeCache(user.id, 'prayerLists', next)
     setLoading(false)
   }
 

@@ -21,12 +21,17 @@ function saveSecondaryId(id, isSecondary) {
 export function useOikosMaps({ initialMapId = null, skipLoad = false } = {}) {
   const { user } = useAuth()
   const { showToast } = useToast() ?? {}
-  const [maps, setMaps] = useState([])
-  const [activeMapId, setActiveMapId] = useState(null)
+  // Kartenliste startet mit dem zuletzt geladenen Stand (swrCache) und wird still aktualisiert
+  const [cachedMaps] = useState(() => readCache(user?.id, 'oikosMaps'))
+  const [maps, setMaps] = useState(cachedMaps ?? [])
+  const [activeMapId, setActiveMapId] = useState(() =>
+    cachedMaps?.find(m => m.id === initialMapId)?.id
+    ?? cachedMaps?.find(m => m.kind === 'siblings')?.id
+    ?? cachedMaps?.[0]?.id ?? null)
   const [people, setPeople] = useState([])
   const [connections, setConnections] = useState([])
   const [overlayData, setOverlayData] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!cachedMaps)
   // Zu welcher Karte gehören people/connections/overlayData gerade? (verhindert Vermischen)
   const [dataMapId, setDataMapId] = useState(null)
   const activeMapIdRef = useRef(null)
@@ -92,15 +97,18 @@ export function useOikosMaps({ initialMapId = null, skipLoad = false } = {}) {
   }
 
   async function loadMaps() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('oikos_maps')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at')
+    // Fehler: gecachten Stand behalten
+    if (error) { setLoading(false); return }
     // Systemkarte „Meine Geschwister in Christus" immer als erste angepinnt
     const sorted = [...(data || [])].sort((a, b) =>
       (b.kind === 'siblings') - (a.kind === 'siblings'))
     setMaps(sorted)
+    writeCache(user.id, 'oikosMaps', sorted)
     // Gewählte Karte behalten; sonst gewünschte (Route) oder die angepinnte Systemkarte
     const keep = activeMapIdRef.current && sorted.some(m => m.id === activeMapIdRef.current)
       ? activeMapIdRef.current

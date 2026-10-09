@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
+import { readCache, writeCache } from '../lib/swrCache'
 
 // ════════════════════════════════════════════════════════════════════════
 // Gebets-Logs + Kommentare für eine Liste normalisierter Gebete
@@ -15,8 +16,11 @@ const EMPTY = {}
 
 export function usePrayerEngagement(prayers) {
   const { user } = useAuth()
-  const [logsMap, setLogsMap] = useState(EMPTY)
-  const [notesMap, setNotesMap] = useState(EMPTY)
+  // Letzter Stand aus dem Cache (Gebets-Zähler/Kommentare), damit die Karten
+  // nicht erst nach dem Nachladen ihre Zahlen bekommen. Nach Nutzer getrennt.
+  const [cached] = useState(() => readCache(user?.id, 'prayerEngagement'))
+  const [logsMap, setLogsMap] = useState(cached?.logs ?? EMPTY)
+  const [notesMap, setNotesMap] = useState(cached?.notes ?? EMPTY)
   const [loading, setLoading] = useState(false)
 
   // Nur die IDs als Abhängigkeit – sonst lädt der Effekt bei jedem Render neu.
@@ -35,55 +39,14 @@ export function usePrayerEngagement(prayers) {
       setLoading(false)
       return
     }
-    setLoading(true)
-
-    const [{ data: oikosLogs }, { data: personalLogs }, { data: oikosNotes }, { data: personalNotes }] = await Promise.all([
-      // Kein profiles-Embed hier: prayer_logs/prayer_notes wurden außerhalb der
-      // getrackten Migrationen angelegt und haben keine für PostgREST auflösbare
-      // FK-Beziehung zu profiles. Ein unauflösbarer Embed lässt die GESAMTE Query
-      // fehlschlagen (nicht nur das Profilfeld) – dieselbe Falle, die schon in
-      // usePrayerRequests.js dokumentiert ist. Profile deshalb separat laden.
-      oIds.length
-        ? supabase.from('prayer_logs')
-            .select('id, prayer_request_id, user_id, created_at')
-            .in('prayer_request_id', oIds).order('created_at', { ascending: false })
-        : Promise.resolve({ data: [] }),
-      pIds.length
-        ? supabase.from('personal_prayer_logs')
-            .select('id, request_id, user_id, created_at')
-            .in('request_id', pIds).order('created_at', { ascending: false })
-        : Promise.resolve({ data: [] }),
-      oIds.length
-        ? supabase.from('prayer_notes')
-            .select('id, prayer_request_id, text, is_public, author_id, created_at, reply_to_id')
-            .in('prayer_request_id', oIds).order('created_at', { ascending: false })
-        : Promise.resolve({ data: [] }),
-      pIds.length
-        ? supabase.from('prayer_notes')
-            .select('id, request_id, text, is_public, author_id, created_at, reply_to_id')
-            .in('request_id', pIds).order('created_at', { ascending: false })
-        : Promise.resolve({ data: [] }),
-    ])
-
-    // Profile für alle beteiligten User in einem Rutsch nachladen und einmischen.
-    const userIds = new Set()
-    for (const l of (oikosLogs || [])) userIds.add(l.user_id)
-    for (const l of (personalLogs || [])) userIds.add(l.user_id)
-    for (const n of (oikosNotes || [])) userIds.add(n.author_id)
-    for (const n of (personalNotes || [])) userIds.add(n.author_id)
-    let profilesById = {}
-    if (userIds.size > 0) {
-      const { data: profs } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, is_christian, avatar_url')
-        .in('id', [...userIds])
-      profilesById = Object.fromEntries((profs || []).map(p => [p.id, p]))
-    }
-    const withProfile = (rows, idKey) => (rows || []).map(r => ({ ...r, profiles: profilesById[r[idKey]] || null }))
-    const oikosLogsWithProfile = withProfile(oikosLogs, 'user_id')
-    const personalLogsWithProfile = withProfile(personalLogs, 'user_id')
-    const oikosNotesWithProfile = withProfile(oikosNotes, 'author_id')
-    const personalNotesWithProfile = withProfile(personalNotes, 'author_id')
+    // Logs + Kommentare + Profile in EINER RPC (phase77, SECURITY INVOKER) statt
+    // 4 parallelen Queries und einer davon abhängigen Profil-Query.
+    const { data, error } = await supabase.rpc('get_prayer_engagement', { p_oikos_ids: oIds, p_personal_ids: pIds })
+    if (error || !data) { setLoading(false); return }
+    const oikosLogsWithProfile = data.oikosLogs || []
+    const personalLogsWithProfile = data.personalLogs || []
+    const oikosNotesWithProfile = data.oikosNotes || []
+    const personalNotesWithProfile = data.personalNotes || []
 
     const nextLogs = {}
     for (const l of oikosLogsWithProfile) {
@@ -109,6 +72,7 @@ export function usePrayerEngagement(prayers) {
     if (signatureRef.current !== `${oIds.join(',')}|${pIds.join(',')}`) return
     setLogsMap(nextLogs)
     setNotesMap(nextNotes)
+    writeCache(user?.id, 'prayerEngagement', { logs: nextLogs, notes: nextNotes })
     setLoading(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature])

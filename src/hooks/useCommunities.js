@@ -11,9 +11,11 @@ let cache = { userId: null, rows: null }
 let inFlight = null
 
 async function fetchCommunities(userId) {
+  // Mitgliederzahl als eingebettetes Aggregat statt als zweiter, vom
+  // ersten Ergebnis abhängiger Request - ein Round-Trip statt zwei.
   const { data, error } = await supabase
     .from('community_members')
-    .select('id, role, joined_at, community_id, communities(id, name, description, is_public, join_mode, avatar_url, invite_code, created_by, created_at, community_type, address, latitude, longitude, meeting_info)')
+    .select('id, role, joined_at, community_id, communities(id, name, description, is_public, join_mode, avatar_url, invite_code, created_by, created_at, community_type, address, latitude, longitude, meeting_info, community_members(count))')
     .eq('user_id', userId)
 
   // Fehler weiterwerfen: ein Netzwerkfehler soll die (gecachte) Liste nicht
@@ -21,27 +23,16 @@ async function fetchCommunities(userId) {
   if (error) throw error
   if (!data || data.length === 0) return []
 
-  // Batch query to prevent N+1 requests
-  const commIds = data.map(m => m.community_id)
-  const { data: allMembers } = await supabase
-    .from('community_members')
-    .select('community_id')
-    .in('community_id', commIds)
-
-  const countMap = {}
-  if (allMembers) {
-    allMembers.forEach(m => {
-      countMap[m.community_id] = (countMap[m.community_id] || 0) + 1
-    })
-  }
-
-  return data.map((m) => ({
-    membershipId: m.id,
-    role: m.role,
-    joinedAt: m.joined_at,
-    memberCount: countMap[m.community_id] || 1,
-    ...m.communities,
-  }))
+  return data.map((m) => {
+    const { community_members: countRows, ...community } = m.communities || {}
+    return {
+      membershipId: m.id,
+      role: m.role,
+      joinedAt: m.joined_at,
+      memberCount: countRows?.[0]?.count || 1,
+      ...community,
+    }
+  })
 }
 
 export function useCommunities() {

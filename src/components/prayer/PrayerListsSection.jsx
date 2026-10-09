@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { usePrayerLists } from '../../hooks/usePrayerLists'
 import { useToast } from '../../context/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -168,6 +168,7 @@ export default function PrayerListsSection({ variant = 'full' }) {
   const { lists, loading, createList } = usePrayerLists()
   const [showCreate, setShowCreate] = useState(false)
   const [answeredCount, setAnsweredCount] = useState(0)
+  const [expanded, setExpanded] = useState(false)
   const compact = variant === 'compact'
 
   useEffect(() => {
@@ -182,76 +183,103 @@ export default function PrayerListsSection({ variant = 'full' }) {
 
   return (
     <div style={{ margin: compact ? 0 : '12px 0 0', borderBottom: compact ? 'none' : '1px solid var(--color-border)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 10px' }}>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
-          Meine Listen
-        </p>
-        <button
-          onClick={() => setShowCreate(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-accent)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, padding: '4px 0' }}
-        >
-          <Plus size={14} /> Neue Liste
-        </button>
-      </div>
-
-      {/* Horizontal-Scroll-Reihe */}
-      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '0 16px 16px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-        {loading && [1, 2, 3].map(i => <ListSkeleton key={i} />)}
-
-        {!loading && lists.length === 0 && (
-          <button
-            onClick={() => setShowCreate(true)}
-            style={{
-              flexShrink: 0, width: 130, height: 96, borderRadius: 16,
-              border: '2px dashed var(--color-border)', background: 'none',
-              cursor: 'pointer', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}
-          >
-            <Plus size={20} color="var(--color-accent)" />
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-accent)', fontWeight: 600 }}>
-              Liste erstellen
-            </span>
-          </button>
-        )}
-
-        {!loading && lists.map(list => (
-          <ListTile
-            key={list.id}
-            list={list}
-            onClick={() => navigate(`/prayer/list/${list.id}`)}
-          />
-        ))}
-      </div>
-
-      {/* Erhörte Gebete Link */}
-      {!compact && answeredCount > 0 && (
-        <div style={{ padding: '0 16px 14px' }}>
-          <button
-            onClick={() => navigate('/prayer/answered')}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              width: '100%', padding: '11px 14px', borderRadius: 12,
-              backgroundColor: '#DFF5E8', border: '1px solid #B2E0C4',
-              cursor: 'pointer', transition: 'opacity 0.15s',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 16 }}>🎉</span>
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: '#1E8449' }}>
-                Erhörte Gebete
-              </span>
-            </div>
+      {/* Header – anklickbar zum Auf-/Zuklappen, damit die Liste nicht
+          dauerhaft Platz über dem Gebetsmodus-Button wegnimmt. */}
+      <button
+        onClick={() => setExpanded(v => !v)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', padding: '0 16px 10px', border: 'none', background: 'none', cursor: 'pointer',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Meine Listen
+          </span>
+          {!loading && lists.length > 0 && (
             <span style={{
-              fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700,
-              backgroundColor: '#27AE60', color: 'white',
-              borderRadius: 20, padding: '2px 8px',
+              fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-tertiary)',
+              backgroundColor: 'var(--color-bg-secondary)', borderRadius: 20, padding: '1px 7px',
             }}>
-              {answeredCount} ✓
+              {lists.length}
             </span>
-          </button>
-        </div>
+          )}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}>
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </span>
+      </button>
+
+      {expanded && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 16px 8px' }}>
+            <button
+              onClick={() => setShowCreate(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-accent)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, padding: '4px 0' }}
+            >
+              <Plus size={14} /> Neue Liste
+            </button>
+          </div>
+
+          {/* Horizontal-Scroll-Reihe */}
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '0 16px 16px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            {loading && [1, 2, 3].map(i => <ListSkeleton key={i} />)}
+
+            {!loading && lists.length === 0 && (
+              <button
+                onClick={() => setShowCreate(true)}
+                style={{
+                  flexShrink: 0, width: 130, height: 96, borderRadius: 16,
+                  border: '2px dashed var(--color-border)', background: 'none',
+                  cursor: 'pointer', display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <Plus size={20} color="var(--color-accent)" />
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-accent)', fontWeight: 600 }}>
+                  Liste erstellen
+                </span>
+              </button>
+            )}
+
+            {!loading && lists.map(list => (
+              <ListTile
+                key={list.id}
+                list={list}
+                onClick={() => navigate(`/prayer/list/${list.id}`)}
+              />
+            ))}
+          </div>
+
+          {/* Erhörte Gebete Link */}
+          {!compact && answeredCount > 0 && (
+            <div style={{ padding: '0 16px 14px' }}>
+              <button
+                onClick={() => navigate('/prayer/answered')}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '11px 14px', borderRadius: 12,
+                  backgroundColor: '#DFF5E8', border: '1px solid #B2E0C4',
+                  cursor: 'pointer', transition: 'opacity 0.15s',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>🎉</span>
+                  <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: '#1E8449' }}>
+                    Erhörte Gebete
+                  </span>
+                </div>
+                <span style={{
+                  fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700,
+                  backgroundColor: '#27AE60', color: 'white',
+                  borderRadius: 20, padding: '2px 8px',
+                }}>
+                  {answeredCount} ✓
+                </span>
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {showCreate && (

@@ -8,13 +8,13 @@ import GuidedPrayerMode from '../prayer/GuidedPrayerMode'
 // (🙏-Gebete + Kommentare von heute) – prominent auf der Home-Seite.
 export default function TopPrayerToday() {
   const { user } = useAuth()
-  // Gecachter Stand nur vom selben Tag – „heute" von gestern wäre falsch
-  const [cached] = useState(() => {
-    const c = readCache(user?.id, 'topPrayerToday')
-    return c && c.day === new Date().toDateString() ? c : null
-  })
+  // Auch ein Stand vom Vortag wird sofort gezeigt (statt ~160px grauem
+  // Platzhalter, der nach Leerlauf mehrere Sekunden stand) – nur die
+  // „heute"-Zahl wird bis zur Aktualisierung ausgeblendet.
+  const [cached] = useState(() => readCache(user?.id, 'topPrayerToday') || null)
   const [request, setRequest] = useState(cached?.request ?? null)
   const [interactions, setInteractions] = useState(cached?.interactions ?? 0)
+  const [fresh, setFresh] = useState(cached?.day === new Date().toDateString())
   const [loading, setLoading] = useState(!cached)
   const [showPrayer, setShowPrayer] = useState(false)
 
@@ -31,6 +31,7 @@ export default function TopPrayerToday() {
       writeCache(user?.id, 'topPrayerToday', { ...next, day: new Date().toDateString() })
       setRequest(next.request)
       setInteractions(next.interactions)
+      setFresh(true)
     } catch {
       /* Netzwerkfehler: bisherigen Stand behalten */
     } finally {
@@ -76,7 +77,7 @@ export default function TopPrayerToday() {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'rgba(240,237,230,0.6)' }}>
-              von {ownerName} · 🙏 {interactions} {interactions === 1 ? 'Interaktion' : 'Interaktionen'} heute
+              von {ownerName}{fresh && <> · 🙏 {interactions} {interactions === 1 ? 'Interaktion' : 'Interaktionen'} heute</>}
             </span>
             <button
               onClick={() => setShowPrayer(true)}

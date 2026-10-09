@@ -1,11 +1,15 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { readCache, writeCache } from '../lib/swrCache'
 
 export function useFriendships() {
   const { user } = useAuth()
-  const [allFriendships, setAllFriendships] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Freundesliste wird auf fast jeder Seite gebraucht: letzten Stand sofort
+  // zeigen (siehe swrCache.js) und still aktualisieren.
+  const [cached] = useState(() => readCache(user?.id, 'friendships'))
+  const [allFriendships, setAllFriendships] = useState(cached ?? [])
+  const [loading, setLoading] = useState(!cached)
 
   useEffect(() => {
     if (!user) return
@@ -13,15 +17,19 @@ export function useFriendships() {
   }, [user?.id])
 
   async function load() {
-    setLoading(true)
-    const { data: raw } = await supabase
+    if (!cached) setLoading(true)
+    const { data: raw, error } = await supabase
       .from('friendships')
       .select('*')
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
       .neq('status', 'declined')
 
+    // Fehler: bisherigen (gecachten) Stand behalten statt ihn zu leeren
+    if (error) { setLoading(false); return }
+
     if (!raw || raw.length === 0) {
       setAllFriendships([])
+      writeCache(user.id, 'friendships', [])
       setLoading(false)
       return
     }
@@ -33,10 +41,12 @@ export function useFriendships() {
       .in('id', [...new Set(otherIds)])
 
     const pm = Object.fromEntries((profiles || []).map(p => [p.id, p]))
-    setAllFriendships(raw.map(f => ({
+    const next = raw.map(f => ({
       ...f,
       otherUser: f.requester_id === user.id ? pm[f.addressee_id] : pm[f.requester_id],
-    })))
+    }))
+    setAllFriendships(next)
+    writeCache(user.id, 'friendships', next)
     setLoading(false)
   }
 

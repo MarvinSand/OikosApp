@@ -1,25 +1,41 @@
 import { useState } from 'react'
 import { X, Globe, Lock } from 'lucide-react'
 import { KIND_OIKOS } from '../../lib/prayerModel'
+import { useCommunities } from '../../hooks/useCommunities'
+import { FEED_VISIBILITY, SiblingPickerFeed } from '../feed/FeedPostSheet'
 
 // Bearbeiten eines Gebets (Titel, Beschreibung, Sichtbarkeit).
-// Community-Gebete behalten ihre Community-Sichtbarkeit – dort wird der
-// Öffentlich/Privat-Schalter nicht angeboten.
+// Oikos-Anliegen: Sichtbarkeit wie beim Feedpost (öffentlich / Community /
+// Geschwister / ausgewählte Geschwister / privat). Feed-Gebete: Öffentlich/Privat;
+// Community-Gebete behalten ihre Community-Sichtbarkeit.
 export default function EditPrayerSheet({ prayer, onSave, onClose }) {
   const [title, setTitle] = useState(prayer.title || '')
   const [description, setDescription] = useState(prayer.description || '')
   const [isPublic, setIsPublic] = useState(prayer.isPublic)
   const [saving, setSaving] = useState(false)
 
-  const isCommunity = prayer.visibility === 'community'
+  const isOikos = prayer.kind === KIND_OIKOS
+  const isCommunity = !isOikos && prayer.visibility === 'community'
+  const { myCommunities } = useCommunities()
+  // Oikos: DB-Wert 'community' ↔ UI-Schlüssel 'communities'
+  const [visibility, setVisibility] = useState(prayer.visibility === 'community' ? 'communities' : (prayer.visibility || 'private'))
+  const [communityIds, setCommunityIds] = useState(prayer.visibilityCommunityIds || [])
+  const [userIds, setUserIds] = useState(prayer.visibilityUserIds || [])
+  const visOk = !isOikos ||
+    (visibility !== 'communities' || communityIds.length > 0) &&
+    (visibility !== 'specific_include' || userIds.length > 0)
 
   async function handleSave() {
-    if (!title.trim()) return
+    if (!title.trim() || !visOk) return
     setSaving(true)
     const updates = { title: title.trim(), description: description.trim() || null }
-    if (!isCommunity) {
-      if (prayer.kind === KIND_OIKOS) updates.is_public = isPublic
-      else updates.visibility = isPublic ? 'public' : 'private'
+    if (isOikos) {
+      updates.visibility = visibility === 'communities' ? 'community' : visibility
+      updates.is_public = visibility === 'public'
+      updates.visibility_community_ids = visibility === 'communities' ? communityIds : null
+      updates.visibility_user_ids = visibility === 'specific_include' ? userIds : null
+    } else if (!isCommunity) {
+      updates.visibility = isPublic ? 'public' : 'private'
     }
     await onSave(updates)
     setSaving(false)
@@ -50,7 +66,48 @@ export default function EditPrayerSheet({ prayer, onSave, onClose }) {
         <label style={{ ...lbl, marginTop: 12 }}>Beschreibung</label>
         <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={3} style={{ ...inp, resize: 'vertical' }} />
 
-        {!isCommunity && (
+        {isOikos && (
+          <div style={{ marginTop: 14 }}>
+            <label style={lbl}>Wer soll es sehen?</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[...FEED_VISIBILITY, { key: 'private', label: 'Nur für mich', icon: Lock }].map(o => {
+                const Icon = o.icon
+                const active = visibility === o.key
+                return (
+                  <button key={o.key} onClick={() => setVisibility(o.key)} style={rowStyle(active)}>
+                    <Icon size={16} color={active ? 'var(--color-accent)' : 'var(--color-text-secondary)'} />
+                    <span style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: active ? 'var(--color-accent)' : 'var(--color-text)' }}>{o.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {visibility === 'communities' && (
+              myCommunities.length === 0 ? (
+                <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '8px 0 0' }}>Du bist noch in keiner Community.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                  {myCommunities.map(c => {
+                    const checked = communityIds.includes(c.id)
+                    return (
+                      <button key={c.id} onClick={() => setCommunityIds(checked ? communityIds.filter(x => x !== c.id) : [...communityIds, c.id])} style={rowStyle(checked)}>
+                        <span style={{ fontSize: 16 }}>{c.icon || '🏠'}</span>
+                        <span style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{c.name}</span>
+                        <span style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checked ? 'var(--color-accent)' : 'var(--color-border)'}`, background: checked ? 'var(--color-accent)' : 'transparent', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{checked && '✓'}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            )}
+            {visibility === 'specific_include' && (
+              <div style={{ marginTop: 8 }}>
+                <SiblingPickerFeed selected={userIds} onChange={setUserIds} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isOikos && !isCommunity && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '10px 12px', borderRadius: 12, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
             <div>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 1px' }}>
@@ -73,12 +130,12 @@ export default function EditPrayerSheet({ prayer, onSave, onClose }) {
 
         <button
           onClick={handleSave}
-          disabled={!title.trim() || saving}
+          disabled={!title.trim() || !visOk || saving}
           style={{
             width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 16,
-            backgroundColor: title.trim() ? 'var(--color-accent)' : 'var(--color-border)',
+            backgroundColor: title.trim() && visOk ? 'var(--color-accent)' : 'var(--color-border)',
             color: '#fff', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600,
-            cursor: title.trim() ? 'pointer' : 'not-allowed',
+            cursor: title.trim() && visOk ? 'pointer' : 'not-allowed',
           }}
         >
           {saving ? 'Speichere…' : 'Speichern'}
@@ -90,3 +147,10 @@ export default function EditPrayerSheet({ prayer, onSave, onClose }) {
 
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }
 const inp = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }
+function rowStyle(active) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, width: '100%', textAlign: 'left', cursor: 'pointer',
+    border: `1.5px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+    background: active ? 'var(--color-bg-secondary)' : 'var(--color-bg)',
+  }
+}
