@@ -21,12 +21,14 @@ export function useSiblingsCommunities({ active, ownerId, people }) {
 
   useEffect(() => {
     if (!active || !user) return
-    setData(readCache(user.id, cacheKey) ?? null)
     let cancelled = false
+    const cached = readCache(user.id, cacheKey)
+    if (cached) setData(cached)
     supabase.rpc('get_user_siblings_communities', { p_user: targetId }).then(({ data: res, error }) => {
+      if (cancelled) return
       if (error || !res) { if (error) console.error('get_user_siblings_communities', error); return }
       writeCache(user.id, cacheKey, res, { persist: !ownerId || ownerId === user.id })
-      if (!cancelled) setData(res)
+      setData(res)
     })
     return () => { cancelled = true }
   }, [active, user?.id, targetId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -64,5 +66,10 @@ export function useSiblingsCommunities({ active, ownerId, people }) {
     return { virtualPlaces, placeConnections, overlayData }
   }, [active, communities, people])
 
-  return { ...graph, hasCommunities: communities.length > 0 || !data }
+  return {
+    ...graph,
+    hasCommunities: communities.length > 0 || !data,
+    // null, solange noch nie geladen – die Leiste sagt dann nur „Gemeinden", keine erfundene 0.
+    communityTotal: data ? communities.length : null,
+  }
 }

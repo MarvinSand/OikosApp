@@ -5,7 +5,7 @@ import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePlaces } from '../hooks/usePlaces'
 import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
 import { useSiblingsCommunities } from '../hooks/useSiblingsCommunities'
-import SiblingsToggles from '../components/map/SiblingsToggles'
+import SiblingsToggles, { loadSiblingsView, saveSiblingsView, siblingsMapTitle } from '../components/map/SiblingsToggles'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -281,11 +281,15 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const isSiblingsMap = activeMap?.kind === 'siblings'
   // Daten (Personen/Verbindungen) gehören wirklich zur aktiven Karte – sonst nichts mischen
   const dataReady = !!activeMap && dataMapId === activeMapId
-  const [siblingsDepth, setSiblingsDepth] = useState(1)
-  const [showSiblingEdges, setShowSiblingEdges] = useState(true)
-  const [showSiblingCommunities, setShowSiblingCommunities] = useState(false)
+  const [siblingsDepth, setSiblingsDepth] = useState(() => loadSiblingsView().depth)
+  const [showSiblingEdges, setShowSiblingEdges] = useState(() => loadSiblingsView().showEdges)
+  const [showSiblingCommunities, setShowSiblingCommunities] = useState(() => loadSiblingsView().showCommunities)
   const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap && dataReady, depth: siblingsDepth, people, showEdges: showSiblingEdges })
   const siblingsCommunities = useSiblingsCommunities({ active: isSiblingsMap && dataReady && showSiblingCommunities, people })
+
+  useEffect(() => {
+    saveSiblingsView({ depth: siblingsDepth, showEdges: showSiblingEdges, showCommunities: showSiblingCommunities })
+  }, [siblingsDepth, showSiblingEdges, showSiblingCommunities])
 
   const { places: rawPlaces, placeConnections: rawPlaceConnections, dataMapId: placesMapId, createPlace, updatePlace, deletePlace, connectPerson: connectPlacePerson, disconnectPerson: disconnectPlacePerson, movePlacePosition } = usePlaces(activeMapId)
   // Orte nur zeigen, wenn sie zur aktiven Karte gehören
@@ -444,7 +448,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[65%] hover:opacity-80 transition-opacity"
         >
           <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-            {activeMap?.name || 'Meine Oikos Map'}
+            {siblingsMapTitle(activeMap)}
           </span>
           <ChevronDown size={18} className="text-dark-muted shrink-0" />
         </button>
@@ -528,15 +532,17 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         </button>
       )}
 
-      {/* Schalter der Systemkarte: Generationen, Verbindungen, Communities */}
-      {activeTab === 'oikos' && isSiblingsMap && (
-        <div className="absolute top-[150px] left-1/2 -translate-x-1/2 z-30">
-          <SiblingsToggles
-            depth={siblingsDepth} onDepth={setSiblingsDepth}
-            showEdges={showSiblingEdges} onShowEdges={setShowSiblingEdges}
-            showCommunities={showSiblingCommunities} onShowCommunities={setShowSiblingCommunities}
-          />
-        </div>
+      {/* Ansicht der Systemkarte: unten, nicht über den Personen */}
+      {activeTab === 'oikos' && isSiblingsMap && dataReady && (
+        <SiblingsToggles
+          depth={siblingsDepth} onDepth={setSiblingsDepth}
+          showEdges={showSiblingEdges} onShowEdges={setShowSiblingEdges}
+          showCommunities={showSiblingCommunities} onShowCommunities={setShowSiblingCommunities}
+          friendCount={people.length}
+          furtherCount={siblingsGraph.overlayData.reduce((n, g) => n + (g.persons?.length || 0), 0)}
+          communityCount={siblingsCommunities.communityTotal}
+          loadingMore={siblingsGraph.loadingMore}
+        />
       )}
 
       {/* Dropdown-Menü für Map-Auswahl */}
@@ -562,7 +568,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {m.kind === 'siblings' && <Pin size={13} aria-label="Angepinnt" />}
-                  {m.name}
+                  {siblingsMapTitle(m, m.name)}
                 </span>
                 {m.is_public && (
                   <span style={{ fontSize: 11, color: 'var(--color-text-light)' }}>öffentlich</span>

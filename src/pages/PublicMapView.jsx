@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { usePublicMap } from '../hooks/usePublicMap'
 import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
 import { useSiblingsCommunities } from '../hooks/useSiblingsCommunities'
-import SiblingsToggles from '../components/map/SiblingsToggles'
+import SiblingsToggles, { loadSiblingsView, saveSiblingsView, siblingsMapTitle } from '../components/map/SiblingsToggles'
 import MapCanvas from '../components/map/MapCanvas'
 import PersonDetailSheet from '../components/map/PersonDetailSheet'
 
@@ -15,12 +15,16 @@ export default function PublicMapView() {
   const { map, people, connections, places, placeConnections, ownerName, linkedProfiles, overlayData, togglePersonMapOverlay, loading } = usePublicMap(userId, mapId)
   const [selectedPerson, setSelectedPerson] = useState(null)
   // Systemkarte „Meine Geschwister in Christus": Auto-Kanten + Freunde von Freunden
-  const [siblingsDepth, setSiblingsDepth] = useState(1)
+  const [siblingsDepth, setSiblingsDepth] = useState(() => loadSiblingsView().depth)
   const isSiblingsMap = map?.kind === 'siblings'
-  const [showSiblingEdges, setShowSiblingEdges] = useState(true)
-  const [showSiblingCommunities, setShowSiblingCommunities] = useState(false)
+  const [showSiblingEdges, setShowSiblingEdges] = useState(() => loadSiblingsView().showEdges)
+  const [showSiblingCommunities, setShowSiblingCommunities] = useState(() => loadSiblingsView().showCommunities)
   const siblingsGraph = useSiblingsNetwork({ active: isSiblingsMap, depth: siblingsDepth, people, ownerId: userId, showEdges: showSiblingEdges })
   const siblingsCommunities = useSiblingsCommunities({ active: isSiblingsMap && showSiblingCommunities, ownerId: userId, people })
+
+  useEffect(() => {
+    saveSiblingsView({ depth: siblingsDepth, showEdges: showSiblingEdges, showCommunities: showSiblingCommunities })
+  }, [siblingsDepth, showSiblingEdges, showSiblingCommunities])
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Deep-link: ?openPerson=PERSON_ID → open that person's sheet (used by notifications)
@@ -70,22 +74,11 @@ export default function PublicMapView() {
       {/* Header */}
       <div style={headerStyle}>
         <button onClick={() => navigate(-1)} style={backBtn}><ArrowLeft size={20} /></button>
-        <span style={headerTitle}>{map.name}</span>
+        <span style={headerTitle}>{siblingsMapTitle(map)}</span>
         <div style={{ width: 36 }} />
       </div>
 
-      {isSiblingsMap && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 8px 0', flexShrink: 0 }}>
-          <SiblingsToggles
-            depth={siblingsDepth} onDepth={setSiblingsDepth}
-            showEdges={showSiblingEdges} onShowEdges={setShowSiblingEdges}
-            showCommunities={showSiblingCommunities} onShowCommunities={setShowSiblingCommunities}
-          />
-        </div>
-      )}
-
-      {/* Canvas */}
-      <div style={{ flex: 1, minHeight: 0, padding: 8, overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 0, padding: 8, overflow: 'hidden', position: 'relative' }}>
         <MapCanvas
           userName={ownerName}
           people={people}
@@ -99,6 +92,18 @@ export default function PublicMapView() {
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
         />
+        {isSiblingsMap && (
+          <SiblingsToggles
+            depth={siblingsDepth} onDepth={setSiblingsDepth}
+            showEdges={showSiblingEdges} onShowEdges={setShowSiblingEdges}
+            showCommunities={showSiblingCommunities} onShowCommunities={setShowSiblingCommunities}
+            friendCount={people.length}
+            furtherCount={siblingsGraph.overlayData.reduce((n, g) => n + (g.persons?.length || 0), 0)}
+            communityCount={siblingsCommunities.communityTotal}
+            loadingMore={siblingsGraph.loadingMore}
+            liftAboveNav={false}
+          />
+        )}
       </div>
 
       {selectedPerson && (
