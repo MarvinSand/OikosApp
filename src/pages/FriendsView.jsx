@@ -217,12 +217,8 @@ function FriendsTab() {
   }
 
   async function loadBirthdays() {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, username, full_name, is_christian, avatar_url, birthday')
-      .neq('id', user.id)
-      .eq('show_birthday', true)
-      .not('birthday', 'is', null)
+    // Geburtstage nur von Nutzern mit show_birthday, über die RPC (Spalte privat)
+    const { data } = await supabase.rpc('get_visible_birthdays')
     if (!data) return
     const upcoming = data
       .map(p => ({ ...p, daysUntil: birthdayDaysUntil(p.birthday) }))

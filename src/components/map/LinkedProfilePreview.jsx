@@ -89,7 +89,7 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
   const churchVisible = linkedProfile?.show_church !== false && linkedProfile?.church_name
   const bioText = linkedProfile?.bio_text || linkedProfile?.bio
   const bioVisible = linkedProfile?.show_bio !== false && bioText
-  const hasCoords = linkedProfile?.latitude != null && linkedProfile?.longitude != null
+  const hasCoords = linkedProfile?.has_location === true || (linkedProfile?.latitude != null && linkedProfile?.longitude != null)
 
   function handleShowOnWorldMap() {
     if (!hasCoords) { showToast('Kein Standort auf der Weltkarte hinterlegt'); return }

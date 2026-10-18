@@ -33,11 +33,8 @@ export function useYouVersionAccount() {
 
   const reloadStatus = useCallback(async () => {
     if (!user) return
-    const { data } = await supabase
-      .from('profiles')
-      .select('youversion_connected, youversion_email')
-      .eq('id', user.id)
-      .maybeSingle()
+    // youversion_email ist ein privates Feld -> nur über die Owner-RPC lesbar
+    const { data } = await supabase.rpc('get_my_profile').maybeSingle()
     setConnected(!!data?.youversion_connected)
     setEmail(data?.youversion_email ?? null)
   }, [user?.id])

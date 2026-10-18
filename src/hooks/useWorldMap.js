@@ -60,11 +60,8 @@ export function useWorldMap() {
       // die jeweilige Zielgruppe komplett aus. Das ersetzt den früheren
       // Freundschafts-Only-Filter (nur akzeptierte Freunde sahen überhaupt etwas).
       const [{ data: profile }, { data: worldMapUsers }, { data: acts }, { data: gems }] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, full_name, username, avatar_url, latitude, longitude, show_on_world_map, is_christian, gender, city, country, church_name, bio, bio_text, show_bio, address_full, address_street, address_district, location_precision_public, location_precision_friends')
-          .eq('id', user.id)
-          .single(),
+        // Eigenes Profil inkl. privater Standortfelder nur über die Owner-RPC
+        supabase.rpc('get_my_profile').maybeSingle(),
         supabase.rpc('get_world_map_users'),
         // Kein is_public-Filter mehr – Row Level Security entscheidet, welche Events
         // (öffentlich / Geschwister / Gemeinde / eigene) der Nutzer sehen darf.

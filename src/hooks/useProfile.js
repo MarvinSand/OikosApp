@@ -15,6 +15,7 @@ export function useProfile({ useCache = false, withStats = true } = {}) {
   const [profile, setProfile] = useState(cached?.profile ?? null)
   const [stats, setStats] = useState(cached?.stats ?? { peopleCount: 0, prayerCount: 0, maxStage: 0 })
   const [loading, setLoading] = useState(!cached)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -23,52 +24,68 @@ export function useProfile({ useCache = false, withStats = true } = {}) {
 
   async function load() {
     if (!cached) setLoading(true)
-    const [
-      { data: profileData },
-      { count: peopleCount },
-      { count: prayerCount },
-      { data: stageData },
-    ] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      ...(withStats ? [
-        supabase.from('oikos_people').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('prayer_logs').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('impact_map_progress')
-          .select('stage')
-          .eq('owner_id', user.id)
-          .not('completed_at', 'is', null)
-          .order('stage', { ascending: false })
-          .limit(1),
-      ] : [{}, {}, {}]),
-    ])
+    setError(null)
+    try {
+      // Eigenes Profil inkl. privater Felder (Adresse, Koordinaten, Geburtstag,
+      // YouVersion-E-Mail) nur über die Owner-RPC – direkte Spalten-Reads auf
+      // diese Felder sind für andere Nutzer gesperrt.
+      const [
+        { data: profileRows, error: profileError },
+        { count: peopleCount },
+        { count: prayerCount },
+        { data: stageData },
+      ] = await Promise.all([
+        supabase.rpc('get_my_profile'),
+        ...(withStats ? [
+          supabase.from('oikos_people').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('prayer_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('impact_map_progress')
+            .select('stage')
+            .eq('owner_id', user.id)
+            .not('completed_at', 'is', null)
+            .order('stage', { ascending: false })
+            .limit(1),
+        ] : [{}, {}, {}]),
+      ])
+      const profileData = Array.isArray(profileRows) ? (profileRows[0] ?? null) : (profileRows ?? null)
 
-    // Fehlgeschlagener Profil-Request (z. B. offline): gecachten Stand behalten
-    if (!profileData && cached) { setLoading(false); return }
-    const nextStats = !withStats ? (readCache(user.id, 'profile')?.stats ?? stats) : {
-      peopleCount: peopleCount || 0,
-      prayerCount: prayerCount || 0,
-      maxStage: stageData?.[0]?.stage || 0,
+      // Fehlgeschlagener Profil-Request (offline, Timeout): gecachten Stand behalten
+      if (!profileData) {
+        if (profileError) setError(profileError)
+        return
+      }
+      const nextStats = !withStats ? (readCache(user.id, 'profile')?.stats ?? stats) : {
+        peopleCount: peopleCount || 0,
+        prayerCount: prayerCount || 0,
+        maxStage: stageData?.[0]?.stage || 0,
+      }
+      setProfile(profileData)
+      setStats(nextStats)
+      writeCache(user.id, 'profile', { profile: profileData, stats: nextStats })
+    } catch (e) {
+      setError(e)
+    } finally {
+      setLoading(false)
     }
-    setProfile(profileData)
-    setStats(nextStats)
-    if (profileData) writeCache(user.id, 'profile', { profile: profileData, stats: nextStats })
-    setLoading(false)
   }
 
   async function updateProfile(updates) {
-    const { data, error } = await supabase
+    // Kein `.select()` nach dem Update: die Antwort würde alle Spalten
+    // zurückgeben, private Spalten sind aber nicht mehr direkt lesbar.
+    const { error } = await supabase
       .from('profiles')
       .update(updates)
       .eq('id', user.id)
-      .select()
-      .single()
     if (error) throw error
+    const { data: rows } = await supabase.rpc('get_my_profile')
+    const fresh = Array.isArray(rows) ? rows[0] : rows
+    let next
     setProfile(p => {
-      const next = { ...p, ...data }
+      next = { ...(p || {}), ...updates, ...(fresh || {}) }
       writeCache(user.id, 'profile', { profile: next, stats })
       return next
     })
-    return data
+    return fresh || { ...(profile || {}), ...updates }
   }
 
   async function uploadAvatar(file) {
@@ -100,5 +117,5 @@ export function useProfile({ useCache = false, withStats = true } = {}) {
     await supabase.auth.signOut()
   }
 
-  return { profile, stats, loading, updateProfile, uploadAvatar, deleteAccount }
+  return { profile, stats, loading, error, reload: load, updateProfile, uploadAvatar, deleteAccount }
 }

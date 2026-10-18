@@ -107,7 +107,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
   const [category, setCategory] = useState(null)
-  const [visibility, setVisibility] = useState('public')
+  const [visibility, setVisibility] = useState('siblings') // Standard: „Meine Geschwister"
   const [selectedCommunity, setSelectedCommunity] = useState(null)
   const [selectedSiblings, setSelectedSiblings] = useState([])
   const [goalEnabled, setGoalEnabled] = useState(false)

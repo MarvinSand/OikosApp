@@ -470,12 +470,13 @@ export async function saveReadingProgress(userId, { bibleId = DEFAULT_BIBLE_ID, 
 
 export function useReadingProgress() {
   const { user } = useAuth()
-  const [progress, setProgress] = useState(null)
+  // undefined = wird noch geladen, null = keine gespeicherte Stelle (oder Fehler)
+  const [progress, setProgress] = useState(undefined)
 
   useEffect(() => {
     if (!user) return
     supabase.from('bible_reading_progress').select('*').eq('user_id', user.id).maybeSingle()
-      .then(({ data }) => setProgress(data))
+      .then(({ data }) => setProgress(data ?? null), () => setProgress(null))
   }, [user?.id])
 
   return progress

@@ -206,12 +206,7 @@ async function checkBirthdays(userId) {
 
     const friendIds = friendships.map(f => f.requester_id === userId ? f.addressee_id : f.requester_id)
 
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name, username')
-      .in('id', friendIds)
-      .eq('show_birthday', true)
-      .not('birthday', 'is', null)
+    const { data: profiles } = await supabase.rpc('get_visible_birthdays', { p_ids: friendIds })
     if (!profiles?.length) return
 
     const todayBirthdays = profiles.filter(p => {

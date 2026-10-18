@@ -104,7 +104,7 @@ function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
 export default function ProfileView() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { profile, loading: profileLoading, uploadAvatar } = useProfile({ useCache: true })
+  const { profile, loading: profileLoading, error: profileError, reload: reloadProfile, uploadAvatar } = useProfile({ useCache: true })
   const {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
     loading: tabsLoading, reload, reactToPost, deletePost, toggleRepost, removeBookmark, markBookmarked,
@@ -145,6 +145,21 @@ export default function ProfileView() {
         <div style={{ padding: 16 }}>
           <div style={{ height: 140, borderRadius: 12, backgroundColor: 'var(--color-bg-secondary)' }} />
         </div>
+      </div>
+    )
+  }
+
+  if (!profile && profileError) {
+    return (
+      <div className="bg-bg min-h-full flex flex-col items-center justify-center" style={{ padding: 32, gap: 12, textAlign: 'center' }}>
+        <p style={{ fontSize: 15, color: 'var(--color-text)' }}>Profil konnte gerade nicht geladen werden.</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Bitte prüfe deine Verbindung und versuche es erneut.</p>
+        <button
+          onClick={() => { reloadProfile(); reload?.() }}
+          style={{ marginTop: 8, padding: '10px 20px', borderRadius: 999, border: 'none', backgroundColor: 'var(--color-text)', color: 'var(--color-bg)', fontWeight: 600, cursor: 'pointer' }}
+        >
+          Erneut versuchen
+        </button>
       </div>
     )
   }

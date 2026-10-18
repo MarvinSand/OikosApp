@@ -58,7 +58,19 @@ export default function BibleView() {
   const [sharePayload, setSharePayload] = useState(null) // { attachment, body } | null
 
   const bookInfo = findBook(book)
-  const { html, loading, error, retry: retryChapter } = useChapterText(bibleId, book, chapter)
+  const readingProgress = useReadingProgress()
+  // Ohne Deep-Link und ohne lokal gespeicherte Stelle (neues Gerät/Browser)
+  // kurz auf die DB-Leseposition warten, statt erst Johannes 3 zu laden und
+  // dann sichtbar zur gespeicherten Stelle zu springen. Max. 2,5 s.
+  const [needsDbPosition] = useState(() => !parseBibleLinkParams(searchParams) && !getLocalReadingPosition())
+  const [positionWaitOver, setPositionWaitOver] = useState(false)
+  useEffect(() => {
+    if (!needsDbPosition) return
+    const t = setTimeout(() => setPositionWaitOver(true), 2500)
+    return () => clearTimeout(t)
+  }, [needsDbPosition])
+  const waitingForPosition = needsDbPosition && readingProgress === undefined && !positionWaitOver && !userNavigatedRef.current
+  const { html, loading, error, retry: retryChapter } = useChapterText(bibleId, waitingForPosition ? null : book, chapter)
   // Der volle ~1479-Übersetzungen-Katalog wird erst geladen, wenn der Picker
   // tatsächlich geöffnet wird - nicht schon beim Öffnen des Bibel-Tabs.
   const { versions: bibleVersions, loading: versionsLoading } = useBibleVersions({ enabled: showVersionPicker })
@@ -67,7 +79,6 @@ export default function BibleView() {
   const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(bibleId, book, chapter, { youversionConnected: !!yv.connected })
   const { colors: savedColors, isSaved: isColorSaved, toggleColor: toggleSaveColor } = useSavedBibleColors()
   const { colors: recentColors, reload: reloadRecentColors } = useRecentBibleColors()
-  const readingProgress = useReadingProgress()
   // Solange der volle Katalog nicht geladen ist (Normalfall: Picker war noch
   // nie offen), reicht die Chip-Anzeige der aktuellen Übersetzung aus den
   // Defaults - deckt HFA (Standardwert) und die anderen Standard-Favoriten
@@ -274,7 +285,7 @@ export default function BibleView() {
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-semibold"
             style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)' }}
           >
-            {bookInfo?.name || book} {chapter} <ChevronDown size={16} />
+            {waitingForPosition ? "…" : `${bookInfo?.name || book} ${chapter}`} <ChevronDown size={16} />
           </button>
 
           <button onClick={goNextChapter} className="p-2 rounded-lg" style={{ color: 'var(--color-text-secondary)' }}>

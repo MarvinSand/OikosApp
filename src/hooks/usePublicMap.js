@@ -28,7 +28,7 @@ export function usePublicMap(userId, mapId) {
 
     supabase
       .from('profiles')
-      .select('id, full_name, username, avatar_url, bio_text, bio, city, country, church_name, show_bio, show_city, show_church, latitude, longitude')
+      .select('id, full_name, username, avatar_url, bio_text, bio, city, country, church_name, show_bio, show_city, show_church, has_location')
       .in('id', linkedIds)
       .then(({ data }) => {
         if (!data) return

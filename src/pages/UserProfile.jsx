@@ -17,6 +17,10 @@ import { NOTIFICATION_PREF_FIELDS } from '../lib/notificationPrefFields'
 import { Avatar, MapsTab, PostsTab, RepostsTab, PrayersTab } from '../components/profile/ProfileTabs'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
 
+// Für alle eingeloggten Nutzer lesbare Profilspalten (private Felder wie
+// Adresse, Koordinaten, Geburtstag, YouVersion-E-Mail sind ausgenommen).
+const PUBLIC_PROFILE_COLUMNS = 'id, username, full_name, avatar_url, bio, bio_text, show_bio, is_christian, gender, created_at, map_is_public, discipleship_stage, show_on_world_map, has_location, last_active_at, show_last_active, show_birthday, church_name, show_church, city, show_city, country, youversion_connected'
+
 const UserCreedsTab = lazy(() => import('../components/profile/UserCreedsTab'))
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -93,9 +97,20 @@ export default function UserProfile() {
 
   async function loadProfile() {
     setLoading(true)
-    const { data: profileData } = await supabase.from('profiles').select('*').eq('id', targetId).single()
-    setProfile(profileData || null)
-    setLoading(false)
+    // Nur öffentliche Spalten fremder Profile; der Geburtstag kommt (nur bei
+    // show_birthday) über get_visible_birthdays, Adresse/Koordinaten gar nicht.
+    try {
+      const [{ data: profileData }, { data: bdayRows }] = await Promise.all([
+        supabase.from('profiles').select(PUBLIC_PROFILE_COLUMNS).eq('id', targetId).single(),
+        targetId === user?.id
+          ? supabase.rpc('get_my_profile')
+          : supabase.rpc('get_visible_birthdays', { p_ids: [targetId] }),
+      ])
+      const birthday = Array.isArray(bdayRows) ? bdayRows[0]?.birthday ?? null : null
+      setProfile(profileData ? { ...profileData, birthday } : null)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleStartChat() {
