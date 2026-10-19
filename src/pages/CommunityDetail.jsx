@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, lazy, Suspense, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Settings, Copy, LogOut, SendHorizontal,
@@ -19,7 +19,7 @@ import PrayerCardList from '../components/prayer/PrayerCardList'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/image'
-import AddressAutocomplete from '../components/common/AddressAutocomplete'
+const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
 
 // ─── Shared header styles ─────────────────────────────────────
 const glassBtn = {
@@ -686,11 +686,14 @@ function SettingsSheet({
     if (!file) return
     setAvatarBusy(true)
     try {
-      const compressed = await compressImage(file, 600, 0.85)
-      const path = `${community.id}/avatar.jpg`
+      const { blob, contentType, ext } = await compressImage(file, 400, 0.8)
+      const path = `${community.id}/avatar.${ext}`
+      await supabase.storage.from('community-avatars').remove([
+        `${community.id}/avatar.jpg`, `${community.id}/avatar.webp`, path,
+      ])
       const { error: upErr } = await supabase.storage
         .from('community-avatars')
-        .upload(path, compressed, { contentType: 'image/jpeg', upsert: true })
+        .upload(path, blob, { contentType, upsert: true, cacheControl: '31536000' })
       if (upErr) throw upErr
       const { data } = supabase.storage.from('community-avatars').getPublicUrl(path)
       await onUpdate({ avatar_url: `${data.publicUrl}?t=${Date.now()}` })
@@ -706,7 +709,7 @@ function SettingsSheet({
   async function handleAvatarRemove() {
     setAvatarBusy(true)
     try {
-      await supabase.storage.from('community-avatars').remove([`${community.id}/avatar.jpg`])
+      await supabase.storage.from('community-avatars').remove([`${community.id}/avatar.jpg`, `${community.id}/avatar.webp`])
       await onUpdate({ avatar_url: null })
       showToast('Profilbild entfernt')
     } catch {
@@ -733,11 +736,14 @@ function SettingsSheet({
     if (!file) return
     setBannerBusy(true)
     try {
-      const compressed = await compressImage(file, 1600, 0.85)
-      const path = `${community.id}/banner.jpg`
+      const { blob, contentType, ext } = await compressImage(file, 1080, 0.8)
+      const path = `${community.id}/banner.${ext}`
+      await supabase.storage.from('community-banners').remove([
+        `${community.id}/banner.jpg`, `${community.id}/banner.webp`, path,
+      ])
       const { error: upErr } = await supabase.storage
         .from('community-banners')
-        .upload(path, compressed, { contentType: 'image/jpeg', upsert: true })
+        .upload(path, blob, { contentType, upsert: true, cacheControl: '31536000' })
       if (upErr) throw upErr
       const { data } = supabase.storage.from('community-banners').getPublicUrl(path)
       // Cache-Buster, damit das neue Bild sofort erscheint
@@ -754,7 +760,7 @@ function SettingsSheet({
   async function handleBannerRemove() {
     setBannerBusy(true)
     try {
-      await supabase.storage.from('community-banners').remove([`${community.id}/banner.jpg`])
+      await supabase.storage.from('community-banners').remove([`${community.id}/banner.jpg`, `${community.id}/banner.webp`])
       await onUpdate({ banner_url: null })
       showToast('Banner entfernt')
     } catch {
@@ -826,7 +832,9 @@ function SettingsSheet({
               <>
                 <div>
                   <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Standort</label>
-                  <AddressAutocomplete value={location} onChange={setLocation} placeholder="Adresse der Gemeinde…" showMapPreview />
+                  <Suspense fallback={<div style={{ height: 44, borderRadius: 10, background: 'var(--color-bg-secondary)' }} />}>
+                    <AddressAutocomplete value={location} onChange={setLocation} placeholder="Adresse der Gemeinde…" showMapPreview />
+                  </Suspense>
                 </div>
                 <div>
                   <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Treffzeit</label>

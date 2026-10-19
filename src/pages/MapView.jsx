@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
@@ -13,7 +13,7 @@ import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
 import MapCanvas from '../components/map/MapCanvas'
 import NewMapModal from '../components/map/NewMapModal'
 import AddPersonModal from '../components/map/AddPersonModal'
-import PersonDetailSheet from '../components/map/PersonDetailSheet'
+const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
 import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSheet'
@@ -708,7 +708,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         />
       )}
       {selectedPerson && (
-        <PersonDetailSheet
+        <Suspense fallback={null}><PersonDetailSheet
           person={selectedPerson}
           onClose={() => setSelectedPerson(null)}
           onUpdate={(updates) => updatePerson(selectedPerson.id, updates)}
@@ -745,7 +745,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           placeConnections={placeConnections}
           places={places}
           onDisconnectFromPlace={disconnectPlacePerson}
-        />
+        /></Suspense>
       )}
       {selectedPlace && (
         <PlaceDetailSheet

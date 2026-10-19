@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useToast } from '../../context/ToastContext'
-import AddressAutocomplete from '../common/AddressAutocomplete'
+const AddressAutocomplete = lazy(() => import('../common/AddressAutocomplete'))
 
 // Community erstellen/beitreten – aus FriendsView.jsx ausgelagert, weil
 // HomeCommunityTab (statisch von der eagerly geladenen Home-Seite
@@ -94,7 +94,7 @@ export function CreateCommunitySheet({ onClose }) {
         {isGemeinde ? (
           <>
             <label style={{ ...lbl, marginTop: 14 }}>Standort *</label>
-            <AddressAutocomplete value={location} onChange={setLocation} placeholder="Adresse der Gemeinde…" showMapPreview />
+            <Suspense fallback={null}><AddressAutocomplete value={location} onChange={setLocation} placeholder="Adresse der Gemeinde…" showMapPreview /></Suspense>
 
             <label style={{ ...lbl, marginTop: 14 }}>Treffzeit (optional)</label>
             <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder="z.B. Wöchentlich, Mittwoch 19 Uhr" style={inp} />

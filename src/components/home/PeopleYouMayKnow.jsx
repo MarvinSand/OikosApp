@@ -15,6 +15,10 @@ function Avatar({ name, size, avatarUrl, isChristian }) {
       <img
         src={avatarUrl}
         alt={name}
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
         style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
         onError={e => { e.target.style.display = 'none' }}
       />

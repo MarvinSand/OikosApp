@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { usePublicMap } from '../hooks/usePublicMap'
@@ -6,7 +6,7 @@ import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
 import { useSiblingsCommunities } from '../hooks/useSiblingsCommunities'
 import SiblingsToggles, { loadSiblingsView, saveSiblingsView, siblingsMapTitle } from '../components/map/SiblingsToggles'
 import MapCanvas from '../components/map/MapCanvas'
-import PersonDetailSheet from '../components/map/PersonDetailSheet'
+const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 
 // ─── PublicMapView (Main) ─────────────────────────────────────
 export default function PublicMapView() {
@@ -107,7 +107,7 @@ export default function PublicMapView() {
       </div>
 
       {selectedPerson && (
-        <PersonDetailSheet
+        <Suspense fallback={null}><PersonDetailSheet
           person={selectedPerson}
           onClose={() => setSelectedPerson(null)}
           connections={connections}
@@ -119,7 +119,7 @@ export default function PublicMapView() {
           ownerDisconnected={selectedPerson.owner_disconnected ?? false}
           linkedProfile={selectedPerson.linked_user_id ? linkedProfiles[selectedPerson.linked_user_id] || null : null}
           onOverlayPreview={togglePersonMapOverlay}
-        />
+        /></Suspense>
       )}
     </div>
   )

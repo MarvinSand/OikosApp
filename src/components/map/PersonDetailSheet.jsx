@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { X, Pencil, Trash2, Palette } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useFriendships } from '../../hooks/useFriendships'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
-import AddressAutocomplete from '../common/AddressAutocomplete'
+const AddressAutocomplete = lazy(() => import('../common/AddressAutocomplete'))
 import PrayerRequestsSection from '../person/PrayerRequestsSection'
 import ImpactMapSection from '../person/ImpactMapSection'
 import StoryLineSection from '../person/StoryLineSection'
@@ -617,7 +617,7 @@ function LocationSection({ person, onUpdate }) {
         Standort
       </h4>
 
-      <AddressAutocomplete value={addrValue} onChange={handleSelectAddress} placeholder="Adresse eingeben…" />
+      <LazyAddressAutocomplete value={addrValue} onChange={handleSelectAddress} placeholder="Adresse eingeben…" />
       <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '6px 2px 14px' }}>
         {savingAddr ? 'Wird gespeichert…' : 'Wird per Google-Suche automatisch erkannt und gespeichert.'}
       </p>
@@ -1009,6 +1009,14 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
         </div>
       )}
     </div>
+  )
+}
+
+function LazyAddressAutocomplete(props) {
+  return (
+    <Suspense fallback={<div style={{ height: 44, borderRadius: 10, background: 'var(--color-bg-secondary)' }} />}>
+      <AddressAutocomplete {...props} />
+    </Suspense>
   )
 }
 

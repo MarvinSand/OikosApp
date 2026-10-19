@@ -14,7 +14,7 @@ import MapCanvas from '../components/map/MapCanvas'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import NewMapModal from '../components/map/NewMapModal'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
-import ConnectionsOverlay from '../components/feed/ConnectionsOverlay'
+const ConnectionsOverlay = lazy(() => import('../components/feed/ConnectionsOverlay'))
 import { Avatar, MapsTab, PostsTab, RepostsTab, PrayersTab } from '../components/profile/ProfileTabs'
 
 // Bekenntnisse ziehen den Bibelstellen-/Editor-Code nach – erst laden, wenn
@@ -104,11 +104,11 @@ function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
 export default function ProfileView() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { profile, loading: profileLoading, error: profileError, reload: reloadProfile, uploadAvatar } = useProfile({ useCache: true })
+  const { profile, loading: profileLoading, error: profileError, reload: reloadProfile, uploadAvatar, tabSeed } = useProfile({ useCache: true })
   const {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
     loading: tabsLoading, reload, reactToPost, deletePost, toggleRepost, removeBookmark, markBookmarked,
-  } = useProfileTabs(user?.id)
+  } = useProfileTabs(user?.id, { seed: tabSeed })
   const { updateMap, deleteMap, createMap } = useOikosMaps({ skipLoad: true })
   const { showToast } = useToast()
   const fileInputRef = useRef(null)
@@ -461,7 +461,7 @@ export default function ProfileView() {
       )}
 
       {overlay === 'siblings' && (
-        <ConnectionsOverlay onClose={() => setOverlay(null)} />
+        <Suspense fallback={null}><ConnectionsOverlay onClose={() => setOverlay(null)} /></Suspense>
       )}
 
       {overlay === 'communities' && (

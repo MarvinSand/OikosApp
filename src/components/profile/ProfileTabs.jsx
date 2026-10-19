@@ -36,7 +36,7 @@ export function Avatar({ profile, size = 80, uploading }) {
       }}
     >
       {profile?.avatar_url ? (
-        <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={profile.avatar_url} alt="" width={size} height={size} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
         initials
       )}

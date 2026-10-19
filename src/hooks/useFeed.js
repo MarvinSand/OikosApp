@@ -310,12 +310,15 @@ export async function createFeedPost(userId, {
 
 // ─── Photo upload helper ──────────────────────────────────────
 async function uploadPhoto(file, userId) {
-  const compressed = await compressImage(file, 1600, 0.85)
-  const ext = 'jpg'
+  const { blob, contentType, ext } = await compressImage(file, 1080, 0.8)
   const path = `${userId}/${Date.now()}.${ext}`
   const { error } = await supabase.storage
     .from('feed-photos')
-    .upload(path, compressed, { contentType: 'image/jpeg', upsert: false })
+    .upload(path, blob, {
+      contentType,
+      upsert: false,
+      cacheControl: '31536000',
+    })
   if (error) throw error
   const { data } = supabase.storage.from('feed-photos').getPublicUrl(path)
   return data.publicUrl

@@ -18,6 +18,10 @@ export default function MutualAvatars({ people = [], count = people.length, size
               key={p.id}
               src={p.avatar_url}
               alt=""
+              width={size}
+              height={size}
+              loading="lazy"
+              decoding="async"
               style={{
                 width: size, height: size, borderRadius: '50%', objectFit: 'cover',
                 border: '1.5px solid var(--color-bg)', marginLeft: i === 0 ? 0 : -6, flexShrink: 0,

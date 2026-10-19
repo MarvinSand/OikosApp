@@ -51,7 +51,7 @@ async function attachReactions(rawPosts, currentUserId) {
  * Also returns the number of mutual connections (accepted friendships) and
  * the public communities the user belongs to.
  */
-export function useProfileTabs(profileUserId) {
+export function useProfileTabs(profileUserId, { seed } = {}) {
   const { user } = useAuth()
   const cacheName = `profileTabs:${profileUserId}`
   // Zuletzt geladener Stand als Startwert (siehe swrCache.js)
@@ -63,6 +63,7 @@ export function useProfileTabs(profileUserId) {
   const [connectionsCount, setConnectionsCount] = useState(initial?.connectionsCount ?? 0)
   const [publicCommunities, setPublicCommunities] = useState(initial?.publicCommunities ?? [])
   const [loading, setLoading] = useState(!initial)
+  const [bootMeta, setBootMeta] = useState(null)
   // Zu welchem Profil die angezeigten Daten gehören – beim Wechsel von
   // /user/A zu /user/B (gleiche Komponente) darf weder A's Stand unter B
   // gecacht werden noch eine verspätete Antwort für A die Ansicht von B füllen.
@@ -73,9 +74,21 @@ export function useProfileTabs(profileUserId) {
 
   useEffect(() => {
     if (!user || !profileUserId) return
+    if (seed && (seed.maps || seed.posts || seed.prayerRequests || seed.publicCommunities)) {
+      applySnapshot({
+        connectionsCount: seed.connectionsCount ?? 0,
+        publicCommunities: seed.publicCommunities ?? [],
+        maps: seed.maps ?? [],
+        posts: seed.posts ?? [],
+        reposts: seed.reposts ?? [],
+        prayerRequests: seed.prayerRequests ?? [],
+      }, profileUserId)
+      setBootMeta(null)
+      return
+    }
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, profileUserId])
+  }, [user?.id, profileUserId, seed])
 
   // Cache mit jedem Stand (auch nach Likes/Reposts/Löschen) synchron halten,
   // damit beim nächsten Öffnen nichts Veraltetes aufblitzt. Eigenes Profil
@@ -95,10 +108,56 @@ export function useProfileTabs(profileUserId) {
     if (cached) applySnapshot(cached, forId)
     else setLoading(true)
 
-    // Die sechs Bereiche sind voneinander unabhängig und laufen parallel.
-    // Vorher lief alles nacheinander (~10 Round-Trips in Reihe) – der
-    // Profil-Tab brauchte dadurch ein Vielfaches der Zeit eines einzelnen
-    // Requests, bei kaltem Backend entsprechend viele Sekunden.
+    // 1) Ein Round-Trip über Bootstrap-RPC (weniger Pool-Druck auf Nano).
+    //    Bei Fehler → bisheriger Parallel-Pfad als Fallback.
+    try {
+      if (isOwn) {
+        const { data: boot, error: bootErr } = await supabase.rpc('get_my_profile_bootstrap', {
+          p_with_stats: false,
+        })
+        if (!bootErr && boot?.profile) {
+          if (latestLoadRef.current !== forId) return
+          applySnapshot({
+            connectionsCount: boot.connections_count ?? 0,
+            publicCommunities: boot.public_communities ?? [],
+            maps: boot.maps ?? [],
+            posts: boot.posts ?? [],
+            reposts: boot.reposts ?? [],
+            prayerRequests: boot.prayer_requests ?? [],
+          }, forId)
+          setBootMeta(null)
+          return
+        }
+      } else {
+        const { data: boot, error: bootErr } = await supabase.rpc(
+          'get_other_user_profile_bootstrap',
+          { p_target: profileUserId },
+        )
+        if (!bootErr && boot?.profile) {
+          if (latestLoadRef.current !== forId) return
+          applySnapshot({
+            connectionsCount: boot.connections_count ?? 0,
+            publicCommunities: boot.public_communities ?? [],
+            maps: boot.maps ?? [],
+            posts: boot.posts ?? [],
+            reposts: boot.reposts ?? [],
+            prayerRequests: boot.prayer_requests ?? [],
+          }, forId)
+          setBootMeta({
+            profile: boot.profile,
+            friendship: boot.friendship,
+            blocked_by_me: !!boot.blocked_by_me,
+            blocked_me: !!boot.blocked_me,
+            notif_prefs: boot.notif_prefs,
+          })
+          return
+        }
+      }
+    } catch (err) {
+      console.warn('[useProfileTabs] Bootstrap fehlgeschlagen, Fallback:', err)
+    }
+
+    // 2) Fallback: sechs Bereiche parallel
     let results
     try {
       results = await Promise.all([
@@ -110,26 +169,23 @@ export function useProfileTabs(profileUserId) {
         loadPrayerRequests(),
       ])
     } catch (err) {
-      // Netzwerk-/Serverfehler: gecachten Stand behalten statt leerer Tabs
       console.error('[useProfileTabs] Laden fehlgeschlagen:', err)
       if (latestLoadRef.current !== forId) return
       if (cached) setLoading(false)
       else applySnapshot({ connectionsCount: 0, publicCommunities: [], maps: [], posts: [], reposts: [], prayerRequests: [] }, forId)
       return
     }
-    // Inzwischen wurde ein anderes Profil geöffnet
     if (latestLoadRef.current !== forId) return
     const [connectionsCountNext, publicCommunitiesNext, mapsNext, postsNext, repostsNext, prayersNext] = results
-
-    const snapshot = {
+    applySnapshot({
       connectionsCount: connectionsCountNext,
       publicCommunities: publicCommunitiesNext,
       maps: mapsNext,
       posts: postsNext,
       reposts: repostsNext,
       prayerRequests: prayersNext,
-    }
-    applySnapshot(snapshot, forId)
+    }, forId)
+    setBootMeta(null)
   }
 
   function applySnapshot(snap, forId) {
@@ -339,6 +395,6 @@ export function useProfileTabs(profileUserId) {
 
   return {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
-    loading, isOwn, reload: load, reactToPost, deletePost, toggleRepost, removeBookmark, markBookmarked,
+    loading, bootMeta, isOwn, reload: load, reactToPost, deletePost, toggleRepost, removeBookmark, markBookmarked,
   }
 }

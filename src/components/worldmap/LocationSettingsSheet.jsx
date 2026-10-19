@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import AddressAutocomplete from '../common/AddressAutocomplete'
+const AddressAutocomplete = lazy(() => import('../common/AddressAutocomplete'))
 import { useToast } from '../../context/ToastContext'
 
 const C = {
@@ -148,11 +148,11 @@ export default function LocationSettingsSheet({ myProfile, updateLocationSetting
 
         {/* Adresse */}
         <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: '0 0 8px' }}>Deine Adresse</p>
-        <AddressAutocomplete
+        <Suspense fallback={null}><AddressAutocomplete
           value={addrValue}
           onChange={handleSelectAddress}
           placeholder="Straße und Hausnummer eingeben…"
-        />
+        /></Suspense>
         <p style={{ fontSize: 11, color: C.textTer, margin: '6px 2px 20px', lineHeight: 1.5 }}>
           {savingAddr ? 'Wird gespeichert…' : 'Wird per Google-Suche automatisch erkannt und gespeichert.'}
         </p>

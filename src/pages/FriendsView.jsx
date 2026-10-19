@@ -39,6 +39,10 @@ function Avatar({ name, size = 40, isChristian, avatarUrl }) {
       <img
         src={avatarUrl}
         alt={name}
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
         style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--color-warm-3)' }}
         onError={e => { e.target.style.display = 'none' }}
       />
@@ -705,7 +709,7 @@ function ChatsAvatar({ name, size = 40, isChristian, avatarUrl }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
   if (avatarUrl) {
     return (
-      <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--color-warm-3)' }} onError={e => { e.target.style.display = 'none' }} />
+      <img src={avatarUrl} alt={name} width={size} height={size} loading="lazy" decoding="async" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--color-warm-3)' }} onError={e => { e.target.style.display = 'none' }} />
     )
   }
   return (
@@ -1110,7 +1114,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         )}
 
         {post.type === 'photo' && post.photo_url && (
-          <img src={post.photo_url} alt="" style={{ width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 10, marginBottom: 8, display: 'block' }} />
+          <img src={post.photo_url} alt="" loading="lazy" decoding="async" style={{ width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 10, marginBottom: 8, display: 'block' }} />
         )}
 
         <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: post.type === 'question' ? 15 : 14, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>

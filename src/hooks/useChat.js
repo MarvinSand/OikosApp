@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { compressImage } from '../lib/image'
 import { useAuth } from './useAuth'
 
 const PAGE_SIZE = 50
@@ -323,11 +324,23 @@ export function useChat(conversationId) {
   // ── Foto senden (optional: einmal ansehen / view-once) ──────────
   async function sendPhoto(file, { viewOnce = true } = {}) {
     if (!file || !user || !conversationId) return { error: new Error('missing') }
-    const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+    let blob = file
+    let contentType = file.type || 'image/jpeg'
+    let ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+    try {
+      const compressed = await compressImage(file, 1080, 0.8)
+      blob = compressed.blob
+      contentType = compressed.contentType
+      ext = compressed.ext
+    } catch { /* Original hochladen, wenn Kompression scheitert */ }
     const path = `${conversationId}/${user.id}/${Date.now()}.${ext}`
     const { error: upErr } = await supabase.storage
       .from('chat-photos')
-      .upload(path, file, { upsert: false, contentType: file.type || 'image/jpeg' })
+      .upload(path, blob, {
+        upsert: false,
+        contentType,
+        cacheControl: '31536000',
+      })
     if (upErr) return { error: upErr }
 
     const { data, error } = await supabase

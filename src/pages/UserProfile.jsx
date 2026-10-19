@@ -77,7 +77,7 @@ export default function UserProfile() {
   const { getFriendshipStatus, getFriendship, sendRequest, acceptRequest, declineRequest } = useFriendships()
   const {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
-    loading: tabsLoading, reactToPost, toggleRepost, removeBookmark, markBookmarked,
+    loading: tabsLoading, bootMeta, reactToPost, toggleRepost, removeBookmark, markBookmarked,
   } = useProfileTabs(targetId)
 
   // Sofort-Vorschau: Cache oder vom Aufrufer mitgegebene Basisdaten
@@ -97,7 +97,16 @@ export default function UserProfile() {
   const [overlay, setOverlay] = useState(null) // 'communities' | null
   const [showModeration, setShowModeration] = useState(false)
   const { isBlocked, unblock } = useBlocks()
-  const { prefs, updatePref } = useNotificationPrefs(targetId)
+  const { prefs: prefsHook, updatePref } = useNotificationPrefs(targetId)
+  const prefs = bootMeta?.notif_prefs
+    ? {
+        notify_prayer_requests: bootMeta.notif_prefs.notify_prayer_requests ?? true,
+        notify_feed_posts: bootMeta.notif_prefs.notify_feed_posts ?? false,
+        notify_oikos_entries: bootMeta.notif_prefs.notify_oikos_entries ?? false,
+        notify_prayers_for_oikos: bootMeta.notif_prefs.notify_prayers_for_oikos ?? false,
+        notify_storyline_entries: bootMeta.notif_prefs.notify_storyline_entries ?? false,
+      }
+    : prefsHook
   const birthdayBannerKey = `birthday_banner_${targetId}_${new Date().toDateString()}`
   const [bannerDismissed, setBannerDismissed] = useState(() => !!localStorage.getItem(birthdayBannerKey))
 
@@ -115,11 +124,23 @@ export default function UserProfile() {
 
   const targetIdRef = useRef(targetId)
   targetIdRef.current = targetId
+
+  // Header aus Bootstrap (ein RPC mit den Tabs) oder Fallback-Fetch.
   useEffect(() => {
     if (!targetId || !user) return
+    // Sofort-Vorschau behalten, bis Daten da sind
+    if (tabsLoading && !bootMeta) return
+    if (bootMeta?.profile?.id === targetId) {
+      const full = bootMeta.profile
+      setProfile(full)
+      setLoading(false)
+      writeProfileCache(targetId, full)
+      return
+    }
+    // Tabs kamen über Fallback ohne bootMeta → separater Header-Fetch
     loadProfile()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetId, user?.id])
+  }, [targetId, user?.id, tabsLoading, bootMeta])
 
   async function loadProfile() {
     const preview = initialPreview()
@@ -165,7 +186,7 @@ export default function UserProfile() {
   }
 
   async function handleFriendAction() {
-    const status = getFriendshipStatus(targetId)
+    const status = bootMeta?.friendship?.status || getFriendshipStatus(targetId)
     setActionLoading(true)
     try {
       if (status === 'none') {
@@ -185,7 +206,7 @@ export default function UserProfile() {
     }
   }
 
-  const status = getFriendshipStatus(targetId)
+  const status = bootMeta?.friendship?.status || getFriendshipStatus(targetId)
   const hasNotifPrefs = prefs.notify_prayer_requests || prefs.notify_feed_posts || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos || prefs.notify_storyline_entries
 
   function dismissBanner() {
@@ -295,7 +316,7 @@ export default function UserProfile() {
         />
       )}
 
-      {isBlocked(targetId) && (
+      {(bootMeta ? bootMeta.blocked_by_me : isBlocked(targetId)) && (
         <div style={{ margin: '12px 16px 0', padding: '12px 14px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10, backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)', fontSize: 13 }}>
           <Ban size={16} style={{ flexShrink: 0 }} />
           <span style={{ flex: 1 }}>Du hast diese Person blockiert. Ihr seht gegenseitig keine Inhalte.</span>
