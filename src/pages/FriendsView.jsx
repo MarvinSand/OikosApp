@@ -29,6 +29,7 @@ import { verseAttachmentFromRow } from '../lib/bibleLink'
 import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 import ModerationSheet from '../components/common/ModerationSheet'
 import { useBlocks } from '../hooks/useBlocks'
+import { profilePreviewState } from '../lib/profilePreview'
 
 // ─── Avatar ────────────────────────────────────────────────
 function Avatar({ name, size = 40, isChristian, avatarUrl }) {
@@ -419,7 +420,7 @@ function FriendsTab() {
             {upcomingBirthdays.map(p => (
               <button
                 key={p.id}
-                onClick={() => navigate(`/user/${p.id}`)}
+                onClick={() => navigate(`/user/${p.id}`, { state: profilePreviewState(p) })}
                 style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 10px', borderRadius: 14, backgroundColor: p.daysUntil === 0 ? '#FFF8E1' : 'var(--color-white)', border: `1.5px solid ${p.daysUntil === 0 ? '#F9A825' : 'var(--color-warm-3)'}`, cursor: 'pointer', minWidth: 80, textAlign: 'center' }}
               >
                 <Avatar name={p.full_name || p.username} isChristian={p.is_christian} avatarUrl={p.avatar_url} size={44} />
@@ -443,7 +444,7 @@ function FriendsTab() {
             {nearbyUsers.slice(0, 5).map(u => (
               <button
                 key={u.id}
-                onClick={() => navigate(`/user/${u.id}`)}
+                onClick={() => navigate(`/user/${u.id}`, { state: profilePreviewState(u) })}
                 style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 10px', borderRadius: 14, backgroundColor: 'var(--color-white)', border: '1.5px solid var(--color-warm-3)', cursor: 'pointer', minWidth: 80, textAlign: 'center' }}
               >
                 <Avatar name={u.full_name || u.username} isChristian={u.is_christian} avatarUrl={u.avatar_url} size={44} />
@@ -537,7 +538,7 @@ function FriendsTab() {
           </p>
           {filteredNotConnected.map(u => (
             <div key={u.id} style={personRow}>
-              <button onClick={() => navigate(`/user/${u.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+              <button onClick={() => navigate(`/user/${u.id}`, { state: profilePreviewState(u) })} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
                 <Avatar name={u.full_name || u.username} isChristian={u.is_christian} avatarUrl={u.avatar_url} />
                 <div style={{ minWidth: 0 }}>
                   <p style={nameText}>{u.full_name || u.username}</p>

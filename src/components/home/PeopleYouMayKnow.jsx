@@ -6,6 +6,7 @@ import { useFriendships } from '../../hooks/useFriendships'
 import { supabase } from '../../lib/supabase'
 import { readCache, writeCache } from '../../lib/swrCache'
 import ProfileListOverlay from '../feed/ProfileListOverlay'
+import { profilePreviewState } from '../../lib/profilePreview'
 
 function Avatar({ name, size, avatarUrl, isChristian }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -127,7 +128,7 @@ export default function PeopleYouMayKnow() {
                 </button>
 
                 <button
-                  onClick={() => navigate(`/user/${p.id}`)}
+                  onClick={() => navigate(`/user/${p.id}`, { state: profilePreviewState(p) })}
                   style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%' }}
                 >
                   <Avatar name={name} size={56} avatarUrl={p.avatar_url} isChristian={p.is_christian} />
@@ -180,7 +181,7 @@ export default function PeopleYouMayKnow() {
             avatarUrl: p.avatar_url,
           }))}
           onClose={() => setMutualSheetFor(null)}
-          onSelect={item => { setMutualSheetFor(null); navigate(`/user/${item.id}`) }}
+          onSelect={item => { setMutualSheetFor(null); navigate(`/user/${item.id}`, { state: profilePreviewState(item) }) }}
         />
       )}
     </div>

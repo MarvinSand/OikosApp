@@ -489,6 +489,32 @@ export default function Prayers() {
   const [showPrayerModeSetup, setShowPrayerModeSetup] = useState(false)
   const [prayerModeItems, setPrayerModeItems] = useState(null)
 
+  // Deep-Links von den Home-Kacheln:
+  //   ?open=mode  → "Gebetsmodus starten"-Sheet
+  //   ?open=lists → "Meine Listen" aufklappen und hinscrollen
+  //   ?view=goals → nur Gebete mit Gebetsziel (inkl. Gruppengebete)
+  const [listsExpandSignal, setListsExpandSignal] = useState(0)
+  const [goalsOnly, setGoalsOnly] = useState(() => searchParams.get('view') === 'goals')
+  const listsRef = useRef(null)
+  const feedListRef = useRef(null)
+  useEffect(() => {
+    const open = searchParams.get('open')
+    const view = searchParams.get('view')
+    if (!open && !view) return
+    if (open === 'mode') setShowPrayerModeSetup(true)
+    if (open === 'lists') {
+      setListsExpandSignal(n => n + 1)
+      requestAnimationFrame(() => listsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    }
+    if (view === 'goals') {
+      setGoalsOnly(true)
+      requestAnimationFrame(() => feedListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    }
+    searchParams.delete('open')
+    searchParams.delete('view')
+    setSearchParams(searchParams, { replace: true })
+  }, [searchParams, setSearchParams])
+
   // Direkt das Erstellen-Sheet öffnen, wenn man vom Profil "+ Gebetsanliegen" kommt
   useEffect(() => {
     if (searchParams.get('create') === '1') {
@@ -545,6 +571,7 @@ export default function Prayers() {
     allGoals.filter(g => g.personal_prayer_request_id)
       .map(g => [`${KIND_PERSONAL}:${g.personal_prayer_request_id}`, g]),
   )
+  const shownPrayers = goalsOnly ? filteredPrayers.filter(p => goalByKey.has(p.key)) : filteredPrayers
 
   // Count of non-default filter facets (status counts when not the default "open")
   const filterFacetCount = activeCategories.length + (dateActive ? 1 : 0) + (statusFilter !== 'open' ? 1 : 0)
@@ -778,8 +805,8 @@ export default function Prayers() {
       )}
 
       {/* Gebetslisten (kompakt) + Gebetsmodus */}
-      <div style={{ padding: '14px 0 4px', borderBottom: '1px solid var(--color-border)' }}>
-        <PrayerListsSection variant="compact" />
+      <div ref={listsRef} style={{ padding: '14px 0 4px', borderBottom: '1px solid var(--color-border)', scrollMarginTop: 72 }}>
+        <PrayerListsSection variant="compact" expandSignal={listsExpandSignal} />
         <div style={{ padding: '4px 16px 12px' }}>
           <button
             onClick={() => setShowPrayerModeSetup(true)}
@@ -796,7 +823,28 @@ export default function Prayers() {
         </div>
       </div>
 
-      <div style={{ padding: '14px 16px 0' }}>
+      <div ref={feedListRef} style={{ padding: '14px 16px 0', scrollMarginTop: 72 }}>
+        {goalsOnly && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
+              🎯 Gebetsziele & Gruppengebete{!loading ? ` · ${shownPrayers.length}` : ''}
+            </span>
+            <button
+              onClick={() => setGoalsOnly(false)}
+              aria-label="Filter Gebetsziele entfernen"
+              style={{ marginLeft: 'auto', fontSize: 12, padding: '4px 10px', borderRadius: 999, border: '1px solid var(--color-border)', background: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+            >
+              Alle anzeigen ✕
+            </button>
+          </div>
+        )}
+
+        {goalsOnly && !loading && shownPrayers.length === 0 && (
+          <p style={{ textAlign: 'center', padding: '30px 20px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+            Noch keine Gebete mit Gebetsziel sichtbar. Tippe auf „+", um ein Anliegen mit Ziel zu erstellen und gemeinsam zu beten.
+          </p>
+        )}
+
         {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[0, 1, 2].map(i => (
@@ -828,9 +876,9 @@ export default function Prayers() {
           </div>
         )}
 
-        {!loading && filteredPrayers.length > 0 && (
+        {!loading && shownPrayers.length > 0 && (
           <PrayerCardList
-            prayers={filteredPrayers}
+            prayers={shownPrayers}
             goalByKey={goalByKey}
             showSourceBadge={sourceFilter === 'all'}
             onChanged={reload}

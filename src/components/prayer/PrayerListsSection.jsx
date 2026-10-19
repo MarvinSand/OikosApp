@@ -162,13 +162,15 @@ function ListSkeleton() {
 }
 
 // ─── PrayerListsSection ───────────────────────────────────────
-export default function PrayerListsSection({ variant = 'full' }) {
+export default function PrayerListsSection({ variant = 'full', expandSignal = 0 }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { lists, loading, createList } = usePrayerLists()
   const [showCreate, setShowCreate] = useState(false)
   const [answeredCount, setAnsweredCount] = useState(0)
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(expandSignal > 0)
+  // Deep-Link (/prayers?open=lists): von außen aufklappen
+  useEffect(() => { if (expandSignal > 0) setExpanded(true) }, [expandSignal])
   const compact = variant === 'compact'
 
   useEffect(() => {

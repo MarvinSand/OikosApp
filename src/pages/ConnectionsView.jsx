@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useConnectionsList } from '../hooks/useConnectionsList'
+import { profilePreviewState } from '../lib/profilePreview'
 
 function getInitials(name) {
   if (!name) return '?'
@@ -136,7 +137,7 @@ export default function ConnectionsView() {
         {!loading && connections.map(c => (
           <button
             key={c.id}
-            onClick={() => navigate(`/user/${c.id}`)}
+            onClick={() => navigate(`/user/${c.id}`, { state: profilePreviewState(c) })}
             style={{
               display: 'flex',
               alignItems: 'center',

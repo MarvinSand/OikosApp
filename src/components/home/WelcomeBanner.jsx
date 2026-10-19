@@ -8,9 +8,9 @@ import {
 // Alle Kernfunktionen der App – eine Karte, ein Überblick, direkt navigierbar.
 const FEATURES = [
   { icon: MapPin,      title: 'Oikos Map',                   text: 'Begleite Menschen aus deinem Umfeld im Gebet – dein persönliches Beziehungsnetz.', target: '/profile' },
-  { icon: HandHeart,   title: 'Geführter Gebetsmodus',        text: 'Bete fokussiert durch Listen, Ziele & die Oikos Map.', target: '/prayers' },
-  { icon: ListChecks,  title: 'Gebetslisten',                 text: 'Anliegen merken und in eigenen Listen sammeln.', target: '/prayers' },
-  { icon: Target,      title: 'Gebetsziele & Gruppengebete',  text: 'Setzt euch gemeinsame Ziele und betet miteinander.', target: '/prayers' },
+  { icon: HandHeart,   title: 'Geführter Gebetsmodus',        text: 'Bete fokussiert durch Listen, Ziele & die Oikos Map.', target: '/prayers?open=mode' },
+  { icon: ListChecks,  title: 'Gebetslisten',                 text: 'Anliegen merken und in eigenen Listen sammeln.', target: '/prayers?open=lists' },
+  { icon: Target,      title: 'Gebetsziele & Gruppengebete',  text: 'Setzt euch gemeinsame Ziele und betet miteinander.', target: '/prayers?view=goals' },
   { icon: Users,       title: 'Community',                    text: 'Finde Geschwister, tritt Communities bei und betet gemeinsam.', target: '/?tab=community' },
   { icon: Globe,       title: 'Weltkarte',                    text: 'Sieh Events und wo deine Geschwister weltweit unterwegs sind.', target: '/worldmap' },
   { icon: Newspaper,   title: 'For-You-Feed',                 text: 'Anliegen teilen, kommentieren, reagieren & weiterleiten.', target: '/friends?tab=feed' },

@@ -179,38 +179,26 @@ export function useProfileTabs(profileUserId) {
     const { data: mapsRaw, error: mapsError } = await mapsQuery
     if (mapsError) throw mapsError
 
-    let visibleMaps = mapsRaw || []
-    if (!isOwn) {
-      const [{ data: friendship }, { data: myCommunities }] = await Promise.all([
-        supabase
-          .from('friendships')
-          .select('id')
-          .or(`and(requester_id.eq.${user.id},addressee_id.eq.${profileUserId}),and(requester_id.eq.${profileUserId},addressee_id.eq.${user.id})`)
-          .eq('status', 'accepted')
-          .maybeSingle(),
-        supabase.from('community_members').select('community_id').eq('user_id', user.id),
-      ])
-      const isSibling = !!friendship
-      const myCommunityIds = (myCommunities || []).map(c => c.community_id)
-
-      visibleMaps = (mapsRaw || []).filter(map => {
-        if (map.visibility === 'private') return false
-        if (map.visibility === 'public') return true
-        if (map.visibility === 'all_siblings') return isSibling
-        if (map.visibility === 'specific_include') return (map.visibility_user_ids || []).includes(user.id)
-        if (map.visibility === 'specific_exclude') return isSibling && !(map.visibility_user_ids || []).includes(user.id)
-        if (map.visibility === 'community') return myCommunityIds.includes(map.visibility_community_id)
-        return false
-      })
-    }
+    // Sichtbarkeit (Geschwister, Community, spezifische Personen) prüft die
+    // RLS-Policy "Maps lesen" bereits serverseitig – identisch zum früheren
+    // Client-Filter. Der zusätzliche Friendship/Community-Round-Trip entfällt.
+    let visibleMaps = (mapsRaw || []).filter(m => isOwn || m.visibility !== 'private')
 
     if (visibleMaps.length > 0) {
-      const { data: peopleCounts } = await supabase
-        .from('oikos_people')
-        .select('map_id')
-        .in('map_id', visibleMaps.map(m => m.id))
+      const mapIds = visibleMaps.map(m => m.id)
       const countMap = {}
-      ;(peopleCounts || []).forEach(p => { countMap[p.map_id] = (countMap[p.map_id] || 0) + 1 })
+      // Nur Zähler statt aller Personen-Zeilen (phase84); Fallback für ältere DB
+      const { data: counts, error: countErr } = await supabase
+        .rpc('get_map_person_counts', { p_map_ids: mapIds })
+      if (!countErr) {
+        ;(counts || []).forEach(c => { countMap[c.map_id] = c.person_count })
+      } else {
+        const { data: peopleCounts } = await supabase
+          .from('oikos_people')
+          .select('map_id')
+          .in('map_id', mapIds)
+        ;(peopleCounts || []).forEach(p => { countMap[p.map_id] = (countMap[p.map_id] || 0) + 1 })
+      }
       visibleMaps = visibleMaps.map(m => ({ ...m, personCount: countMap[m.id] || 0 }))
     }
     return visibleMaps
@@ -232,18 +220,16 @@ export function useProfileTabs(profileUserId) {
 
   // 3b. Reposts (Beiträge, die dieser Nutzer geteilt/repostet hat)
   async function loadReposts() {
+    // Ein Request statt zwei: die Posts werden direkt eingebettet (FK post_id)
     const { data: repostRows, error } = await supabase
       .from('feed_reposts')
-      .select('post_id, created_at')
+      .select(`post_id, created_at, feed_posts(${POST_SELECT})`)
       .eq('user_id', profileUserId)
       .order('created_at', { ascending: false })
     if (error) throw error
     const repostPostIds = (repostRows || []).map(r => r.post_id)
     if (repostPostIds.length === 0) return []
-    const { data: repostedPosts } = await supabase
-      .from('feed_posts')
-      .select(POST_SELECT)
-      .in('id', repostPostIds)
+    const repostedPosts = (repostRows || []).map(r => r.feed_posts).filter(Boolean)
     const withEngagement = await attachReactions(repostedPosts || [], user.id)
     const orderMap = new Map(repostPostIds.map((id, i) => [id, i]))
     withEngagement.sort((a, b) => orderMap.get(a.id) - orderMap.get(b.id))

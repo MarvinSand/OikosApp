@@ -1,5 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, UserCheck, UserPlus, Clock, X, MessageCircle, Bell,
   MapPin, Church, Map as MapIcon, Newspaper, HandHeart, Repeat2, ScrollText, MoreHorizontal, Ban,
@@ -20,6 +20,21 @@ import ProfileListOverlay from '../components/feed/ProfileListOverlay'
 // Für alle eingeloggten Nutzer lesbare Profilspalten (private Felder wie
 // Adresse, Koordinaten, Geburtstag, YouVersion-E-Mail sind ausgenommen).
 const PUBLIC_PROFILE_COLUMNS = 'id, username, full_name, avatar_url, bio, bio_text, show_bio, is_christian, gender, created_at, map_is_public, discipleship_stage, show_on_world_map, has_location, last_active_at, show_last_active, show_birthday, church_name, show_church, city, show_city, country, youversion_connected'
+
+// Zuletzt geladene fremde Profile (nur öffentliche Spalten) – damit der Kopf
+// beim erneuten Öffnen sofort steht, während im Hintergrund aktualisiert wird.
+const profileMemCache = new Map()
+function readProfileCache(id) {
+  if (profileMemCache.has(id)) return profileMemCache.get(id)
+  try {
+    const raw = sessionStorage.getItem(`oikos_up_${id}`)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+function writeProfileCache(id, data) {
+  profileMemCache.set(id, data)
+  try { sessionStorage.setItem(`oikos_up_${id}`, JSON.stringify(data)) } catch { /* voll/privat */ }
+}
 
 const UserCreedsTab = lazy(() => import('../components/profile/UserCreedsTab'))
 
@@ -55,6 +70,7 @@ function formatBirthdayDisplay(dateStr) {
 export default function UserProfile() {
   const { id: targetId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -64,8 +80,16 @@ export default function UserProfile() {
     loading: tabsLoading, reactToPost, toggleRepost, removeBookmark, markBookmarked,
   } = useProfileTabs(targetId)
 
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Sofort-Vorschau: Cache oder vom Aufrufer mitgegebene Basisdaten
+  // (navigate(`/user/${id}`, { state: { profilePreview } })).
+  const initialPreview = () => {
+    const cached = targetId ? readProfileCache(targetId) : null
+    if (cached) return cached
+    const prev = location.state?.profilePreview
+    return prev && prev.id === targetId ? prev : null
+  }
+  const [profile, setProfile] = useState(initialPreview)
+  const [loading, setLoading] = useState(() => !initialPreview())
   const [actionLoading, setActionLoading] = useState(false)
   const [chatLoading, setChatLoading] = useState(false)
   const [showNotifPrefs, setShowNotifPrefs] = useState(false)
@@ -89,6 +113,8 @@ export default function UserProfile() {
     if (user && targetId === user.id) navigate('/profile', { replace: true })
   }, [user, targetId])
 
+  const targetIdRef = useRef(targetId)
+  targetIdRef.current = targetId
   useEffect(() => {
     if (!targetId || !user) return
     loadProfile()
@@ -96,20 +122,32 @@ export default function UserProfile() {
   }, [targetId, user?.id])
 
   async function loadProfile() {
-    setLoading(true)
+    const preview = initialPreview()
+    if (preview) { setProfile(preview); setLoading(false) }
+    else { setProfile(null); setLoading(true) }
     // Nur öffentliche Spalten fremder Profile; der Geburtstag kommt (nur bei
     // show_birthday) über get_visible_birthdays, Adresse/Koordinaten gar nicht.
+    // Beide Requests laufen parallel, der Kopf wartet aber nicht auf den Geburtstag.
+    const forId = targetId
+    const bdayPromise = (targetId === user?.id
+      ? supabase.rpc('get_my_profile')
+      : supabase.rpc('get_visible_birthdays', { p_ids: [targetId] })
+    ).then(({ data }) => (Array.isArray(data) ? data[0]?.birthday ?? null : null), () => null)
     try {
-      const [{ data: profileData }, { data: bdayRows }] = await Promise.all([
-        supabase.from('profiles').select(PUBLIC_PROFILE_COLUMNS).eq('id', targetId).single(),
-        targetId === user?.id
-          ? supabase.rpc('get_my_profile')
-          : supabase.rpc('get_visible_birthdays', { p_ids: [targetId] }),
-      ])
-      const birthday = Array.isArray(bdayRows) ? bdayRows[0]?.birthday ?? null : null
-      setProfile(profileData ? { ...profileData, birthday } : null)
-    } finally {
+      const { data: profileData, error } = await supabase
+        .from('profiles').select(PUBLIC_PROFILE_COLUMNS).eq('id', targetId).maybeSingle()
+      if (forId !== targetIdRef.current) return
+      if (error && preview) return // Vorschau behalten statt "nicht gefunden"
+      setProfile(profileData ? { ...profileData, birthday: profileMemCache.get(forId)?.birthday ?? null } : null)
       setLoading(false)
+      if (!profileData) return
+      const birthday = await bdayPromise
+      if (forId !== targetIdRef.current) return
+      const full = { ...profileData, birthday }
+      writeProfileCache(forId, full)
+      setProfile(full)
+    } finally {
+      if (forId === targetIdRef.current) setLoading(false)
     }
   }
 
