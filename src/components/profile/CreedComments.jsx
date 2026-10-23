@@ -144,7 +144,11 @@ export default function CreedComments({ creedId, onCountChange }) {
         const replies = comments.filter(r => r.parent_id === c.id)
         const open = openReplies.has(c.id)
         return (
-          <div key={c.id}>
+          <div key={c.id} style={{ position: 'relative' }}>
+            {open && replies.length > 0 && (
+              // Thread-Linie: vom unteren Rand des Profilbilds (28px) bis zur letzten Antwort
+              <div aria-hidden style={{ position: 'absolute', left: 13, top: 32, bottom: 12, width: 2, backgroundColor: 'var(--color-border)' }} />
+            )}
             {renderComment(c, false)}
             {replies.length > 0 && (
               <button
@@ -156,8 +160,7 @@ export default function CreedComments({ creedId, onCountChange }) {
               </button>
             )}
             {open && replies.length > 0 && (
-              // Verbindungslinie unter dem Profilbild des Kommentars (Avatar 28px → Mitte 14px)
-              <div style={{ marginLeft: 13, paddingLeft: 21, borderLeft: '2px solid var(--color-border)' }}>
+              <div style={{ marginLeft: 36 }}>
                 {replies.map(r => renderComment(r, true))}
               </div>
             )}
