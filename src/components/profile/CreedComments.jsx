@@ -95,13 +95,22 @@ export default function CreedComments({ creedId, onCountChange }) {
     })
   }
 
-  function renderComment(c, isReply) {
+  function renderComment(c, isReply, isLast) {
     const name = c.profiles?.full_name || c.profiles?.username || 'Geschwister'
     const own = c.author_id === user?.id
     const likeCount = likes.filter(l => l.comment_id === c.id).length
     const liked = likes.some(l => l.comment_id === c.id && l.user_id === user?.id)
     return (
-      <div key={c.id} className="flex gap-2 mb-3">
+      <div key={c.id} className="flex gap-2 mb-3" style={isReply ? { position: 'relative' } : undefined}>
+        {isReply && (
+          // Verbindung zur Thread-Linie: Linie läuft durch, die letzte Antwort bekommt einen Bogen zum Profilbild
+          isLast
+            ? <div aria-hidden style={{ position: 'absolute', left: -23, top: -12, width: 23, height: 27, borderLeft: '2px solid var(--color-border)', borderBottom: '2px solid var(--color-border)', borderBottomLeftRadius: 10 }} />
+            : <>
+                <div aria-hidden style={{ position: 'absolute', left: -23, top: -12, bottom: 0, width: 2, backgroundColor: 'var(--color-border)' }} />
+                <div aria-hidden style={{ position: 'absolute', left: -23, top: 13, width: 23, height: 2, backgroundColor: 'var(--color-border)' }} />
+              </>
+        )}
         <Avatar profile={c.profiles} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -144,24 +153,26 @@ export default function CreedComments({ creedId, onCountChange }) {
         const replies = comments.filter(r => r.parent_id === c.id)
         const open = openReplies.has(c.id)
         return (
-          <div key={c.id} style={{ position: 'relative' }}>
-            {open && replies.length > 0 && (
-              // Thread-Linie: vom unteren Rand des Profilbilds (28px) bis zur letzten Antwort
-              <div aria-hidden style={{ position: 'absolute', left: 13, top: 32, bottom: 12, width: 2, backgroundColor: 'var(--color-border)' }} />
-            )}
-            {renderComment(c, false)}
-            {replies.length > 0 && (
-              <button
-                onClick={() => toggleReplies(c.id)}
-                className="mb-3"
-                style={{ marginLeft: 36, marginTop: -6, fontSize: 12, fontWeight: 600, color: 'var(--color-accent)' }}
-              >
-                {open ? 'Antworten ausblenden' : `${replies.length} ${replies.length === 1 ? 'Antwort' : 'Antworten'} anzeigen`}
-              </button>
-            )}
+          <div key={c.id}>
+            <div style={{ position: 'relative', display: 'flow-root' }}>
+              {open && replies.length > 0 && (
+                // Thread-Linie: vom unteren Rand des Profilbilds (28px) bis zur ersten Antwort
+                <div aria-hidden style={{ position: 'absolute', left: 13, top: 32, bottom: 0, width: 2, backgroundColor: 'var(--color-border)' }} />
+              )}
+              {renderComment(c, false)}
+              {replies.length > 0 && (
+                <button
+                  onClick={() => toggleReplies(c.id)}
+                  className="mb-3"
+                  style={{ marginLeft: 36, marginTop: -6, fontSize: 12, fontWeight: 600, color: 'var(--color-accent)' }}
+                >
+                  {open ? 'Antworten ausblenden' : `${replies.length} ${replies.length === 1 ? 'Antwort' : 'Antworten'} anzeigen`}
+                </button>
+              )}
+            </div>
             {open && replies.length > 0 && (
               <div style={{ marginLeft: 36 }}>
-                {replies.map(r => renderComment(r, true))}
+                {replies.map((r, i) => renderComment(r, true, i === replies.length - 1))}
               </div>
             )}
           </div>
