@@ -29,6 +29,7 @@ export default function CreedComments({ creedId, onCountChange }) {
   const [likes, setLikes] = useState([])
   const [draft, setDraft] = useState('')
   const [replyTo, setReplyTo] = useState(null)
+  const [openReplies, setOpenReplies] = useState(() => new Set())
   const [sending, setSending] = useState(false)
   const [moderation, setModeration] = useState(null)
 
@@ -64,6 +65,7 @@ export default function CreedComments({ creedId, onCountChange }) {
       .single()
     if (!error && data) {
       update([...(comments || []), data])
+      if (data.parent_id) setOpenReplies(prev => new Set(prev).add(data.parent_id))
       setDraft('')
       setReplyTo(null)
     }
@@ -85,13 +87,21 @@ export default function CreedComments({ creedId, onCountChange }) {
     else await supabase.from('creed_comment_likes').insert({ comment_id: id, user_id: user.id })
   }
 
+  function toggleReplies(id) {
+    setOpenReplies(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
   function renderComment(c, isReply) {
     const name = c.profiles?.full_name || c.profiles?.username || 'Geschwister'
     const own = c.author_id === user?.id
     const likeCount = likes.filter(l => l.comment_id === c.id).length
     const liked = likes.some(l => l.comment_id === c.id && l.user_id === user?.id)
     return (
-      <div key={c.id} className="flex gap-2 mb-3" style={isReply ? { marginLeft: 36 } : undefined}>
+      <div key={c.id} className="flex gap-2 mb-3">
         <Avatar profile={c.profiles} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -130,12 +140,30 @@ export default function CreedComments({ creedId, onCountChange }) {
       {comments?.length === 0 && (
         <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Noch keine Kommentare.</p>
       )}
-      {top.map(c => (
-        <div key={c.id}>
-          {renderComment(c, false)}
-          {comments.filter(r => r.parent_id === c.id).map(r => renderComment(r, true))}
-        </div>
-      ))}
+      {top.map(c => {
+        const replies = comments.filter(r => r.parent_id === c.id)
+        const open = openReplies.has(c.id)
+        return (
+          <div key={c.id}>
+            {renderComment(c, false)}
+            {replies.length > 0 && (
+              <button
+                onClick={() => toggleReplies(c.id)}
+                className="mb-3"
+                style={{ marginLeft: 36, marginTop: -6, fontSize: 12, fontWeight: 600, color: 'var(--color-accent)' }}
+              >
+                {open ? 'Antworten ausblenden' : `${replies.length} ${replies.length === 1 ? 'Antwort' : 'Antworten'} anzeigen`}
+              </button>
+            )}
+            {open && replies.length > 0 && (
+              // Verbindungslinie unter dem Profilbild des Kommentars (Avatar 28px → Mitte 14px)
+              <div style={{ marginLeft: 13, paddingLeft: 21, borderLeft: '2px solid var(--color-border)' }}>
+                {replies.map(r => renderComment(r, true))}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {replyTo && (
         <div className="flex items-center gap-1.5 mb-1.5" style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
