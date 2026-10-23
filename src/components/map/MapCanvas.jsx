@@ -374,6 +374,49 @@ export default function MapCanvas({
     }
   }
 
+  // Overlay-Geschwister dürfen sich — genau wie die eigenen Personen — nicht
+  // überlappen: getOverlayPos liefert nur die "rohe" (übersetzte/gespeicherte)
+  // Position; hier wird sie wie bei den eigenen Personen per relaxLayout
+  // pro Overlay-Gruppe aufgelöst, inkl. während des Ziehens.
+  const overlayLayout = useMemo(() => {
+    const result = {}
+    overlayData.forEach(od => {
+      const parentPerson = people.find(p => p.id === od.parentPersonId)
+      if (!parentPerson) return
+      const parentIdx = people.indexOf(parentPerson)
+      const parentPos = getPos(parentPerson, parentIdx)
+
+      const bCount = od.personCount ?? od.persons.length
+      const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+      const bVbSize = bRingRadius * 2 + 140
+      const brotherCx = bVbSize / 2
+      const brotherCy = bVbSize / 2
+
+      const visible = od.persons.filter(op =>
+        (op.is_christian && od.showChristian) || (!op.is_christian && od.showNonChristian)
+      )
+
+      const base = {}
+      visible.forEach(op => {
+        base[op.id] = getOverlayPos(od.parentPersonId, op, parentPos, brotherCx, brotherCy, bRingRadius, od.persons)
+      })
+      const nodes = visible.map(op => ({
+        id: op.id,
+        r: personR,
+        fixed: dragging?.overlayKey === overlayKey(od.parentPersonId, op.id) && dragging?.moved,
+      }))
+      result[od.parentPersonId] = relaxLayout(base, nodes, {
+        cx: parentPos.x, cy: parentPos.y, centerR: personR + 8, gap: 12,
+      })
+    })
+    return result
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayData, layout, overlayPositions, dragging?.overlayKey, dragging?.moved, people])
+
+  function getOverlayDisplayPos(parentId, person) {
+    return overlayLayout[parentId]?.[person.id] || { x: 0, y: 0 }
+  }
+
   // Resolves any person ID to { person, pos } — works for both main and overlay persons
   function resolvePersonPos(personId) {
     const mainIdx = people.findIndex(p => p.id === personId)
@@ -381,24 +424,9 @@ export default function MapCanvas({
       return { person: people[mainIdx], pos: getPos(people[mainIdx], mainIdx) }
     }
     for (const od of overlayData) {
-      const parentPerson = people.find(p => p.id === od.parentPersonId)
-      if (!parentPerson) continue
-      const parentIdx = people.indexOf(parentPerson)
-      const parentPos = getPos(parentPerson, parentIdx)
-      const visible = od.persons.filter(op =>
-        (op.is_christian && od.showChristian) || (!op.is_christian && od.showNonChristian)
-      )
-      const opIdx = visible.findIndex(op => op.id === personId)
-      if (opIdx !== -1) {
-        const bCount = od.personCount ?? od.persons.length
-        const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
-        const bVbSize = bRingRadius * 2 + 140
-        const brotherCx = bVbSize / 2
-        const brotherCy = bVbSize / 2
-        return {
-          person: visible[opIdx],
-          pos: getOverlayPos(od.parentPersonId, visible[opIdx], parentPos, brotherCx, brotherCy, bRingRadius, od.persons),
-        }
+      const found = od.persons.find(op => op.id === personId)
+      if (found) {
+        return { person: found, pos: getOverlayDisplayPos(od.parentPersonId, found) }
       }
     }
     return null
@@ -1032,12 +1060,18 @@ export default function MapCanvas({
           const parentIdx = people.indexOf(parentPerson)
           const parentPos = getPos(parentPerson, parentIdx)
 
-          // Compute brother's map center so we can translate his saved positions
+          // Für die Orte: gleiche Übersetzung wie bei den Personen (gleicher
+          // Bezugsrahmen des Geschwister-Accounts), aber ohne Kollisions-
+          // Auflösung — Orte sind hier rein lesend.
           const bCount = od.personCount ?? od.persons.length
           const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
           const bVbSize = bRingRadius * 2 + 140
           const brotherCx = bVbSize / 2
           const brotherCy = bVbSize / 2
+          const getOverlayPlacePos = (pl) => ({
+            x: parentPos.x + (pl.pos_x - brotherCx),
+            y: parentPos.y + (pl.pos_y - brotherCy),
+          })
 
           const visibleSet = new Set(
             od.persons
@@ -1046,14 +1080,65 @@ export default function MapCanvas({
           )
           const visible = od.persons.filter(op => visibleSet.has(op.id))
 
+          const overlayPlaces = (od.places || []).filter(pl => pl.pos_x != null && pl.pos_y != null)
+
+          const placeConnLines = (od.placeConnections || [])
+            .filter(c => visibleSet.has(c.person_id))
+            .map(c => {
+              const pl = overlayPlaces.find(p => p.id === c.place_id)
+              const person = od.persons.find(p => p.id === c.person_id)
+              if (!pl || !person) return null
+              const placePos = getOverlayPlacePos(pl)
+              const personPos = getOverlayDisplayPos(od.parentPersonId, person)
+              return (
+                <line
+                  key={`overlay_pc_${od.parentPersonId}_${c.id}`}
+                  x1={placePos.x} y1={placePos.y}
+                  x2={personPos.x} y2={personPos.y}
+                  stroke={pl.color || '#8A7060'}
+                  strokeWidth={1.5}
+                  opacity={0.6}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )
+            }).filter(Boolean)
+
+          const TYPE_EMOJIS = { sport: '🏋️', work: '💼', school: '🏫', church: '⛪', place: '📍', other: '🗺️' }
+          const placeNodes = overlayPlaces.map(pl => {
+            const pos = getOverlayPlacePos(pl)
+            const w = 84, h = 46, rx = 9
+            const emoji = TYPE_EMOJIS[pl.type] || '📍'
+            const plName = pl.name.length > 9 ? pl.name.slice(0, 8) + '…' : pl.name
+            return (
+              <g key={`overlay_place_${od.parentPersonId}_${pl.id}`} opacity={0.85} style={{ pointerEvents: 'none' }}>
+                <rect
+                  x={pos.x - w / 2} y={pos.y - h / 2} width={w} height={h} rx={rx}
+                  fill="var(--color-white)"
+                  stroke={pl.color || 'var(--color-warm-3)'}
+                  strokeWidth={1.5}
+                />
+                <text x={pos.x} y={pos.y - 6} textAnchor="middle" fontSize={14} style={{ pointerEvents: 'none' }}>
+                  {emoji}
+                </text>
+                <text
+                  x={pos.x} y={pos.y + 12} textAnchor="middle"
+                  fill="#3A2E24" fontSize={9} fontFamily="Lora, Georgia, serif"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {plName}
+                </text>
+              </g>
+            )
+          })
+
           const connLines = (od.connections || [])
             .filter(c => visibleSet.has(c.source_person_id) && visibleSet.has(c.target_person_id))
             .map(c => {
               const src = od.persons.find(p => p.id === c.source_person_id)
               const tgt = od.persons.find(p => p.id === c.target_person_id)
               if (!src || !tgt) return null
-              const srcPos = getOverlayPos(od.parentPersonId, src, parentPos, brotherCx, brotherCy, bRingRadius, od.persons)
-              const tgtPos = getOverlayPos(od.parentPersonId, tgt, parentPos, brotherCx, brotherCy, bRingRadius, od.persons)
+              const srcPos = getOverlayDisplayPos(od.parentPersonId, src)
+              const tgtPos = getOverlayDisplayPos(od.parentPersonId, tgt)
               return (
                 <line
                   key={`overlay_conn_${od.parentPersonId}_${c.id}`}
@@ -1068,7 +1153,7 @@ export default function MapCanvas({
             }).filter(Boolean)
 
           const personNodes = visible.map((op) => {
-            const pos = getOverlayPos(od.parentPersonId, op, parentPos, brotherCx, brotherCy, bRingRadius, od.persons)
+            const pos = getOverlayDisplayPos(od.parentPersonId, op)
             const ox = pos.x
             const oy = pos.y
             const personColor = op.circle_color || '#E8E4DC'
@@ -1149,7 +1234,7 @@ export default function MapCanvas({
             )
           })
 
-          return [...connLines, ...personNodes]
+          return [...placeConnLines, ...placeNodes, ...connLines, ...personNodes]
         })}
 
         {/* Inter-person connections */}

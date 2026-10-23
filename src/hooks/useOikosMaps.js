@@ -70,7 +70,7 @@ export function useOikosMaps() {
     const withOverlay = persons.filter(p => p.overlay_map_ids?.length > 0)
     if (withOverlay.length === 0) { setOverlayData([]); return }
 
-    const [results, connResults] = await Promise.all([
+    const [results, connResults, placeResults] = await Promise.all([
       Promise.all(
         withOverlay.map(p =>
           supabase
@@ -88,8 +88,25 @@ export function useOikosMaps() {
             .in('map_id', p.overlay_map_ids)
         )
       ),
+      Promise.all(
+        withOverlay.map(p =>
+          supabase
+            .from('oikos_places')
+            .select('*')
+            .in('map_id', p.overlay_map_ids)
+            .order('created_at')
+        )
+      ),
     ])
     const secondaryIds = getSecondaryIds()
+    const placeConnResults = await Promise.all(
+      placeResults.map(r => {
+        const placeIds = (r.data || []).map(pl => pl.id)
+        return placeIds.length
+          ? supabase.from('person_place_connections').select('id, person_id, place_id').in('place_id', placeIds)
+          : Promise.resolve({ data: [] })
+      })
+    )
     setOverlayData(withOverlay.map((p, i) => {
       const persons = (results[i].data || []).map(op => ({
         ...op,
@@ -100,6 +117,8 @@ export function useOikosMaps() {
         persons,
         personCount: persons.length,
         connections: connResults[i].data || [],
+        places: placeResults[i].data || [],
+        placeConnections: placeConnResults[i].data || [],
         showChristian: p.overlay_show_christian !== false,
         showNonChristian: p.overlay_show_non_christian !== false,
       }
@@ -272,7 +291,7 @@ export function useOikosMaps() {
     setPeople(prev => prev.map(p => p.id === personId ? { ...p, ...updates } : p))
 
     if (ids.length > 0) {
-      const [{ data }, { data: connData }] = await Promise.all([
+      const [{ data }, { data: connData }, { data: placeData }] = await Promise.all([
         supabase
           .from('oikos_people')
           .select('*')
@@ -282,7 +301,16 @@ export function useOikosMaps() {
           .from('oikos_connections')
           .select('*')
           .in('map_id', ids),
+        supabase
+          .from('oikos_places')
+          .select('*')
+          .in('map_id', ids)
+          .order('created_at'),
       ])
+      const placeIds = (placeData || []).map(pl => pl.id)
+      const { data: placeConnData } = placeIds.length
+        ? await supabase.from('person_place_connections').select('id, person_id, place_id').in('place_id', placeIds)
+        : { data: [] }
       setOverlayData(prev => {
         const rest = prev.filter(od => od.parentPersonId !== personId)
         const secondaryIds = getSecondaryIds()
@@ -295,6 +323,8 @@ export function useOikosMaps() {
           persons,
           personCount: persons.length,
           connections: connData || [],
+          places: placeData || [],
+          placeConnections: placeConnData || [],
           showChristian: overlay_show_christian !== false,
           showNonChristian: overlay_show_non_christian !== false,
         }]
