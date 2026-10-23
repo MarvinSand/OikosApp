@@ -1089,6 +1089,30 @@ export default function MapCanvas({
           const overlayPlaces = od.places || []
           const placeConnectedIds = new Set((od.placeConnections || []).map(c => c.person_id))
 
+          // Eltern-zu-Ort-Linie — wie auf der eigenen Map bekommt jeder Ort
+          // eine Linie vom Besitzer (hier: der Overlay-Elternperson), unabhängig
+          // davon, ob auch eine Person damit verbunden ist.
+          const placeCenterLines = overlayPlaces.map(pl => {
+            const pos = getOverlayPlacePos(pl)
+            const dx = pos.x - parentPos.x
+            const dy = pos.y - parentPos.y
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1
+            const ux = dx / dist
+            const uy = dy / dist
+            const x1 = parentPos.x + ux * personR
+            const y1 = parentPos.y + uy * personR
+            return (
+              <line
+                key={`overlay_cpl_${od.parentPersonId}_${pl.id}`}
+                x1={x1} y1={y1} x2={pos.x} y2={pos.y}
+                stroke={pl.color || 'var(--color-warm-3)'}
+                strokeWidth={1.5}
+                opacity={0.7}
+                style={{ pointerEvents: 'none' }}
+              />
+            )
+          })
+
           const placeConnLines = (od.placeConnections || [])
             .filter(c => visibleSet.has(c.person_id))
             .map(c => {
@@ -1278,7 +1302,7 @@ export default function MapCanvas({
             )
           })
 
-          return [...placeConnLines, ...placeNodes, ...connLines, ...personNodes]
+          return [...placeCenterLines, ...placeConnLines, ...placeNodes, ...connLines, ...personNodes]
         })}
 
         {/* Inter-person connections */}
