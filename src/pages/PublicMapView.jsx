@@ -4,6 +4,8 @@ import { ArrowLeft } from 'lucide-react'
 import { usePublicMap } from '../hooks/usePublicMap'
 import MapCanvas from '../components/map/MapCanvas'
 import PersonDetailSheet from '../components/map/PersonDetailSheet'
+import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
+import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
 
 // ─── PublicMapView (Main) ─────────────────────────────────────
 export default function PublicMapView() {
@@ -11,6 +13,8 @@ export default function PublicMapView() {
   const navigate = useNavigate()
   const { map, people, connections, places, placeConnections, ownerName, linkedProfiles, overlayData, togglePersonMapOverlay, loading } = usePublicMap(userId, mapId)
   const [selectedPerson, setSelectedPerson] = useState(null)
+  const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
+  const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
 
   if (loading) {
     return (
@@ -62,6 +66,8 @@ export default function PublicMapView() {
           placeConnections={placeConnections}
           overlayData={overlayData}
           onPersonClick={setSelectedPerson}
+          onOverlayPersonClick={setSelectedOverlayPerson}
+          onOverlayPlaceClick={setSelectedOverlayPlace}
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
         />
@@ -82,6 +88,29 @@ export default function PublicMapView() {
           onOverlayPreview={togglePersonMapOverlay}
         />
       )}
+      {selectedOverlayPerson && (
+        <OverlayPersonSheet
+          person={selectedOverlayPerson}
+          onClose={() => setSelectedOverlayPerson(null)}
+          hostConnections={connections}
+          hostPeople={people}
+          hostOverlayData={overlayData}
+        />
+      )}
+      {selectedOverlayPlace && (() => {
+        const od = overlayData.find(od => (od.places || []).some(pl => pl.id === selectedOverlayPlace.id))
+        const connectedPersonNames = (od?.placeConnections || [])
+          .filter(c => c.place_id === selectedOverlayPlace.id)
+          .map(c => od.persons.find(p => p.id === c.person_id)?.name)
+          .filter(Boolean)
+        return (
+          <OverlayPlaceSheet
+            place={selectedOverlayPlace}
+            onClose={() => setSelectedOverlayPlace(null)}
+            connectedPersonNames={connectedPersonNames}
+          />
+        )
+      })()}
     </div>
   )
 }

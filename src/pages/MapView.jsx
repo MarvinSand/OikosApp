@@ -13,6 +13,7 @@ import AddPersonModal from '../components/map/AddPersonModal'
 import PersonDetailSheet from '../components/map/PersonDetailSheet'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
+import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
 import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSheet'
 import WorldMapView from '../components/worldmap/WorldMapView'
 
@@ -286,6 +287,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [connectionMode, setConnectionMode] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
+  const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
   const [selectedPlace, setSelectedPlace] = useState(null)
   // linkedProfile cache: { [userId]: profile }
   const [linkedProfiles, setLinkedProfiles] = useState({})
@@ -578,6 +580,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               onPersonMoved={(personId, x, y) => movePersonPosition(personId, x, y)}
               onCreateConnection={(sourceId, targetId, label) => createConnection(sourceId, targetId, label)}
               onOverlayPersonClick={setSelectedOverlayPerson}
+              onOverlayPlaceClick={setSelectedOverlayPlace}
               connectionMode={connectionMode}
               onConnectionColorChange={updateConnectionColor}
               onDeleteConnection={deleteConnection}
@@ -637,6 +640,20 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           hostOverlayData={overlayData}
         />
       )}
+      {selectedOverlayPlace && (() => {
+        const od = overlayData.find(od => (od.places || []).some(pl => pl.id === selectedOverlayPlace.id))
+        const connectedPersonNames = (od?.placeConnections || [])
+          .filter(c => c.place_id === selectedOverlayPlace.id)
+          .map(c => od.persons.find(p => p.id === c.person_id)?.name)
+          .filter(Boolean)
+        return (
+          <OverlayPlaceSheet
+            place={selectedOverlayPlace}
+            onClose={() => setSelectedOverlayPlace(null)}
+            connectedPersonNames={connectedPersonNames}
+          />
+        )
+      })()}
       {selectedPerson && (
         <PersonDetailSheet
           person={selectedPerson}
