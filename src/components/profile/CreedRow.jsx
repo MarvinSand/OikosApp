@@ -104,18 +104,8 @@ export function CreedRow({
         </div>
       </div>
 
-      <button
-        onClick={() => setCommentsOpen(v => !v)}
-        className="flex items-center gap-1.5 px-4 pb-2.5"
-        style={{ fontSize: 12, fontWeight: 600, color: commentsOpen ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}
-      >
-        <MessageCircle size={14} />
-        {commentCount > 0 ? `${commentCount} ${commentCount === 1 ? 'Kommentar' : 'Kommentare'}` : 'Kommentieren'}
-      </button>
-
-      {commentsOpen && <CreedComments creedId={creed.id} onCountChange={onCommentCountChange} />}
-
       {expanded && (
+        <>
         <div className="px-4 pb-4">
           {!lines && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
           {lines?.map(line => (
@@ -133,6 +123,17 @@ export function CreedRow({
             )
           ))}
         </div>
+        <button
+          onClick={() => setCommentsOpen(v => !v)}
+          className="flex items-center gap-1.5 px-4 pb-3"
+          style={{ fontSize: 12, fontWeight: 600, color: commentsOpen ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}
+        >
+          <MessageCircle size={14} />
+          {commentCount > 0 ? `${commentCount} ${commentCount === 1 ? 'Kommentar' : 'Kommentare'}` : 'Kommentieren'}
+        </button>
+
+        {commentsOpen && <CreedComments creedId={creed.id} onCountChange={onCommentCountChange} />}
+        </>
       )}
     </div>
   )
