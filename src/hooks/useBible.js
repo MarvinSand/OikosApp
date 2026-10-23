@@ -346,13 +346,23 @@ export function useBibleMarkers(bibleId, book, chapter, { youversionConnected = 
     setLoading(true)
 
     const loadLocal = async () => {
-      const [h, n, b] = await Promise.all([
+      const [h, ownNotes, othersNotes, b] = await Promise.all([
         supabase.from('bible_highlights').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
         supabase.from('bible_notes').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
+        // Fremde Notizen OHNE user_id-Filter - RLS (phase86_bible_notes_visibility.sql)
+        // liefert hier automatisch nur, was gemäß visibility tatsächlich für
+        // diesen Betrachter freigegeben ist (public/community/siblings/specific).
+        supabase.from('bible_notes')
+          .select('*, author:profiles!bible_notes_user_id_fkey(id, full_name, username, avatar_url)')
+          .neq('user_id', user.id).eq('book', book).eq('chapter', chapter),
         supabase.from('bible_bookmarks').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter),
       ])
       if (!h.error) setHighlights(h.data || [])
-      if (!n.error) setNotes(n.data || [])
+      if (!ownNotes.error || !othersNotes.error) {
+        const mine = (ownNotes.data || []).map(n => ({ ...n, isOwn: true }))
+        const others = (othersNotes.data || []).map(n => ({ ...n, isOwn: false }))
+        setNotes([...mine, ...others])
+      }
       if (!b.error) setBookmarks(b.data || [])
       setLoading(false)
     }
@@ -415,13 +425,19 @@ export function useBibleMarkers(bibleId, book, chapter, { youversionConnected = 
     setHighlights(prev => prev.filter(h => h.id !== id))
   }
 
-  async function addNote({ verseStart, verseEnd, referenceLabel, note, bibleId = DEFAULT_BIBLE_ID }) {
+  async function addNote({
+    verseStart, verseEnd, referenceLabel, note, bibleId = DEFAULT_BIBLE_ID,
+    visibility = 'private', visibilityCommunityId = null, visibilitySiblingIds = [],
+  }) {
     const { data, error } = await supabase.from('bible_notes').insert({
       user_id: user.id, bible_id: bibleId, book, chapter,
       verse_start: verseStart, verse_end: verseEnd ?? null,
       reference_label: referenceLabel, note, source: 'oikos',
+      visibility,
+      visibility_community_id: visibility === 'community' ? visibilityCommunityId : null,
+      visibility_user_ids: visibility === 'specific' ? visibilitySiblingIds : [],
     }).select().single()
-    if (!error) setNotes(prev => [...prev, data])
+    if (!error) setNotes(prev => [...prev, { ...data, isOwn: true }])
     return { data, error }
   }
 
@@ -480,4 +496,61 @@ export function useReadingProgress() {
   }, [user?.id])
 
   return progress
+}
+
+// ─── Wo ein Vers sonst noch verlinkt wurde ───
+//
+// feed_posts/personal_prayer_requests/creed_lines tragen seit phase62/phase74
+// strukturierte Vers-Verknüpfungen (bible_book/bible_chapter/bible_verse_start/
+// bible_verse_end). Hier wird NICHT erneut nachgebaut, wer was sehen darf -
+// jede Tabelle hat dafür schon ihre eigene RLS-Policy; ein ungefilterter
+// Select liefert automatisch nur das, was für den aktuellen Betrachter
+// freigegeben ist (gleiches Prinzip wie bei den Bibel-Notizen oben).
+function withVerseOverlap(query, verseStart, verseEnd) {
+  return query
+    .lte('bible_verse_start', verseEnd)
+    .or(`bible_verse_end.gte.${verseStart},and(bible_verse_end.is.null,bible_verse_start.gte.${verseStart})`)
+}
+
+export function useVerseReferences(book, chapter, verseStart, verseEnd) {
+  const [feedPosts, setFeedPosts] = useState([])
+  const [prayers, setPrayers] = useState([])
+  const [creeds, setCreeds] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!book || !chapter || verseStart == null) return
+    setLoading(true)
+    const end = verseEnd ?? verseStart
+
+    const [feedRes, prayerRes, creedRes] = await Promise.all([
+      withVerseOverlap(
+        supabase.from('feed_posts')
+          .select('id, body, bible_reference, created_at, author:profiles!feed_posts_author_id_fkey(id, full_name, username, avatar_url)')
+          .eq('bible_book', book).eq('bible_chapter', chapter),
+        verseStart, end,
+      ),
+      withVerseOverlap(
+        supabase.from('personal_prayer_requests')
+          .select('id, title, description, bible_reference, created_at, author:profiles!personal_prayer_requests_owner_id_fkey(id, full_name, username, avatar_url)')
+          .eq('bible_book', book).eq('bible_chapter', chapter),
+        verseStart, end,
+      ),
+      withVerseOverlap(
+        supabase.from('creed_lines')
+          .select('id, body, bible_reference, creed:creeds!creed_lines_creed_id_fkey(id, title, user_id, author:profiles!creeds_user_id_fkey(id, full_name, username, avatar_url))')
+          .eq('bible_book', book).eq('bible_chapter', chapter),
+        verseStart, end,
+      ),
+    ])
+
+    setFeedPosts(feedRes.error ? [] : (feedRes.data || []))
+    setPrayers(prayerRes.error ? [] : (prayerRes.data || []))
+    setCreeds(creedRes.error ? [] : (creedRes.data || []))
+    setLoading(false)
+  }, [book, chapter, verseStart, verseEnd])
+
+  useEffect(() => { load() }, [load])
+
+  return { feedPosts, prayers, creeds, loading, reload: load }
 }

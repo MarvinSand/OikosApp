@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star, Share2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star, Share2, Lock, Globe, Home as HomeIcon, UserCheck, Users, ChevronUp } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useCommunities } from '../hooks/useCommunities'
 import {
   useChapterText, useBibleMarkers, useBibleVersions, useFavoriteBibleVersions,
-  useSavedBibleColors, useRecentBibleColors, useReadingProgress, saveReadingProgress, getLocalReadingPosition, DEFAULT_BIBLE_ID,
+  useSavedBibleColors, useRecentBibleColors, useReadingProgress, useVerseReferences, saveReadingProgress, getLocalReadingPosition, DEFAULT_BIBLE_ID,
 } from '../hooks/useBible'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
@@ -19,6 +20,7 @@ import FeedPostSheet from '../components/feed/FeedPostSheet'
 import BookChapterPicker from '../components/bible/BookChapterPicker'
 import VersePickerSheet from '../components/bible/VersePickerSheet'
 import VersionPicker from '../components/bible/VersionPicker'
+import VisibilityPicker, { VISIBILITY_OPTIONS } from '../components/common/VisibilityPicker'
 
 const BIBLE_ID_STORAGE_KEY = 'oikos_bible_version_id'
 
@@ -55,6 +57,9 @@ export default function BibleView() {
   // hängenden) Bereich min…max der ausgewählten Versnummern.
   const [selectedVerses, setSelectedVerses] = useState(new Set())
   const [noteDraft, setNoteDraft] = useState('')
+  const [noteVisibility, setNoteVisibility] = useState('private')
+  const [noteCommunityId, setNoteCommunityId] = useState(null)
+  const [noteSiblingIds, setNoteSiblingIds] = useState([])
   const [sharePayload, setSharePayload] = useState(null) // { attachment, body } | null
 
   const bookInfo = findBook(book)
@@ -79,6 +84,7 @@ export default function BibleView() {
   const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(bibleId, book, chapter, { youversionConnected: !!yv.connected })
   const { colors: savedColors, isSaved: isColorSaved, toggleColor: toggleSaveColor } = useSavedBibleColors()
   const { colors: recentColors, reload: reloadRecentColors } = useRecentBibleColors()
+  const { myCommunities } = useCommunities()
   // Solange der volle Katalog nicht geladen ist (Normalfall: Picker war noch
   // nie offen), reicht die Chip-Anzeige der aktuellen Übersetzung aus den
   // Defaults - deckt HFA (Standardwert) und die anderen Standard-Favoriten
@@ -263,6 +269,10 @@ export default function BibleView() {
   const verseEnd = selectedNums[selectedNums.length - 1]
   const activeNotes = selectedNums.length ? notesFor(verseStart).concat(verseEnd !== verseStart ? notesFor(verseEnd) : []) : []
   const uniqueActiveNotes = [...new Map(activeNotes.map(n => [n.id, n])).values()]
+  // Nur abfragen, wenn ein Vers ausgewählt ist - keine unnötigen Requests beim
+  // reinen Lesen ohne Marker-Modus.
+  const { feedPosts: linkedFeedPosts, prayers: linkedPrayers, creeds: linkedCreeds, loading: referencesLoading } =
+    useVerseReferences(book, selectedNums.length ? chapter : null, verseStart, verseEnd)
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -346,13 +356,31 @@ export default function BibleView() {
           bookmarked={verseStart != null && verseEnd === verseStart && isBookmarked(verseStart)}
           showBookmark={verseStart != null && verseEnd === verseStart}
           notes={uniqueActiveNotes}
+          currentUserId={user?.id}
           noteDraft={noteDraft}
           setNoteDraft={setNoteDraft}
+          noteVisibility={noteVisibility}
+          setNoteVisibility={setNoteVisibility}
+          noteCommunityId={noteCommunityId}
+          setNoteCommunityId={setNoteCommunityId}
+          noteSiblingIds={noteSiblingIds}
+          setNoteSiblingIds={setNoteSiblingIds}
+          myCommunities={myCommunities}
+          linkedFeedPosts={linkedFeedPosts}
+          linkedPrayers={linkedPrayers}
+          linkedCreeds={linkedCreeds}
+          referencesLoading={referencesLoading}
           savedColors={savedColors}
           recentColors={recentColors}
           isColorSaved={isColorSaved}
           onToggleSaveColor={toggleSaveColor}
-          onClose={() => { setSelectedVerses(new Set()); setNoteDraft('') }}
+          onClose={() => {
+            setSelectedVerses(new Set())
+            setNoteDraft('')
+            setNoteVisibility('private')
+            setNoteCommunityId(null)
+            setNoteSiblingIds([])
+          }}
           onHighlight={async (color) => {
             await addHighlight({ verseStart, verseEnd, referenceLabel: referenceLabel(), color, bibleId })
             reloadRecentColors()
@@ -361,8 +389,14 @@ export default function BibleView() {
           onBookmark={() => toggleBookmark({ verse: verseStart, referenceLabel: referenceLabel(), bibleId })}
           onSaveNote={async () => {
             if (!noteDraft.trim()) return
-            await addNote({ verseStart, verseEnd, referenceLabel: referenceLabel(), note: noteDraft.trim(), bibleId })
+            await addNote({
+              verseStart, verseEnd, referenceLabel: referenceLabel(), note: noteDraft.trim(), bibleId,
+              visibility: noteVisibility, visibilityCommunityId: noteCommunityId, visibilitySiblingIds: noteSiblingIds,
+            })
             setNoteDraft('')
+            setNoteVisibility('private')
+            setNoteCommunityId(null)
+            setNoteSiblingIds([])
           }}
           onRemoveNote={(id) => removeNote(id)}
           onShareToFeed={handleShareToFeed}
@@ -441,22 +475,35 @@ function YouVersionBadge({ yv }) {
 }
 
 function VerseActionBar({
-  referenceLabel, existingHighlight, bookmarked, showBookmark, notes, noteDraft, setNoteDraft,
+  referenceLabel, existingHighlight, bookmarked, showBookmark, notes, currentUserId, noteDraft, setNoteDraft,
+  noteVisibility, setNoteVisibility, noteCommunityId, setNoteCommunityId, noteSiblingIds, setNoteSiblingIds, myCommunities,
+  linkedFeedPosts, linkedPrayers, linkedCreeds, referencesLoading,
   savedColors, recentColors, isColorSaved, onToggleSaveColor,
   onClose, onHighlight, onRemoveHighlight, onBookmark, onSaveNote, onRemoveNote, onShareToFeed,
 }) {
+  const navigate = useNavigate()
+  const [showVisibilityPicker, setShowVisibilityPicker] = useState(false)
+  const [showReferences, setShowReferences] = useState(false)
   const activeHex = existingHighlight && !HIGHLIGHT_COLORS[existingHighlight.color] ? existingHighlight.color : null
   const extraColors = [
     ...(savedColors || []),
     ...(recentColors || []).filter(c => !(savedColors || []).includes(c)),
   ].slice(0, 8)
+  const visibilityObj = VISIBILITY_OPTIONS.find(o => o.key === noteVisibility) || VISIBILITY_OPTIONS[0]
+  const VisibilityIcon = visibilityObj.icon
+
+  const references = [
+    ...(linkedFeedPosts || []).map(p => ({ type: 'feed', id: p.id, text: p.body, author: p.author, to: `/feed/post/${p.id}` })),
+    ...(linkedPrayers || []).map(p => ({ type: 'prayer', id: p.id, text: p.title || p.description, author: p.author, to: `/prayer/${p.id}` })),
+    ...(linkedCreeds || []).map(c => ({ type: 'creed', id: c.id, text: c.body || c.creed?.title, author: c.creed?.author, to: c.creed?.user_id ? `/user/${c.creed.user_id}` : null })),
+  ]
 
   return (
     <div
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md rounded-t-2xl p-4 z-30"
-      style={{ backgroundColor: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', boxShadow: '0 -4px 24px rgba(0,0,0,0.15)', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md rounded-t-2xl p-4 z-30 flex flex-col"
+      style={{ backgroundColor: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', boxShadow: '0 -4px 24px rgba(0,0,0,0.15)', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))', maxHeight: '80vh' }}
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{referenceLabel}</p>
         <div className="flex items-center gap-1">
           {onShareToFeed && (
@@ -468,80 +515,162 @@ function VerseActionBar({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        {Object.entries(HIGHLIGHT_COLORS).map(([name, hex]) => (
-          <button
-            key={name}
-            onClick={() => existingHighlight?.color === name ? onRemoveHighlight(existingHighlight.id) : onHighlight(name)}
-            className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: hex, boxShadow: existingHighlight?.color === name ? '0 0 0 2px var(--color-accent)' : 'none' }}
-          >
-            {existingHighlight?.color === name && <span style={{ fontSize: 12 }}>✓</span>}
-          </button>
-        ))}
-        <CustomColorButton
-          value={activeHex}
-          saved={activeHex ? isColorSaved?.(activeHex) : false}
-          onSaveCurrent={() => activeHex && onToggleSaveColor?.(activeHex)}
-          onPick={(hex) => onHighlight(hex)}
-          onRemove={() => onRemoveHighlight(existingHighlight.id)}
-        />
-        {showBookmark && (
-          <button
-            onClick={onBookmark}
-            className="w-8 h-8 rounded-full flex items-center justify-center ml-auto"
-            style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-          >
-            <Bookmark size={16} style={{ color: bookmarked ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }} fill={bookmarked ? 'var(--color-accent)' : 'none'} />
-          </button>
-        )}
-      </div>
+      <div className="overflow-y-auto">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {Object.entries(HIGHLIGHT_COLORS).map(([name, hex]) => (
+            <button
+              key={name}
+              onClick={() => existingHighlight?.color === name ? onRemoveHighlight(existingHighlight.id) : onHighlight(name)}
+              className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: hex, boxShadow: existingHighlight?.color === name ? '0 0 0 2px var(--color-accent)' : 'none' }}
+            >
+              {existingHighlight?.color === name && <span style={{ fontSize: 12 }}>✓</span>}
+            </button>
+          ))}
+          <CustomColorButton
+            value={activeHex}
+            saved={activeHex ? isColorSaved?.(activeHex) : false}
+            onSaveCurrent={() => activeHex && onToggleSaveColor?.(activeHex)}
+            onPick={(hex) => onHighlight(hex)}
+            onRemove={() => onRemoveHighlight(existingHighlight.id)}
+          />
+          {showBookmark && (
+            <button
+              onClick={onBookmark}
+              className="w-8 h-8 rounded-full flex items-center justify-center ml-auto"
+              style={{ backgroundColor: 'var(--color-bg-secondary)' }}
+            >
+              <Bookmark size={16} style={{ color: bookmarked ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }} fill={bookmarked ? 'var(--color-accent)' : 'none'} />
+            </button>
+          )}
+        </div>
 
-      {extraColors.length > 0 && (
-        <div className="mb-3">
-          <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
-            Eigene Farben
-          </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            {extraColors.map(hex => {
-              const isActive = existingHighlight?.color?.toLowerCase() === hex.toLowerCase()
-              return (
-                <button
-                  key={hex}
-                  onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(hex)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none' }}
-                >
-                  {isActive && <span style={{ fontSize: 11 }}>✓</span>}
-                </button>
-              )
-            })}
+        {extraColors.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
+              Eigene Farben
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              {extraColors.map(hex => {
+                const isActive = existingHighlight?.color?.toLowerCase() === hex.toLowerCase()
+                return (
+                  <button
+                    key={hex}
+                    onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(hex)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none' }}
+                  >
+                    {isActive && <span style={{ fontSize: 11 }}>✓</span>}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {notes.map(n => (
-        <div key={n.id} className="flex items-start justify-between gap-2 mb-2 p-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
-          <p style={{ fontSize: 13, color: 'var(--color-text)' }}>{n.note}</p>
-          <button onClick={() => onRemoveNote(n.id)}><X size={14} style={{ color: 'var(--color-text-tertiary)' }} /></button>
-        </div>
-      ))}
+        {notes.map(n => (
+          <div key={n.id} className="flex items-start justify-between gap-2 mb-2 p-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+            <div className="flex-1 min-w-0">
+              {!n.isOwn && (
+                <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--color-accent)' }}>
+                  {n.author?.full_name || n.author?.username || 'Jemand'}
+                </p>
+              )}
+              <p style={{ fontSize: 13, color: 'var(--color-text)' }}>{n.note}</p>
+            </div>
+            {n.isOwn ? (
+              <button onClick={() => onRemoveNote(n.id)}><X size={14} style={{ color: 'var(--color-text-tertiary)' }} /></button>
+            ) : (
+              (() => {
+                const vo = VISIBILITY_OPTIONS.find(o => o.key === n.visibility)
+                const VIcon = vo?.icon || Globe
+                return <VIcon size={13} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0, marginTop: 2 }} />
+              })()
+            )}
+          </div>
+        ))}
 
-      <div className="flex items-center gap-2">
-        <StickyNote size={16} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
-        <input
-          value={noteDraft}
-          onChange={e => setNoteDraft(e.target.value)}
-          placeholder="Notiz hinzufügen…"
-          className="flex-1 px-3 py-2 rounded-xl text-sm"
-          style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
-        />
+        {(referencesLoading || references.length > 0) && (
+          <div className="mb-3">
+            <button
+              onClick={() => setShowReferences(v => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              {showReferences ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {referencesLoading ? 'Lädt Erwähnungen…' : `${references.length} Erwähnung${references.length === 1 ? '' : 'en'} anzeigen`}
+            </button>
+            {showReferences && (
+              <div className="mt-2 flex flex-col gap-1.5">
+                {references.map(r => (
+                  <button
+                    key={`${r.type}-${r.id}`}
+                    onClick={() => r.to && navigate(r.to)}
+                    className="flex items-start gap-2 p-2 rounded-lg text-left"
+                    style={{ backgroundColor: 'var(--color-bg-secondary)' }}
+                  >
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>
+                      {r.type === 'feed' ? '📖' : r.type === 'prayer' ? '🙏' : '✝️'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
+                        {r.author?.full_name || r.author?.username || 'Jemand'}
+                      </p>
+                      {r.text && (
+                        <p className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>{r.text}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 mb-2">
+          <StickyNote size={16} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
+          <input
+            value={noteDraft}
+            onChange={e => setNoteDraft(e.target.value)}
+            placeholder="Notiz hinzufügen…"
+            className="flex-1 px-3 py-2 rounded-xl text-sm"
+            style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+          />
+        </div>
+
+        {noteDraft.trim() && (
+          <div className="mb-2">
+            <button
+              onClick={() => setShowVisibilityPicker(v => !v)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+              style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}
+            >
+              <VisibilityIcon size={13} /> {visibilityObj.label}
+              {showVisibilityPicker ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+            {showVisibilityPicker && (
+              <div className="mt-2">
+                <VisibilityPicker
+                  value={noteVisibility}
+                  onChange={setNoteVisibility}
+                  communityId={noteCommunityId}
+                  onCommunityIdChange={setNoteCommunityId}
+                  siblingIds={noteSiblingIds}
+                  onSiblingIdsChange={setNoteSiblingIds}
+                  myCommunities={myCommunities}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         <button
           onClick={onSaveNote}
-          className="px-3 py-2 rounded-xl text-sm font-medium"
-          style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
+          disabled={!noteDraft.trim()}
+          className="w-full px-3 py-2 rounded-xl text-sm font-medium"
+          style={{ backgroundColor: noteDraft.trim() ? 'var(--color-accent)' : 'var(--color-bg-secondary)', color: noteDraft.trim() ? 'white' : 'var(--color-text-tertiary)' }}
         >
-          Sichern
+          Notiz sichern
         </button>
       </div>
     </div>
