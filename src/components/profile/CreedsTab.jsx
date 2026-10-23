@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { parseGermanReference } from '../../lib/bibleBooks'
 import { readCache, writeCache } from '../../lib/swrCache'
 import { CreedRow } from './CreedRow'
-import { confessedToday, addConfession, removeLastConfession } from '../../lib/creedConfessions'
+import { addConfession, removeConfessionLog } from '../../lib/creedConfessions'
 
 const CreedEditorSheet = lazy(() => import('../discipleship/CreedEditorSheet'))
 const BiblePassageSheet = lazy(() => import('../discipleship/BiblePassageSheet'))
@@ -140,25 +140,24 @@ export default function CreedsTab() {
     setPassageSheet({ label: line.bible_reference, parsed: parseGermanReference(line.bible_reference) })
   }
 
-  // Abhaken/Haken entfernen: ist das Bekenntnis heute schon abgehakt, nimmt
-  // ein weiterer Tipp den letzten Haken wieder zurück.
-  async function toggleConfess(creedId) {
-    const cur = confessionByCreed[creedId]
-    if (cur?.count > 0 && confessedToday(cur.lastConfessedAt)) {
-      const next = cur.count - 1
-      setConfessionByCreed(prev => ({ ...prev, [creedId]: { count: next, lastConfessedAt: null } }))
-      setHistoryByCreed(prev => prev[creedId] ? { ...prev, [creedId]: prev[creedId].slice(1) } : prev)
-      const last = await removeLastConfession(user.id, creedId, next)
-      setConfessionByCreed(prev => ({ ...prev, [creedId]: { count: next, lastConfessedAt: last } }))
-      return
-    }
+  async function confess(creedId) {
     const nowIso = new Date().toISOString()
-    const next = (cur?.count || 0) + 1
+    const logId = crypto.randomUUID()
+    const next = (confessionByCreed[creedId]?.count || 0) + 1
     setConfessionByCreed(prev => ({ ...prev, [creedId]: { count: next, lastConfessedAt: nowIso } }))
     setHistoryByCreed(prev => prev[creedId]
-      ? { ...prev, [creedId]: [{ id: `optimistic-${nowIso}`, confessed_at: nowIso }, ...prev[creedId]] }
+      ? { ...prev, [creedId]: [{ id: logId, confessed_at: nowIso }, ...prev[creedId]] }
       : prev)
-    await addConfession(user.id, creedId, next, nowIso)
+    await addConfession(user.id, creedId, next, nowIso, logId)
+  }
+
+  // Versehentlich abgehakten Eintrag aus dem Verlauf löschen.
+  async function deleteConfession(creedId, logId) {
+    const next = Math.max((confessionByCreed[creedId]?.count || 0) - 1, 0)
+    setHistoryByCreed(prev => ({ ...prev, [creedId]: (prev[creedId] || []).filter(h => h.id !== logId) }))
+    setConfessionByCreed(prev => ({ ...prev, [creedId]: { ...prev[creedId], count: next } }))
+    const last = await removeConfessionLog(user.id, creedId, logId, next)
+    setConfessionByCreed(prev => ({ ...prev, [creedId]: { count: next, lastConfessedAt: last } }))
   }
 
   function setCommentCount(creedId, n) {
@@ -234,12 +233,12 @@ export default function CreedsTab() {
                   key={c.id} creed={c} isOwn isOfficial={false}
                   expanded={expandedId === c.id} lines={linesByCreed[c.id]}
                   confessionCount={confessionByCreed[c.id]?.count || 0}
-                  confessed={confessedToday(confessionByCreed[c.id]?.lastConfessedAt)}
                   commentCount={commentCounts[c.id] || 0} onCommentCountChange={n => setCommentCount(c.id, n)}
                   historyOpen={historyOpenId === c.id} history={historyByCreed[c.id]}
                   onToggleExpand={() => toggleExpand(c)}
                   onEdit={() => openOwnCreed(c)}
-                  onConfess={() => toggleConfess(c.id)}
+                  onConfess={() => confess(c.id)}
+                onDeleteConfession={logId => deleteConfession(c.id, logId)}
                   onToggleHistory={() => toggleHistory(c)}
                   onOpenLine={openLine}
                 />
@@ -263,13 +262,13 @@ export default function CreedsTab() {
                   key={c.id} creed={c} isOwn={false} isOfficial={c.user_id === null}
                   expanded={expandedId === c.id} lines={linesByCreed[c.id]}
                   confessionCount={confessionByCreed[c.id]?.count || 0}
-                  confessed={confessedToday(confessionByCreed[c.id]?.lastConfessedAt)}
                   commentCount={commentCounts[c.id] || 0} onCommentCountChange={n => setCommentCount(c.id, n)}
                   historyOpen={historyOpenId === c.id} history={historyByCreed[c.id]}
                   onToggleExpand={() => toggleExpand(c)}
                   onAdopt={() => adoptCreed(c)}
                   onReport={() => setReportTarget(c.id)}
-                  onConfess={() => toggleConfess(c.id)}
+                  onConfess={() => confess(c.id)}
+                onDeleteConfession={logId => deleteConfession(c.id, logId)}
                   onToggleHistory={() => toggleHistory(c)}
                   onOpenLine={openLine}
                 />

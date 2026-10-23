@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, Flag, Lock, Globe, ChevronDown, Pencil, Check, MessageCircle } from 'lucide-react'
+import { Copy, Flag, Lock, Globe, ChevronDown, Pencil, Check, MessageCircle, Trash2 } from 'lucide-react'
 import CreedComments from './CreedComments'
 
 export function formatCreedDate(iso) {
@@ -20,9 +20,9 @@ export function formatConfessedAt(iso) {
 // Konvention: eine Zeile mit bible_reference = null und "§ "-Präfix im body
 // ist ein Abschnittstitel (siehe phase65b_discipleship_seed.sql).
 export function CreedRow({
-  creed, isOwn, isOfficial, expanded, lines, confessionCount, confessed, historyOpen, history,
+  creed, isOwn, isOfficial, expanded, lines, confessionCount, historyOpen, history,
   commentCount, onCommentCountChange,
-  onToggleExpand, onEdit, onAdopt, onReport, onConfess, onToggleHistory, onOpenLine,
+  onToggleExpand, onEdit, onAdopt, onReport, onConfess, onDeleteConfession, onToggleHistory, onOpenLine,
 }) {
   const [commentsOpen, setCommentsOpen] = useState(false)
   return (
@@ -60,12 +60,11 @@ export function CreedRow({
         <div className="flex items-center gap-1 flex-shrink-0 relative">
           <button
             onClick={onConfess}
-            title={confessed ? 'Heute bekannt - Haken entfernen' : 'Bekannt - abhaken'}
-            aria-pressed={!!confessed}
+            title="Bekannt - abhaken"
             className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: confessed ? 'var(--color-accent)' : 'var(--color-bg)', border: '1.5px solid var(--color-accent)' }}
+            style={{ backgroundColor: 'var(--color-bg)', border: '1.5px solid var(--color-accent)' }}
           >
-            <Check size={14} style={{ color: confessed ? '#fff' : 'var(--color-accent)' }} />
+            <Check size={14} style={{ color: 'var(--color-accent)' }} />
           </button>
           <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--color-text-tertiary)', minWidth: 14, textAlign: 'center' }}>
             {confessionCount}
@@ -93,9 +92,12 @@ export function CreedRow({
               {!history && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
               {history?.length === 0 && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Noch nicht abgehakt.</p>}
               {history?.map(h => (
-                <p key={h.id} style={{ fontSize: 12, color: 'var(--color-text-secondary)', padding: '3px 0' }}>
-                  {formatConfessedAt(h.confessed_at)}
-                </p>
+                <div key={h.id} className="flex items-center justify-between gap-2" style={{ padding: '3px 0' }}>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{formatConfessedAt(h.confessed_at)}</p>
+                  <button onClick={() => onDeleteConfession?.(h.id)} title="Eintrag entfernen" aria-label="Eintrag entfernen" className="p-1 flex-shrink-0" style={{ color: 'var(--color-text-tertiary)' }}>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               ))}
             </div>
           )}

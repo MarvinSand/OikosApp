@@ -40,3 +40,28 @@ drop policy if exists "Hide blocked users" on public.creed_comments;
 create policy "Hide blocked users" on public.creed_comments
   as restrictive for select to authenticated
   using (not public.is_blocked_pair(author_id));
+
+-- Nachtrag: Autor-FK auf profiles (nötig fürs Profil-Embed), Antworten + Likes
+alter table public.creed_comments drop constraint if exists creed_comments_author_id_fkey;
+alter table public.creed_comments add constraint creed_comments_author_id_fkey
+  foreign key (author_id) references public.profiles(id) on delete cascade;
+alter table public.creed_comments add column if not exists parent_id uuid references public.creed_comments(id) on delete cascade;
+create index if not exists idx_creed_comments_parent_id on public.creed_comments (parent_id);
+
+create table if not exists public.creed_comment_likes (
+  comment_id uuid not null references public.creed_comments(id) on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, user_id)
+);
+create index if not exists idx_creed_comment_likes_user_id on public.creed_comment_likes (user_id);
+alter table public.creed_comment_likes enable row level security;
+drop policy if exists "Read creed comment likes" on public.creed_comment_likes;
+create policy "Read creed comment likes" on public.creed_comment_likes for select to authenticated
+  using (exists (select 1 from public.creed_comments c where c.id = creed_comment_likes.comment_id));
+drop policy if exists "Insert own creed comment likes" on public.creed_comment_likes;
+create policy "Insert own creed comment likes" on public.creed_comment_likes for insert to authenticated
+  with check ((select auth.uid()) = user_id);
+drop policy if exists "Delete own creed comment likes" on public.creed_comment_likes;
+create policy "Delete own creed comment likes" on public.creed_comment_likes for delete to authenticated
+  using ((select auth.uid()) = user_id);
