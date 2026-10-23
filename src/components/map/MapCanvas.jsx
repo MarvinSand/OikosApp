@@ -38,6 +38,7 @@ export default function MapCanvas({
   onPersonMoved,
   onCreateConnection,
   onOverlayPersonClick,
+  onOverlayPlaceClick,
   onConnectionColorChange,
   onDeleteConnection,
   onAddConnectedPerson,
@@ -1067,10 +1068,13 @@ export default function MapCanvas({
           strokeWidth={1.2}
         />
 
-        {/* Center-to-person Verbindungslinien (nur für direkte / 1. Generation) */}
+        {/* Center-to-person Verbindungslinien (nur für direkte / 1. Generation).
+            Ist die Person stattdessen mit einem Ort verbunden, zeigt nur die
+            Ort-Linie die Zugehörigkeit — keine doppelte Linie zum Besitzer. */}
         {people.map((p, i) => {
           if (p.is_secondary) return null
           if (ownerDisconnectedIds.has(p.id)) return null
+          if (placeConnections.some(c => c.person_id === p.id)) return null
           const pos = getPos(p, i)
           const lineColor = centerLineColors[p.id] || p.center_line_color || 'var(--color-warm-3)'
           const isPickerOpen = centerLinePicker?.personId === p.id
@@ -1125,6 +1129,7 @@ export default function MapCanvas({
           const visible = od.persons.filter(op => visibleSet.has(op.id))
 
           const overlayPlaces = (od.places || []).filter(pl => pl.pos_x != null && pl.pos_y != null)
+          const placeConnectedIds = new Set((od.placeConnections || []).map(c => c.person_id))
 
           const placeConnLines = (od.placeConnections || [])
             .filter(c => visibleSet.has(c.person_id))
@@ -1154,7 +1159,12 @@ export default function MapCanvas({
             const emoji = TYPE_EMOJIS[pl.type] || '📍'
             const plName = pl.name.length > 9 ? pl.name.slice(0, 8) + '…' : pl.name
             return (
-              <g key={`overlay_place_${od.parentPersonId}_${pl.id}`} opacity={0.85} style={{ pointerEvents: 'none' }}>
+              <g
+                key={`overlay_place_${od.parentPersonId}_${pl.id}`}
+                opacity={0.85}
+                style={{ cursor: onOverlayPlaceClick ? 'pointer' : 'default' }}
+                onClick={e => { e.stopPropagation(); onOverlayPlaceClick?.(pl) }}
+              >
                 <rect
                   x={pos.x - w / 2} y={pos.y - h / 2} width={w} height={h} rx={rx}
                   fill="var(--color-white)"
@@ -1221,8 +1231,11 @@ export default function MapCanvas({
                   else onOverlayPersonClick?.(op)
                 }}
               >
-                {/* Line from parent to overlay person — only for first-generation (non-secondary) persons */}
-                {!op.is_secondary && (
+                {/* Line from parent to overlay person — nur für direkte (nicht-sekundäre)
+                    Personen, und nicht wenn die Person stattdessen an einen Ort
+                    angebunden ist (dann verbindet nur die Ort-Linie, wie auf der
+                    eigenen Map) */}
+                {!op.is_secondary && !placeConnectedIds.has(op.id) && (
                   <line
                     x1={parentPos.x} y1={parentPos.y}
                     x2={ox} y2={oy}
@@ -1274,6 +1287,32 @@ export default function MapCanvas({
                 >
                   {shortName(op.name)}
                 </text>
+                {/* Linked account indicator — die verlinkte Person hat selbst
+                    einen OIKOS-Account, genau wie bei eigenen Personen */}
+                {op.linked_user_id && (
+                  <g
+                    onClick={e => { e.stopPropagation(); navigate(`/user/${op.linked_user_id}`) }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <circle
+                      cx={ox + personR * 0.707}
+                      cy={oy + personR * 0.707}
+                      r={7}
+                      fill="white"
+                      stroke="var(--color-warm-3)"
+                      strokeWidth={1}
+                    />
+                    <foreignObject
+                      x={ox + personR * 0.707 - 4}
+                      y={oy + personR * 0.707 - 4}
+                      width={8}
+                      height={8}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      <User size={8} color="#3A2E24" />
+                    </foreignObject>
+                  </g>
+                )}
               </g>
             )
           })

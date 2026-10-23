@@ -6,6 +6,8 @@ import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
 import { useSiblingsCommunities } from '../hooks/useSiblingsCommunities'
 import SiblingsToggles, { loadSiblingsView, saveSiblingsView, siblingsMapTitle } from '../components/map/SiblingsToggles'
 import MapCanvas from '../components/map/MapCanvas'
+import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
+import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
 const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 
 // ─── PublicMapView (Main) ─────────────────────────────────────
@@ -14,6 +16,8 @@ export default function PublicMapView() {
   const navigate = useNavigate()
   const { map, people, connections, places, placeConnections, ownerName, linkedProfiles, overlayData, togglePersonMapOverlay, loading } = usePublicMap(userId, mapId)
   const [selectedPerson, setSelectedPerson] = useState(null)
+  const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
+  const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
   // Systemkarte „Meine Geschwister in Christus": Auto-Kanten + Freunde von Freunden
   const [siblingsDepth, setSiblingsDepth] = useState(() => loadSiblingsView().depth)
   const isSiblingsMap = map?.kind === 'siblings'
@@ -88,7 +92,10 @@ export default function PublicMapView() {
           overlayData={isSiblingsMap ? [...siblingsGraph.overlayData, ...siblingsCommunities.overlayData] : overlayData}
           onPlaceClick={(pl) => pl.is_virtual && navigate(`/community/${pl.community_id}`)}
           onPersonClick={setSelectedPerson}
-          onOverlayPersonClick={(op) => op.is_virtual && navigate(`/user/${op.user_id}`)}
+          onOverlayPersonClick={(op) => (
+            op.is_virtual ? navigate(`/user/${op.user_id}`) : setSelectedOverlayPerson(op)
+          )}
+          onOverlayPlaceClick={setSelectedOverlayPlace}
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
         />
@@ -121,6 +128,29 @@ export default function PublicMapView() {
           onOverlayPreview={togglePersonMapOverlay}
         /></Suspense>
       )}
+      {selectedOverlayPerson && (
+        <OverlayPersonSheet
+          person={selectedOverlayPerson}
+          onClose={() => setSelectedOverlayPerson(null)}
+          hostConnections={connections}
+          hostPeople={people}
+          hostOverlayData={overlayData}
+        />
+      )}
+      {selectedOverlayPlace && (() => {
+        const od = overlayData.find(od => (od.places || []).some(pl => pl.id === selectedOverlayPlace.id))
+        const connectedPersonNames = (od?.placeConnections || [])
+          .filter(c => c.place_id === selectedOverlayPlace.id)
+          .map(c => od.persons.find(p => p.id === c.person_id)?.name)
+          .filter(Boolean)
+        return (
+          <OverlayPlaceSheet
+            place={selectedOverlayPlace}
+            onClose={() => setSelectedOverlayPlace(null)}
+            connectedPersonNames={connectedPersonNames}
+          />
+        )
+      })()}
     </div>
   )
 }
