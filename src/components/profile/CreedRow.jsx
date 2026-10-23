@@ -1,4 +1,11 @@
-import { Copy, Flag, Lock, Globe, ChevronDown, Pencil, Check } from 'lucide-react'
+import { useState } from 'react'
+import { Copy, Flag, Lock, Globe, ChevronDown, Pencil, Check, MessageCircle } from 'lucide-react'
+import CreedComments from './CreedComments'
+
+export function formatCreedDate(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 export function formatConfessedAt(iso) {
   const d = new Date(iso)
@@ -13,9 +20,11 @@ export function formatConfessedAt(iso) {
 // Konvention: eine Zeile mit bible_reference = null und "§ "-Präfix im body
 // ist ein Abschnittstitel (siehe phase65b_discipleship_seed.sql).
 export function CreedRow({
-  creed, isOwn, isOfficial, expanded, lines, confessionCount, historyOpen, history,
+  creed, isOwn, isOfficial, expanded, lines, confessionCount, confessed, historyOpen, history,
+  commentCount, onCommentCountChange,
   onToggleExpand, onEdit, onAdopt, onReport, onConfess, onToggleHistory, onOpenLine,
 }) {
+  const [commentsOpen, setCommentsOpen] = useState(false)
   return (
     <div className="rounded-2xl" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
       <div className="flex items-center gap-1.5 pl-1 pr-3 py-2">
@@ -29,6 +38,7 @@ export function CreedRow({
             {!isOwn && (
               <p style={{ fontSize: 11.5, color: 'var(--color-text-tertiary)' }}>
                 {isOfficial ? 'Offiziell' : `von ${creed.profiles?.full_name || creed.profiles?.username || 'Jemandem'}`}
+                {creed.created_at && ` · ${formatCreedDate(creed.created_at)}`}
               </p>
             )}
           </div>
@@ -50,11 +60,12 @@ export function CreedRow({
         <div className="flex items-center gap-1 flex-shrink-0 relative">
           <button
             onClick={onConfess}
-            title="Bekannt - abhaken"
+            title={confessed ? 'Heute bekannt - Haken entfernen' : 'Bekannt - abhaken'}
+            aria-pressed={!!confessed}
             className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: 'var(--color-bg)', border: '1.5px solid var(--color-accent)' }}
+            style={{ backgroundColor: confessed ? 'var(--color-accent)' : 'var(--color-bg)', border: '1.5px solid var(--color-accent)' }}
           >
-            <Check size={14} style={{ color: 'var(--color-accent)' }} />
+            <Check size={14} style={{ color: confessed ? '#fff' : 'var(--color-accent)' }} />
           </button>
           <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--color-text-tertiary)', minWidth: 14, textAlign: 'center' }}>
             {confessionCount}
@@ -90,6 +101,17 @@ export function CreedRow({
           )}
         </div>
       </div>
+
+      <button
+        onClick={() => setCommentsOpen(v => !v)}
+        className="flex items-center gap-1.5 px-4 pb-2.5"
+        style={{ fontSize: 12, fontWeight: 600, color: commentsOpen ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}
+      >
+        <MessageCircle size={14} />
+        {commentCount > 0 ? `${commentCount} ${commentCount === 1 ? 'Kommentar' : 'Kommentare'}` : 'Kommentieren'}
+      </button>
+
+      {commentsOpen && <CreedComments creedId={creed.id} onCountChange={onCommentCountChange} />}
 
       {expanded && (
         <div className="px-4 pb-4">
