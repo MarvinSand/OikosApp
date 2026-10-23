@@ -99,16 +99,23 @@ export function usePublicMap(userId, mapId) {
       setOverlayData(prev => prev.filter(od => !(od.parentPersonId === personId && od.overlayMapId === mapId)))
       return
     }
-    const [{ data: persons }, { data: conns }] = await Promise.all([
+    const [{ data: persons }, { data: conns }, { data: placesData }] = await Promise.all([
       supabase.from('oikos_people').select('*').eq('map_id', mapId).order('created_at'),
       supabase.from('oikos_connections').select('*').eq('map_id', mapId),
+      supabase.from('oikos_places').select('*').eq('map_id', mapId).order('created_at'),
     ])
+    const placeIds = (placesData || []).map(pl => pl.id)
+    const { data: placeConnData } = placeIds.length
+      ? await supabase.from('person_place_connections').select('id, person_id, place_id').in('place_id', placeIds)
+      : { data: [] }
     setOverlayData(prev => [...prev, {
       parentPersonId: personId,
       overlayMapId: mapId,
       persons: persons || [],
       personCount: (persons || []).length,
       connections: conns || [],
+      places: placesData || [],
+      placeConnections: placeConnData || [],
       showChristian: true,
       showNonChristian: true,
     }])
