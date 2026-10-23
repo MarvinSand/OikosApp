@@ -1,4 +1,11 @@
-import { Copy, Flag, Lock, Globe, ChevronDown, Pencil, Check } from 'lucide-react'
+import { useState } from 'react'
+import { Copy, Flag, Lock, Globe, ChevronDown, Pencil, Check, MessageCircle, Trash2 } from 'lucide-react'
+import CreedComments from './CreedComments'
+
+export function formatCreedDate(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 export function formatConfessedAt(iso) {
   const d = new Date(iso)
@@ -14,8 +21,10 @@ export function formatConfessedAt(iso) {
 // ist ein Abschnittstitel (siehe phase65b_discipleship_seed.sql).
 export function CreedRow({
   creed, isOwn, isOfficial, expanded, lines, confessionCount, historyOpen, history,
-  onToggleExpand, onEdit, onAdopt, onReport, onConfess, onToggleHistory, onOpenLine,
+  commentCount, onCommentCountChange,
+  onToggleExpand, onEdit, onAdopt, onReport, onConfess, onDeleteConfession, onToggleHistory, onOpenLine,
 }) {
+  const [commentsOpen, setCommentsOpen] = useState(false)
   return (
     <div className="rounded-2xl" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
       <div className="flex items-center gap-1.5 pl-1 pr-3 py-2">
@@ -29,6 +38,7 @@ export function CreedRow({
             {!isOwn && (
               <p style={{ fontSize: 11.5, color: 'var(--color-text-tertiary)' }}>
                 {isOfficial ? 'Offiziell' : `von ${creed.profiles?.full_name || creed.profiles?.username || 'Jemandem'}`}
+                {creed.created_at && ` · ${formatCreedDate(creed.created_at)}`}
               </p>
             )}
           </div>
@@ -82,9 +92,12 @@ export function CreedRow({
               {!history && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
               {history?.length === 0 && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Noch nicht abgehakt.</p>}
               {history?.map(h => (
-                <p key={h.id} style={{ fontSize: 12, color: 'var(--color-text-secondary)', padding: '3px 0' }}>
-                  {formatConfessedAt(h.confessed_at)}
-                </p>
+                <div key={h.id} className="flex items-center justify-between gap-2" style={{ padding: '3px 0' }}>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{formatConfessedAt(h.confessed_at)}</p>
+                  <button onClick={() => onDeleteConfession?.(h.id)} title="Eintrag entfernen" aria-label="Eintrag entfernen" className="p-1 flex-shrink-0" style={{ color: 'var(--color-text-tertiary)' }}>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -92,6 +105,7 @@ export function CreedRow({
       </div>
 
       {expanded && (
+        <>
         <div className="px-4 pb-4">
           {!lines && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
           {lines?.map(line => (
@@ -109,6 +123,17 @@ export function CreedRow({
             )
           ))}
         </div>
+        <button
+          onClick={() => setCommentsOpen(v => !v)}
+          className="flex items-center gap-1.5 px-4 pb-3"
+          style={{ fontSize: 12, fontWeight: 600, color: commentsOpen ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}
+        >
+          <MessageCircle size={14} />
+          {commentCount > 0 ? `${commentCount} ${commentCount === 1 ? 'Kommentar' : 'Kommentare'}` : 'Kommentieren'}
+        </button>
+
+        {commentsOpen && <CreedComments creedId={creed.id} onCountChange={onCommentCountChange} />}
+        </>
       )}
     </div>
   )

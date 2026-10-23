@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { parseGermanReference } from '../../lib/bibleBooks'
 import { CreedRow } from './CreedRow'
+import { addConfession, removeConfessionLog } from '../../lib/creedConfessions'
 
 const BiblePassageSheet = lazy(() => import('../discipleship/BiblePassageSheet'))
 const ReportSheet = lazy(() => import('../discipleship/ReportSheet'))
@@ -22,6 +23,7 @@ export default function UserCreedsTab({ userId, displayName }) {
   const [creeds, setCreeds] = useState([])
   const [loading, setLoading] = useState(true)
   const [confessionByCreed, setConfessionByCreed] = useState({})
+  const [commentCounts, setCommentCounts] = useState({})
   const [expandedId, setExpandedId] = useState(null)
   const [linesByCreed, setLinesByCreed] = useState({})
   const [historyOpenId, setHistoryOpenId] = useState(null)
@@ -35,20 +37,23 @@ export default function UserCreedsTab({ userId, displayName }) {
     setLoading(true)
     const { data } = await supabase
       .from('creeds')
-      .select('id, title, user_id, updated_at')
+      .select('id, title, user_id, created_at, updated_at, creed_comments(count)')
       .eq('user_id', userId)
       .eq('visibility', 'public')
       .order('updated_at', { ascending: false })
     setCreeds(data || [])
+    const counts = {}
+    for (const c of data || []) counts[c.id] = c.creed_comments?.[0]?.count || 0
+    setCommentCounts(counts)
 
     if (user && data?.length > 0) {
       const { data: confessions } = await supabase
         .from('creed_confessions')
-        .select('creed_id, count')
+        .select('creed_id, count, last_confessed_at')
         .eq('user_id', user.id)
         .in('creed_id', data.map(c => c.id))
       const map = {}
-      for (const c of confessions || []) map[c.creed_id] = c.count
+      for (const c of confessions || []) map[c.creed_id] = { count: c.count, lastConfessedAt: c.last_confessed_at }
       setConfessionByCreed(map)
     }
     setLoading(false)
@@ -87,18 +92,22 @@ export default function UserCreedsTab({ userId, displayName }) {
 
   async function confess(creedId) {
     const nowIso = new Date().toISOString()
-    const next = (confessionByCreed[creedId] || 0) + 1
-    setConfessionByCreed(prev => ({ ...prev, [creedId]: next }))
+    const logId = crypto.randomUUID()
+    const next = (confessionByCreed[creedId]?.count || 0) + 1
+    setConfessionByCreed(prev => ({ ...prev, [creedId]: { count: next, lastConfessedAt: nowIso } }))
     setHistoryByCreed(prev => prev[creedId]
-      ? { ...prev, [creedId]: [{ id: `optimistic-${nowIso}`, confessed_at: nowIso }, ...prev[creedId]] }
+      ? { ...prev, [creedId]: [{ id: logId, confessed_at: nowIso }, ...prev[creedId]] }
       : prev)
+    await addConfession(user.id, creedId, next, nowIso, logId)
+  }
 
-    await Promise.all([
-      supabase.from('creed_confessions').upsert({
-        user_id: user.id, creed_id: creedId, count: next, last_confessed_at: nowIso,
-      }, { onConflict: 'user_id,creed_id' }),
-      supabase.from('creed_confession_logs').insert({ user_id: user.id, creed_id: creedId, confessed_at: nowIso }),
-    ])
+  // Versehentlich abgehakten Eintrag aus dem Verlauf löschen.
+  async function deleteConfession(creedId, logId) {
+    const next = Math.max((confessionByCreed[creedId]?.count || 0) - 1, 0)
+    setHistoryByCreed(prev => ({ ...prev, [creedId]: (prev[creedId] || []).filter(h => h.id !== logId) }))
+    setConfessionByCreed(prev => ({ ...prev, [creedId]: { ...prev[creedId], count: next } }))
+    const last = await removeConfessionLog(user.id, creedId, logId, next)
+    setConfessionByCreed(prev => ({ ...prev, [creedId]: { count: next, lastConfessedAt: last } }))
   }
 
   async function adoptCreed(creed) {
@@ -126,12 +135,15 @@ export default function UserCreedsTab({ userId, displayName }) {
               <CreedRow
                 key={c.id} creed={c} isOwn={false} isOfficial={false}
                 expanded={expandedId === c.id} lines={linesByCreed[c.id]}
-                confessionCount={confessionByCreed[c.id] || 0}
+                confessionCount={confessionByCreed[c.id]?.count || 0}
+                commentCount={commentCounts[c.id] || 0}
+                onCommentCountChange={n => setCommentCounts(prev => prev[c.id] === n ? prev : { ...prev, [c.id]: n })}
                 historyOpen={historyOpenId === c.id} history={historyByCreed[c.id]}
                 onToggleExpand={() => toggleExpand(c)}
                 onAdopt={() => adoptCreed(c)}
                 onReport={() => setReportTarget(c.id)}
                 onConfess={() => confess(c.id)}
+                onDeleteConfession={logId => deleteConfession(c.id, logId)}
                 onToggleHistory={() => toggleHistory(c)}
                 onOpenLine={openLine}
               />
