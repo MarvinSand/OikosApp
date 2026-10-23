@@ -1116,9 +1116,11 @@ export default function MapCanvas({
           const bVbSize = bRingRadius * 2 + 140
           const brotherCx = bVbSize / 2
           const brotherCy = bVbSize / 2
+          // Orte ohne gespeicherte Position (nie verschoben) fallen wie auf der
+          // eigenen Map auf die Kartenmitte zurück, statt ganz zu verschwinden.
           const getOverlayPlacePos = (pl) => ({
-            x: parentPos.x + (pl.pos_x - brotherCx),
-            y: parentPos.y + (pl.pos_y - brotherCy),
+            x: parentPos.x + ((pl.pos_x ?? brotherCx) - brotherCx),
+            y: parentPos.y + ((pl.pos_y ?? brotherCy) - brotherCy),
           })
 
           const visibleSet = new Set(
@@ -1128,7 +1130,7 @@ export default function MapCanvas({
           )
           const visible = od.persons.filter(op => visibleSet.has(op.id))
 
-          const overlayPlaces = (od.places || []).filter(pl => pl.pos_x != null && pl.pos_y != null)
+          const overlayPlaces = od.places || []
           const placeConnectedIds = new Set((od.placeConnections || []).map(c => c.person_id))
 
           const placeConnLines = (od.placeConnections || [])
@@ -1161,22 +1163,25 @@ export default function MapCanvas({
             return (
               <g
                 key={`overlay_place_${od.parentPersonId}_${pl.id}`}
-                opacity={0.85}
+                opacity={0.9}
                 style={{ cursor: onOverlayPlaceClick ? 'pointer' : 'default' }}
                 onClick={e => { e.stopPropagation(); onOverlayPlaceClick?.(pl) }}
               >
+                {/* Gleiche gefüllte Box wie eigene Orte — bisher nur weiß mit
+                    farbigem Rand, dadurch wirkte die Ortsfarbe "nicht angezeigt". */}
                 <rect
                   x={pos.x - w / 2} y={pos.y - h / 2} width={w} height={h} rx={rx}
-                  fill="var(--color-white)"
-                  stroke={pl.color || 'var(--color-warm-3)'}
+                  fill={pl.color || '#8A7060'}
+                  stroke="rgba(255,255,255,0.35)"
                   strokeWidth={1.5}
+                  style={{ filter: 'drop-shadow(0 2px 4px rgba(58,46,36,0.15))' }}
                 />
-                <text x={pos.x} y={pos.y - 6} textAnchor="middle" fontSize={14} style={{ pointerEvents: 'none' }}>
+                <text x={pos.x - w / 2 + 12} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize={13} style={{ pointerEvents: 'none', userSelect: 'none' }}>
                   {emoji}
                 </text>
                 <text
-                  x={pos.x} y={pos.y + 12} textAnchor="middle"
-                  fill="#3A2E24" fontSize={9} fontFamily="Lora, Georgia, serif"
+                  x={pos.x + 4} y={pos.y} textAnchor="middle" dominantBaseline="middle"
+                  fill="white" fontSize={9} fontWeight="600" fontFamily="Lora, Georgia, serif"
                   style={{ pointerEvents: 'none' }}
                 >
                   {plName}
