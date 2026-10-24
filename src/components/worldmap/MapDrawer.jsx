@@ -78,6 +78,7 @@ export default function MapDrawer({
   const [showFilters, setShowFilters] = useState(false)
   const dragRef = useRef({ active: false, moved: false, startY: 0, startTranslate: 0, lastT: 0, max: 0 })
   const didMountReopen = useRef(false)
+  const listRef = useRef(null)
 
   // Sheet-Geometrie: feste Eigenhöhe, Kopf (Griff+Buttons) ist Teil davon.
   // 'closed' zeigt nur den Kopf, 'half' zusätzlich die Suchzeile, 'full' das
@@ -157,6 +158,14 @@ export default function MapDrawer({
       lastT: start,
       max: closedTranslate,
     }
+  }
+
+  // Im Panel (Suche, Liste, leere Fläche) soll man ebenfalls überall nach unten
+  // ziehen können, nicht nur am Kopf. Ist die Liste schon gescrollt, hat das
+  // normale Scrollen Vorrang; steht sie oben, zieht die Geste das Sheet.
+  function onPanelTouchStart(e) {
+    if (listRef.current && listRef.current.scrollTop > 0) return
+    onDragStart(e)
   }
 
   function onHandleClick() {
@@ -319,7 +328,7 @@ export default function MapDrawer({
       </div>
 
       {/* Panel: eigener Hintergrund, nur unter Suche/Filter/Liste */}
-      <div style={{
+      <div onTouchStart={onPanelTouchStart} style={{
         flex: 1, minHeight: 0,
         display: 'flex', flexDirection: 'column',
         background: C.bg,
@@ -423,7 +432,7 @@ export default function MapDrawer({
       )}
 
       {/* Ergebnisliste */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 12px calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+      <div ref={listRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 12px calc(24px + env(safe-area-inset-bottom, 0px))' }}>
         <p style={{ fontSize: 11, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, margin: '2px 6px 8px' }}>
           {list.length} {tab === 'siblings' ? 'Geschwister' : tab === 'gemeinden' ? (list.length === 1 ? 'Gemeinde' : 'Gemeinden') : (list.length === 1 ? 'Event' : 'Events')}
           {radiusKm != null && hasOwnLocation ? ` im Umkreis von ${radiusKm} km` : ''}
