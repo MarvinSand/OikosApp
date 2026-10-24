@@ -94,7 +94,7 @@ export default function PeopleYouMayKnow() {
       </p>
 
       {loading && (
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 12, overflow: 'hidden' }}>
           {[1, 2, 3].map(i => (
             <div key={i} style={{ width: 128, height: 168, borderRadius: 18, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
           ))}

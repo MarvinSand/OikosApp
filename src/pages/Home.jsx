@@ -171,7 +171,7 @@ export default function Home() {
         ref={containerRef}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className="flex-1 overflow-y-auto hide-scrollbar mobile-nav-padding"
+        className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar mobile-nav-padding"
       >
         {tab === 'aktuelles' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
@@ -188,7 +188,7 @@ export default function Home() {
             <TopGroupGoal />
           </div>
         ) : (
-          <div style={{ padding: '20px 16px 0' }}>
+          <div style={{ padding: '20px 16px 0', minWidth: 0, overflowX: 'hidden' }}>
             <Suspense fallback={<div style={{ height: 200, borderRadius: 18, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />}>
               <HomeCommunityTab />
             </Suspense>

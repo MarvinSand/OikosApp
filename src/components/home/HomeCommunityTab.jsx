@@ -74,7 +74,7 @@ export default function HomeCommunityTab() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0, maxWidth: '100%' }}>
       {/* Zu den Geschwistern */}
       <button
         onClick={() => navigate('/friends?tab=friends')}
