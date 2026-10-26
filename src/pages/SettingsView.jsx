@@ -12,7 +12,7 @@ import { useChangePassword } from '../hooks/useChangePassword'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
-import { isNativeApp } from '../lib/platform'
+import { isNativeApp, publicOrigin } from '../lib/platform'
 import { Avatar } from '../components/profile/ProfileTabs'
 
 // Lazy: AddressAutocomplete zieht den Google-Maps-Loader (~161 kB) mit und
@@ -297,6 +297,100 @@ function ChangePasswordModal({ email, onClose }) {
   )
 }
 
+function ChangeEmailModal({ currentEmail, onClose }) {
+  const { showToast } = useToast()
+  const [newEmail, setNewEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [pendingEmail, setPendingEmail] = useState(null)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    const next = newEmail.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) { setError('Bitte gib eine gültige E-Mail-Adresse ein.'); return }
+    if (next === (currentEmail || '').toLowerCase()) { setError('Das ist bereits deine aktuelle E-Mail-Adresse.'); return }
+    setBusy(true)
+    try {
+      // Zur Sicherheit mit dem aktuellen Passwort bestätigen (schützt vor
+      // fremdem Zugriff auf ein entsperrtes Gerät)
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email: currentEmail, password })
+      if (authErr) { setError('Das Passwort ist nicht korrekt.'); return }
+
+      const { data, error: updErr } = await supabase.auth.updateUser(
+        { email: next },
+        { emailRedirectTo: publicOrigin() + '/auth/callback' },
+      )
+      if (updErr) {
+        const msg = (updErr.message || '').toLowerCase()
+        setError(msg.includes('already') || msg.includes('registered')
+          ? 'Diese E-Mail-Adresse wird bereits verwendet.'
+          : (updErr.message || 'E-Mail konnte nicht geändert werden.'))
+        return
+      }
+      if ((data?.user?.email || '').toLowerCase() === next) {
+        await supabase.auth.refreshSession()
+        showToast('E-Mail-Adresse geändert ✓')
+        onClose()
+      } else {
+        // Projekt verlangt Bestätigung: Link an die neue Adresse gesendet
+        setPendingEmail(next)
+      }
+    } catch (err) {
+      setError(err?.message || 'E-Mail konnte nicht geändert werden.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 14, padding: 24, maxWidth: 380, width: '100%' }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
+          E-Mail-Adresse ändern
+        </h3>
+
+        {pendingEmail ? (
+          <>
+            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, marginBottom: 20 }}>
+              Wir haben einen Bestätigungslink an <strong>{pendingEmail}</strong> geschickt. Die Änderung wird wirksam, sobald du ihn öffnest.
+            </p>
+            <button onClick={onClose} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              Okay
+            </button>
+          </>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
+              Aktuell: <strong>{currentEmail}</strong>
+            </p>
+            <div style={{ marginBottom: 12 }}>
+              <label style={labelStyle}>Neue E-Mail-Adresse</label>
+              <input autoFocus type="email" autoComplete="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="name@beispiel.de" required style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Aktuelles Passwort</label>
+              <input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Zur Bestätigung" required style={inputStyle} />
+            </div>
+            {error && <p style={{ fontSize: 13, color: 'var(--color-error)', marginBottom: 16 }}>{error}</p>}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                Abbrechen
+              </button>
+              <button type="submit" disabled={busy} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                {busy ? 'Speichere…' : 'Ändern'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsView() {
   const navigate = useNavigate()
   const { profile, updateProfile, uploadAvatar, deleteAccount, loading: profileLoading } = useProfile({ useCache: true, withStats: false })
@@ -328,6 +422,7 @@ export default function SettingsView() {
   const [deleting, setDeleting] = useState(false)
   const [resending, setResending] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [showChangeEmail, setShowChangeEmail] = useState(false)
   const [showBlocked, setShowBlocked] = useState(false)
 
   // Datenschutz-Toggles
@@ -463,7 +558,9 @@ export default function SettingsView() {
     return <div style={{ padding: 24, color: 'var(--color-text-tertiary)' }}>Lade…</div>
   }
 
-  const emailNotVerified = profile && !profile.email_verified
+  // Maßgeblich ist der Auth-Zustand (E-Mail-Bestätigung ist im Projekt automatisch);
+  // profiles.email_verified wurde nur im Callback-Flow gesetzt und blieb sonst false.
+  const emailNotVerified = !!user && !user.email_confirmed_at
   const title = section === 'profile' ? 'Profil bearbeiten'
     : section === 'privacy' ? 'Ansicht & Datenschutz'
     : 'Einstellungen'
@@ -543,6 +640,12 @@ export default function SettingsView() {
             <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>
               Account
             </h3>
+            <MenuRow
+              icon={Mail}
+              title="E-Mail-Adresse"
+              desc={user?.email || '–'}
+              onClick={() => setShowChangeEmail(true)}
+            />
             <MenuRow
               icon={KeyRound}
               title="Passwort ändern"
@@ -749,6 +852,10 @@ export default function SettingsView() {
       )}
 
       {showBlocked && <Suspense fallback={null}><BlockedUsersSheet onClose={() => setShowBlocked(false)} /></Suspense>}
+
+      {showChangeEmail && (
+        <ChangeEmailModal currentEmail={user?.email} onClose={() => setShowChangeEmail(false)} />
+      )}
 
       {showChangePassword && (
         <ChangePasswordModal email={user?.email} onClose={() => setShowChangePassword(false)} />
