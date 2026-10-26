@@ -7,6 +7,9 @@
 - Eigener Lazy-Chunk (~5,6 kB gzip), Preload nur für Besucher ohne gespeicherte Session. Keine Datenabfragen. Screenshots: `public/landing/*.webp` (aus `app-store-screenshots/`, 560 px breit).
 - Store-Links: `src/lib/stores.js` – `VITE_PLAY_STORE_URL` (Default: Play-Link zu `app.oikos.mobile`), `VITE_APP_STORE_URL` (leer → „Bald im App Store“). Beim Livegang setzen. Keine inoffiziellen Store-Logos nachbauen.
 - CTA „Kostenlos starten“ → `/auth?mode=register` (öffnet direkt die Registrierung).
+- **Weltkugel** (`components/landing/NetworkGlobe.jsx`, eigener Lazy-Chunk ~22 kB gzip): Canvas-Globus mit Punktraster-Land, leuchtenden Knoten, Lichtbögen + Impulsen. Hero: freie Drehung. Vision-Story (`stage` 0–3, per IntersectionObserver aus den scrollenden Textschritten): Kugel fährt auf Europa und blendet das Netz stufenweise auf (Umfeld → Gemeinde → Netzwerk → weltweit); sticky Globus links, Text rechts (mobil: Globus oben sticky). Reine Illustration (Hinweis „Symbolische Darstellung“ steht unter dem Hero) – keine echten Nutzerdaten.
+- Landdaten `src/lib/worldDots.js` sind **generiert** (Natural Earth, public domain; grob 1,7° weltweit + feines 0,55°-Raster für Europa, wird beim Heranzoomen eingeblendet). Neu erzeugen mit `world-atlas` + `topojson-client` + `d3-geo` (`geoContains` pro Gitterpunkt) in einem Temp-Ordner, nicht als Projekt-Abhängigkeit. Pausiert außerhalb des Viewports/bei versteckter Tab, `prefers-reduced-motion` → Standbild.
+- Nachthimmel-Bereiche (`.l-dark`, Header/Hero/Vision/Abschluss) sind **immer dunkel** (überschreiben die Theme-Variablen lokal), der Rest folgt dem Theme. Handschrift-Akzente: `@fontsource/caveat` (lokal in `fonts.css`, kein Google Fonts).
 - Akzentfarbe als **Text** im Light-Mode: Babyblau hat auf Weiß ~1,9:1 → `--l-accent-text` (#0062C4) in `.landing`.
 
 ## Systemkarte „Meine Geschwister in Christus" (Okt. 2026, phase75)

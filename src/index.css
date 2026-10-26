@@ -407,7 +407,7 @@
 
 .landing .l-header {
   position: sticky; top: 0; z-index: 40;
-  background: var(--color-surface-blur);
+  background: rgba(5, 11, 24, 0.72);
   -webkit-backdrop-filter: saturate(180%) blur(14px);
   backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid var(--color-border);
@@ -506,4 +506,143 @@
 @media (prefers-reduced-motion: reduce) {
   .landing .l-reveal { opacity: 1; transform: none; transition: none; }
   .landing .l-float { animation: none; }
+}
+
+/* ── Landingpage: Nachthimmel-Bereiche (immer dunkel, unabhängig vom Theme) ── */
+.landing .l-dark {
+  --color-bg: #050b18;
+  --color-surface: rgba(255,255,255,0.07);
+  --color-bg-secondary: rgba(255,255,255,0.06);
+  --color-border: rgba(255,255,255,0.16);
+  --color-text: #FFFFFF;
+  --color-text-secondary: #B9C7DD;
+  --l-accent-text: #6FD0FF;
+  color: #fff;
+  color-scheme: dark;
+  position: relative;
+}
+.landing .l-hero2 {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 45% at 12% 0%, rgba(255,140,60,.30), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 92% 8%, rgba(110,80,220,.28), transparent 62%),
+    linear-gradient(180deg, #0b1d42 0%, #061128 46%, #040a18 100%);
+}
+.landing .l-vision {
+  padding: 72px 0 40px;
+  background: linear-gradient(180deg, #040a18 0%, #071430 40%, #050c1f 100%);
+}
+@media (min-width: 768px) { .landing .l-vision { padding: 104px 0 56px; } }
+.landing .l-final { background: linear-gradient(180deg, #050c1f 0%, #0a1a3a 60%, #1a1a33 100%); overflow: hidden; }
+
+.landing .l-stars {
+  position: absolute; inset: 0; pointer-events: none; opacity: .9;
+  background-size: 260px 260px;
+  background-image:
+    radial-gradient(1.2px 1.2px at 14px 26px, #fff 50%, transparent 52%),
+    radial-gradient(1px 1px at 92px 60px, rgba(255,255,255,.8) 50%, transparent 52%),
+    radial-gradient(1.4px 1.4px at 160px 18px, rgba(255,230,190,.9) 50%, transparent 52%),
+    radial-gradient(1px 1px at 214px 96px, rgba(255,255,255,.7) 50%, transparent 52%),
+    radial-gradient(1.2px 1.2px at 40px 140px, rgba(190,220,255,.9) 50%, transparent 52%),
+    radial-gradient(1px 1px at 128px 176px, rgba(255,255,255,.75) 50%, transparent 52%),
+    radial-gradient(1.4px 1.4px at 236px 206px, #fff 50%, transparent 52%),
+    radial-gradient(1px 1px at 70px 232px, rgba(255,255,255,.6) 50%, transparent 52%),
+    radial-gradient(1px 1px at 182px 140px, rgba(255,230,190,.7) 50%, transparent 52%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 45%, transparent 90%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 45%, transparent 90%);
+  animation: l-twinkle 6s ease-in-out infinite;
+}
+.landing .l-stars-soft { opacity: .5; animation: none; }
+@keyframes l-twinkle { 0%, 100% { opacity: .95; } 50% { opacity: .55; } }
+.landing .l-glow-warm {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 320px; pointer-events: none;
+  background: radial-gradient(ellipse 60% 100% at 50% 100%, rgba(255,150,60,.26), transparent 70%);
+}
+
+.landing .l-chip {
+  display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06);
+  font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #E6EEFF;
+}
+.landing .l-chip-dot { width: 7px; height: 7px; border-radius: 999px; background: #FFD60A; box-shadow: 0 0 10px 2px rgba(255,214,10,.7); }
+.landing .l-hero2 .l-chip { max-width: 100%; }
+@media (max-width: 420px) { .landing .l-chip { font-size: 10.5px; letter-spacing: .1em; padding: 8px 12px; gap: 8px; } }
+.landing .l-h1-xl { font-size: clamp(2.5rem, 8.4vw, 4.75rem); line-height: 1.04; }
+.landing .l-gold-text {
+  color: #FFC266;
+  background: linear-gradient(90deg, #FFE2A0, #FF9F45 55%, #FFC266);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+.landing .l-globe-box { width: 100%; height: clamp(330px, 60vw, 640px); margin-top: -8px; position: relative; z-index: 0; }
+@media (min-width: 640px) { .landing .l-globe-box { margin-top: -56px; } }
+
+.landing .l-hand {
+  position: absolute; display: none; font-family: 'Caveat', 'Segoe Print', cursive; font-weight: 600;
+  font-size: 30px; line-height: 1.05; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.6);
+  pointer-events: none;
+}
+.landing .l-hand-left { left: 1%; top: 22%; transform: rotate(-7deg); }
+.landing .l-hand-right { right: 1%; bottom: 26%; transform: rotate(-5deg); text-align: left; }
+@media (min-width: 1024px) { .landing .l-hand-left, .landing .l-hand-right { display: block; } }
+.landing .l-hand-static {
+  position: static; display: block; font-size: clamp(1.9rem, 5.6vw, 3rem); transform: rotate(-2deg);
+  color: #FFD98A;
+}
+
+.landing .l-pillars {
+  list-style: none; margin: 18px auto 0; padding: 0; max-width: 520px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.landing .l-pillars li {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 10px;
+  border-radius: 14px; border: 1px solid rgba(255,255,255,.16); background: rgba(8,16,36,.6);
+  font-size: 12.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #E6EEFF;
+}
+.landing .l-pillars svg { color: #FFD98A; flex: none; }
+@media (min-width: 1024px) {
+  .landing .l-pillars {
+    position: absolute; right: 0; top: 4%; margin: 0; max-width: none; width: 190px;
+    grid-template-columns: 1fr; gap: 10px;
+  }
+  .landing .l-pillars li { justify-content: flex-start; padding: 0 16px; backdrop-filter: blur(6px); }
+}
+
+/* Vision-Story: Kugel klebt, Texte scrollen daran vorbei */
+.landing .l-story { margin-top: 40px; }
+.landing .l-story-globe {
+  position: sticky; top: 64px; z-index: 5; height: 46svh; min-height: 280px;
+  background: #050d20;
+}
+.landing .l-story-globe::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 32px; pointer-events: none;
+  background: linear-gradient(180deg, #050d20, rgba(5,13,32,0));
+}
+.landing .l-story-canvas {
+  -webkit-mask-image: radial-gradient(ellipse closest-side, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse closest-side, #000 62%, transparent 100%);
+}
+.landing .l-story-steps { list-style: none; margin: 0; padding: 0; }
+.landing .l-step {
+  min-height: 62svh; display: flex; align-items: center; opacity: .4; transition: opacity .4s ease;
+}
+.landing .l-step.is-active { opacity: 1; }
+.landing .l-stage-label {
+  position: absolute; left: 0; top: 10px; display: inline-flex; align-items: center; gap: 10px;
+  padding: 6px 14px 6px 12px; border-radius: 999px; background: rgba(8,16,36,.8); border: 1px solid rgba(255,255,255,.18);
+  font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #fff;
+}
+.landing .l-stage-dots { display: inline-flex; gap: 4px; }
+.landing .l-stage-dots i { width: 6px; height: 6px; border-radius: 999px; background: rgba(255,255,255,.25); transition: background .3s, box-shadow .3s; }
+.landing .l-stage-dots i.on { background: #FFD60A; box-shadow: 0 0 8px rgba(255,214,10,.8); }
+@media (min-width: 768px) {
+  .landing .l-story { display: grid; grid-template-columns: 1.15fr .85fr; gap: 40px; align-items: start; }
+  .landing .l-story-globe {
+    top: 96px; height: min(72vh, 600px);
+    background: none;
+  }
+  .landing .l-story-globe::after { display: none; }
+  .landing .l-story-canvas { -webkit-mask-image: radial-gradient(ellipse closest-side, #000 66%, transparent 100%); mask-image: radial-gradient(ellipse closest-side, #000 66%, transparent 100%); }
+  .landing .l-stage-label { left: 16px; top: 16px; }
+  .landing .l-step { min-height: 72vh; }
 }

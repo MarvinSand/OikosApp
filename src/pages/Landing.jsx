@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowRight, BookOpen, ChevronLeft, ChevronRight, Eye, Globe, HandHeart,
+  ArrowRight, BookOpen, CalendarDays, ChevronLeft, ChevronRight, Eye, Globe, HandHeart,
   Home, Monitor, MessageCircle, Network, Newspaper, ScrollText, ShieldCheck,
-  Smartphone, Users, Check,
+  Smartphone, Sprout, Users, Check,
 } from 'lucide-react'
 import { PLAY_STORE_URL, APP_STORE_URL } from '../lib/stores'
+
+// Weltkugel + Länderdaten (~20 kB gzip) als eigener Chunk: Text und Buttons
+// erscheinen sofort, die Kugel blendet danach ein.
+const NetworkGlobe = lazy(() => import('../components/landing/NetworkGlobe'))
 
 // Öffentliche Startseite der Domain (nur Web, ausgeloggt). Erklärt Idee und
 // Vision von Oikos Connect und führt zu Web-App, Google Play und App Store.
@@ -26,6 +30,34 @@ const SCREENS = [
 const screen = (key) => SCREENS.find(s => s.src === key)
 const IMG_W = 560
 const IMG_H = 1217
+
+const STAGES = [
+  {
+    label: 'Dein Oikos', title: 'Es beginnt bei dir',
+    text: 'Familie, Freunde, Kollegen, Nachbarn: Menschen, die Gott dir ganz persönlich anvertraut hat. Auf deiner Oikos Map hältst du sie im Blick und betest gezielt für sie.',
+  },
+  {
+    label: 'Gemeinde', title: 'Aus Kreisen wird Gemeinschaft',
+    text: 'Hauskreise, Gebetsgruppen und Gemeinden finden zusammen, mit eigenem Chat, gemeinsamen Anliegen und Mitgliederübersicht.',
+  },
+  {
+    label: 'Netzwerk', title: 'Geschwister, die du noch nicht kennst',
+    text: 'Entdecke Christen und Events in deiner Nähe und bete füreinander, über Stadt- und Ländergrenzen hinweg.',
+  },
+  {
+    label: 'Weltweit', title: 'Eine Familie, überall auf der Erde',
+    text: 'Ein Gebet in Frankfurt, ein Zeugnis in Nairobi, ein Hauskreis in Seoul: Wir gehören zusammen. Genau das wollen wir sichtbar machen, damit Menschen Menschen zu Jesus führen.',
+  },
+]
+
+const PILLARS = [
+  { icon: MessageCircle, label: 'Austausch' },
+  { icon: HandHeart, label: 'Gebet' },
+  { icon: BookOpen, label: 'Bibel' },
+  { icon: CalendarDays, label: 'Events' },
+  { icon: Users, label: 'Community' },
+  { icon: Sprout, label: 'Wachsen' },
+]
 
 const STEPS = [
   {
@@ -127,10 +159,22 @@ function StoreCard({ icon: Icon, title, text, children }) {
 
 export default function Landing() {
   const galleryRef = useRef(null)
+  const stepRefs = useRef([])
+  const [stage, setStage] = useState(0)
+
+  // Welche Vision-Stufe steht gerade mittig im Bild? → Weltkugel blendet das Netz auf
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') { setStage(3); return }
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) setStage(Number(e.target.dataset.stage)) })
+    }, { rootMargin: '-58% 0px -41% 0px' })
+    stepRefs.current.forEach(el => el && io.observe(el))
+    return () => io.disconnect()
+  }, [])
 
   useEffect(() => {
     const prevTitle = document.title
-    document.title = 'Oikos Connect – Bete für dein Umfeld, lebe Glauben gemeinsam'
+    document.title = 'Oikos Connect – Verbunden im Glauben, rund um die Welt'
     return () => { document.title = prevTitle }
   }, [])
 
@@ -155,7 +199,7 @@ export default function Landing() {
       </a>
 
       {/* ── Header ───────────────────────────────────────────── */}
-      <header className="l-header">
+      <header className="l-dark l-header">
         <div className="l-container flex items-center justify-between h-16">
           <Link to="/welcome" className="flex items-center gap-2.5 no-anim" aria-label="Oikos Connect – Startseite">
             <img src="/landing/icon.webp" alt="" width="36" height="36" className="rounded-[10px]" />
@@ -171,70 +215,96 @@ export default function Landing() {
       </header>
 
       <main id="main" tabIndex={-1} className="outline-none">
-        {/* ── Hero ─────────────────────────────────────────────── */}
-        <section className="l-hero" aria-labelledby="hero-title">
-          <div className="l-container grid lg:grid-cols-[1.1fr_0.9fr] gap-12 lg:gap-8 items-center pt-12 pb-16 sm:pt-16 lg:pt-20 lg:pb-24">
-            <div className="text-center lg:text-left">
-              <p className="l-eyebrow">Das christliche Netzwerk für Gebet &amp; Gemeinschaft</p>
-              <h1 id="hero-title" className="l-h1">
-                Bete für die Menschen, die <span className="l-accent">Gott dir anvertraut</span> hat.
-              </h1>
-              <p className="l-lead mt-5 max-w-xl mx-auto lg:mx-0">
-                „Oikos“ ist griechisch und bedeutet „Haus“ oder „Umfeld“: Familie, Freunde, Kollegen,
-                Nachbarn. Oikos Connect hilft dir, sie im Blick zu behalten, treu für sie zu beten
-                und den Glauben gemeinsam mit anderen zu leben.
-              </p>
-              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-                <Link to="/auth?mode=register" className="l-btn l-btn-primary">
-                  Kostenlos starten <ArrowRight size={18} aria-hidden="true" />
-                </Link>
-                <button type="button" className="l-btn l-btn-ghost" onClick={() => scrollToId('vision')}>
-                  Die Vision entdecken
-                </button>
-              </div>
-              <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 justify-center lg:justify-start text-sm text-warm-2" aria-label="Verfügbar auf">
-                <li className="flex items-center gap-1.5"><Monitor size={16} aria-hidden="true" /> Web-App</li>
-                <li className="flex items-center gap-1.5"><Smartphone size={16} aria-hidden="true" /> iPhone</li>
-                <li className="flex items-center gap-1.5"><Smartphone size={16} aria-hidden="true" /> Android</li>
-                <li className="flex items-center gap-1.5"><Check size={16} aria-hidden="true" /> Kostenlos &amp; werbefrei</li>
+        {/* ── Hero: Nachthimmel + Weltkugel ────────────────────── */}
+        <section className="l-dark l-hero2" aria-labelledby="hero-title">
+          <div className="l-stars" aria-hidden="true" />
+          <div className="l-glow-warm" aria-hidden="true" />
+          <div className="l-container relative z-10 pt-9 sm:pt-12 text-center">
+            <p className="l-chip"><span aria-hidden="true" className="l-chip-dot" /> One Family · One Mission · One Oikos</p>
+            <h1 id="hero-title" className="l-h1 l-h1-xl mt-6">
+              Verbunden im Glauben.<br />
+              <span className="l-gold-text">Rund um die Welt.</span>
+            </h1>
+            <p className="l-lead mt-5 max-w-2xl mx-auto">
+              Oikos Connect verbindet Christen: Bete gezielt für dein persönliches Umfeld, finde
+              Geschwister und Gemeinden und erlebt gemeinsam, was Gott tut.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+              <Link to="/auth?mode=register" className="l-btn l-btn-primary">
+                Kostenlos starten <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+              <button type="button" className="l-btn l-btn-ghost" onClick={() => scrollToId('vision')}>
+                Die Vision entdecken
+              </button>
+            </div>
+          </div>
+
+          <div className="l-container relative pb-14 sm:pb-20">
+            <div className="relative">
+              <Suspense fallback={<div className="l-globe-box" />}>
+                <NetworkGlobe className="l-globe-box" />
+              </Suspense>
+              <p className="l-hand l-hand-left" aria-hidden="true">Eine App.<br />Eine globale<br />Community.</p>
+              <p className="l-hand l-hand-right" aria-hidden="true">Menschen.<br />Glaube.<br />Echte Verbindungen.</p>
+              <ul className="l-pillars" aria-label="Das erwartet dich">
+                {PILLARS.map(({ icon: Icon, label }) => (
+                  <li key={label}><Icon size={18} aria-hidden="true" /> {label}</li>
+                ))}
               </ul>
             </div>
+            <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2 justify-center text-sm text-warm-2" aria-label="Verfügbar auf">
+              <li className="flex items-center gap-1.5"><Monitor size={16} aria-hidden="true" /> Web-App</li>
+              <li className="flex items-center gap-1.5"><Smartphone size={16} aria-hidden="true" /> iPhone</li>
+              <li className="flex items-center gap-1.5"><Smartphone size={16} aria-hidden="true" /> Android</li>
+              <li className="flex items-center gap-1.5"><Check size={16} aria-hidden="true" /> Kostenlos &amp; werbefrei</li>
+            </ul>
 
-            <div className="relative flex justify-center" aria-hidden={false}>
-              <div className="l-hero-glow" aria-hidden="true" />
-              <div className="relative flex items-start gap-4 sm:gap-6">
-                <Shot id="01-oikos-map" priority className="w-[150px] min-[400px]:w-[170px] sm:w-[220px] lg:w-[230px] l-float" />
-                <Shot id="03-gebete" priority className="w-[150px] min-[400px]:w-[170px] sm:w-[220px] lg:w-[230px] mt-10 sm:mt-16 l-float l-float-b" />
-              </div>
-            </div>
+            <p className="text-center text-xs text-warm-2 mt-4 opacity-80">
+              Symbolische Darstellung: Orte und Aktivitäten dienen der Illustration.
+            </p>
           </div>
         </section>
 
-        {/* ── Vision ───────────────────────────────────────────── */}
-        <section id="vision" className="l-section l-section-alt scroll-mt-16" aria-labelledby="vision-title">
-          <div className="l-container">
-            <SectionHead id="vision-title" eyebrow="Unsere Vision" title="Menschen erreichen Menschen – durch Beziehungen im Alltag">
+        {/* ── Vision: das Netz wächst mit ──────────────────────── */}
+        <section id="vision" className="l-dark l-vision scroll-mt-16" aria-labelledby="vision-title">
+          <div className="l-stars l-stars-soft" aria-hidden="true" />
+          <div className="l-container relative">
+            <SectionHead id="vision-title" eyebrow="Unsere Vision" title="Aus einem Umfeld wird eine weltweite Familie">
               Jesus begegnet Menschen meist nicht auf einer Bühne, sondern am Küchentisch, im Büro
-              und auf dem Spielplatz. Genau dort setzt Oikos an.
+              und auf dem Spielplatz. Genau dort setzt Oikos an und lässt das Netz Schritt für Schritt wachsen.
             </SectionHead>
 
-            <div className="grid md:grid-cols-3 gap-4 sm:gap-6 mt-12">
-              {[
-                ['Ein Umfeld, ein Auftrag', 'Niemand lebt im luftleeren Raum. Jeder von uns hat Menschen um sich, die Gott uns bewusst vor die Füße gelegt hat. Oikos macht sie sichtbar, damit sie nicht im Alltag untergehen.'],
-                ['Gebet als Fundament', 'Bevor wir etwas für jemanden tun, dürfen wir für ihn beten. Oikos erinnert dich daran, hält Anliegen fest und zeigt dir, wie Gott antwortet.'],
-                ['Gemeinsam statt allein', 'Geschwister beten mit, Hauskreise und Gemeinden finden zusammen. Aus einzelnen Kreisen wächst ein Netz, das trägt.'],
-              ].map(([title, text], i) => (
-                <Reveal key={title} delay={i * 80}>
-                  <div className="l-card p-6 h-full">
-                    <span className="l-num" aria-hidden="true">{i + 1}</span>
-                    <h3 className="font-serif text-xl font-semibold mt-3">{title}</h3>
-                    <p className="text-warm-2 text-[15px] leading-relaxed mt-2">{text}</p>
-                  </div>
-                </Reveal>
-              ))}
+            <div className="l-story">
+              <div className="l-story-globe">
+                <Suspense fallback={<div className="w-full h-full" />}>
+                  <NetworkGlobe stage={stage} fit="box" className="l-story-canvas w-full h-full" />
+                </Suspense>
+                <div className="l-stage-label" aria-hidden="true">
+                  <span className="l-stage-dots">
+                    {STAGES.map((st, i) => <i key={st.label} className={i <= stage ? 'on' : ''} />)}
+                  </span>
+                  {STAGES[stage].label}
+                </div>
+              </div>
+              <ol className="l-story-steps">
+                {STAGES.map((st, i) => (
+                  <li
+                    key={st.label}
+                    ref={el => { stepRefs.current[i] = el }}
+                    data-stage={i}
+                    className={`l-step ${i === stage ? 'is-active' : ''}`}
+                  >
+                    <div>
+                      <p className="l-eyebrow">Stufe {i + 1} · {st.label}</p>
+                      <h3 className="font-serif text-2xl sm:text-3xl font-semibold mt-1.5">{st.title}</h3>
+                      <p className="l-lead mt-3">{st.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
 
-            <Reveal className="max-w-2xl mx-auto mt-14 text-center">
+            <Reveal className="max-w-2xl mx-auto pt-6 pb-4 text-center">
               <figure>
                 <blockquote className="font-serif italic text-xl sm:text-2xl leading-snug">
                   „Glaube an den Herrn Jesus, und du wirst errettet werden, du und dein Haus!“
@@ -394,21 +464,44 @@ export default function Landing() {
         </section>
       </main>
 
-      {/* ── Footer ───────────────────────────────────────────── */}
-      <footer className="border-t border-warm-3 py-10" style={{ paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))' }}>
-        <div className="l-container flex flex-col sm:flex-row items-center justify-between gap-5">
-          <div className="flex items-center gap-2.5">
-            <Home size={18} className="text-warm-2" aria-hidden="true" />
-            <span className="text-sm text-warm-2">© {new Date().getFullYear()} Oikos Connect</span>
-          </div>
-          <nav aria-label="Rechtliches" className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-sm">
-            <Link to="/privacy" className="l-footlink">Datenschutz</Link>
-            <Link to="/terms" className="l-footlink">Nutzungsbedingungen</Link>
-            <Link to="/support" className="l-footlink">Support</Link>
-            <Link to="/auth" className="l-footlink">Anmelden</Link>
-          </nav>
+      {/* ── Abschluss + Footer ───────────────────────────────── */}
+      <div className="l-dark l-final">
+        <div className="l-stars l-stars-soft" aria-hidden="true" />
+        <div className="l-glow-warm" aria-hidden="true" />
+        <div className="l-container relative text-center pt-20 sm:pt-28 pb-16">
+          <Reveal>
+            <p className="l-hand l-hand-static" aria-hidden="true">One Family. One Mission. One Oikos.</p>
+            <figure className="max-w-2xl mx-auto mt-8">
+              <blockquote className="font-serif italic text-xl sm:text-2xl leading-snug">
+                „Denn wo zwei oder drei versammelt sind in meinem Namen, da bin ich mitten unter ihnen.“
+              </blockquote>
+              <figcaption className="mt-3 text-sm text-warm-2">Matthäus 18,20 (Lutherbibel)</figcaption>
+            </figure>
+            <h2 className="l-h2 !mt-10">Werde Teil der Familie</h2>
+            <p className="l-lead mt-3 max-w-lg mx-auto">Kostenlos, werbefrei und in wenigen Minuten startklar.</p>
+            <div className="mt-7 flex justify-center">
+              <Link to="/auth?mode=register" className="l-btn l-btn-primary">
+                Kostenlos starten <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+            </div>
+          </Reveal>
         </div>
-      </footer>
+
+        <footer className="relative border-t border-warm-3 py-8" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}>
+          <div className="l-container flex flex-col sm:flex-row items-center justify-between gap-5">
+            <div className="flex items-center gap-2.5">
+              <Home size={18} className="text-warm-2" aria-hidden="true" />
+              <span className="text-sm text-warm-2">© {new Date().getFullYear()} Oikos Connect</span>
+            </div>
+            <nav aria-label="Rechtliches" className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-sm">
+              <Link to="/privacy" className="l-footlink">Datenschutz</Link>
+              <Link to="/terms" className="l-footlink">Nutzungsbedingungen</Link>
+              <Link to="/support" className="l-footlink">Support</Link>
+              <Link to="/auth" className="l-footlink">Anmelden</Link>
+            </nav>
+          </div>
+        </footer>
+      </div>
     </div>
   )
 }
