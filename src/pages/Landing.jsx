@@ -50,6 +50,13 @@ const STAGES = [
   },
 ]
 
+// Ebenen wie in der App-Weltkarte: Geschwister · Events · Gemeinden
+const LAYERS = [
+  { key: 'sibling', icon: Users, label: 'Geschwister' },
+  { key: 'event', icon: CalendarDays, label: 'Events' },
+  { key: 'gemeinde', icon: Home, label: 'Gemeinden' },
+]
+
 const PILLARS = [
   { icon: MessageCircle, label: 'Austausch' },
   { icon: HandHeart, label: 'Gebet' },
@@ -161,6 +168,7 @@ export default function Landing() {
   const galleryRef = useRef(null)
   const stepRefs = useRef([])
   const [stage, setStage] = useState(0)
+  const [kinds, setKinds] = useState({ sibling: true, event: true, gemeinde: true })
 
   // Welche Vision-Stufe steht gerade mittig im Bild? → Weltkugel blendet das Netz auf
   useEffect(() => {
@@ -241,9 +249,26 @@ export default function Landing() {
 
           <div className="l-container relative pb-14 sm:pb-20">
             <div className="relative">
-              <Suspense fallback={<div className="l-globe-box" />}>
-                <NetworkGlobe className="l-globe-box" />
-              </Suspense>
+              <div className="relative">
+                <Suspense fallback={<div className="l-globe-box" />}>
+                  <NetworkGlobe className="l-globe-box" kinds={kinds} />
+                </Suspense>
+                {/* Ebenen-Schalter wie in der Weltkarte der App */}
+                <div className="l-layers" role="group" aria-label="Ebenen der Weltkarte">
+                  {LAYERS.map(({ key, icon: Icon, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={kinds[key]}
+                      className={`l-layer ${kinds[key] ? 'is-on' : ''}`}
+                      onClick={() => setKinds(k => ({ ...k, [key]: !k[key] }))}
+                    >
+                      <Icon size={15} aria-hidden="true" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <p className="l-hand l-hand-left" aria-hidden="true">Eine App.<br />Eine globale<br />Community.</p>
               <p className="l-hand l-hand-right" aria-hidden="true">Menschen.<br />Glaube.<br />Echte Verbindungen.</p>
               <ul className="l-pillars" aria-label="Das erwartet dich">
