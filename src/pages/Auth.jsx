@@ -11,7 +11,9 @@ import { TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
 
 export default function Auth() {
   const hasSeenWelcome = typeof window !== 'undefined' && localStorage.getItem('oikos_welcome_seen')
-  const [view, setView] = useState(hasSeenWelcome ? 'login' : 'welcome')
+  // ?mode=register (Landingpage-CTA) öffnet direkt die Registrierung
+  const wantsRegister = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'register'
+  const [view, setView] = useState(wantsRegister ? 'register' : hasSeenWelcome ? 'login' : 'welcome')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')

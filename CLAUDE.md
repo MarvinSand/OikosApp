@@ -1,5 +1,14 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Landingpage auf der Domain (Okt. 2026)
+
+- `/` zeigt **ausgeloggt im Web** `pages/Landing.jsx` (Vision, Schritte, Funktionen, Screens, Download); eingeloggt weiterhin die App, in der nativen App (Capacitor) wie bisher direkt `/auth`. `/welcome` zeigt die Landingpage immer. Logik: `showsLanding()` + `RootGate` in `App.jsx`.
+- Der App-Rahmen ist eine `max-w-md`-Spalte ohne Dokument-Scroll (`html/body overflow:hidden`). Die Landingpage braucht volle Breite und scrollt in sich (`h-full overflow-y-auto`) → `AppFrame` schaltet `max-w-md` für sie ab. `BrowserRouter` muss deshalb *außerhalb* des Rahmens sitzen.
+- Eigener Lazy-Chunk (~5,6 kB gzip), Preload nur für Besucher ohne gespeicherte Session. Keine Datenabfragen. Screenshots: `public/landing/*.webp` (aus `app-store-screenshots/`, 560 px breit).
+- Store-Links: `src/lib/stores.js` – `VITE_PLAY_STORE_URL` (Default: Play-Link zu `app.oikos.mobile`), `VITE_APP_STORE_URL` (leer → „Bald im App Store“). Beim Livegang setzen. Keine inoffiziellen Store-Logos nachbauen.
+- CTA „Kostenlos starten“ → `/auth?mode=register` (öffnet direkt die Registrierung).
+- Akzentfarbe als **Text** im Light-Mode: Babyblau hat auf Weiß ~1,9:1 → `--l-accent-text` (#0062C4) in `.landing`.
+
 ## Systemkarte „Meine Geschwister in Christus" (Okt. 2026, phase75)
 
 - Pro Account genau eine `oikos_maps`-Zeile mit `kind='siblings'` (Unique-Index, Trigger auf `profiles` + Backfill, `ensure_siblings_map`). Immer erste Map im Switcher (Pin), nicht umbenenn-/löschbar, **öffentlich** (`visibility='public'`, neuer Wert in Check-Constraint + `is_map_visible_to`; `'public'` bei Sichtbarkeitsfiltern im Client mitbehandeln). Aus Weltkarten-/Gebets-/Filterquellen per `.or('kind.is.null,kind.neq.siblings')` ausgeschlossen (`neq` allein würde NULL-Zeilen verlieren).

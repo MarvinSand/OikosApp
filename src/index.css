@@ -393,3 +393,117 @@
 @media (prefers-reduced-motion: reduce) {
   .bottom-nav-slider, .bottom-nav-item svg { transition: none; }
 }
+
+/* ── Landingpage (pages/Landing.jsx) ───────────────────────────────────
+   Nutzt die App-Tokens. Akzentfarbe als Text braucht im Light-Mode einen
+   dunkleren Ton (Babyblau auf Weiß hat nur ~1,9:1). */
+.landing {
+  --l-accent-text: #0062C4;
+  scroll-behavior: auto;
+}
+[data-theme="dark"] .landing { --l-accent-text: var(--color-accent); }
+.landing .l-container { width: 100%; max-width: 72rem; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+@media (min-width: 640px) { .landing .l-container { padding-left: 24px; padding-right: 24px; } }
+
+.landing .l-header {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--color-surface-blur);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--color-border);
+}
+.landing .l-skip {
+  position: absolute; left: 16px; top: -64px; z-index: 60;
+  background: var(--color-text); color: var(--color-bg);
+  padding: 10px 16px; border-radius: 10px; font-weight: 600;
+}
+.landing .l-skip:focus { top: 8px; }
+
+.landing .l-navlink {
+  min-height: 44px; padding: 0 14px; border-radius: 999px; background: none; border: 0;
+  color: var(--color-text-secondary); font-size: 15px; font-weight: 500; cursor: pointer;
+}
+.landing .l-navlink:hover { color: var(--color-text); background: var(--color-bg-secondary); }
+.landing .l-footlink { color: var(--color-text-secondary); min-height: 44px; display: inline-flex; align-items: center; }
+.landing .l-footlink:hover { color: var(--color-text); text-decoration: underline; }
+
+.landing .l-h1 {
+  font-family: 'Lora', Georgia, serif; font-weight: 600; letter-spacing: -0.02em;
+  font-size: clamp(2.125rem, 6.2vw, 3.5rem); line-height: 1.1; margin-top: 12px;
+}
+.landing .l-h2 {
+  font-family: 'Lora', Georgia, serif; font-weight: 600; letter-spacing: -0.015em;
+  font-size: clamp(1.75rem, 4.4vw, 2.5rem); line-height: 1.15; margin-top: 8px;
+}
+.landing .l-lead { font-size: clamp(1rem, 2.2vw, 1.125rem); line-height: 1.65; color: var(--color-text-secondary); }
+.landing .l-eyebrow {
+  font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--l-accent-text);
+}
+.landing .l-accent { color: var(--l-accent-text); }
+
+.landing .l-section { padding: 72px 0; }
+@media (min-width: 768px) { .landing .l-section { padding: 104px 0; } }
+.landing .l-section-alt { background: var(--color-bg-secondary); }
+
+.landing .l-hero { position: relative; overflow: hidden; }
+.landing .l-hero-glow {
+  position: absolute; inset: -20% -10%; z-index: 0; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(90,200,250,.28), transparent 70%);
+}
+
+.landing .l-card {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 20px; box-shadow: var(--shadow-sm);
+}
+.landing .l-icon-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 14px;
+  background: var(--color-accent-light); color: var(--l-accent-text);
+}
+.landing .l-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 999px;
+  background: var(--color-accent); color: #000; font-weight: 700; font-size: 15px;
+}
+
+.landing .l-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 22px; border-radius: 999px;
+  font-size: 16px; font-weight: 600; cursor: pointer; text-align: center;
+}
+.landing .l-btn-primary { background: var(--color-accent); color: #000; box-shadow: var(--shadow-accent); }
+.landing .l-btn-primary:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.landing .l-btn-primary:active { transform: translateY(0); filter: brightness(.96); }
+.landing .l-btn-ghost { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
+.landing .l-btn-ghost:hover { background: var(--color-bg-secondary); }
+.landing .l-iconbtn {
+  width: 44px; height: 44px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text); cursor: pointer;
+}
+.landing .l-iconbtn:hover { background: var(--color-bg-secondary); }
+
+.landing .l-shot {
+  display: block; height: auto; border-radius: 28px;
+  border: 1px solid var(--color-border); box-shadow: var(--shadow-lg); background: #0b1c33;
+}
+
+.landing .l-gallery {
+  display: flex; gap: 16px; overflow-x: auto; padding-bottom: 24px;
+  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+  --l-gutter: max(16px, calc((100vw - 72rem) / 2 + 24px));
+  padding-left: var(--l-gutter); padding-right: var(--l-gutter);
+  scroll-padding-left: var(--l-gutter); overscroll-behavior-x: contain;
+}
+.landing .l-gallery-item { flex: 0 0 auto; width: 230px; scroll-snap-align: start; }
+@media (min-width: 640px) { .landing .l-gallery-item { width: 260px; } }
+
+.landing .l-reveal { opacity: 0; transform: translateY(18px); transition: opacity .5s ease-out, transform .5s cubic-bezier(0.16, 1, 0.3, 1); }
+.landing .l-reveal.is-in { opacity: 1; transform: none; }
+@keyframes l-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.landing .l-float { animation: l-float 7s ease-in-out infinite; }
+.landing .l-float-b { animation-delay: -3.5s; }
+@media (prefers-reduced-motion: reduce) {
+  .landing .l-reveal { opacity: 1; transform: none; transition: none; }
+  .landing .l-float { animation: none; }
+}
