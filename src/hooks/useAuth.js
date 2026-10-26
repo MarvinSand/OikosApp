@@ -97,9 +97,34 @@ function getSnapshot() {
 
 // ─── Aktionen (modulweit stabil, keine Re-Renders durch neue Identität) ───
 
+// Gender/Benutzername werden erst nach der ersten Anmeldung ins Profil
+// geschrieben (vorher fehlt die Session). Bei E-Mail-Bestätigung per Code
+// liegt zwischen Registrierung und Anmeldung die Code-Eingabe – bis dahin
+// merken wir uns die Angaben lokal.
+const PENDING_PROFILE_KEY = 'oikos_pending_profile'
+
+function rememberPendingProfile(email, fields) {
+  try { localStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify({ email: email.toLowerCase(), fields })) } catch { /* ignore */ }
+}
+
+async function applyPendingProfile(userId, email) {
+  try {
+    const raw = localStorage.getItem(PENDING_PROFILE_KEY)
+    if (!raw) return
+    const pending = JSON.parse(raw)
+    if (pending?.email !== (email || '').toLowerCase()) return
+    if (Object.keys(pending.fields || {}).length > 0) {
+      const { error } = await supabase.from('profiles').update(pending.fields).eq('id', userId)
+      if (error) return // beim nächsten Login erneut versuchen
+    }
+    localStorage.removeItem(PENDING_PROFILE_KEY)
+  } catch { /* ignore */ }
+}
+
 async function login(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw error
+  if (data?.user) applyPendingProfile(data.user.id, email)
   return data
 }
 
@@ -113,15 +138,37 @@ async function register(email, password, fullName, gender = null, username = nul
     },
   })
   if (error) throw error
-  if (data?.user) {
-    const profileUpdate = {}
-    if (gender) profileUpdate.gender = gender
-    if (username) profileUpdate.username = username
+  // Supabase meldet bei einer bereits registrierten Adresse einen "Fake-User"
+  // ohne Identitäten zurück (kein Fehler, kein Code) – verständlich melden.
+  if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    throw new Error('Diese E-Mail-Adresse ist bereits registriert. Bitte melde dich an.')
+  }
+  const profileUpdate = {}
+  if (gender) profileUpdate.gender = gender
+  if (username) profileUpdate.username = username
+  if (data?.session && data?.user) {
+    // Sofort angemeldet (keine E-Mail-Bestätigung nötig)
     if (Object.keys(profileUpdate).length > 0) {
       await supabase.from('profiles').update(profileUpdate).eq('id', data.user.id)
     }
+  } else if (data?.user) {
+    // Code per E-Mail nötig: Angaben bis nach der Bestätigung merken
+    rememberPendingProfile(email, profileUpdate)
   }
   return data
+}
+
+// 6-stelligen Code aus der Bestätigungs-E-Mail einlösen → Session
+async function verifySignupCode(email, code) {
+  const { data, error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'signup' })
+  if (error) throw error
+  if (data?.user) await applyPendingProfile(data.user.id, email)
+  return data
+}
+
+async function resendSignupCode(email) {
+  const { error } = await supabase.auth.resend({ type: 'signup', email })
+  if (error) throw error
 }
 
 async function logout() {
@@ -145,6 +192,8 @@ export function useAuth() {
     loading: snapshot.loading,
     login,
     register,
+    verifySignupCode,
+    resendSignupCode,
     logout,
     resendVerificationEmail,
   }

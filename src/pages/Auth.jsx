@@ -25,7 +25,8 @@ export default function Auth() {
   // mit Null-Toleranz für anstößige Inhalte akzeptieren
   const [acceptedTerms, setAcceptedTerms] = useState(false)
 
-  const { login, register } = useAuth()
+  const { login, register, verifySignupCode, resendSignupCode } = useAuth()
+  const [code, setCode] = useState('')
   const { showToast } = useToast()
   const resetFlow = useChangePassword('loggedOut')
   const youversionSignIn = useYouVersionSignIn()
@@ -56,7 +57,9 @@ export default function Auth() {
         }
         const data = await register(email, password, fullName, gender, username.trim())
         if (!data?.session) {
-          setView('email-sent')
+          // E-Mail-Bestätigung per Code nötig
+          setCode('')
+          setView('verify')
         }
         // Falls Session vorhanden, leitet App.jsx automatisch weiter
         return
@@ -74,15 +77,44 @@ export default function Auth() {
     }
   }
 
+  // Login scheiterte mit "E-Mail nicht bestätigt": neuen Code senden und eingeben lassen
   async function handleResendConfirmation() {
     setIsLoading(true)
     try {
-      await supabase.auth.resend({ type: 'signup', email })
-      showToast('Bestätigungs-E-Mail erneut gesendet ✓')
-    } catch {
-      showToast('Fehler beim Senden', 'error')
+      await resendSignupCode(email)
+      setCode('')
+      setError('')
+      setEmailNotConfirmed(false)
+      setView('verify')
+      showToast('Code gesendet ✓')
+    } catch (err) {
+      showToast(err?.message || 'Fehler beim Senden', 'error')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function handleVerifySubmit(e) {
+    e.preventDefault()
+    setError('')
+    if (!code.trim()) { setError('Bitte den Code aus der E-Mail eingeben.'); return }
+    setIsLoading(true)
+    try {
+      await verifySignupCode(email, code)
+      // Session ist da – App.jsx leitet automatisch weiter
+    } catch (err) {
+      setError('Der Code ist ungültig oder abgelaufen.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handleResendSignupCode() {
+    try {
+      await resendSignupCode(email)
+      showToast('Code erneut gesendet ✓')
+    } catch (err) {
+      showToast(err?.message || 'Fehler beim Senden', 'error')
     }
   }
 
@@ -288,14 +320,14 @@ export default function Auth() {
               {emailNotConfirmed && (
                 <div className="bg-gold-light text-gold-text text-sm p-3 rounded-xl animate-fade-in border border-gold/30">
                   <p className="font-medium mb-1">E-Mail noch nicht bestätigt.</p>
-                  <p className="text-xs text-gold-text mb-2">Bitte bestätige deine E-Mail-Adresse, um dich anzumelden.</p>
+                  <p className="text-xs text-gold-text mb-2">Gib den 6-stelligen Code aus der E-Mail ein, um dich anzumelden.</p>
                   <button
                     type="button"
                     onClick={handleResendConfirmation}
                     disabled={isLoading}
                     className="text-xs font-bold text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
                   >
-                    Bestätigungs-E-Mail erneut senden →
+                    Neuen Code per E-Mail senden →
                   </button>
                 </div>
               )}
@@ -483,23 +515,58 @@ export default function Auth() {
           </div>
         )}
 
-        {/* Email Confirmation Sent */}
-        {view === 'email-sent' && (
-          <div className="text-center animate-fade-in py-4">
-            <div className="w-20 h-20 bg-gold-light/30 rounded-full flex items-center justify-center mx-auto mb-6">
-              <MailCheck size={40} className="text-gold" strokeWidth={2} />
-            </div>
-            <h3 className="text-2xl font-bold text-dark mb-3">Fast geschafft!</h3>
-            <p className="text-sm text-dark-muted leading-relaxed mb-6">
-              Wir haben dir eine Bestätigungs-E-Mail an <strong className="text-dark">{email}</strong> geschickt.
-              Bitte klicke auf den Link in der E-Mail, um dein Konto zu aktivieren.
-            </p>
-            <button
-              onClick={goToLogin}
-              className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 transition-all duration-300"
-            >
-              Zum Login
+        {/* E-Mail bestätigen: 6-stelliger Code */}
+        {view === 'verify' && (
+          <div className="animate-fade-in">
+            <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-accent transition-colors mb-6">
+              ← Zurück
             </button>
+            <div className="w-16 h-16 bg-gold-light/30 rounded-full flex items-center justify-center mx-auto mb-5">
+              <MailCheck size={32} className="text-gold" strokeWidth={2} />
+            </div>
+            <h3 className="text-2xl font-bold text-dark mb-2 text-center">E-Mail bestätigen</h3>
+            <p className="text-sm text-dark-muted mb-6 leading-relaxed text-center">
+              Wir haben einen 6-stelligen Code an <strong className="text-dark">{email}</strong> geschickt. Gib ihn hier ein, um dein Konto zu aktivieren.
+            </p>
+
+            <form onSubmit={handleVerifySubmit} className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-dark-muted ml-1">Code</label>
+                <input
+                  autoFocus
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={code}
+                  onChange={e => setCode(e.target.value)}
+                  placeholder="6-stelliger Code"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light tracking-widest"
+                />
+              </div>
+
+              {error && (
+                <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading || !code.trim()}
+                className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+              >
+                {isLoading ? 'Prüfe…' : 'Konto aktivieren'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendSignupCode}
+                className="text-sm font-medium text-dark-muted hover:text-accent transition-colors"
+              >
+                Code erneut senden
+              </button>
+            </form>
           </div>
         )}
 
