@@ -20,6 +20,7 @@ import PrayerCardList from '../components/prayer/PrayerCardList'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/image'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
 
 // ─── Shared header styles ─────────────────────────────────────
@@ -235,6 +236,7 @@ function InputBar({ onSend }) {
 function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
   const [showFull, setShowFull] = useState(false)
   const [openMenu, setOpenMenu] = useState(false)
+  const menuBtnRef = useRef(null)
   const name = post.profiles?.full_name || post.profiles?.username || 'Unbekannt'
   const isPinned = post.is_pinned
   const isOwn = post.author_id === currentUserId
@@ -267,32 +269,29 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
         </div>
 
         {(isAdmin || isOwn) && (
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setOpenMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)' }}>
+          <div style={{ flexShrink: 0 }}>
+            <button ref={menuBtnRef} onClick={() => setOpenMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)' }}>
               <MoreVertical size={15} />
             </button>
             {openMenu && (
-              <>
-                <div onClick={() => setOpenMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.14)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 160 }}>
-                  {isAdmin && (
-                    <button
-                      onClick={() => { setOpenMenu(false); onTogglePin(post.id, !isPinned) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}
-                    >
-                      <Pin size={13} /> {isPinned ? 'Loslösen' : 'Anpinnen'}
-                    </button>
-                  )}
-                  {(isAdmin || isOwn) && (
-                    <button
-                      onClick={() => { setOpenMenu(false); onDelete(post.id) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer', textAlign: 'left' }}
-                    >
-                      <Trash2 size={13} /> Löschen
-                    </button>
-                  )}
-                </div>
-              </>
+              <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setOpenMenu(false)} minWidth={160}>
+                {isAdmin && (
+                  <button
+                    onClick={() => { setOpenMenu(false); onTogglePin(post.id, !isPinned) }}
+                    style={anchoredMenuItemStyle}
+                  >
+                    <Pin size={13} /> {isPinned ? 'Loslösen' : 'Anpinnen'}
+                  </button>
+                )}
+                {(isAdmin || isOwn) && (
+                  <button
+                    onClick={() => { setOpenMenu(false); onDelete(post.id) }}
+                    style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                  >
+                    <Trash2 size={13} /> Löschen
+                  </button>
+                )}
+              </AnchoredMenu>
             )}
           </div>
         )}

@@ -13,6 +13,7 @@ import AuthCallback from './pages/AuthCallback'
 import YouVersionCallback from './pages/YouVersionCallback'
 import LegalPage from './pages/LegalPage'
 import BottomNav from './components/layout/BottomNav'
+import { useKeyboardInset } from './hooks/useKeyboardInset'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
 // All authenticated pages load lazily: each route becomes its own chunk and
@@ -90,6 +91,7 @@ function LoadingSpinner() {
 function AppShellInner() {
   const location = useLocation()
   useNativePushRegistration()
+  useKeyboardInset()
   // Routes where the inner container should not be vertically scrollable
   // (full-bleed map views)
   const isFullScreenRoute =

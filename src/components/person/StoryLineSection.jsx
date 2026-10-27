@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef} from 'react'
 import { Plus, MoreVertical, Globe, Lock, Pencil, Trash2 } from 'lucide-react'
 import { useStoryLine } from '../../hooks/useStoryLine'
 import { useToast } from '../../context/ToastContext'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
 
 function formatEntryDate(dateStr) {
   if (!dateStr) return ''
@@ -83,6 +84,7 @@ function EntryForm({ initial, onSave, onCancel }) {
 // ─── Single Entry Row ─────────────────────────────────────────
 function EntryRow({ entry, isOwner, onUpdate, onDelete }) {
   const [showMenu, setShowMenu] = useState(false)
+  const menuBtnRef = useRef(null)
   const [editing, setEditing] = useState(false)
   const [showFull, setShowFull] = useState(false)
 
@@ -122,37 +124,35 @@ function EntryRow({ entry, isOwner, onUpdate, onDelete }) {
                 )}
               </div>
               {isOwner && (
-                <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div style={{ flexShrink: 0 }}>
                   <button
+                    ref={menuBtnRef}
                     onClick={() => setShowMenu(v => !v)}
                     style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text-light)', borderRadius: 6 }}
                   >
                     <MoreVertical size={14} />
                   </button>
                   {showMenu && (
-                    <>
-                      <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                      <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.14)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 150 }}>
-                        <button
-                          onClick={() => { setShowMenu(false); setEditing(true) }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}
-                        >
-                          <Pencil size={12} /> Bearbeiten
-                        </button>
-                        <button
-                          onClick={() => { setShowMenu(false); onUpdate(entry.id, { is_public: !entry.is_public }) }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}
-                        >
-                          {entry.is_public ? <><Lock size={12} /> Privat machen</> : <><Globe size={12} /> Öffentlich machen</>}
-                        </button>
-                        <button
-                          onClick={() => { setShowMenu(false); onDelete(entry.id) }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer', textAlign: 'left' }}
-                        >
-                          <Trash2 size={12} /> Löschen
-                        </button>
-                      </div>
-                    </>
+                    <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setShowMenu(false)} minWidth={150}>
+                      <button
+                        onClick={() => { setShowMenu(false); setEditing(true) }}
+                        style={anchoredMenuItemStyle}
+                      >
+                        <Pencil size={12} /> Bearbeiten
+                      </button>
+                      <button
+                        onClick={() => { setShowMenu(false); onUpdate(entry.id, { is_public: !entry.is_public }) }}
+                        style={anchoredMenuItemStyle}
+                      >
+                        {entry.is_public ? <><Lock size={12} /> Privat machen</> : <><Globe size={12} /> Öffentlich machen</>}
+                      </button>
+                      <button
+                        onClick={() => { setShowMenu(false); onDelete(entry.id) }}
+                        style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                      >
+                        <Trash2 size={12} /> Löschen
+                      </button>
+                    </AnchoredMenu>
                   )}
                 </div>
               )}

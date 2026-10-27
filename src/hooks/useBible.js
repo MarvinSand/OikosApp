@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { fetchBiblePath } from '../lib/youversion'
 import { wrapVersesInHtml } from '../lib/biblePassageHtml'
-import { HIGHLIGHT_COLORS } from '../lib/bibleColors'
+import { HIGHLIGHT_COLORS, normalizeColorKey, colorsEqual, isPresetColor } from '../lib/bibleColors'
 import { DEFAULT_STARRED_IDS } from '../lib/bibleVersionDefaults'
 
 // Numerische YouVersion-Bibel-ID. 73 = "Hoffnung für alle" (Default). Alle
@@ -270,25 +270,37 @@ export function useSavedBibleColors() {
       .select('color')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-    setColors((data || []).map(r => r.color))
+    const seen = new Set()
+    const next = []
+    for (const r of data || []) {
+      const key = normalizeColorKey(r.color)
+      if (!key.startsWith('#') || seen.has(key)) continue
+      seen.add(key)
+      next.push(key)
+    }
+    setColors(next)
     setLoading(false)
   }, [user?.id])
 
   useEffect(() => { load() }, [load])
 
   function isSaved(hex) {
-    return colors.some(c => c.toLowerCase() === hex?.toLowerCase())
+    return colors.some(c => colorsEqual(c, hex))
   }
 
   async function toggleColor(hex) {
-    if (!hex?.startsWith('#') || !user) return
-    const value = hex.toLowerCase()
+    const value = normalizeColorKey(hex)
+    if (!value.startsWith('#') || !user) return
     const wasSaved = isSaved(value)
-    setColors(prev => wasSaved ? prev.filter(c => c.toLowerCase() !== value) : [value, ...prev])
+    setColors(prev => wasSaved
+      ? prev.filter(c => !colorsEqual(c, value))
+      : [value, ...prev.filter(c => !colorsEqual(c, value))])
     if (wasSaved) {
+      // Delete any case/format variants the user may have accumulated.
       await supabase.from('bible_saved_colors').delete().eq('user_id', user.id).eq('color', value)
+      await supabase.from('bible_saved_colors').delete().eq('user_id', user.id).eq('color', hex)
     } else {
-      await supabase.from('bible_saved_colors').insert({ user_id: user.id, color: value })
+      await supabase.from('bible_saved_colors').upsert({ user_id: user.id, color: value }, { onConflict: 'user_id,color' })
     }
   }
 
@@ -316,11 +328,13 @@ export function useRecentBibleColors(limit = 6) {
     const deduped = []
     for (const row of data || []) {
       const c = row.color
-      if (!c || !c.startsWith('#') || HIGHLIGHT_COLORS[c]) continue
-      const key = c.toLowerCase()
+      const key = normalizeColorKey(c)
+      if (!key.startsWith('#') || isPresetColor(key)) continue
+      // Skip hex values that equal a preset hex (e.g. '#fde68a')
+      if (Object.values(HIGHLIGHT_COLORS).some(h => h.toLowerCase() === key)) continue
       if (seen.has(key)) continue
       seen.add(key)
-      deduped.push(c)
+      deduped.push(key)
       if (deduped.length >= limit) break
     }
     setColors(deduped)
@@ -410,19 +424,84 @@ export function useBibleMarkers(bibleId, book, chapter, { youversionConnected = 
 
   useEffect(() => { load() }, [load])
 
+  // Ranges überlappen, wenn sie Verse teilen (inkl. verse_end = null → Single).
+  function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+    const aE = aEnd ?? aStart
+    const bE = bEnd ?? bStart
+    return aStart <= bE && bStart <= aE
+  }
+
   async function addHighlight({ verseStart, verseEnd, referenceLabel, color = 'yellow', bibleId = DEFAULT_BIBLE_ID }) {
-    const { data, error } = await supabase.from('bible_highlights').insert({
+    if (!user) return { data: null, error: new Error('not signed in') }
+    const end = verseEnd ?? null
+    // Farbe normalisieren: Preset-Namen bleiben Namen, Hex wird lowercase #rrggbb.
+    const storedColor = isPresetColor(color) ? normalizeColorKey(color) : (normalizeColorKey(color) || color)
+
+    // Bestehende eigene Oikos-Highlights im gleichen Kapitel, die den neuen
+    // Bereich überlappen → ersetzen (Update Farbe/Range), statt Duplikate
+    // anzulegen. Sonst zeigt highlightFor() die älteste Farbe und die UI
+    // wirkt "buggy" beim Umfärben.
+    const overlapping = highlights.filter(h =>
+      h.source === 'oikos'
+      && rangesOverlap(verseStart, end, h.verse_start, h.verse_end)
+    )
+
+    const tempId = `tmp-${Date.now()}`
+    const optimistic = {
+      id: overlapping[0]?.id || tempId,
       user_id: user.id, bible_id: bibleId, book, chapter,
-      verse_start: verseStart, verse_end: verseEnd ?? null,
-      reference_label: referenceLabel, color, source: 'oikos',
-    }).select().single()
-    if (!error) setHighlights(prev => [...prev, data])
-    return { data, error }
+      verse_start: verseStart, verse_end: end,
+      reference_label: referenceLabel, color: storedColor, source: 'oikos',
+    }
+
+    // Optimistic: overlapping raus, neuer rein.
+    setHighlights(prev => [
+      ...prev.filter(h => !overlapping.some(o => o.id === h.id)),
+      optimistic,
+    ])
+
+    // Persist: delete extras first, then update-or-insert the keeper.
+    const extras = overlapping.slice(1)
+    if (extras.length) {
+      await supabase.from('bible_highlights').delete().in('id', extras.map(h => h.id))
+    }
+
+    let data = null
+    let error = null
+    if (overlapping[0]) {
+      const res = await supabase.from('bible_highlights').update({
+        verse_start: verseStart, verse_end: end,
+        reference_label: referenceLabel, color: storedColor, bible_id: bibleId,
+      }).eq('id', overlapping[0].id).select().single()
+      data = res.data; error = res.error
+    } else {
+      const res = await supabase.from('bible_highlights').insert({
+        user_id: user.id, bible_id: bibleId, book, chapter,
+        verse_start: verseStart, verse_end: end,
+        reference_label: referenceLabel, color: storedColor, source: 'oikos',
+      }).select().single()
+      data = res.data; error = res.error
+    }
+
+    if (error) {
+      // Rollback optimistic change by reloading chapter markers.
+      const { data: fresh } = await supabase.from('bible_highlights').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter)
+      if (fresh) setHighlights(fresh)
+      return { data: null, error }
+    }
+    setHighlights(prev => prev.map(h => (h.id === optimistic.id || h.id === tempId) ? data : h))
+    return { data, error: null }
   }
 
   async function removeHighlight(id) {
-    await supabase.from('bible_highlights').delete().eq('id', id)
+    if (!id) return
     setHighlights(prev => prev.filter(h => h.id !== id))
+    if (String(id).startsWith('tmp-')) return
+    const { error } = await supabase.from('bible_highlights').delete().eq('id', id)
+    if (error) {
+      const { data: fresh } = await supabase.from('bible_highlights').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter)
+      if (fresh) setHighlights(fresh)
+    }
   }
 
   async function addNote({

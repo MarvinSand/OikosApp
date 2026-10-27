@@ -7,6 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { useCommentThread } from '../hooks/useCommentThread'
 import { PostCard } from './FriendsView'
 import CommentCard from '../components/feed/CommentCard'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import FeedCardFrame from '../components/feed/FeedCardFrame'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
 import ShareSheet from '../components/feed/ShareSheet'
@@ -61,6 +62,7 @@ export default function CommentDetailView() {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const menuBtnRef = useRef(null)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const [showShareSheet, setShowShareSheet] = useState(false)
   const [ancestorSharePost, setAncestorSharePost] = useState(null)
@@ -190,24 +192,21 @@ export default function CommentDetailView() {
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', margin: 0 }}>{timeAgo(comment.created_at)}</p>
             </div>
             {isOwn && (
-              <div style={{ position: 'relative' }}>
-                <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+              <>
+                <button ref={menuBtnRef} onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
                   <MoreHorizontal size={16} />
                 </button>
                 {showMenu && (
-                  <>
-                    <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                    <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
-                      <button
-                        onClick={() => { setShowMenu(false); handleDeleteRoot() }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
-                      >
-                        <Trash2 size={14} /> Löschen
-                      </button>
-                    </div>
-                  </>
+                  <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setShowMenu(false)} minWidth={130}>
+                    <button
+                      onClick={() => { setShowMenu(false); handleDeleteRoot() }}
+                      style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                    >
+                      <Trash2 size={14} /> Löschen
+                    </button>
+                  </AnchoredMenu>
                 )}
-              </div>
+              </>
             )}
           </div>
 

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Flag, Ban, ChevronLeft } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -70,17 +71,28 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
     backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', fontSize: 14,
   }
 
-  return (
+  // Must portal to <body>: callers often live inside SwipePager (transform)
+  // or overflow:hidden panes, which would turn position:fixed into a
+  // containing-block-relative layout and shove the sheet into a corner.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 90 }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
       <div
         role="dialog"
         aria-modal="true"
         style={{
           position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480,
-          backgroundColor: 'var(--color-bg)', borderRadius: '20px 20px 0 0', zIndex: 91,
-          padding: '16px 20px calc(24px + env(safe-area-inset-bottom, 0px))',
-          maxHeight: '85dvh', overflowY: 'auto',
+          backgroundColor: 'var(--color-bg)', borderRadius: '20px 20px 0 0', zIndex: 201,
+          padding: '16px 20px calc(24px + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset, 0px))',
+          maxHeight: 'min(85dvh, calc(100dvh - var(--keyboard-inset, 0px)))', overflowY: 'auto',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -143,6 +155,7 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
           </div>
         )}
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
