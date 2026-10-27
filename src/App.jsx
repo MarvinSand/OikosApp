@@ -3,6 +3,7 @@ import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
 import { useSwipeNav } from './hooks/useSwipeNav'
+import { isPrayerFeedRoute } from './lib/prayerFeedRoute'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { supabase } from './lib/supabase'
 import { registerForPush } from './lib/nativePush'
@@ -35,7 +36,6 @@ const SavedPostsView = lazy(() => import('./pages/SavedPostsView'))
 const CommentDetailView = lazy(() => import('./pages/CommentDetailView'))
 const PrayerDetailView = lazy(() => import('./pages/PrayerDetailView'))
 const PublicMapView = lazy(() => import('./pages/PublicMapView'))
-const Prayers = lazy(() => import('./pages/Prayers'))
 const MapView = lazy(() => import('./pages/MapView'))
 const ConversationView = lazy(() => import('./pages/ConversationView'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
@@ -99,7 +99,8 @@ function AppShellInner() {
     location.pathname === '/worldmap' ||
     location.pathname.startsWith('/map/') ||
     location.pathname.startsWith('/chat/') ||
-    location.pathname.startsWith('/community/')
+    location.pathname.startsWith('/community/') ||
+    isPrayerFeedRoute(location.pathname, location.search)
 
   return (
     // h-full statt h-[100dvh]: der Eltern-Container (App) hat oben
@@ -119,7 +120,7 @@ function AppShellInner() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/worldmap" element={<WorldMap />} />
-          <Route path="/prayers" element={<Prayers />} />
+          <Route path="/prayers" element={<FriendsView />} />
           <Route path="/prayer/list/:listId" element={<PrayerListDetailView />} />
           <Route path="/goals/:id" element={<PrayerGoalDetail />} />
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />

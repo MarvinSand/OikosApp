@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
 import MemberAvatarStack from '../components/community/MemberAvatarStack'
+import { useSheetDismiss } from '../hooks/useSheetDismiss'
 import MembersSheet from '../components/community/MembersSheet'
 import { communityCover, getInitials as getCommunityInitials } from '../lib/communityTheme'
 import { useAuth } from '../hooks/useAuth'
@@ -579,11 +580,14 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
   const profile = member.profile || {}
   const name = profile.full_name || profile.username || 'Unbekannt'
   const isLastAdmin = adminCount <= 1 && member.role === 'admin'
+  const sheetRef = useSheetDismiss(onClose, 'translateX(-50%)')
 
+  // z-Index über der Mitgliederliste (MembersSheet: 60/61), sonst öffnet sich
+  // das Profil dahinter.
   return (
     <>
-      <div onClick={onClose} className="fixed inset-0 bg-dark/20 backdrop-blur-[1px] z-50 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[28px] z-50 p-6 pb-12 shadow-[0_-8px_30px_rgba(44,36,22,0.15)] animate-[sheetSlideUp_0.25s_ease-out]">
+      <div onClick={onClose} className="fixed inset-0 bg-dark/20 backdrop-blur-[1px] z-[70] transition-opacity" />
+      <div ref={sheetRef} className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[28px] z-[71] p-6 pb-12 shadow-[0_-8px_30px_rgba(44,36,22,0.15)] animate-[sheetSlideUp_0.25s_ease-out]">
         <div className="w-10 h-1.5 bg-warm-3 rounded-full mx-auto mb-6" />
         
         <div className="flex items-center gap-4 mb-5">
@@ -608,7 +612,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
           {!isSelf && (
             <button
               onClick={() => { onClose(); navigate(`/user/${member.user_id}`) }}
-              className="w-full py-3.5 flex items-center justify-center gap-2 rounded-xl bg-warm-1 text-white font-serif font-bold text-[15px] shadow-sm hover:bg-warm-2 transition-colors"
+              className="w-full py-3.5 flex items-center justify-center gap-2 rounded-xl bg-warm-1 text-bg font-serif font-bold text-[15px] shadow-sm hover:bg-warm-2 transition-colors"
             >
               <MessageSquare size={18} /> Nachricht senden
             </button>
@@ -630,7 +634,8 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
               
               <button
                 onClick={() => { onClose(); onRemove(member.user_id) }}
-                className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 text-red-600 font-serif font-bold text-[14px] hover:bg-red-100 transition-colors"
+                style={{ backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.35)', color: 'var(--color-error)' }}
+                className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border font-serif font-bold text-[14px] transition-colors"
               >
                 <UserMinus size={16} /> Mitglied entfernen
               </button>
@@ -806,10 +811,12 @@ function SettingsSheet({
     }
   }
 
+  const sheetRef = useSheetDismiss(onClose, 'translateX(-50%)')
+
   return (
     <>
       <div onClick={onClose} className="fixed inset-0 bg-dark/40 backdrop-blur-[2px] z-50 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface/95 backdrop-blur-xl rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
+      <div ref={sheetRef} className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface/95 backdrop-blur-xl rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
         <div className="w-9 h-1 bg-warm-3 rounded-full mx-auto mb-5" />
         
         <div className="flex items-center justify-between mb-6">
