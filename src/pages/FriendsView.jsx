@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark, ArrowLeft } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Newspaper, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark, ArrowLeft } from 'lucide-react'
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
@@ -19,7 +19,9 @@ import { useToast } from '../context/ToastContext'
 import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 import { readCache, writeCache } from '../lib/swrCache'
-import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
+import SegmentedTabs from '../components/layout/SegmentedTabs'
+import SwipePager from '../components/layout/SwipePager'
+import { isPrayerFeedRoute } from '../lib/prayerFeedRoute'
 import DateFilterControl from '../components/ui/DateFilterControl'
 import ExpandableSearch from '../components/common/ExpandableSearch'
 import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
@@ -1177,69 +1179,6 @@ function FeedTab() {
 
   // Kollabierender Header beim Scrollen (rAF + Sperre gegen Flackern)
   const rootRef = useRef(null)
-  const [collapsed, setCollapsed] = useState(false)
-  const collapsedRef = useRef(false)
-  const lockUntilRef = useRef(0)
-  const tickingRef = useRef(false)
-
-  function setCollapsedSafe(v) {
-    if (collapsedRef.current === v) return
-    collapsedRef.current = v
-    setCollapsed(v)
-    lockUntilRef.current = Date.now() + 360   // kurz sperren, damit das Layout-Springen keine Rückkopplung auslöst
-  }
-
-  useEffect(() => {
-    const scroller = rootRef.current?.closest('.overflow-y-auto')
-    if (!scroller) return
-    let lastY = scroller.scrollTop
-    function update() {
-      tickingRef.current = false
-      const st = scroller.scrollTop
-      const dy = st - lastY
-      lastY = st
-      if (Date.now() < lockUntilRef.current) return
-      if (st <= 8) { setCollapsedSafe(false); return }       // ganz oben → Bar offen
-      if (dy > 8 && st > 90) setCollapsedSafe(true)           // deutlich runter → einklappen
-      else if (dy < -8) setCollapsedSafe(false)              // hoch → ausklappen
-    }
-    function onScroll() {
-      if (!tickingRef.current) { tickingRef.current = true; requestAnimationFrame(update) }
-    }
-    let touchStartX = 0
-    let touchStartY = 0
-    let swipeBlocked = false
-    function onTouchStart(e) {
-      touchStartX = e.touches[0].clientX
-      touchStartY = e.touches[0].clientY
-      // Geste über einem horizontal scrollbaren Bereich (Karussells, Chips)
-      // soll dort scrollen dürfen statt zu den Gebeten zu navigieren.
-      let node = e.target
-      swipeBlocked = false
-      while (node && node !== scroller && node !== document.body) {
-        if (node.scrollWidth > node.clientWidth + 2) {
-          const overflowX = window.getComputedStyle(node).overflowX
-          if (overflowX === 'auto' || overflowX === 'scroll') { swipeBlocked = true; break }
-        }
-        node = node.parentElement
-      }
-    }
-    function onTouchEnd(e) {
-      if (swipeBlocked) return
-      const t = e.changedTouches[0]
-      const dx = t.clientX - touchStartX
-      const dy = t.clientY - touchStartY
-      if (dx > 60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigate('/prayers')
-    }
-    scroller.addEventListener('scroll', onScroll, { passive: true })
-    scroller.addEventListener('touchstart', onTouchStart, { passive: true })
-    scroller.addEventListener('touchend', onTouchEnd, { passive: true })
-    return () => {
-      scroller.removeEventListener('scroll', onScroll)
-      scroller.removeEventListener('touchstart', onTouchStart)
-      scroller.removeEventListener('touchend', onTouchEnd)
-    }
-  }, [navigate])
 
   // Direkt den Composer öffnen, wenn man vom Profil "+ Beitrag" kommt
   useEffect(() => {
@@ -1413,27 +1352,6 @@ function FeedTab() {
         )}
       </div>
 
-        {/* Feed/Gebete-Switcher – darunter; kollabiert beim Runterscrollen */}
-        {collapsed && (
-          <div
-            onClick={() => setCollapsedSafe(false)}
-            style={{
-              height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', backgroundColor: 'var(--color-bg)',
-              borderBottom: '1px solid var(--color-border)',
-            }}
-          >
-            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-border)' }} />
-          </div>
-        )}
-        <div style={{
-          maxHeight: collapsed ? 0 : 64,
-          opacity: collapsed ? 0 : 1,
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease, opacity 0.25s ease',
-        }}>
-          <PrayerFeedSwitcher active="feed" />
-        </div>
       </div>{/* /Sticky-Header */}
 
       <div style={{ padding: '14px 0 0' }}>
@@ -1537,6 +1455,49 @@ function FeedTab() {
   )
 }
 
+// ─── Gebete ⇄ Feed (Wisch-Pager) ─────────────────────────────
+const PrayersPane = lazy(() => import('./Prayers'))
+const PRAYER_FEED_TABS = [
+  { key: 'prayers', label: 'Gebete', icon: HandHeart, target: '/prayers' },
+  { key: 'feed',    label: 'Feed',   icon: Newspaper, target: '/friends?tab=feed' },
+]
+
+function PrayerFeedPager() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const rootRef = useRef(null)
+  const index = location.pathname === '/prayers' ? 0 : 1
+
+  function go(i) {
+    if (i !== index) navigate(PRAYER_FEED_TABS[i].target, { replace: true })
+  }
+
+  return (
+    <div ref={rootRef} className="h-full flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full">
+      <div style={{ flexShrink: 0, padding: '10px 16px', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+        <SegmentedTabs
+          tabs={PRAYER_FEED_TABS}
+          active={PRAYER_FEED_TABS[index].key}
+          onSelect={key => go(PRAYER_FEED_TABS.findIndex(t => t.key === key))}
+          synced
+        />
+      </div>
+      <div className="flex-1 min-h-0">
+        <SwipePager
+          count={2}
+          index={index}
+          onIndexChange={go}
+          syncRef={rootRef}
+          paneClassName="mobile-nav-padding"
+          renderPane={i => i === 0
+            ? <Suspense fallback={null}><PrayersPane /></Suspense>
+            : <FeedTab />}
+        />
+      </div>
+    </div>
+  )
+}
+
 // ─── FriendsView (Main) ──────────────────────────────────────
 export default function FriendsView() {
   const navigate = useNavigate()
@@ -1548,6 +1509,8 @@ export default function FriendsView() {
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+
+  if (isPrayerFeedRoute(location.pathname, location.search)) return <PrayerFeedPager />
 
   const headerTitle = activeTab === 'chats' ? 'Chats' : activeTab === 'communities' ? 'Communities' : 'Geschwister'
 
