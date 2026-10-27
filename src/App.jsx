@@ -160,6 +160,16 @@ function AppShell() {
     checkBirthdays(user.id)
   }, [user?.id])
 
+  // Feed im Hintergrund vorladen (erst nach dem Start-Ansturm von Home), damit
+  // der Feed-Tab nicht bei jedem ersten Öffnen Skelette zeigt.
+  useEffect(() => {
+    if (!user) return
+    const t = setTimeout(() => {
+      import('./hooks/useFeed').then(m => m.prefetchFeed(user.id)).catch(() => {})
+    }, 6000)
+    return () => clearTimeout(t)
+  }, [user?.id])
+
   return <AppShellInner />
 }
 
