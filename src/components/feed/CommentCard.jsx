@@ -7,7 +7,9 @@ import SavePostSheet from './SavePostSheet'
 import FeedCardFrame, { CONTENT_INSET } from './FeedCardFrame'
 import ModerationSheet from '../common/ModerationSheet'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
+import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
 import { useBlocks } from '../../hooks/useBlocks'
+import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 
 function timeAgo(iso) {
   const d = new Date(iso)
@@ -48,6 +50,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
   const [showMenu, setShowMenu] = useState(false)
   const menuBtnRef = useRef(null)
   const [showModeration, setShowModeration] = useState(false)
+  const { isAppAdmin } = useIsAppAdmin()
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const [showShareSheet, setShowShareSheet] = useState(false)
   const { isBlocked } = useBlocks()
@@ -84,9 +87,26 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
           </span>
         </div>
         {!isOwn && (
-          <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
-            <MoreHorizontal size={16} />
-          </button>
+          <>
+            <button ref={menuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label="Optionen" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+              <MoreHorizontal size={16} />
+            </button>
+            {showMenu && (
+              <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setShowMenu(false)} minWidth={220}>
+                <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
+                  Melden / Blockieren
+                </button>
+                {isAppAdmin && (
+                  <AdminContentMenuItems
+                    contentType="feed_comment"
+                    contentId={comment.id}
+                    hiddenAt={comment.moderation_hidden_at}
+                    onClose={() => setShowMenu(false)}
+                  />
+                )}
+              </AnchoredMenu>
+            )}
+          </>
         )}
         {showModeration && (
           <ModerationSheet

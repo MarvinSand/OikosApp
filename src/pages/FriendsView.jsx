@@ -31,6 +31,8 @@ import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import { verseAttachmentFromRow } from '../lib/bibleLink'
 import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 import ModerationSheet from '../components/common/ModerationSheet'
+import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
+import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import { useBlocks } from '../hooks/useBlocks'
 import { profilePreviewState } from '../lib/profilePreview'
@@ -1022,6 +1024,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const postMenuBtnRef = useRef(null)
+  const { isAppAdmin } = useIsAppAdmin()
   const [showModeration, setShowModeration] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const { isBlocked } = useBlocks()
@@ -1078,9 +1081,27 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
             </span>
           )}
           {!isOwn && (
-            <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
-              <MoreHorizontal size={16} />
-            </button>
+            <>
+              <button ref={postMenuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label="Optionen" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+                <MoreHorizontal size={16} />
+              </button>
+              {showMenu && (
+                <AnchoredMenu anchorRef={postMenuBtnRef} onClose={() => setShowMenu(false)} minWidth={220}>
+                  <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
+                    Melden / Blockieren
+                  </button>
+                  {isAppAdmin && (
+                    <AdminContentMenuItems
+                      contentType="feed_post"
+                      contentId={post.id}
+                      hiddenAt={post.moderation_hidden_at}
+                      onClose={() => setShowMenu(false)}
+                      onDone={() => { /* parent may refetch */ }}
+                    />
+                  )}
+                </AnchoredMenu>
+              )}
+            </>
           )}
           {showModeration && (
             <ModerationSheet

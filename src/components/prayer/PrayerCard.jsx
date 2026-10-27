@@ -15,6 +15,8 @@ import { summarizeLogs } from '../../hooks/usePrayerEngagement'
 import BibleReferenceChip from '../bible/BibleReferenceChip'
 import ModerationSheet from '../common/ModerationSheet'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
+import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
+import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 import {
   timeAgo, formatLastPrayed, getInitials, authorName as displayName, KIND_OIKOS,
   prayerContext,
@@ -182,6 +184,7 @@ export default function PrayerCard({
   const [showMenu, setShowMenu] = useState(false)
   const menuBtnRef = useRef(null)
   const [showModeration, setShowModeration] = useState(false)
+  const { isAppAdmin } = useIsAppAdmin()
   const [showEdit, setShowEdit] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [confetti, setConfetti] = useState(false)
@@ -463,6 +466,14 @@ export default function PrayerCard({
                   <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
                     <Flag size={15} /> Melden / Blockieren
                   </button>
+                )}
+                {isAppAdmin && !isOwner && (
+                  <AdminContentMenuItems
+                    contentType={prayer.kind === KIND_OIKOS ? 'prayer_request' : 'personal_prayer_request'}
+                    contentId={prayer.id}
+                    hiddenAt={prayer.moderation_hidden_at || prayer.moderationHiddenAt}
+                    onClose={() => setShowMenu(false)}
+                  />
                 )}
               </AnchoredMenu>
             )}
