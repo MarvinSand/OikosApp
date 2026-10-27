@@ -11,7 +11,7 @@ function Operator() {
   const { operatorName, operatorAddress, contactEmail } = LEGAL
   return (
     <p>
-      {operatorName || 'Betreiber der OIKOS-App'}
+      {operatorName || 'Betreiber von Oikos Connect'}
       {operatorAddress && <><br />{operatorAddress}</>}
       {contactEmail && <><br />E-Mail: <a href={`mailto:${contactEmail}`}>{contactEmail}</a></>}
     </p>
@@ -32,7 +32,7 @@ function Terms() {
 
       <h2>1. Worum es geht</h2>
       <p>
-        OIKOS ist eine christliche Community-App, um füreinander zu beten, sich zu vernetzen und
+        Oikos Connect ist eine christliche Community-App, um füreinander zu beten, sich zu vernetzen und
         Glaubensinhalte zu teilen. Mit der Registrierung akzeptierst du diese Bedingungen.
       </p>
 

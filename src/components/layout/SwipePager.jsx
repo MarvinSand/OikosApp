@@ -1,7 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-const EDGE = 40 // Rand-Wischen gehört der Tab-Navigation (useSwipeNav)
-
 // Läuft von target nach oben bis root und meldet true, sobald ein horizontal
 // scrollbarer Container (Karussell, Filter-Chips, …) gekreuzt wird – dort hat
 // natives Scrollen Vorrang.
@@ -59,7 +57,6 @@ export default function SwipePager({ count, index, onIndexChange, renderPane, sy
     function onStart(e) {
       if (e.touches.length !== 1) { s = null; return }
       const t = e.touches[0]
-      if (t.clientX <= EDGE || t.clientX >= window.innerWidth - EDGE) { s = null; return }
       if (crossesHorizontalScroller(e.target, el)) { s = null; return }
       s = { x: t.clientX, y: t.clientY, time: Date.now(), lock: null, dx: 0 }
     }

@@ -782,7 +782,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
     return (
       <div style={{ marginBottom: 8 }}>
         <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          OIKOS App Account
+          Oikos Connect Account
         </h4>
 
         {/* Profile row */}
@@ -822,7 +822,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
         <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: overlayEnabled ? 10 : 0 }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-              OIKOS einblenden
+              Oikos Connect einblenden
             </span>
             <button onClick={() => handleToggleOverlay(!overlayEnabled)} style={toggleTrack(overlayEnabled)}>
               <div style={toggleThumb(overlayEnabled)} />
@@ -951,10 +951,10 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
   return (
     <div style={{ marginBottom: 8 }}>
       <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        OIKOS App Account
+        Oikos Connect Account
       </h4>
       <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 10 }}>
-        Hat {person.name} einen OIKOS-Account?
+        Hat {person.name} einen Oikos-Connect-Account?
       </p>
       {!showSearch ? (
         <button

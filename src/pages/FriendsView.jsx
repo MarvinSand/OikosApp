@@ -19,6 +19,7 @@ import { useToast } from '../context/ToastContext'
 import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 import { readCache, writeCache } from '../lib/swrCache'
+import AppHeader from '../components/layout/AppHeader'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
 import SwipePager from '../components/layout/SwipePager'
 import { isPrayerFeedRoute } from '../lib/prayerFeedRoute'
@@ -1474,6 +1475,7 @@ function PrayerFeedPager() {
 
   return (
     <div ref={rootRef} className="h-full flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full">
+      <AppHeader />
       <div style={{ flexShrink: 0, padding: '10px 16px', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
         <SegmentedTabs
           tabs={PRAYER_FEED_TABS}

@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavi
 import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
-import { useSwipeNav } from './hooks/useSwipeNav'
 import { isPrayerFeedRoute } from './lib/prayerFeedRoute'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { supabase } from './lib/supabase'
@@ -90,7 +89,6 @@ function LoadingSpinner() {
 
 function AppShellInner() {
   const location = useLocation()
-  useSwipeNav()
   useNativePushRegistration()
   // Routes where the inner container should not be vertically scrollable
   // (full-bleed map views)

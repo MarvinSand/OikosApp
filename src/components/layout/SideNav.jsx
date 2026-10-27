@@ -20,7 +20,7 @@ export default function SideNav() {
     >
       {/* Brand */}
       <div className="px-6 pt-6 pb-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <h1 className="text-2xl font-bold leading-none mb-1" style={{ color: 'var(--color-text)' }}>OIKOS</h1>
+        <h1 className="text-2xl font-bold leading-none mb-1" style={{ color: 'var(--color-text)' }}>Oikos Connect</h1>
         <p className="text-[11px] tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Dein Umfeld. Dein Gebet.</p>
       </div>
 
@@ -56,7 +56,7 @@ export default function SideNav() {
       </nav>
 
       <div className="px-6 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <p className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>© 2025 Oikos App</p>
+        <p className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>© 2025 Oikos Connect</p>
       </div>
     </aside>
   )

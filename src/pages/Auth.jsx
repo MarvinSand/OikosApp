@@ -149,8 +149,8 @@ export default function Auth() {
 
       {/* Logo Section */}
       <div className={`text-center relative z-10 animate-fade-in ${view === 'welcome' ? 'mb-4' : 'mb-10'}`}>
-        <h1 className="font-serif text-5xl font-bold text-warm-1 tracking-tight leading-none mb-2 drop-shadow-sm">
-          OIKOS
+        <h1 className="font-serif text-4xl font-bold text-warm-1 tracking-tight leading-none mb-2 drop-shadow-sm">
+          Oikos Connect
         </h1>
         <div className="flex justify-center mb-2">
           <Cross size={22} className="text-warm-2" strokeWidth={2.5} />
@@ -167,18 +167,18 @@ export default function Auth() {
         {view === 'welcome' && (
           <div className="animate-fade-in flex flex-col gap-3">
             <div>
-              <h2 className="font-serif text-lg font-bold text-warm-1 mb-0.5">Willkommen bei OIKOS 🌱</h2>
+              <h2 className="font-serif text-lg font-bold text-warm-1 mb-0.5">Willkommen bei Oikos Connect 🌱</h2>
               <p className="font-serif text-xs font-semibold text-dark">Schön, dass du hier bist!</p>
             </div>
             <div className="flex flex-col gap-2 text-xs text-dark-muted leading-relaxed font-serif">
               <p>
-                OIKOS hilft dir, dein Umfeld mit neuen Augen zu sehen. Die Menschen, die Gott dir anvertraut hat, bewusster wahrzunehmen und sie im Gebet vor ihn zu bringen.
+                Oikos Connect hilft dir, dein Umfeld mit neuen Augen zu sehen. Die Menschen, die Gott dir anvertraut hat, bewusster wahrzunehmen und sie im Gebet vor ihn zu bringen.
               </p>
               <p>
                 Schritt für Schritt begleitet dich die App dabei, Personen in deinem Leben, die Jesus noch nicht kennen, näher zu ihm zu führen. Ganz natürlich, in deinem Alltag.
               </p>
               <p>
-                Gleichzeitig verbindet OIKOS dich mit deinen Glaubensgeschwistern. Auch über Entfernungen hinweg. Du siehst, wie und wo Gott in ihrem Umfeld wirkt, kennst ihre Gebetsanliegen und kannst sie geistlich mittragen.
+                Gleichzeitig verbindet Oikos Connect dich mit deinen Glaubensgeschwistern. Auch über Entfernungen hinweg. Du siehst, wie und wo Gott in ihrem Umfeld wirkt, kennst ihre Gebetsanliegen und kannst sie geistlich mittragen.
               </p>
               <p className="text-dark font-medium">Lass uns gemeinsam erleben, was Gott tut. 🙏</p>
             </div>
@@ -388,7 +388,7 @@ export default function Auth() {
             </>)}
 
             <p className="text-xs text-dark-light text-center mt-5" style={{ lineHeight: 1.5 }}>
-              Mit der Nutzung von OIKOS akzeptierst du unsere{' '}
+              Mit der Nutzung von Oikos Connect akzeptierst du unsere{' '}
               <Link to={TERMS_PATH} className="underline">Nutzungsbedingungen</Link> und{' '}
               <Link to={PRIVACY_PATH} className="underline">Datenschutzerklärung</Link>.
             </p>
