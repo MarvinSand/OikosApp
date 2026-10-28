@@ -109,12 +109,12 @@ function AppShellInner() {
     // darin ragte in der iOS-App um genau diese Notch-Höhe (~59pt) unten aus
     // dem Bildschirm – im Browser ist der Wert 0, deshalb trat der Versatz
     // (Weltkarte-Leiste über den Nav-Icons) nur in TestFlight auf.
-    <div className="h-full flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
+    <div className="h-full flex flex-col md:flex-row bg-bg w-full relative overflow-clip">
       <SideNav />
 
       <div
         className={`flex-1 min-h-0 min-w-0 hide-scrollbar ${
-          isFullScreenRoute ? 'overflow-hidden' : 'overflow-y-auto mobile-nav-padding'
+          isFullScreenRoute ? 'overflow-clip' : 'overflow-y-auto mobile-nav-padding'
         }`}
       >
         <Suspense fallback={<LoadingSpinner />}>
@@ -265,7 +265,7 @@ export default function App() {
       <ToastProvider>
         <div className="min-h-screen bg-bg w-full flex justify-center md:block">
           <div
-            className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-hidden bg-bg"
+            className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-clip bg-bg"
             style={{ paddingTop: 'env(safe-area-inset-top)' }}
           >
             <BrowserRouter>

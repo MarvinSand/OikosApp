@@ -1301,7 +1301,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
       {/* Emoji picker */}
       {showEmoji && <EmojiPicker onSelect={insertEmoji} />}
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px', paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px' }}>
         {/* Plus button */}
         <button
           onClick={() => { setShowAttach(v => !v); setShowEmoji(false) }}

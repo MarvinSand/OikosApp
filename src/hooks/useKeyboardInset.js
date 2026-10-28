@@ -14,6 +14,28 @@ export function useKeyboardInset() {
     const root = document.documentElement
     let focusedEditable = false
     let raf = 0
+    let lastEditable = null
+
+    // Beim Fokus scrollt iOS überall hoch, was „overflow: hidden" ist (auch
+    // ohne Scrollleiste). Nach dem Schließen der Tastatur blieb dieser Versatz
+    // stehen: Kopfleiste abgeschnitten, Eingabeleiste schwebt über der Nav –
+    // bis zum App-Neustart. Deshalb nach dem Schließen alles zurücksetzen.
+    function resetScroll() {
+      window.scrollTo(0, 0)
+      const se = document.scrollingElement
+      if (se) { se.scrollTop = 0; se.scrollLeft = 0 }
+      let node = lastEditable?.parentElement
+      while (node && node !== document.body) {
+        if ((node.scrollTop || node.scrollLeft) && window.getComputedStyle(node).overflowY === 'hidden') {
+          node.scrollTop = 0
+          node.scrollLeft = 0
+        }
+        node = node.parentElement
+      }
+      document.querySelectorAll('#root, #root > div, #root > div > div').forEach(n => {
+        if (n.scrollTop || n.scrollLeft) { n.scrollTop = 0; n.scrollLeft = 0 }
+      })
+    }
 
     function isEditable(el) {
       if (!el || el === document.body) return false
@@ -44,6 +66,7 @@ export function useKeyboardInset() {
       root.style.setProperty('--keyboard-inset', `${inset}px`)
       root.style.setProperty('--keyboard-open', open ? '1' : '0')
       root.classList.toggle('keyboard-open', open)
+      if (!open) resetScroll()
     }
 
     function schedule() {
@@ -53,6 +76,7 @@ export function useKeyboardInset() {
 
     function onFocusIn(e) {
       if (isEditable(e.target)) {
+        lastEditable = e.target
         focusedEditable = true
         schedule()
       }
@@ -62,6 +86,8 @@ export function useKeyboardInset() {
       setTimeout(() => {
         focusedEditable = isEditable(document.activeElement)
         schedule()
+        // iOS animiert das Einfahren der Tastatur noch ~300 ms – danach erneut.
+        if (!focusedEditable) setTimeout(() => { if (!focusedEditable) resetScroll() }, 350)
       }, 50)
     }
 
