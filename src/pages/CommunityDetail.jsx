@@ -1345,7 +1345,7 @@ export default function CommunityDetail() {
 
         {/* Tab-Navigation (Premium-Segmented) */}
         <div style={{ padding: '14px 16px 12px' }}>
-          <SegmentedTabs tabs={tabs} active={activeTab} onSelect={setActiveTab} />
+          <SegmentedTabs tabs={tabs} active={activeTab} onSelect={setActiveTab} stacked />
         </div>
       </div>
 
