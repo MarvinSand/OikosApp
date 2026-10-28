@@ -13,6 +13,7 @@ import AuthCallback from './pages/AuthCallback'
 import YouVersionCallback from './pages/YouVersionCallback'
 import LegalPage from './pages/LegalPage'
 import BottomNav from './components/layout/BottomNav'
+import { useKeyboardInset } from './hooks/useKeyboardInset'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
 // All authenticated pages load lazily: each route becomes its own chunk and
@@ -39,6 +40,7 @@ const MapView = lazy(() => import('./pages/MapView'))
 const ConversationView = lazy(() => import('./pages/ConversationView'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const NotificationSettingsView = lazy(() => import('./pages/NotificationSettingsView'))
+const ModerationView = lazy(() => import('./pages/ModerationView'))
 const BibleView = lazy(() => import('./pages/BibleView'))
 
 // Der Start lief bisher streng seriell: Entry-Bundle → Session prüfen →
@@ -90,6 +92,7 @@ function LoadingSpinner() {
 function AppShellInner() {
   const location = useLocation()
   useNativePushRegistration()
+  useKeyboardInset()
   // Routes where the inner container should not be vertically scrollable
   // (full-bleed map views)
   const isFullScreenRoute =
@@ -142,6 +145,7 @@ function AppShellInner() {
           <Route path="/profile" element={<ProfileView />} />
           <Route path="/profile/connections" element={<ConnectionsView />} />
           <Route path="/settings" element={<SettingsView />} />
+          <Route path="/settings/moderation" element={<ModerationView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>

@@ -1474,7 +1474,9 @@ export default function ConversationView() {
 
       if (!conv) { setInfoLoading(false); return }
 
-      if (conv.type === 'community') {
+      if (conv.type === 'moderation') {
+        setConvInfo({ type: 'moderation', name: 'Moderation (Admins)' })
+      } else if (conv.type === 'community') {
         const { data: community } = await supabase
           .from('communities')
           .select('id, name')

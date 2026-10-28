@@ -11,7 +11,7 @@ import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
 import { useToast } from '../context/ToastContext'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
-import { HIGHLIGHT_COLORS, resolveHighlightColor } from '../lib/bibleColors'
+import { HIGHLIGHT_COLORS, resolveHighlightColor, highlightTextColor, colorsEqual, isCustomHex, normalizeColorKey } from '../lib/bibleColors'
 import { formatReferenceLabel, parseBibleLinkParams } from '../lib/bibleLink'
 import { verseTextFromContainer } from '../lib/biblePassageHtml'
 import { DEFAULT_STARRED_VERSIONS } from '../lib/bibleVersionDefaults'
@@ -192,7 +192,7 @@ export default function BibleView() {
       if (selectedVerses.has(num)) {
         el.style.backgroundColor = hl ? resolveHighlightColor(hl.color) : 'var(--color-bg-secondary)'
         el.style.boxShadow = '0 0 0 2px var(--color-accent)'
-        el.style.color = hl ? '#1a1a1a' : ''
+        el.style.color = hl ? highlightTextColor(hl.color) : ''
         el.style.transition = ''
       } else if (flashVerses?.has(num)) {
         // Kurzes Aufblitzen nach einem Deep-Link-Sprung (siehe pendingVerses-
@@ -205,10 +205,8 @@ export default function BibleView() {
       } else if (hl) {
         el.style.backgroundColor = resolveHighlightColor(hl.color)
         el.style.boxShadow = 'none'
-        // Highlight-Farben sind immer helle Pastelltöne (Presets + eigene
-        // Auswahl) - Text deshalb fest dunkel, damit er im Dark Mode nicht
-        // in der hellen Markierung verschwindet.
-        el.style.color = '#1a1a1a'
+        // Kontrast: dunkle Custom-Farben brauchen hellen Text (WCAG-ish).
+        el.style.color = highlightTextColor(hl.color)
         el.style.transition = ''
       } else {
         el.style.backgroundColor = 'transparent'
@@ -484,11 +482,13 @@ function VerseActionBar({
   const navigate = useNavigate()
   const [showVisibilityPicker, setShowVisibilityPicker] = useState(false)
   const [showReferences, setShowReferences] = useState(false)
-  const activeHex = existingHighlight && !HIGHLIGHT_COLORS[existingHighlight.color] ? existingHighlight.color : null
+  const activeHex = existingHighlight && isCustomHex(existingHighlight.color)
+    ? normalizeColorKey(existingHighlight.color)
+    : null
   const extraColors = [
     ...(savedColors || []),
-    ...(recentColors || []).filter(c => !(savedColors || []).includes(c)),
-  ].slice(0, 8)
+    ...(recentColors || []).filter(c => !(savedColors || []).some(s => colorsEqual(s, c))),
+  ].filter((c, i, arr) => arr.findIndex(x => colorsEqual(x, c)) === i).slice(0, 8)
   const visibilityObj = VISIBILITY_OPTIONS.find(o => o.key === noteVisibility) || VISIBILITY_OPTIONS[0]
   const VisibilityIcon = visibilityObj.icon
 
@@ -500,8 +500,8 @@ function VerseActionBar({
 
   return (
     <div
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md rounded-t-2xl p-4 z-30 flex flex-col"
-      style={{ backgroundColor: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', boxShadow: '0 -4px 24px rgba(0,0,0,0.15)', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))', maxHeight: '80vh' }}
+      className="verse-action-bar fixed left-1/2 -translate-x-1/2 w-full max-w-md rounded-t-2xl p-4 z-50 flex flex-col"
+      style={{ bottom: 'calc(var(--bottom-nav-h, 0px) + var(--keyboard-inset, 0px))', backgroundColor: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', boxShadow: '0 -4px 24px rgba(0,0,0,0.15)', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))', maxHeight: 'min(80vh, calc(100dvh - var(--bottom-nav-h, 0px) - var(--keyboard-inset, 0px) - 12px))' }}
     >
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{referenceLabel}</p>
@@ -517,16 +517,19 @@ function VerseActionBar({
 
       <div className="overflow-y-auto">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {Object.entries(HIGHLIGHT_COLORS).map(([name, hex]) => (
+          {Object.entries(HIGHLIGHT_COLORS).map(([name, hex]) => {
+            const isActive = colorsEqual(existingHighlight?.color, name) || colorsEqual(existingHighlight?.color, hex)
+            return (
             <button
               key={name}
-              onClick={() => existingHighlight?.color === name ? onRemoveHighlight(existingHighlight.id) : onHighlight(name)}
+              onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(name)}
               className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: hex, boxShadow: existingHighlight?.color === name ? '0 0 0 2px var(--color-accent)' : 'none' }}
+              style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none', color: highlightTextColor(hex) }}
             >
-              {existingHighlight?.color === name && <span style={{ fontSize: 12 }}>✓</span>}
+              {isActive && <span style={{ fontSize: 12 }}>✓</span>}
             </button>
-          ))}
+            )
+          })}
           <CustomColorButton
             value={activeHex}
             saved={activeHex ? isColorSaved?.(activeHex) : false}
@@ -552,13 +555,13 @@ function VerseActionBar({
             </p>
             <div className="flex items-center gap-2 flex-wrap">
               {extraColors.map(hex => {
-                const isActive = existingHighlight?.color?.toLowerCase() === hex.toLowerCase()
+                const isActive = colorsEqual(existingHighlight?.color, hex)
                 return (
                   <button
                     key={hex}
                     onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(hex)}
                     className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none' }}
+                    style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none', color: highlightTextColor(hex) }}
                   >
                     {isActive && <span style={{ fontSize: 11 }}>✓</span>}
                   </button>
@@ -684,17 +687,30 @@ function CustomColorButton({ value, saved, onSaveCurrent, onPick, onRemove }) {
   const inputRef = useRef(null)
   const isActive = !!value
 
+  function openPicker() {
+    const el = inputRef.current
+    if (!el) return
+    // showPicker() is more reliable on iOS/WebKit than a programmatic click
+    // on a pointer-events-none input.
+    if (typeof el.showPicker === 'function') {
+      try { el.showPicker(); return } catch { /* fall through */ }
+    }
+    el.click()
+  }
+
   return (
     <button
       type="button"
-      onClick={() => isActive ? onRemove() : inputRef.current?.click()}
+      onClick={openPicker}
+      onContextMenu={e => { e.preventDefault(); if (isActive) onRemove?.() }}
       className="w-8 h-8 rounded-full flex items-center justify-center relative"
       style={{
         backgroundColor: isActive ? value : 'var(--color-bg-secondary)',
         boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none',
         border: isActive ? 'none' : '1px dashed var(--color-border)',
+        color: isActive ? highlightTextColor(value) : undefined,
       }}
-      title="Eigene Farbe"
+      title={isActive ? 'Farbe ändern (lang drücken: entfernen)' : 'Eigene Farbe'}
     >
       {isActive ? <span style={{ fontSize: 12 }}>✓</span> : <Plus size={14} style={{ color: 'var(--color-text-tertiary)' }} />}
       {isActive && onSaveCurrent && (
@@ -715,8 +731,10 @@ function CustomColorButton({ value, saved, onSaveCurrent, onPick, onRemove }) {
         type="color"
         value={value || '#fde68a'}
         onChange={e => onPick(e.target.value)}
+        onInput={e => onPick(e.target.value)}
         className="absolute inset-0 opacity-0 pointer-events-none"
         tabIndex={-1}
+        aria-hidden="true"
       />
     </button>
   )

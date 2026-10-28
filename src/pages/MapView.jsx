@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense, useRef } from 'react'
 import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
@@ -19,6 +19,7 @@ import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
 import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
 import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSheet'
 import WorldMapView from '../components/worldmap/WorldMapView'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 
 // ─── Farb-Filter Panel ───────────────────────────────────────
 const EMPTY_LIST = []
@@ -306,6 +307,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [showMapMenu, setShowMapMenu] = useState(false)
   const [showNewMap, setShowNewMap] = useState(false)
   const [showAddPerson, setShowAddPerson] = useState(false)
+  const addMenuBtnRef = useRef(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showAddPlace, setShowAddPlace] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -489,32 +491,29 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             >
               <Layers size={18} />
             </button>
-            <div className="relative">
+            <div>
               <button
+                ref={addMenuBtnRef}
                 onClick={() => setShowAddMenu(v => !v)}
                 className="flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
               >
                 <Plus size={15} /> Hinzufügen
               </button>
               {showAddMenu && (
-                <>
-                  <div onClick={() => setShowAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
-                  <div className="absolute right-0 top-full mt-1 bg-paper rounded-xl shadow-glass border border-warm-3 overflow-hidden z-40 min-w-[160px]">
-                    <button
-                      onClick={() => { setShowAddMenu(false); setShowAddPerson(true) }}
-                      className="flex items-center gap-2.5 w-full px-4 py-3 border-none bg-transparent hover:bg-warm-4 font-serif text-[13px] text-dark font-medium cursor-pointer text-left transition-colors"
-                    >
-                      <User size={14} className="text-warm-1" /> Person hinzufügen
-                    </button>
-                    <div className="h-px bg-warm-3" />
-                    <button
-                      onClick={() => { setShowAddMenu(false); setShowAddPlace(true) }}
-                      className="flex items-center gap-2.5 w-full px-4 py-3 border-none bg-transparent hover:bg-warm-4 font-serif text-[13px] text-dark font-medium cursor-pointer text-left transition-colors"
-                    >
-                      <MapPin size={14} className="text-warm-1" /> Ort hinzufügen
-                    </button>
-                  </div>
-                </>
+                <AnchoredMenu anchorRef={addMenuBtnRef} onClose={() => setShowAddMenu(false)} minWidth={160}>
+                  <button
+                    onClick={() => { setShowAddMenu(false); setShowAddPerson(true) }}
+                    style={anchoredMenuItemStyle}
+                  >
+                    <User size={14} className="text-warm-1" /> Person hinzufügen
+                  </button>
+                  <button
+                    onClick={() => { setShowAddMenu(false); setShowAddPlace(true) }}
+                    style={anchoredMenuItemStyle}
+                  >
+                    <MapPin size={14} className="text-warm-1" /> Ort hinzufügen
+                  </button>
+                </AnchoredMenu>
               )}
             </div>
           </div>

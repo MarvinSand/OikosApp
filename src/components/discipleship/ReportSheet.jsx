@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -26,14 +27,25 @@ export default function ReportSheet({ contentType, contentId, onClose }) {
     onClose()
   }
 
-  return (
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 40 }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 200 }} />
       <div
+        role="dialog"
+        aria-modal="true"
         style={{
           position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480,
-          backgroundColor: 'var(--color-bg)', borderRadius: '20px 20px 0 0', zIndex: 50,
-          padding: '16px 20px calc(28px + env(safe-area-inset-bottom, 0px))',
+          backgroundColor: 'var(--color-bg)', borderRadius: '20px 20px 0 0', zIndex: 201,
+          padding: '16px 20px calc(28px + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset, 0px))',
+          maxHeight: 'min(85dvh, calc(100dvh - var(--keyboard-inset, 0px)))', overflowY: 'auto',
         }}
       >
         <div className="flex items-center justify-between mb-4">
@@ -54,6 +66,7 @@ export default function ReportSheet({ contentType, contentId, onClose }) {
           ))}
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

@@ -1,0 +1,87 @@
+import { useEffect } from 'react'
+
+/**
+ * Tracks the on-screen keyboard via visualViewport + focusin/focusout and
+ * exposes it as CSS variables on <html>:
+ *   --keyboard-inset  px the keyboard covers from the bottom of the layout
+ *   --keyboard-open   '1' | '0'
+ *
+ * Also toggles the `keyboard-open` class so BottomNav can hide itself.
+ * Does not change Capacitor config (no native rebuild required).
+ */
+export function useKeyboardInset() {
+  useEffect(() => {
+    const root = document.documentElement
+    let focusedEditable = false
+    let raf = 0
+
+    function isEditable(el) {
+      if (!el || el === document.body) return false
+      const tag = el.tagName
+      if (tag === 'TEXTAREA' || tag === 'SELECT') return true
+      if (tag === 'INPUT') {
+        const type = (el.getAttribute('type') || 'text').toLowerCase()
+        return !['button', 'checkbox', 'radio', 'file', 'submit', 'reset', 'range', 'color', 'hidden', 'image'].includes(type)
+      }
+      return el.isContentEditable
+    }
+
+    function measure() {
+      raf = 0
+      const vv = window.visualViewport
+      // Layout viewport height vs visual viewport — difference is the keyboard
+      // (plus browser chrome). On desktop / when no keyboard, keep 0.
+      let inset = 0
+      if (vv) {
+        const covered = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop))
+        // Ignore tiny diffs from URL-bar show/hide (~50px); keyboards are larger.
+        if (covered > 80 || (focusedEditable && covered > 24)) inset = Math.round(covered)
+      }
+      // Fallback: if an editable is focused but visualViewport didn't report a
+      // shrink (iOS overlays-content quirks), still mark keyboard-open so the
+      // bottom nav hides and sheets can sit at the visual bottom.
+      const open = inset > 0 || focusedEditable
+      root.style.setProperty('--keyboard-inset', `${inset}px`)
+      root.style.setProperty('--keyboard-open', open ? '1' : '0')
+      root.classList.toggle('keyboard-open', open)
+    }
+
+    function schedule() {
+      if (raf) return
+      raf = requestAnimationFrame(measure)
+    }
+
+    function onFocusIn(e) {
+      if (isEditable(e.target)) {
+        focusedEditable = true
+        schedule()
+      }
+    }
+    function onFocusOut() {
+      // Defer: focus may move to another input in the same tick.
+      setTimeout(() => {
+        focusedEditable = isEditable(document.activeElement)
+        schedule()
+      }, 50)
+    }
+
+    measure()
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', schedule)
+    vv?.addEventListener('scroll', schedule)
+    window.addEventListener('resize', schedule)
+    document.addEventListener('focusin', onFocusIn)
+    document.addEventListener('focusout', onFocusOut)
+    return () => {
+      vv?.removeEventListener('resize', schedule)
+      vv?.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+      document.removeEventListener('focusin', onFocusIn)
+      document.removeEventListener('focusout', onFocusOut)
+      if (raf) cancelAnimationFrame(raf)
+      root.style.setProperty('--keyboard-inset', '0px')
+      root.style.setProperty('--keyboard-open', '0')
+      root.classList.remove('keyboard-open')
+    }
+  }, [])
+}

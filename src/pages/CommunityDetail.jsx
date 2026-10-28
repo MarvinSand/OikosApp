@@ -20,6 +20,10 @@ import PrayerCardList from '../components/prayer/PrayerCardList'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/image'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
+import ModerationSheet from '../components/common/ModerationSheet'
+import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
+import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
 
 // ─── Shared header styles ─────────────────────────────────────
@@ -232,9 +236,89 @@ function InputBar({ onSend }) {
 }
 
 // ─── Post Card (Redesigned) ───────────────────────────────────
+
+function CommunityReportsTab({ communityId }) {
+  const { showToast } = useToast()
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function load() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('content_reports')
+      .select('id, content_type, content_id, reason, status, target_author_id, created_at, action_taken')
+      .eq('community_id', communityId)
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error) showToast('Meldungen laden fehlgeschlagen', 'error')
+    setRows(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [communityId])
+
+  async function act(row, kind) {
+    setBusy(true)
+    try {
+      if (kind === 'hide') {
+        const { error } = await supabase.rpc('moderation_hide_content', {
+          p_content_type: row.content_type, p_content_id: row.content_id, p_note: note || null,
+        })
+        if (error) throw error
+      }
+      if (kind === 'delete') {
+        const { error } = await supabase.rpc('moderation_soft_delete_content', {
+          p_content_type: row.content_type, p_content_id: row.content_id, p_note: note || null,
+        })
+        if (error) throw error
+      }
+      const { error } = await supabase.rpc('moderation_resolve_report', {
+        p_report_id: row.id,
+        p_status: kind === 'dismiss' ? 'dismissed' : 'resolved',
+        p_action_taken: kind,
+        p_note: note || null,
+      })
+      if (error) throw error
+      showToast('Erledigt')
+      setNote('')
+      await load()
+    } catch (e) {
+      showToast(e.message || 'Fehler', 'error')
+    }
+    setBusy(false)
+  }
+
+  if (loading) return <p style={{ padding: 16, color: 'var(--color-text-secondary)' }}>Laden…</p>
+  if (rows.length === 0) return <p style={{ padding: 16, color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>Keine offenen Meldungen in dieser Community.</p>
+
+  return (
+    <div style={{ padding: 12 }}>
+      <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Notiz (optional)…" rows={2}
+        style={{ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', marginBottom: 12, fontSize: 13 }} />
+      {rows.map(r => (
+        <div key={r.id} style={{ background: 'var(--color-white)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 12, marginBottom: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 13 }}>{r.content_type}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '4px 0 8px' }}>{r.reason}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <button disabled={busy} onClick={() => act(r, 'dismiss')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer' }}>Verwerfen</button>
+            <button disabled={busy} onClick={() => act(r, 'hide')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer' }}>Verstecken</button>
+            <button disabled={busy} onClick={() => act(r, 'delete')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: '#C0392B', cursor: 'pointer' }}>Löschen</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
   const [showFull, setShowFull] = useState(false)
   const [openMenu, setOpenMenu] = useState(false)
+  const [showModeration, setShowModeration] = useState(false)
+  const menuBtnRef = useRef(null)
+  const { isAppAdmin } = useIsAppAdmin()
   const name = post.profiles?.full_name || post.profiles?.username || 'Unbekannt'
   const isPinned = post.is_pinned
   const isOwn = post.author_id === currentUserId
@@ -266,36 +350,56 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
           <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: 0 }}>{timeAgo(post.created_at)}</p>
         </div>
 
-        {(isAdmin || isOwn) && (
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setOpenMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)' }}>
-              <MoreVertical size={15} />
-            </button>
-            {openMenu && (
-              <>
-                <div onClick={() => setOpenMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.14)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 160 }}>
-                  {isAdmin && (
-                    <button
-                      onClick={() => { setOpenMenu(false); onTogglePin(post.id, !isPinned) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}
-                    >
-                      <Pin size={13} /> {isPinned ? 'Loslösen' : 'Anpinnen'}
-                    </button>
-                  )}
-                  {(isAdmin || isOwn) && (
-                    <button
-                      onClick={() => { setOpenMenu(false); onDelete(post.id) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer', textAlign: 'left' }}
-                    >
-                      <Trash2 size={13} /> Löschen
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+        <div style={{ flexShrink: 0 }}>
+          <button ref={menuBtnRef} onClick={() => setOpenMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)' }}>
+            <MoreVertical size={15} />
+          </button>
+          {openMenu && (
+            <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setOpenMenu(false)} minWidth={200}>
+              {isAdmin && (
+                <button
+                  onClick={() => { setOpenMenu(false); onTogglePin(post.id, !isPinned) }}
+                  style={anchoredMenuItemStyle}
+                >
+                  <Pin size={13} /> {isPinned ? 'Loslösen' : 'Anpinnen'}
+                </button>
+              )}
+              {(isAdmin || isOwn) && (
+                <button
+                  onClick={() => { setOpenMenu(false); onDelete(post.id) }}
+                  style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                >
+                  <Trash2 size={13} /> Löschen
+                </button>
+              )}
+              {!isOwn && (
+                <button
+                  onClick={() => { setOpenMenu(false); setShowModeration(true) }}
+                  style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                >
+                  Melden
+                </button>
+              )}
+              {(isAppAdmin || isAdmin) && !isOwn && (
+                <AdminContentMenuItems
+                  contentType="community_post"
+                  contentId={post.id}
+                  hiddenAt={post.moderation_hidden_at}
+                  onClose={() => setOpenMenu(false)}
+                />
+              )}
+            </AnchoredMenu>
+          )}
+          {showModeration && (
+            <ModerationSheet
+              contentType="community_post"
+              contentId={post.id}
+              authorId={post.author_id}
+              authorName={name}
+              onClose={() => setShowModeration(false)}
+            />
+          )}
+        </div>
       </div>
 
       {post.title && (
@@ -379,12 +483,14 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
 
 // ─── Event Card (Redesigned) ──────────────────────────────────
 function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }) {
+  const [showModeration, setShowModeration] = useState(false)
   const date = new Date(event.starts_at)
   const dayNum = date.getDate()
   const monthStr = date.toLocaleDateString('de-DE', { month: 'short' })
   const weekdayStr = date.toLocaleDateString('de-DE', { weekday: 'long' })
   const timeStr = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
   const isPast = date < new Date()
+  const isOwn = event.created_by === currentUserId
 
   const rsvpOptions = [
     { status: 'going', label: '✓ Dabei', activeColor: 'var(--color-accent)' },
@@ -418,10 +524,26 @@ function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }
           )}
         </div>
 
-        {(event.created_by === currentUserId || isAdmin) && (
-          <button onClick={() => onDelete(event.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', flexShrink: 0, alignSelf: 'flex-start' }}>
-            <Trash2 size={14} />
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0, alignSelf: 'flex-start' }}>
+          {(isOwn || isAdmin) && (
+            <button onClick={() => onDelete(event.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)' }}>
+              <Trash2 size={14} />
+            </button>
+          )}
+          {!isOwn && (
+            <button onClick={() => setShowModeration(true)} aria-label="Melden" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', fontSize: 11, fontFamily: 'Lora, serif' }}>
+              Melden
+            </button>
+          )}
+        </div>
+        {showModeration && (
+          <ModerationSheet
+            contentType="community_event"
+            contentId={event.id}
+            authorId={event.created_by}
+            authorName="Event"
+            onClose={() => setShowModeration(false)}
+          />
         )}
       </div>
 
@@ -1216,6 +1338,7 @@ export default function CommunityDetail() {
     { key: 'events', label: 'Events', icon: CalendarDays },
     { key: 'prayers', label: 'Gebete', icon: HandHeart },
     ...(isGemeinde ? [{ key: 'questions', label: 'Fragen', icon: HelpCircle }] : []),
+    ...(isAdmin ? [{ key: 'reports', label: 'Meldungen', icon: Shield }] : []),
   ]
 
   async function handleAnswerQuestion(questionId, answer) {
@@ -1458,6 +1581,11 @@ export default function CommunityDetail() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* MELDUNGEN tab (community admins) */}
+          {activeTab === 'reports' && isAdmin && (
+            <CommunityReportsTab communityId={community.id} />
           )}
 
           {/* GEBETE tab */}

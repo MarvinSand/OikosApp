@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
+  ArrowLeft, MailWarning, User, ShieldCheck, Shield, ChevronRight,
   Moon, Globe, KeyRound, Camera, BookMarked, Ban, FileText, Lock, Mail,
 } from 'lucide-react'
 import { LEGAL, TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
@@ -14,6 +14,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp, publicOrigin } from '../lib/platform'
 import { Avatar } from '../components/profile/ProfileTabs'
+import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 
 // Lazy: AddressAutocomplete zieht den Google-Maps-Loader (~161 kB) mit und
 // wird erst im Unterbereich „Profil bearbeiten" gebraucht.
@@ -392,6 +393,7 @@ function ChangeEmailModal({ currentEmail, onClose }) {
 }
 
 export default function SettingsView() {
+  const { isAppAdmin } = useIsAppAdmin()
   const navigate = useNavigate()
   const { profile, updateProfile, uploadAvatar, deleteAccount, loading: profileLoading } = useProfile({ useCache: true, withStats: false })
   const { user, resendVerificationEmail } = useAuth()
@@ -621,6 +623,14 @@ export default function SettingsView() {
               title="Ansicht & Datenschutz"
               onClick={() => setSection('privacy')}
             />
+            {isAppAdmin && (
+              <MenuRow
+                icon={Shield}
+                title="Moderation"
+                desc="Meldungen, Admin-Chat, Rechte"
+                onClick={() => navigate('/settings/moderation')}
+              />
+            )}
             {/* Verbinden läuft über einen OAuth-Redirect, der in der iOS-App
                 nicht zurückfindet – dort nur eine bestehende Verbindung
                 anzeigen/trennen. */}

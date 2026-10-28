@@ -11,6 +11,8 @@
        nicht gemountet ist. Bewusst eher knapp (64px) statt großzügig: ein zu
        hoher Wert erzeugt selbst einen sichtbaren Leerraum unter der Nav. */
     --bottom-nav-h: calc(55px + env(safe-area-inset-bottom, 0px));
+    --keyboard-inset: 0px;
+    --keyboard-open: 0;
 
     /* Phase 27: clean black/white/babyblue palette */
     --color-bg:             #FFFFFF;
@@ -269,7 +271,9 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 42rem; /* = md:max-w-2xl */
-  bottom: var(--bottom-nav-h, calc(55px + env(safe-area-inset-bottom, 0px)));
+  /* When keyboard is open, --bottom-nav-h is forced to 0 (nav hidden) and
+     --keyboard-inset lifts the bar above the soft keyboard. */
+  bottom: calc(var(--bottom-nav-h, calc(55px + env(safe-area-inset-bottom, 0px))) + var(--keyboard-inset, 0px));
   z-index: 35;
 }
 @media (min-width: 768px) {
@@ -392,4 +396,18 @@
 .bottom-nav-item:active svg { transform: scale(0.86); }
 @media (prefers-reduced-motion: reduce) {
   .bottom-nav-slider, .bottom-nav-item svg { transition: none; }
+}
+
+
+/* Soft keyboard: hide bottom nav so editors/chat sit above the keyboard.
+   --bottom-nav-h → 0 so anything anchored to it (chat bar, verse action bar)
+   collapses onto the keyboard inset instead. */
+html.keyboard-open {
+  --bottom-nav-h: 0px !important;
+}
+html.keyboard-open .bottom-nav {
+  transform: translate(-50%, 110%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.2s ease;
 }

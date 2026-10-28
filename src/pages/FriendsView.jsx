@@ -31,6 +31,9 @@ import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import { verseAttachmentFromRow } from '../lib/bibleLink'
 import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 import ModerationSheet from '../components/common/ModerationSheet'
+import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
+import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import { useBlocks } from '../hooks/useBlocks'
 import { profilePreviewState } from '../lib/profilePreview'
 
@@ -160,6 +163,7 @@ function FriendsTab() {
   const [searching, setSearching] = useState(false)
   const [sending, setSending] = useState(null)
   const [openMenu, setOpenMenu] = useState(null)
+  const friendMenuBtnRefs = useRef({})
   const timerRef = useRef(null)
 
   // Filter state
@@ -519,18 +523,23 @@ function FriendsTab() {
               >
                 <MessageCircle size={18} />
               </button>
-              <button onClick={() => setOpenMenu(openMenu === f.id ? null : f.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-text-light)' }}>
+              <button
+                ref={el => { friendMenuBtnRefs.current[f.id] = el }}
+                onClick={() => setOpenMenu(openMenu === f.id ? null : f.id)}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-text-light)' }}
+              >
                 <MoreVertical size={16} />
               </button>
               {openMenu === f.id && (
-                <>
-                  <div onClick={() => setOpenMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 180 }}>
-                    <button onClick={() => handleRemove(f.id)} style={{ display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer', textAlign: 'left' }}>
-                      Verbindung entfernen
-                    </button>
-                  </div>
-                </>
+                <AnchoredMenu
+                  anchorRef={{ current: friendMenuBtnRefs.current[f.id] }}
+                  onClose={() => setOpenMenu(null)}
+                  minWidth={180}
+                >
+                  <button onClick={() => { setOpenMenu(null); handleRemove(f.id) }} style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}>
+                    Verbindung entfernen
+                  </button>
+                </AnchoredMenu>
               )}
             </div>
           )
@@ -1014,6 +1023,8 @@ function FeedAvatar({ profile, size = 36 }) {
 export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
+  const postMenuBtnRef = useRef(null)
+  const { isAppAdmin } = useIsAppAdmin()
   const [showModeration, setShowModeration] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const { isBlocked } = useBlocks()
@@ -1070,9 +1081,27 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
             </span>
           )}
           {!isOwn && (
-            <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
-              <MoreHorizontal size={16} />
-            </button>
+            <>
+              <button ref={postMenuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label="Optionen" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+                <MoreHorizontal size={16} />
+              </button>
+              {showMenu && (
+                <AnchoredMenu anchorRef={postMenuBtnRef} onClose={() => setShowMenu(false)} minWidth={220}>
+                  <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
+                    Melden / Blockieren
+                  </button>
+                  {isAppAdmin && (
+                    <AdminContentMenuItems
+                      contentType="feed_post"
+                      contentId={post.id}
+                      hiddenAt={post.moderation_hidden_at}
+                      onClose={() => setShowMenu(false)}
+                      onDone={() => { /* parent may refetch */ }}
+                    />
+                  )}
+                </AnchoredMenu>
+              )}
+            </>
           )}
           {showModeration && (
             <ModerationSheet
@@ -1084,24 +1113,21 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
             />
           )}
           {isOwn && (
-            <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+            <>
+              <button ref={postMenuBtnRef} onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
                 <MoreHorizontal size={16} />
               </button>
               {showMenu && (
-                <>
-                  <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
-                    <button
-                      onClick={() => { setShowMenu(false); onDelete?.(post.id) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={14} /> Löschen
-                    </button>
-                  </div>
-                </>
+                <AnchoredMenu anchorRef={postMenuBtnRef} onClose={() => setShowMenu(false)} minWidth={130}>
+                  <button
+                    onClick={() => { setShowMenu(false); onDelete?.(post.id) }}
+                    style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                  >
+                    <Trash2 size={14} /> Löschen
+                  </button>
+                </AnchoredMenu>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
