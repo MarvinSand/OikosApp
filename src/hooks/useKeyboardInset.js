@@ -110,6 +110,7 @@ export function useKeyboardInset() {
     }
 
     measure()
+    resetScroll()
     const vv = window.visualViewport
     vv?.addEventListener('resize', schedule)
     vv?.addEventListener('scroll', schedule)

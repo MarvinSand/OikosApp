@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense, useEffect, useRef } from 'react'
+import { scrollContainerToBottom } from '../lib/scroll'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Settings, Copy, LogOut, SendHorizontal,
@@ -1236,13 +1237,13 @@ export default function CommunityDetail() {
   useEffect(() => {
     if (activeTab !== 'chat') return
     if (!chatLoading && isAtBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }
   }, [messages.length, chatLoading, activeTab])
 
   useEffect(() => {
     if (activeTab !== 'chat' || chatLoading) return
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+    scrollContainerToBottom(messagesContainerRef.current, 'auto')
   }, [chatLoading, activeTab])
 
   function handleScroll() {
@@ -1254,7 +1255,7 @@ export default function CommunityDetail() {
   async function handleSend(text) {
     isAtBottomRef.current = true
     await sendMessage(text)
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    setTimeout(() => scrollContainerToBottom(messagesContainerRef.current, 'smooth'), 50)
   }
 
   async function handleRoleChange(userId, role) {

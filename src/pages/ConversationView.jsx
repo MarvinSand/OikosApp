@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { scrollContainerToBottom, scrollContainerToElement } from '../lib/scroll'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye, Flag } from 'lucide-react'
 import ModerationSheet from '../components/common/ModerationSheet'
@@ -1537,14 +1538,14 @@ export default function ConversationView() {
   useEffect(() => {
     if (loading) return
     if (isAtBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }
   }, [messages.length, loading])
 
   // Scroll to bottom on mount
   useEffect(() => {
     if (!loading && messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      scrollContainerToBottom(messagesContainerRef.current, 'auto')
     }
   }, [loading])
 
@@ -1569,7 +1570,7 @@ export default function ConversationView() {
     setReplyTo(null)
     await sendMessage(text, opts)
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }, 50)
   }
 
@@ -1578,7 +1579,7 @@ export default function ConversationView() {
     isAtBottomRef.current = true
     await sendPrayerRequest(item.id, item.title, item.description, true)
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }, 50)
   }
 
@@ -1586,7 +1587,7 @@ export default function ConversationView() {
     isAtBottomRef.current = true
     await sendBibleVerse(reference, verseText)
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }, 50)
   }
 
@@ -1608,7 +1609,7 @@ export default function ConversationView() {
       showToast('Nachricht nicht geladen', 'info')
       return
     }
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    scrollContainerToElement(messagesContainerRef.current, el)
     setHighlightedId(id)
     setTimeout(() => setHighlightedId(curr => curr === id ? null : curr), 1800)
   }
