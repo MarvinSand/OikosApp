@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { isNativeApp } from '../lib/platform'
 
 /**
  * Tracks the on-screen keyboard via visualViewport + focusin/focusout and
@@ -91,6 +92,23 @@ export function useKeyboardInset() {
       }, 50)
     }
 
+    // Native iOS-App: Das Keyboard-Plugin verkleinert die WebView beim Öffnen
+    // der Tastatur (statt den Inhalt per UIScrollView hochzuschieben) und
+    // sperrt das native Scrollen. Ohne das blieb die Ansicht nach dem
+    // Schließen um die Safe-Area-Höhe nach oben verschoben (Kopfleiste
+    // abgeschnitten, Eingabeleiste über der Nav) – bis zum App-Neustart.
+    let removeNative = () => {}
+    if (isNativeApp) {
+      import('@capacitor/keyboard').then(async ({ Keyboard }) => {
+        try {
+          await Keyboard.setResizeMode({ mode: 'native' })
+          await Keyboard.setScroll({ isDisabled: true })
+          const h = await Keyboard.addListener('keyboardDidHide', () => { resetScroll(); schedule() })
+          removeNative = () => h.remove()
+        } catch { /* Plugin nicht verfügbar (z. B. Android ohne Sync) */ }
+      }).catch(() => {})
+    }
+
     measure()
     const vv = window.visualViewport
     vv?.addEventListener('resize', schedule)
@@ -105,6 +123,7 @@ export function useKeyboardInset() {
       document.removeEventListener('focusin', onFocusIn)
       document.removeEventListener('focusout', onFocusOut)
       if (raf) cancelAnimationFrame(raf)
+      removeNative()
       root.style.setProperty('--keyboard-inset', '0px')
       root.style.setProperty('--keyboard-open', '0')
       root.classList.remove('keyboard-open')
