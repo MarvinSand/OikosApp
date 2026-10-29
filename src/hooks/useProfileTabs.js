@@ -310,20 +310,44 @@ export function useProfileTabs(profileUserId, { seed } = {}) {
       isOwn
         ? supabase
             .from('prayer_requests')
-            .select('id, title, description, is_answered, is_public, created_at')
+            .select('id, title, description, is_answered, is_public, visibility, person_id, created_at')
             .eq('owner_id', profileUserId)
             .order('created_at', { ascending: false })
         : supabase
             .from('prayer_requests')
-            .select('id, title, description, is_answered, is_public, created_at')
+            .select('id, title, description, is_answered, is_public, visibility, person_id, created_at')
             .eq('owner_id', profileUserId)
-            .eq('is_public', true)
             .order('created_at', { ascending: false }),
     ])
     if (personalQ.error) throw personalQ.error
+
+    // Oikos-Gebete gehören zu einer Person auf einer Map: Kontext (Person, Map)
+    // über die SECURITY-INVOKER-RPC auflösen. Was die RLS dem Betrachter nicht
+    // zeigt (Person/Map nicht sichtbar), kommt nicht zurück → Gebet ausblenden.
+    const perPersonRows = perPersonQ.data || []
+    const personIds = [...new Set(perPersonRows.map(r => r.person_id).filter(Boolean))]
+    let personById = {}, mapById = {}
+    if (personIds.length > 0) {
+      const { data: ctx } = await supabase.rpc('get_prayer_context', {
+        p_person_ids: personIds, p_community_ids: [], p_owner_ids: [],
+      })
+      personById = Object.fromEntries((ctx?.people || []).map(x => [x.id, x]))
+      mapById = Object.fromEntries((ctx?.maps || []).map(x => [x.id, x]))
+    }
+    const perPerson = perPersonRows
+      .filter(r => r.person_id && personById[r.person_id] && (isOwn || r.visibility === 'public' || r.is_public))
+      .map(r => {
+        const person = personById[r.person_id]
+        const map = mapById[person.map_id]
+        return {
+          id: r.id, title: r.title, description: r.description, category: null,
+          is_answered: r.is_answered, is_public: r.is_public, created_at: r.created_at, source: 'person',
+          person_id: r.person_id, person_name: person.name, map_id: map?.id || person.map_id, map_name: map?.name || null,
+        }
+      })
     return [
       ...((personalQ.data || []).map(r => ({ id: r.id, title: r.title, description: r.description, category: r.category, is_answered: r.is_answered, is_public: r.visibility !== 'private', created_at: r.created_at, source: 'personal' }))),
-      ...((perPersonQ.data || []).map(r => ({ id: r.id, title: r.title, description: r.description, category: null, is_answered: r.is_answered, is_public: r.is_public, created_at: r.created_at, source: 'person' }))),
+      ...perPerson,
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }
 
