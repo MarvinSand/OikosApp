@@ -22,6 +22,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- App Links: oikosapp.net-Links (QR-Codes, geteilte Beiträge) öffnen die App.
+                 Braucht /.well-known/assetlinks.json auf oikosapp.net -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="oikosapp.net" android:pathPrefix="/user" />
+                <data android:scheme="https" android:host="oikosapp.net" android:pathPrefix="/community" />
+                <data android:scheme="https" android:host="oikosapp.net" android:pathPrefix="/join" />
+                <data android:scheme="https" android:host="oikosapp.net" android:pathPrefix="/feed" />
+            </intent-filter>
+
         </activity>
 
         <provider
@@ -38,6 +50,7 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />

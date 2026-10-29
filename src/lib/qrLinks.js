@@ -26,6 +26,7 @@ export function pathFromScan(text) {
   }
   if (new RegExp(`^/user/${UUID}$`).test(pathname)) return pathname
   if (new RegExp(`^/community/${UUID}$`).test(pathname)) return pathname
+  if (new RegExp(`^/feed/(post|comment)/${UUID}$`).test(pathname)) return pathname
   if (/^\/join\/[A-Za-z0-9]{4,16}$/.test(pathname)) return pathname
   // Nur der nackte Einladungscode
   if (/^[A-Za-z0-9]{6,10}$/.test(raw)) return `/join/${raw.toUpperCase()}`

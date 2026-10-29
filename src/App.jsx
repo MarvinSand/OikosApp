@@ -3,6 +3,7 @@ import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './hooks/useAuth'
 import { isPrayerFeedRoute } from './lib/prayerFeedRoute'
+import { pathFromScan } from './lib/qrLinks'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { supabase } from './lib/supabase'
 import { registerForPush } from './lib/nativePush'
@@ -90,8 +91,28 @@ function LoadingSpinner() {
   )
 }
 
+// Universal Links / App Links: Tippt jemand in der App-installierten Umgebung
+// auf einen oikosapp.net-Link (z. B. QR-Code mit der Kamera-App), öffnet sich
+// die App direkt auf der Zielseite.
+function useNativeLinkHandler() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!isNativeApp) return
+    let handle
+    let cancelled = false
+    import('@capacitor/app').then(({ App: CapApp }) => {
+      CapApp.addListener('appUrlOpen', ({ url }) => {
+        const path = pathFromScan(url)
+        if (path) navigate(path)
+      }).then(h => { if (cancelled) h.remove(); else handle = h })
+    }).catch(() => {})
+    return () => { cancelled = true; handle?.remove() }
+  }, [navigate])
+}
+
 function AppShellInner() {
   const location = useLocation()
+  useNativeLinkHandler()
   useNativePushRegistration()
   useKeyboardInset()
   // Routes where the inner container should not be vertically scrollable
