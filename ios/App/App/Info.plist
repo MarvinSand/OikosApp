@@ -29,7 +29,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Oikos nutzt deinen Standort, um dich auf der Weltkarte zu platzieren und Orte in deiner Nähe vorzuschlagen.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Oikos benötigt Zugriff auf die Kamera, um ein Profilfoto aufzunehmen.</string>
+	<string>Oikos Connect benötigt Zugriff auf die Kamera, um ein Profilfoto aufzunehmen und QR-Codes zu scannen.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Oikos benötigt Zugriff auf deine Fotos, um ein Profilbild auszuwählen.</string>
 	<key>UIApplicationSceneManifest</key>

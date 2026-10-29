@@ -1,11 +1,15 @@
+import { useState, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageCircle, Bell } from 'lucide-react'
+import { MessageCircle, Bell, ScanLine } from 'lucide-react'
 import { useHasUnreadConversations } from '../../hooks/useHasUnreadConversations'
 import { useNotifications } from '../../hooks/useNotifications'
+
+const QrScannerSheet = lazy(() => import('../common/QrScannerSheet'))
 
 // Obere Leiste der Haupt-Tabs: App-Name, Chats, Benachrichtigungen.
 export default function AppHeader() {
   const navigate = useNavigate()
+  const [scanning, setScanning] = useState(false)
   const hasUnread = useHasUnreadConversations()
   const { unreadCount } = useNotifications()
 
@@ -33,6 +37,10 @@ export default function AppHeader() {
       </h1>
 
       <div className="flex items-center gap-1">
+        <button onClick={() => setScanning(true)} aria-label="QR-Code scannen" style={iconBtn}>
+          <ScanLine size={22} strokeWidth={2} />
+        </button>
+
         <button onClick={() => navigate('/chats')} aria-label="Chats" style={iconBtn}>
           <MessageCircle size={22} strokeWidth={2} />
           {hasUnread && (
@@ -61,6 +69,11 @@ export default function AppHeader() {
           )}
         </button>
       </div>
+      {scanning && (
+        <Suspense fallback={null}>
+          <QrScannerSheet onClose={() => setScanning(false)} />
+        </Suspense>
+      )}
     </header>
   )
 }

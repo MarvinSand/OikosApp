@@ -5,8 +5,10 @@ import {
   ArrowLeft, Settings, Copy, LogOut, SendHorizontal,
   MoreVertical, Shield, Plus, Trash2, MapPin, Clock, Pin, Globe, Lock, Users,
   ShieldOff, UserMinus, User, MessageSquare, RefreshCw, Pencil, X, Check, ChevronRight,
-  MessageCircle, CalendarDays, HandHeart, HelpCircle
+  MessageCircle, CalendarDays, HandHeart, HelpCircle, QrCode
 } from 'lucide-react'
+import QrShareSheet from '../components/common/QrShareSheet'
+import { communityLink } from '../lib/qrLinks'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
 import MemberAvatarStack from '../components/community/MemberAvatarStack'
 import { useSheetDismiss } from '../hooks/useSheetDismiss'
@@ -796,6 +798,7 @@ function SettingsSheet({
   const [location, setLocation] = useState(community.address ? { address: community.address, lat: community.latitude, lng: community.longitude, shortName: community.address } : null)
   const [meetingInfo, setMeetingInfo] = useState(community.meeting_info || '')
   const [saving, setSaving] = useState(false)
+  const [showQr, setShowQr] = useState(false)
   const [bannerBusy, setBannerBusy] = useState(false)
   const [avatarBusy, setAvatarBusy] = useState(false)
   const bannerInputRef = useRef(null)
@@ -938,6 +941,9 @@ function SettingsSheet({
 
   return (
     <>
+      {showQr && (
+        <QrShareSheet title={community.name} subtitle={community.is_public ? 'Öffentliche Community' : 'Einladung per QR-Code'} url={communityLink(community)} onClose={() => setShowQr(false)} />
+      )}
       <div onClick={onClose} className="fixed inset-0 bg-dark/40 backdrop-blur-[2px] z-50 transition-opacity" />
       <div ref={sheetRef} className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface/95 backdrop-blur-xl rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
         <div className="w-9 h-1 bg-warm-3 rounded-full mx-auto mb-5" />
@@ -1101,6 +1107,13 @@ function SettingsSheet({
                 </div>
               </div>
             )}
+
+            <button
+              onClick={() => setShowQr(true)}
+              className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border border-warm-3 text-dark font-serif font-bold text-[14px] mt-2"
+            >
+              <QrCode size={16} /> QR-Code teilen
+            </button>
 
             {!isPublic && community.invite_code && (
               <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4 mt-2">

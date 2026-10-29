@@ -25,6 +25,7 @@ const ProfileView = lazy(() => import('./pages/ProfileView'))
 const SettingsView = lazy(() => import('./pages/SettingsView'))
 const ConnectionsView = lazy(() => import('./pages/ConnectionsView'))
 const FriendsView = lazy(() => import('./pages/FriendsView'))
+const JoinByCode = lazy(() => import('./pages/JoinByCode'))
 const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
 const UserProfile = lazy(() => import('./pages/UserProfile'))
 const PrayerListDetailView = lazy(() => import('./pages/PrayerListDetailView'))
@@ -138,6 +139,7 @@ function AppShellInner() {
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/notifications/settings" element={<NotificationSettingsView />} />
           <Route path="/community/:id" element={<CommunityDetail />} />
+          <Route path="/join/:code" element={<JoinByCode />} />
           <Route path="/user/:id" element={<UserProfile />} />
           <Route path="/user/:id/map/:mapId" element={<PublicMapView />} />
           <Route path="/map/:mapId" element={<OwnMapPage />} />
@@ -255,6 +257,23 @@ async function checkBirthdays(userId) {
   }
 }
 
+// Öffnet jemand per QR-Code /join/… oder /user/… ohne Login, wird der Pfad
+// vorgemerkt und nach der Anmeldung geöffnet.
+const RETURN_KEY = 'oikos_return_to'
+function RedirectToAuth() {
+  const loc = useLocation()
+  try { if (loc.pathname !== '/') sessionStorage.setItem(RETURN_KEY, loc.pathname + loc.search) } catch { /* ignore */ }
+  return <Navigate to="/auth" replace />
+}
+function takeReturnTo() {
+  try {
+    const v = sessionStorage.getItem(RETURN_KEY)
+    sessionStorage.removeItem(RETURN_KEY)
+    if (v && v.startsWith('/')) return v
+  } catch { /* ignore */ }
+  return '/'
+}
+
 export default function App() {
   const { user, loading } = useAuth()
 
@@ -272,7 +291,7 @@ export default function App() {
               <Routes>
                 <Route
                   path="/auth"
-                  element={user ? <Navigate to="/" replace /> : <Auth />}
+                  element={user ? <Navigate to={takeReturnTo()} replace /> : <Auth />}
                 />
                 {/* Öffentlich (auch ohne Login), damit dieselben URLs in App
                     Store Connect als Datenschutz-/Nutzungsbedingungen-Link
@@ -289,7 +308,7 @@ export default function App() {
                 <Route path="/bible/youversion/callback" element={<YouVersionCallback />} />
                 <Route
                   path="/*"
-                  element={user ? <AppShell /> : <Navigate to="/auth" replace />}
+                  element={user ? <AppShell /> : <RedirectToAuth />}
                 />
               </Routes>
             </BrowserRouter>
