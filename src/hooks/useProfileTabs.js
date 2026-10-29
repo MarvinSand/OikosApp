@@ -53,7 +53,7 @@ async function attachReactions(rawPosts, currentUserId) {
  */
 export function useProfileTabs(profileUserId, { seed } = {}) {
   const { user } = useAuth()
-  const cacheName = `profileTabs:${profileUserId}`
+  const cacheName = `profileTabs2:${profileUserId}`
   // Zuletzt geladener Stand als Startwert (siehe swrCache.js)
   const [initial] = useState(() => (profileUserId ? readCache(user?.id, cacheName) : undefined))
   const [maps, setMaps] = useState(initial?.maps ?? [])
@@ -96,10 +96,31 @@ export function useProfileTabs(profileUserId, { seed } = {}) {
   useEffect(() => {
     if (loading || !user || !profileUserId || dataFor !== profileUserId) return
     writeCache(user.id, cacheName, {
-      maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
+      maps, posts, reposts, prayerRequests: prayerRequests.filter(p => p.source !== 'person' || p.person_id), connectionsCount, publicCommunities,
     }, { persist: !!isOwn })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, dataFor, maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities])
+
+  // Oikos-Gebete brauchen Person/Map-Kontext (und RLS-Sichtbarkeit). Bootstrap-
+  // RPCs, Seed und alter Cache liefern ihn nicht → hier einmal nachladen und
+  // die 'person'-Einträge ersetzen. Bis dahin werden sie nicht angezeigt.
+  useEffect(() => {
+    if (!user || !profileUserId || dataFor !== profileUserId) return
+    if (!prayerRequests.some(p => p.source === 'person' && !p.person_id)) return
+    let alive = true
+    supabase.rpc('get_profile_oikos_prayers', { p_target: profileUserId }).then(({ data, error }) => {
+      if (!alive || error) return
+      const oikos = (data || []).map(r => ({
+        id: r.id, title: r.title, description: r.description, category: null,
+        is_answered: r.is_answered, is_public: r.is_public, created_at: r.created_at, source: 'person',
+        person_id: r.person_id, person_name: r.person_name, map_id: r.map_id, map_name: r.map_name,
+      }))
+      setPrayerRequests(prev => [...prev.filter(p => p.source !== 'person'), ...oikos]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+    })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataFor, prayerRequests, profileUserId, user?.id])
 
   async function load() {
     const forId = profileUserId
@@ -418,7 +439,7 @@ export function useProfileTabs(profileUserId, { seed } = {}) {
   }
 
   return {
-    maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
+    maps, posts, reposts, prayerRequests: prayerRequests.filter(p => p.source !== 'person' || p.person_id), connectionsCount, publicCommunities,
     loading, bootMeta, isOwn, reload: load, reactToPost, deletePost, toggleRepost, removeBookmark, markBookmarked,
   }
 }
