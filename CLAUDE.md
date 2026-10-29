@@ -142,7 +142,7 @@ git push -u origin temp-fix:main
 
 ## Deployment
 
-- Vercel deployed automatisch von `main` → https://oikos-app-tau.vercel.app/
+- Vercel deployed automatisch von `main` → https://oikosapp.net/ (die alte Adresse oikos-app-tau.vercel.app bleibt für Bestandsnutzer aktiv, wird aber nie mehr als Link-Ziel erzeugt: `publicOrigin()` in `src/lib/platform.js` liefert immer `oikosapp.net`)
 - Feature-Branches haben eigene Preview-URLs (Vercel Dashboard → Deployments)
 - Alle Änderungen direkt auf `main` pushen (die App hat noch keine aktiven User)
 
