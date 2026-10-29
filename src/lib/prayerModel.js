@@ -104,8 +104,10 @@ export function prayerContext(prayer) {
       icon: '🗺️',
       text: parts.join(' · '),
       // Eigene Map direkt öffnen, fremde über das Profil des Besitzers.
+      // ?openPerson= öffnet auf der Map direkt die jeweilige Person.
       to: prayer.mapId
         ? (prayer.isOwnMap ? `/map/${prayer.mapId}` : (prayer.mapOwnerId ? `/user/${prayer.mapOwnerId}/map/${prayer.mapId}` : null))
+          ?.concat(prayer.personId ? `?openPerson=${prayer.personId}` : '') || null
         : null,
     }
   }
