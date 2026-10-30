@@ -705,21 +705,11 @@ function CustomColorButton({ value, onPick, onCommit, onRemove }) {
   })
   const isActive = !!value
 
-  function openPicker() {
-    const el = inputRef.current
-    if (!el) return
-    if (typeof el.showPicker === 'function') {
-      try { el.showPicker(); return } catch { /* fall through */ }
-    }
-    el.click()
-  }
-
   return (
     <button
       type="button"
-      onClick={openPicker}
       onContextMenu={e => { e.preventDefault(); if (isActive) onRemove?.() }}
-      className="w-9 h-9 rounded-full flex items-center justify-center relative"
+      className="w-9 h-9 rounded-full flex items-center justify-center relative overflow-hidden"
       style={{
         backgroundColor: isActive ? value : 'var(--color-bg-secondary)',
         boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none',
@@ -734,9 +724,8 @@ function CustomColorButton({ value, onPick, onCommit, onRemove }) {
         value={value || '#fff94f'}
         onInput={e => onPick(e.target.value)}
         onChange={() => {}}
-        className="absolute inset-0 opacity-0 pointer-events-none"
-        tabIndex={-1}
-        aria-hidden="true"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        aria-label="Eigene Farbe wählen"
       />
     </button>
   )
