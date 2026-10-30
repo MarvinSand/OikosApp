@@ -1,7 +1,12 @@
 name: iOS TestFlight Release
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      renew_profile:
+        description: 'Provisioning-Profil neu erzeugen (nach neuer Capability, z. B. Associated Domains)'
+        type: boolean
+        default: false
 
 jobs:
   build-and-upload:
@@ -59,5 +64,6 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_FORCE: ${{ inputs.renew_profile && 'true' || 'false' }}
           CI: true
         run: fastlane beta
