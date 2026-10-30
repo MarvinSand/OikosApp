@@ -9,8 +9,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useProfileTabs } from '../hooks/useProfileTabs'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePublicMap } from '../hooks/usePublicMap'
-import QrShareSheet from '../components/common/QrShareSheet'
-import { profileLink } from '../lib/qrLinks'
+const QrHubSheet = lazy(() => import('../components/common/QrHubSheet'))
 import { useToast } from '../context/ToastContext'
 import MapCanvas from '../components/map/MapCanvas'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
@@ -219,8 +218,11 @@ export default function ProfileView() {
         </button>
         </div>
       </header>
-      {showQr && profile?.id && (
-        <QrShareSheet title={profile.full_name || `@${profile.username}`} subtitle={`@${profile.username || ''}`} url={profileLink(profile.id)} onClose={() => setShowQr(false)} />
+      {showQr && (
+        <Suspense fallback={null}>
+          <QrHubSheet onClose={() => setShowQr(false)} />
+        </Suspense>
+      )} onClose={() => setShowQr(false)} />
       )}
 
       {/* Profile section */}
