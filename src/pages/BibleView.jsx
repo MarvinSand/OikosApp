@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star, Share2, Lock, Globe, Home as HomeIcon, UserCheck, Users, ChevronUp } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star, Share2, Lock, Globe, Home as HomeIcon, UserCheck, Users, ChevronUp, MoreHorizontal } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunities } from '../hooks/useCommunities'
 import {
@@ -11,7 +11,7 @@ import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
 import { useToast } from '../context/ToastContext'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
-import { HIGHLIGHT_COLORS, resolveHighlightColor, highlightTextColor, colorsEqual, isCustomHex, normalizeColorKey } from '../lib/bibleColors'
+import { HIGHLIGHT_COLORS, PRIMARY_COLORS, MORE_COLORS, resolveHighlightColor, highlightTextColor, colorsEqual, isCustomHex, normalizeColorKey } from '../lib/bibleColors'
 import { formatReferenceLabel, parseBibleLinkParams } from '../lib/bibleLink'
 import { verseTextFromContainer } from '../lib/biblePassageHtml'
 import { DEFAULT_STARRED_VERSIONS } from '../lib/bibleVersionDefaults'
@@ -485,10 +485,7 @@ function VerseActionBar({
   const activeHex = existingHighlight && isCustomHex(existingHighlight.color)
     ? normalizeColorKey(existingHighlight.color)
     : null
-  const extraColors = [
-    ...(savedColors || []),
-    ...(recentColors || []).filter(c => !(savedColors || []).some(s => colorsEqual(s, c))),
-  ].filter((c, i, arr) => arr.findIndex(x => colorsEqual(x, c)) === i).slice(0, 8)
+  const [showMoreColors, setShowMoreColors] = useState(false)
   const visibilityObj = VISIBILITY_OPTIONS.find(o => o.key === noteVisibility) || VISIBILITY_OPTIONS[0]
   const VisibilityIcon = visibilityObj.icon
 
@@ -517,26 +514,47 @@ function VerseActionBar({
 
       <div className="overflow-y-auto">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {Object.entries(HIGHLIGHT_COLORS).map(([name, hex]) => {
+          {(showMoreColors ? MORE_COLORS : PRIMARY_COLORS).map(name => {
+            const hex = HIGHLIGHT_COLORS[name]
             const isActive = colorsEqual(existingHighlight?.color, name) || colorsEqual(existingHighlight?.color, hex)
             return (
-            <button
-              key={name}
-              onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(name)}
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none', color: highlightTextColor(hex) }}
-            >
-              {isActive && <span style={{ fontSize: 12 }}>✓</span>}
-            </button>
+              <button
+                key={name}
+                onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(name)}
+                className="w-9 h-9 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : `0 0 0 1px var(--color-border)`, color: highlightTextColor(hex) }}
+              >
+                {isActive && <span style={{ fontSize: 12 }}>✓</span>}
+              </button>
             )
           })}
-          <CustomColorButton
-            value={activeHex}
-            saved={activeHex ? isColorSaved?.(activeHex) : false}
-            onSaveCurrent={() => activeHex && onToggleSaveColor?.(activeHex)}
-            onPick={(hex) => onHighlight(hex)}
-            onRemove={() => onRemoveHighlight(existingHighlight.id)}
-          />
+          {showMoreColors ? (
+            <>
+              <CustomColorButton
+                value={activeHex}
+                onPick={(hex) => onHighlight(hex)}
+                onRemove={() => onRemoveHighlight(existingHighlight.id)}
+              />
+              <button
+                onClick={() => setShowMoreColors(false)}
+                className="w-9 h-9 rounded-full flex items-center justify-center ml-2"
+                style={{ backgroundColor: 'var(--color-bg-secondary)' }}
+                aria-label="Zurück"
+              >
+                <X size={16} style={{ color: 'var(--color-text)' }} />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowMoreColors(true)}
+              className="w-9 h-9 rounded-full relative"
+              aria-label="Weitere Farben"
+            >
+              {['#f09ae9', '#e8312a', '#8ef98b'].map((c, i) => (
+                <span key={c} className="absolute w-6 h-6 rounded-full" style={{ backgroundColor: c, left: 2 + i * 5, top: 6, border: '1px solid var(--color-bg)' }} />
+              ))}
+            </button>
+          )}
           {showBookmark && (
             <button
               onClick={onBookmark}
@@ -547,29 +565,6 @@ function VerseActionBar({
             </button>
           )}
         </div>
-
-        {extraColors.length > 0 && (
-          <div className="mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
-              Eigene Farben
-            </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              {extraColors.map(hex => {
-                const isActive = colorsEqual(existingHighlight?.color, hex)
-                return (
-                  <button
-                    key={hex}
-                    onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(hex)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none', color: highlightTextColor(hex) }}
-                  >
-                    {isActive && <span style={{ fontSize: 11 }}>✓</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         {notes.map(n => (
           <div key={n.id} className="flex items-start justify-between gap-2 mb-2 p-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
@@ -680,18 +675,14 @@ function VerseActionBar({
   )
 }
 
-// "+"-Button für frei wählbare Highlight-Farben (nicht nur die 5 Presets),
-// über den nativen Farbwähler des Browsers (<input type="color">). Trägt bei
-// aktiver Custom-Farbe zusätzlich ein Stern-Badge zum Speichern/Entfernen.
-function CustomColorButton({ value, saved, onSaveCurrent, onPick, onRemove }) {
+// "…"-Button für frei wählbare Farben über den nativen Farbwähler (<input type="color">).
+function CustomColorButton({ value, onPick, onRemove }) {
   const inputRef = useRef(null)
   const isActive = !!value
 
   function openPicker() {
     const el = inputRef.current
     if (!el) return
-    // showPicker() is more reliable on iOS/WebKit than a programmatic click
-    // on a pointer-events-none input.
     if (typeof el.showPicker === 'function') {
       try { el.showPicker(); return } catch { /* fall through */ }
     }
@@ -703,33 +694,19 @@ function CustomColorButton({ value, saved, onSaveCurrent, onPick, onRemove }) {
       type="button"
       onClick={openPicker}
       onContextMenu={e => { e.preventDefault(); if (isActive) onRemove?.() }}
-      className="w-8 h-8 rounded-full flex items-center justify-center relative"
+      className="w-9 h-9 rounded-full flex items-center justify-center relative"
       style={{
         backgroundColor: isActive ? value : 'var(--color-bg-secondary)',
         boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none',
-        border: isActive ? 'none' : '1px dashed var(--color-border)',
         color: isActive ? highlightTextColor(value) : undefined,
       }}
-      title={isActive ? 'Farbe ändern (lang drücken: entfernen)' : 'Eigene Farbe'}
+      title="Eigene Farbe"
     >
-      {isActive ? <span style={{ fontSize: 12 }}>✓</span> : <Plus size={14} style={{ color: 'var(--color-text-tertiary)' }} />}
-      {isActive && onSaveCurrent && (
-        <span
-          role="button"
-          onClick={e => { e.stopPropagation(); onSaveCurrent() }}
-          className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: 'var(--color-bg)', boxShadow: '0 0 0 1px var(--color-border)' }}
-          title={saved ? 'Farbe gespeichert' : 'Farbe speichern'}
-        >
-          <Star size={10} style={{ color: saved ? '#f59e0b' : 'var(--color-text-tertiary)' }} fill={saved ? '#f59e0b' : 'none'} />
-        </span>
-      )}
-      {/* Kontrolliert statt defaultValue: sonst löst erneutes Wählen derselben
-          Farbe kein onChange aus (bekannter <input type="color">-Papercut). */}
+      {isActive ? <span style={{ fontSize: 12 }}>✓</span> : <MoreHorizontal size={16} style={{ color: 'var(--color-text-tertiary)' }} />}
       <input
         ref={inputRef}
         type="color"
-        value={value || '#fde68a'}
+        value={value || '#fff94f'}
         onChange={e => onPick(e.target.value)}
         onInput={e => onPick(e.target.value)}
         className="absolute inset-0 opacity-0 pointer-events-none"
@@ -739,4 +716,3 @@ function CustomColorButton({ value, saved, onSaveCurrent, onPick, onRemove }) {
     </button>
   )
 }
-
