@@ -48,6 +48,8 @@ let state = storedSession
   : { user: null, session: null, loading: true }
 
 function setState(session, loading) {
+  // Angemeldet (auch über den Link-Fallback): offene Code-Eingabe vergessen
+  if (session?.user) { try { localStorage.removeItem('oikos_pending_verify') } catch { /* ignore */ } }
   const nextUser = session?.user ?? null
   // Anderer oder kein User mehr (Logout, Konto gewechselt): gecachte
   // Tab-Inhalte des vorherigen Kontos verwerfen.
