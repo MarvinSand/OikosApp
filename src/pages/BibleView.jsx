@@ -693,7 +693,7 @@ function VerseActionBar({
 
         <div className="flex items-center gap-2 flex-wrap mb-2">
           {noteLinks.map((att, i) => (
-            <BibleReferenceChip key={i} attachment={att} variant="chip" onRemove={() => setNoteLinks(noteLinks.filter((_, j) => j !== i))} />
+            <BibleReferenceChip key={i} attachment={att} variant="chip" openAsSheet onRemove={() => setNoteLinks(noteLinks.filter((_, j) => j !== i))} />
           ))}
           <button
             onClick={onOpenLinkPicker}

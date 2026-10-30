@@ -92,7 +92,7 @@ export default function BibleNoteCard({ note, onRemove }) {
       <p style={{ fontSize: 13.5, color: 'var(--color-text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{note.note}</p>
       {Array.isArray(note.linked_verses) && note.linked_verses.length > 0 && (
         <div className="flex flex-col gap-1.5 mt-2">
-          {note.linked_verses.map((att, i) => <BibleReferenceChip key={i} attachment={att} variant="block" showVerse={false} />)}
+          {note.linked_verses.map((att, i) => <BibleReferenceChip key={i} attachment={att} variant="block" showVerse={false} openAsSheet />)}
         </div>
       )}
 
