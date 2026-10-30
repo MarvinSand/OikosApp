@@ -11,6 +11,7 @@ import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
 import { useToast } from '../context/ToastContext'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
+import BibleNoteCard from '../components/bible/BibleNoteCard'
 import { HIGHLIGHT_COLORS, PRIMARY_COLORS, MORE_COLORS, resolveHighlightColor, highlightTextColor, colorsEqual, isCustomHex, normalizeColorKey } from '../lib/bibleColors'
 import { formatReferenceLabel, parseBibleLinkParams } from '../lib/bibleLink'
 import { verseTextFromContainer } from '../lib/biblePassageHtml'
@@ -486,6 +487,8 @@ function VerseActionBar({
     ? normalizeColorKey(existingHighlight.color)
     : null
   const [showMoreColors, setShowMoreColors] = useState(false)
+  const [showPublicNotes, setShowPublicNotes] = useState(false)
+  const otherNotes = notes.filter(n => !n.isOwn)
   const visibilityObj = VISIBILITY_OPTIONS.find(o => o.key === noteVisibility) || VISIBILITY_OPTIONS[0]
   const VisibilityIcon = visibilityObj.icon
 
@@ -582,27 +585,27 @@ function VerseActionBar({
           )}
         </div>
 
-        {notes.map(n => (
-          <div key={n.id} className="flex items-start justify-between gap-2 mb-2 p-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
-            <div className="flex-1 min-w-0">
-              {!n.isOwn && (
-                <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--color-accent)' }}>
-                  {n.author?.full_name || n.author?.username || 'Jemand'}
-                </p>
-              )}
-              <p style={{ fontSize: 13, color: 'var(--color-text)' }}>{n.note}</p>
-            </div>
-            {n.isOwn ? (
-              <button onClick={() => onRemoveNote(n.id)}><X size={14} style={{ color: 'var(--color-text-tertiary)' }} /></button>
-            ) : (
-              (() => {
-                const vo = VISIBILITY_OPTIONS.find(o => o.key === n.visibility)
-                const VIcon = vo?.icon || Globe
-                return <VIcon size={13} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0, marginTop: 2 }} />
-              })()
+        {notes.filter(n => n.isOwn).map(n => (
+          <BibleNoteCard key={n.id} note={n} onRemove={() => onRemoveNote(n.id)} />
+        ))}
+
+        {otherNotes.length > 0 && (
+          <div className="mb-3">
+            <button
+              onClick={() => setShowPublicNotes(v => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              {showPublicNotes ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {showPublicNotes ? 'Notizen ausblenden' : `Öffentliche Notizen ansehen (${otherNotes.length})`}
+            </button>
+            {showPublicNotes && (
+              <div className="mt-2">
+                {otherNotes.map(n => <BibleNoteCard key={n.id} note={n} />)}
+              </div>
             )}
           </div>
-        ))}
+        )}
 
         {(referencesLoading || references.length > 0) && (
           <div className="mb-3">
