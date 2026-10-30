@@ -530,9 +530,25 @@ function VerseActionBar({
           })}
           {showMoreColors ? (
             <>
+              {(savedColors || []).map(hex => {
+                const isActive = colorsEqual(existingHighlight?.color, hex)
+                return (
+                  <button
+                    key={hex}
+                    onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(hex)}
+                    onContextMenu={e => { e.preventDefault(); onToggleSaveColor?.(hex) }}
+                    title="Gespeicherte Farbe (lang drücken: entfernen)"
+                    className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : '0 0 0 1px var(--color-border)', color: highlightTextColor(hex) }}
+                  >
+                    {isActive && <span style={{ fontSize: 12 }}>✓</span>}
+                  </button>
+                )
+              })}
               <CustomColorButton
-                value={activeHex}
+                value={null}
                 onPick={(hex) => onHighlight(hex)}
+                onCommit={(hex) => { if (!isColorSaved?.(hex)) onToggleSaveColor?.(hex) }}
                 onRemove={() => onRemoveHighlight(existingHighlight.id)}
               />
               <button
@@ -676,8 +692,17 @@ function VerseActionBar({
 }
 
 // "…"-Button für frei wählbare Farben über den nativen Farbwähler (<input type="color">).
-function CustomColorButton({ value, onPick, onRemove }) {
+function CustomColorButton({ value, onPick, onCommit, onRemove }) {
   const inputRef = useRef(null)
+  // Natives "change" feuert erst beim Schließen des Farbwählers → dann speichern
+  // (React-onChange entspricht "input" und käme bei jedem Ziehen).
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    const h = e => onCommit?.(e.target.value)
+    el.addEventListener('change', h)
+    return () => el.removeEventListener('change', h)
+  })
   const isActive = !!value
 
   function openPicker() {
@@ -707,8 +732,8 @@ function CustomColorButton({ value, onPick, onRemove }) {
         ref={inputRef}
         type="color"
         value={value || '#fff94f'}
-        onChange={e => onPick(e.target.value)}
         onInput={e => onPick(e.target.value)}
+        onChange={() => {}}
         className="absolute inset-0 opacity-0 pointer-events-none"
         tabIndex={-1}
         aria-hidden="true"
