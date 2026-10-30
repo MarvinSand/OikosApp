@@ -4,12 +4,21 @@
 // "eigene Farbe" auftauchen - deshalb liegt die Liste hier zentral statt
 // direkt in BibleView.jsx.
 export const HIGHLIGHT_COLORS = {
-  yellow: '#fde68a',
-  green: '#bbf7d0',
-  blue: '#bfdbfe',
-  purple: '#ddd6fe',
-  orange: '#fed7aa',
+  yellow: '#ffff9f',
+  blue: '#62d3fc',
+  orange: '#f5c97b',
+  green: '#8ef98b',
+  red: '#e8312a',
+  pink: '#f09ae9',
+  black: '#000000',
+  white: '#ffffff',
+  lemon: '#fff94f',
+  purple: '#ddd6fe', // Altbestand, nicht mehr in der Auswahl
 }
+
+// Reihenfolge wie in der Apple-Books-ähnlichen Leiste: Hauptzeile + "Mehr".
+export const PRIMARY_COLORS = ['yellow', 'blue', 'orange']
+export const MORE_COLORS = ['green', 'red', 'pink', 'black', 'white', 'lemon']
 
 /** Normalize a stored color to a comparable lowercase hex, or keep preset name. */
 export function normalizeColorKey(color) {

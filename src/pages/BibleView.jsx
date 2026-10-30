@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star, Share2, Lock, Globe, Home as HomeIcon, UserCheck, Users, ChevronUp } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star, Share2, Lock, Globe, Home as HomeIcon, UserCheck, Users, ChevronUp, MoreHorizontal, Link2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunities } from '../hooks/useCommunities'
 import {
@@ -11,8 +11,11 @@ import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
 import { useToast } from '../context/ToastContext'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
-import { HIGHLIGHT_COLORS, resolveHighlightColor, highlightTextColor, colorsEqual, isCustomHex, normalizeColorKey } from '../lib/bibleColors'
-import { formatReferenceLabel, parseBibleLinkParams } from '../lib/bibleLink'
+import SavedVersesSheet from '../components/bible/SavedVersesSheet'
+import BibleReferenceChip from '../components/bible/BibleReferenceChip'
+import BibleNoteCard from '../components/bible/BibleNoteCard'
+import { HIGHLIGHT_COLORS, PRIMARY_COLORS, MORE_COLORS, resolveHighlightColor, highlightTextColor, colorsEqual, isCustomHex, normalizeColorKey } from '../lib/bibleColors'
+import { formatReferenceLabel, parseBibleLinkParams, buildBibleLink } from '../lib/bibleLink'
 import { verseTextFromContainer } from '../lib/biblePassageHtml'
 import { DEFAULT_STARRED_VERSIONS } from '../lib/bibleVersionDefaults'
 import { createFeedPost } from '../hooks/useFeed'
@@ -57,6 +60,9 @@ export default function BibleView() {
   // hängenden) Bereich min…max der ausgewählten Versnummern.
   const [selectedVerses, setSelectedVerses] = useState(new Set())
   const [noteDraft, setNoteDraft] = useState('')
+  const [noteLinks, setNoteLinks] = useState([])
+  const [showLinkPicker, setShowLinkPicker] = useState(false)
+  const [showSaved, setShowSaved] = useState(false)
   const [noteVisibility, setNoteVisibility] = useState('private')
   const [noteCommunityId, setNoteCommunityId] = useState(null)
   const [noteSiblingIds, setNoteSiblingIds] = useState([])
@@ -301,13 +307,23 @@ export default function BibleView() {
           </button>
         </div>
 
-        <button
-          onClick={() => setShowVersionPicker(true)}
-          className="mt-2 flex items-center gap-1 text-xs font-medium"
-          style={{ color: 'var(--color-accent)' }}
-        >
-          {currentVersion?.localized_abbreviation || currentVersion?.abbreviation || '…'} <ChevronDown size={12} />
-        </button>
+        <div className="mt-2 flex items-center justify-between">
+          <button
+            onClick={() => setShowVersionPicker(true)}
+            className="flex items-center gap-1 text-xs font-medium"
+            style={{ color: 'var(--color-accent)' }}
+          >
+            {currentVersion?.localized_abbreviation || currentVersion?.abbreviation || '…'} <ChevronDown size={12} />
+          </button>
+          <button
+            onClick={() => setShowSaved(true)}
+            className="p-1.5 rounded-lg"
+            aria-label="Meine Verse"
+            style={{ color: 'var(--color-accent)' }}
+          >
+            <Bookmark size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -357,6 +373,9 @@ export default function BibleView() {
           currentUserId={user?.id}
           noteDraft={noteDraft}
           setNoteDraft={setNoteDraft}
+          noteLinks={noteLinks}
+          setNoteLinks={setNoteLinks}
+          onOpenLinkPicker={() => setShowLinkPicker(true)}
           noteVisibility={noteVisibility}
           setNoteVisibility={setNoteVisibility}
           noteCommunityId={noteCommunityId}
@@ -374,7 +393,7 @@ export default function BibleView() {
           onToggleSaveColor={toggleSaveColor}
           onClose={() => {
             setSelectedVerses(new Set())
-            setNoteDraft('')
+            setNoteDraft(''); setNoteLinks([])
             setNoteVisibility('private')
             setNoteCommunityId(null)
             setNoteSiblingIds([])
@@ -390,14 +409,31 @@ export default function BibleView() {
             await addNote({
               verseStart, verseEnd, referenceLabel: referenceLabel(), note: noteDraft.trim(), bibleId,
               visibility: noteVisibility, visibilityCommunityId: noteCommunityId, visibilitySiblingIds: noteSiblingIds,
+              linkedVerses: noteLinks,
             })
-            setNoteDraft('')
+            setNoteDraft(''); setNoteLinks([])
             setNoteVisibility('private')
             setNoteCommunityId(null)
             setNoteSiblingIds([])
           }}
           onRemoveNote={(id) => removeNote(id)}
           onShareToFeed={handleShareToFeed}
+        />
+      )}
+
+      {showLinkPicker && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
+          <VersePickerSheet
+            onClose={() => setShowLinkPicker(false)}
+            onSelect={(att) => { setNoteLinks(prev => [...prev, att]); setShowLinkPicker(false) }}
+          />
+        </div>
+      )}
+
+      {showSaved && (
+        <SavedVersesSheet
+          onClose={() => setShowSaved(false)}
+          onOpen={(v) => { setShowSaved(false); navigate(buildBibleLink({ ...v, bibleId: v.bibleId || bibleId })) }}
         />
       )}
 
@@ -434,7 +470,7 @@ export default function BibleView() {
             if (post) {
               showToast('Beitrag geteilt 🙌')
               setSelectedVerses(new Set())
-              setNoteDraft('')
+              setNoteDraft(''); setNoteLinks([])
             } else {
               showToast('Fehler beim Posten', 'error')
             }
@@ -473,7 +509,7 @@ function YouVersionBadge({ yv }) {
 }
 
 function VerseActionBar({
-  referenceLabel, existingHighlight, bookmarked, showBookmark, notes, currentUserId, noteDraft, setNoteDraft,
+  referenceLabel, existingHighlight, bookmarked, showBookmark, notes, currentUserId, noteDraft, setNoteDraft, noteLinks, setNoteLinks, onOpenLinkPicker,
   noteVisibility, setNoteVisibility, noteCommunityId, setNoteCommunityId, noteSiblingIds, setNoteSiblingIds, myCommunities,
   linkedFeedPosts, linkedPrayers, linkedCreeds, referencesLoading,
   savedColors, recentColors, isColorSaved, onToggleSaveColor,
@@ -485,10 +521,9 @@ function VerseActionBar({
   const activeHex = existingHighlight && isCustomHex(existingHighlight.color)
     ? normalizeColorKey(existingHighlight.color)
     : null
-  const extraColors = [
-    ...(savedColors || []),
-    ...(recentColors || []).filter(c => !(savedColors || []).some(s => colorsEqual(s, c))),
-  ].filter((c, i, arr) => arr.findIndex(x => colorsEqual(x, c)) === i).slice(0, 8)
+  const [showMoreColors, setShowMoreColors] = useState(false)
+  const [showPublicNotes, setShowPublicNotes] = useState(false)
+  const otherNotes = notes.filter(n => !n.isOwn)
   const visibilityObj = VISIBILITY_OPTIONS.find(o => o.key === noteVisibility) || VISIBILITY_OPTIONS[0]
   const VisibilityIcon = visibilityObj.icon
 
@@ -517,26 +552,63 @@ function VerseActionBar({
 
       <div className="overflow-y-auto">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {Object.entries(HIGHLIGHT_COLORS).map(([name, hex]) => {
+          {(showMoreColors ? MORE_COLORS : PRIMARY_COLORS).map(name => {
+            const hex = HIGHLIGHT_COLORS[name]
             const isActive = colorsEqual(existingHighlight?.color, name) || colorsEqual(existingHighlight?.color, hex)
             return (
-            <button
-              key={name}
-              onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(name)}
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none', color: highlightTextColor(hex) }}
-            >
-              {isActive && <span style={{ fontSize: 12 }}>✓</span>}
-            </button>
+              <button
+                key={name}
+                onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(name)}
+                className="w-9 h-9 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : `0 0 0 1px var(--color-border)`, color: highlightTextColor(hex) }}
+              >
+                {isActive && <span style={{ fontSize: 12 }}>✓</span>}
+              </button>
             )
           })}
-          <CustomColorButton
-            value={activeHex}
-            saved={activeHex ? isColorSaved?.(activeHex) : false}
-            onSaveCurrent={() => activeHex && onToggleSaveColor?.(activeHex)}
-            onPick={(hex) => onHighlight(hex)}
-            onRemove={() => onRemoveHighlight(existingHighlight.id)}
-          />
+          {showMoreColors ? (
+            <>
+              {(savedColors || []).map(hex => {
+                const isActive = colorsEqual(existingHighlight?.color, hex)
+                return (
+                  <button
+                    key={hex}
+                    onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(hex)}
+                    onContextMenu={e => { e.preventDefault(); onToggleSaveColor?.(hex) }}
+                    title="Gespeicherte Farbe (lang drücken: entfernen)"
+                    className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : '0 0 0 1px var(--color-border)', color: highlightTextColor(hex) }}
+                  >
+                    {isActive && <span style={{ fontSize: 12 }}>✓</span>}
+                  </button>
+                )
+              })}
+              <CustomColorButton
+                value={null}
+                onPick={(hex) => onHighlight(hex)}
+                onCommit={(hex) => { if (!isColorSaved?.(hex)) onToggleSaveColor?.(hex) }}
+                onRemove={() => onRemoveHighlight(existingHighlight.id)}
+              />
+              <button
+                onClick={() => setShowMoreColors(false)}
+                className="w-9 h-9 rounded-full flex items-center justify-center ml-2"
+                style={{ backgroundColor: 'var(--color-bg-secondary)' }}
+                aria-label="Zurück"
+              >
+                <X size={16} style={{ color: 'var(--color-text)' }} />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowMoreColors(true)}
+              className="w-9 h-9 rounded-full relative"
+              aria-label="Weitere Farben"
+            >
+              {['#f09ae9', '#e8312a', '#8ef98b'].map((c, i) => (
+                <span key={c} className="absolute w-6 h-6 rounded-full" style={{ backgroundColor: c, left: 2 + i * 5, top: 6, border: '1px solid var(--color-bg)' }} />
+              ))}
+            </button>
+          )}
           {showBookmark && (
             <button
               onClick={onBookmark}
@@ -548,50 +620,27 @@ function VerseActionBar({
           )}
         </div>
 
-        {extraColors.length > 0 && (
-          <div className="mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
-              Eigene Farben
-            </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              {extraColors.map(hex => {
-                const isActive = colorsEqual(existingHighlight?.color, hex)
-                return (
-                  <button
-                    key={hex}
-                    onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(hex)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none', color: highlightTextColor(hex) }}
-                  >
-                    {isActive && <span style={{ fontSize: 11 }}>✓</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        {notes.filter(n => n.isOwn).map(n => (
+          <BibleNoteCard key={n.id} note={n} onRemove={() => onRemoveNote(n.id)} />
+        ))}
 
-        {notes.map(n => (
-          <div key={n.id} className="flex items-start justify-between gap-2 mb-2 p-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
-            <div className="flex-1 min-w-0">
-              {!n.isOwn && (
-                <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--color-accent)' }}>
-                  {n.author?.full_name || n.author?.username || 'Jemand'}
-                </p>
-              )}
-              <p style={{ fontSize: 13, color: 'var(--color-text)' }}>{n.note}</p>
-            </div>
-            {n.isOwn ? (
-              <button onClick={() => onRemoveNote(n.id)}><X size={14} style={{ color: 'var(--color-text-tertiary)' }} /></button>
-            ) : (
-              (() => {
-                const vo = VISIBILITY_OPTIONS.find(o => o.key === n.visibility)
-                const VIcon = vo?.icon || Globe
-                return <VIcon size={13} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0, marginTop: 2 }} />
-              })()
+        {otherNotes.length > 0 && (
+          <div className="mb-3">
+            <button
+              onClick={() => setShowPublicNotes(v => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              {showPublicNotes ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {showPublicNotes ? 'Notizen ausblenden' : `Öffentliche Notizen ansehen (${otherNotes.length})`}
+            </button>
+            {showPublicNotes && (
+              <div className="mt-2">
+                {otherNotes.map(n => <BibleNoteCard key={n.id} note={n} />)}
+              </div>
             )}
           </div>
-        ))}
+        )}
 
         {(referencesLoading || references.length > 0) && (
           <div className="mb-3">
@@ -632,13 +681,27 @@ function VerseActionBar({
 
         <div className="flex items-center gap-2 mb-2">
           <StickyNote size={16} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
-          <input
+          <textarea
             value={noteDraft}
-            onChange={e => setNoteDraft(e.target.value)}
+            onChange={e => { setNoteDraft(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px` }}
             placeholder="Notiz hinzufügen…"
+            rows={2}
             className="flex-1 px-3 py-2 rounded-xl text-sm"
-            style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+            style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)', resize: 'none', lineHeight: 1.4 }}
           />
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap mb-2">
+          {noteLinks.map((att, i) => (
+            <BibleReferenceChip key={i} attachment={att} variant="chip" openAsSheet onRemove={() => setNoteLinks(noteLinks.filter((_, j) => j !== i))} />
+          ))}
+          <button
+            onClick={onOpenLinkPicker}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+            style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}
+          >
+            <Link2 size={13} /> Bibelvers verknüpfen
+          </button>
         </div>
 
         {noteDraft.trim() && (
@@ -680,63 +743,42 @@ function VerseActionBar({
   )
 }
 
-// "+"-Button für frei wählbare Highlight-Farben (nicht nur die 5 Presets),
-// über den nativen Farbwähler des Browsers (<input type="color">). Trägt bei
-// aktiver Custom-Farbe zusätzlich ein Stern-Badge zum Speichern/Entfernen.
-function CustomColorButton({ value, saved, onSaveCurrent, onPick, onRemove }) {
+// "…"-Button für frei wählbare Farben über den nativen Farbwähler (<input type="color">).
+function CustomColorButton({ value, onPick, onCommit, onRemove }) {
   const inputRef = useRef(null)
-  const isActive = !!value
-
-  function openPicker() {
+  // Natives "change" feuert erst beim Schließen des Farbwählers → dann speichern
+  // (React-onChange entspricht "input" und käme bei jedem Ziehen).
+  useEffect(() => {
     const el = inputRef.current
     if (!el) return
-    // showPicker() is more reliable on iOS/WebKit than a programmatic click
-    // on a pointer-events-none input.
-    if (typeof el.showPicker === 'function') {
-      try { el.showPicker(); return } catch { /* fall through */ }
-    }
-    el.click()
-  }
+    const h = e => onCommit?.(e.target.value)
+    el.addEventListener('change', h)
+    return () => el.removeEventListener('change', h)
+  })
+  const isActive = !!value
 
   return (
     <button
       type="button"
-      onClick={openPicker}
       onContextMenu={e => { e.preventDefault(); if (isActive) onRemove?.() }}
-      className="w-8 h-8 rounded-full flex items-center justify-center relative"
+      className="w-9 h-9 rounded-full flex items-center justify-center relative overflow-hidden"
       style={{
         backgroundColor: isActive ? value : 'var(--color-bg-secondary)',
         boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none',
-        border: isActive ? 'none' : '1px dashed var(--color-border)',
         color: isActive ? highlightTextColor(value) : undefined,
       }}
-      title={isActive ? 'Farbe ändern (lang drücken: entfernen)' : 'Eigene Farbe'}
+      title="Eigene Farbe"
     >
-      {isActive ? <span style={{ fontSize: 12 }}>✓</span> : <Plus size={14} style={{ color: 'var(--color-text-tertiary)' }} />}
-      {isActive && onSaveCurrent && (
-        <span
-          role="button"
-          onClick={e => { e.stopPropagation(); onSaveCurrent() }}
-          className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: 'var(--color-bg)', boxShadow: '0 0 0 1px var(--color-border)' }}
-          title={saved ? 'Farbe gespeichert' : 'Farbe speichern'}
-        >
-          <Star size={10} style={{ color: saved ? '#f59e0b' : 'var(--color-text-tertiary)' }} fill={saved ? '#f59e0b' : 'none'} />
-        </span>
-      )}
-      {/* Kontrolliert statt defaultValue: sonst löst erneutes Wählen derselben
-          Farbe kein onChange aus (bekannter <input type="color">-Papercut). */}
+      {isActive ? <span style={{ fontSize: 12 }}>✓</span> : <MoreHorizontal size={16} style={{ color: 'var(--color-text-tertiary)' }} />}
       <input
         ref={inputRef}
         type="color"
-        value={value || '#fde68a'}
-        onChange={e => onPick(e.target.value)}
+        value={value || '#fff94f'}
         onInput={e => onPick(e.target.value)}
-        className="absolute inset-0 opacity-0 pointer-events-none"
-        tabIndex={-1}
-        aria-hidden="true"
+        onChange={() => {}}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        aria-label="Eigene Farbe wählen"
       />
     </button>
   )
 }
-

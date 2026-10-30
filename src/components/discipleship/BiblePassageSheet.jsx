@@ -6,11 +6,12 @@ import { useStationPassage } from '../../hooks/useStationPassage'
 // (Bekenntnis, Bibliothek). Nutzt denselben Cache-Hook wie die
 // Stationsdetailseite - book/chapter/verse sind hier nur nicht aus einer
 // festen Spalte, sondern aus lib/bibleBooks.js#parseGermanReference geparst.
-export default function BiblePassageSheet({ label, parsed, onClose }) {
+export default function BiblePassageSheet({ label, parsed, onClose, bibleId }) {
   const navigate = useNavigate()
-  const { html, loading, error, retry } = useStationPassage(parsed?.book, parsed?.chapter, parsed?.verseStart, parsed?.verseEnd)
+  const { html, loading, error, retry } = useStationPassage(parsed?.book, parsed?.chapter, parsed?.verseStart, parsed?.verseEnd, bibleId || undefined)
 
   function openContext() {
+    onClose?.()
     navigate(`/bible?book=${parsed.book}&chapter=${parsed.chapter}&verse=${parsed.verseStart}`)
   }
 

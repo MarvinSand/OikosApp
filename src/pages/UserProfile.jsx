@@ -546,7 +546,7 @@ export default function UserProfile() {
               onBookmarkSaved={markBookmarked}
             />
           )}
-          {activeTab === 'prayers' && <PrayersTab prayers={prayerRequests} />}
+          {activeTab === 'prayers' && <PrayersTab prayers={prayerRequests} profile={profile} />}
           {activeTab === 'creeds' && (
             <Suspense fallback={
               <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>Lade…</p>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Cross, MailCheck, Eye, EyeOff, BookMarked } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -9,10 +9,45 @@ import { useYouVersionSignIn } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
 import { TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
 
+// Offene E-Mail-Bestätigung merken, damit die Code-Eingabe auch nach einem
+// App-Neustart (z. B. nach dem Wechsel in die Mail-App) wieder erscheint.
+const PENDING_VERIFY_KEY = 'oikos_pending_verify'
+const PENDING_VERIFY_MAX_AGE_MS = 24 * 60 * 60 * 1000
+const RESEND_COOLDOWN_S = 60
+const CODE_LENGTH = 6
+
+function readPendingVerify() {
+  try {
+    const raw = localStorage.getItem(PENDING_VERIFY_KEY)
+    if (!raw) return null
+    const p = JSON.parse(raw)
+    if (!p?.email || Date.now() - (p.ts || 0) > PENDING_VERIFY_MAX_AGE_MS) {
+      localStorage.removeItem(PENDING_VERIFY_KEY)
+      return null
+    }
+    return p
+  } catch { return null }
+}
+function savePendingVerify(email) {
+  try { localStorage.setItem(PENDING_VERIFY_KEY, JSON.stringify({ email, ts: Date.now() })) } catch { /* ignore */ }
+}
+function clearPendingVerify() {
+  try { localStorage.removeItem(PENDING_VERIFY_KEY) } catch { /* ignore */ }
+}
+
+function authErrorCode(err) {
+  return (err?.code || err?.error_code || '').toString()
+}
+function isRateLimit(err) {
+  const c = authErrorCode(err)
+  return err?.status === 429 || c.includes('rate_limit') || /rate limit|security purposes|seconds/i.test(err?.message || '')
+}
+
 export default function Auth() {
   const hasSeenWelcome = typeof window !== 'undefined' && localStorage.getItem('oikos_welcome_seen')
-  const [view, setView] = useState(hasSeenWelcome ? 'login' : 'welcome')
-  const [email, setEmail] = useState('')
+  const pendingVerify = typeof window !== 'undefined' ? readPendingVerify() : null
+  const [view, setView] = useState(pendingVerify ? 'verify' : (hasSeenWelcome ? 'login' : 'welcome'))
+  const [email, setEmail] = useState(pendingVerify?.email || '')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [username, setUsername] = useState('')
@@ -27,12 +62,35 @@ export default function Auth() {
 
   const { login, register, verifySignupCode, resendSignupCode } = useAuth()
   const [code, setCode] = useState('')
+  const [resendIn, setResendIn] = useState(0)
+  const lastSubmittedCode = useRef('')
   const { showToast } = useToast()
+
+  // Countdown für "Code erneut senden"
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const t = setTimeout(() => setResendIn(s => s - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendIn])
+
+  function startVerify(addr) {
+    savePendingVerify(addr)
+    setCode('')
+    lastSubmittedCode.current = ''
+    setResendIn(RESEND_COOLDOWN_S)
+    setView('verify')
+  }
+
+  function handleCodeChange(value) {
+    const digits = (value || '').replace(/\D/g, '').slice(0, CODE_LENGTH)
+    setCode(digits)
+    if (error) setError('')
+  }
   const resetFlow = useChangePassword('loggedOut')
   const youversionSignIn = useYouVersionSignIn()
 
   function goToReset() { setError(''); resetFlow.reset(); setView('reset') }
-  function goToLogin() { setError(''); setView('login') }
+  function goToLogin() { setError(''); if (view === 'verify') clearPendingVerify(); setView('login') }
   function goToRegister() { localStorage.setItem('oikos_welcome_seen', 'true'); setError(''); setView('register') }
   function goFromWelcomeToLogin() { localStorage.setItem('oikos_welcome_seen', 'true'); setError(''); setView('login') }
 
@@ -58,8 +116,7 @@ export default function Auth() {
         const data = await register(email, password, fullName, gender, username.trim())
         if (!data?.session) {
           // E-Mail-Bestätigung per Code nötig
-          setCode('')
-          setView('verify')
+          startVerify(email.trim())
         }
         // Falls Session vorhanden, leitet App.jsx automatisch weiter
         return
@@ -82,39 +139,75 @@ export default function Auth() {
     setIsLoading(true)
     try {
       await resendSignupCode(email)
-      setCode('')
       setError('')
       setEmailNotConfirmed(false)
-      setView('verify')
+      startVerify(email.trim())
       showToast('Code gesendet ✓')
     } catch (err) {
-      showToast(err?.message || 'Fehler beim Senden', 'error')
+      if (isRateLimit(err)) {
+        // Es wurde gerade erst ein Code verschickt – trotzdem zur Eingabe
+        setEmailNotConfirmed(false)
+        startVerify(email.trim())
+        showToast('Bitte nutze den zuletzt gesendeten Code oder warte kurz.', 'error')
+      } else {
+        showToast(err?.message || 'Fehler beim Senden', 'error')
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
-  async function handleVerifySubmit(e) {
-    e.preventDefault()
+  async function submitVerifyCode(value) {
     setError('')
-    if (!code.trim()) { setError('Bitte den Code aus der E-Mail eingeben.'); return }
+    if (value.length !== CODE_LENGTH) { setError(`Bitte den ${CODE_LENGTH}-stelligen Code aus der E-Mail eingeben.`); return }
+    if (isLoading) return
+    lastSubmittedCode.current = value
     setIsLoading(true)
     try {
-      await verifySignupCode(email, code)
+      await verifySignupCode(email, value)
+      clearPendingVerify()
       // Session ist da – App.jsx leitet automatisch weiter
     } catch (err) {
-      setError('Der Code ist ungültig oder abgelaufen.')
+      const c = authErrorCode(err)
+      if (isRateLimit(err)) setError('Zu viele Versuche. Bitte warte einen Moment.')
+      else if (c === 'otp_expired' || /expired|invalid/i.test(err?.message || '')) setError('Der Code ist ungültig oder abgelaufen. Prüfe die Ziffern oder fordere einen neuen Code an.')
+      else if (/fetch|network|timeout/i.test(err?.message || '')) setError('Keine Verbindung. Bitte prüfe dein Internet und versuche es erneut.')
+      else setError('Der Code ist ungültig oder abgelaufen.')
     } finally {
       setIsLoading(false)
     }
   }
 
+  function handleVerifySubmit(e) {
+    e.preventDefault()
+    submitVerifyCode(code)
+  }
+
+  // Automatisch prüfen, sobald 6 Ziffern eingegeben/eingefügt wurden
+  useEffect(() => {
+    if (view === 'verify' && code.length === CODE_LENGTH && code !== lastSubmittedCode.current && !isLoading) {
+      submitVerifyCode(code)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, view])
+
   async function handleResendSignupCode() {
+    if (resendIn > 0) return
     try {
       await resendSignupCode(email)
-      showToast('Code erneut gesendet ✓')
+      savePendingVerify(email)
+      setCode('')
+      lastSubmittedCode.current = ''
+      setError('')
+      setResendIn(RESEND_COOLDOWN_S)
+      showToast('Neuer Code gesendet ✓')
     } catch (err) {
-      showToast(err?.message || 'Fehler beim Senden', 'error')
+      if (isRateLimit(err)) {
+        setResendIn(RESEND_COOLDOWN_S)
+        showToast('Bitte warte kurz, bevor du einen neuen Code anforderst.', 'error')
+      } else {
+        showToast(err?.message || 'Fehler beim Senden', 'error')
+      }
     }
   }
 
@@ -536,13 +629,22 @@ export default function Auth() {
                   autoFocus
                   type="text"
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   autoComplete="one-time-code"
+                  name="one-time-code"
+                  maxLength={CODE_LENGTH}
                   value={code}
-                  onChange={e => setCode(e.target.value)}
-                  placeholder="6-stelliger Code"
+                  onChange={e => handleCodeChange(e.target.value)}
+                  onPaste={e => {
+                    const text = e.clipboardData?.getData('text') || ''
+                    if (text) { e.preventDefault(); handleCodeChange(text) }
+                  }}
+                  placeholder="••••••"
+                  aria-label="6-stelliger Bestätigungscode"
                   required
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light tracking-widest"
+                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light text-center text-2xl font-semibold tracking-[0.5em] tabular-nums"
                 />
+                <p className="text-xs text-dark-light ml-1 mt-1">Keine E-Mail erhalten? Schau auch im Spam-Ordner nach.</p>
               </div>
 
               {error && (
@@ -553,7 +655,7 @@ export default function Auth() {
 
               <button
                 type="submit"
-                disabled={isLoading || !code.trim()}
+                disabled={isLoading || code.length !== CODE_LENGTH}
                 className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
                 {isLoading ? 'Prüfe…' : 'Konto aktivieren'}
@@ -562,9 +664,10 @@ export default function Auth() {
               <button
                 type="button"
                 onClick={handleResendSignupCode}
-                className="text-sm font-medium text-dark-muted hover:text-accent transition-colors"
+                disabled={resendIn > 0}
+                className="text-sm font-medium text-dark-muted hover:text-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Code erneut senden
+                {resendIn > 0 ? `Code erneut senden (${resendIn} s)` : 'Code erneut senden'}
               </button>
             </form>
           </div>

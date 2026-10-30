@@ -1,6 +1,10 @@
+import { lazy, Suspense, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { buildBibleLink } from '../../lib/bibleLink'
+
+const BiblePassageSheet = lazy(() => import('../discipleship/BiblePassageSheet'))
 
 // Rendert eine Bibelvers-Verknüpfung (VerseAttachment) - entweder als kleine
 // klickbare Pille ('chip', für Composer-Vorschauen) oder als Block mit
@@ -8,8 +12,9 @@ import { buildBibleLink } from '../../lib/bibleLink'
 // exakten Stelle in /bible) nur wenn strukturierte Felder vorhanden sind -
 // alte Freitext-Zeilen (nur bible_reference/bible_verse) werden nicht-
 // interaktiv gerendert.
-export default function BibleReferenceChip({ attachment, variant = 'block', showVerse = true, onRemove = null }) {
+export default function BibleReferenceChip({ attachment, variant = 'block', showVerse = true, onRemove = null, openAsSheet = false }) {
   const navigate = useNavigate()
+  const [sheetOpen, setSheetOpen] = useState(false)
   if (!attachment) return null
 
   const to = attachment.book ? buildBibleLink(attachment) : null
@@ -19,12 +24,30 @@ export default function BibleReferenceChip({ attachment, variant = 'block', show
     if (!to) return
     e.stopPropagation()
     e.preventDefault()
-    navigate(to)
+    if (openAsSheet && attachment.chapter != null) setSheetOpen(true)
+    else navigate(to)
   }
+
+  // Vers als Bottom-Sheet mit "Kontext ansehen" (wie im Bekenntnis-Tab). Portal +
+  // hoher z-index, damit es auch aus fixierten Leisten heraus oben liegt.
+  const sheet = sheetOpen && createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 80 }}>
+      <Suspense fallback={null}>
+        <BiblePassageSheet
+          label={attachment.referenceLabel}
+          parsed={{ book: attachment.book, chapter: attachment.chapter, verseStart: attachment.verseStart, verseEnd: attachment.verseEnd }}
+          bibleId={attachment.bibleId}
+          onClose={() => setSheetOpen(false)}
+        />
+      </Suspense>
+    </div>,
+    document.body,
+  )
 
   if (variant === 'chip') {
     return (
       <span className="inline-flex items-center gap-1">
+        {sheet}
         <Tag
           onClick={handleClick}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium"
@@ -49,6 +72,7 @@ export default function BibleReferenceChip({ attachment, variant = 'block', show
 
   return (
     <div className="flex items-start gap-2" style={{ marginTop: 8, marginBottom: 8 }}>
+      {sheet}
       <Tag
         onClick={handleClick}
         className="flex-1 text-left"

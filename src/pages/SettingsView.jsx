@@ -15,6 +15,7 @@ import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp, publicOrigin } from '../lib/platform'
 import { Avatar } from '../components/profile/ProfileTabs'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
+import ChurchPicker from '../components/common/ChurchPicker'
 
 // Lazy: AddressAutocomplete zieht den Google-Maps-Loader (~161 kB) mit und
 // wird erst im Unterbereich „Profil bearbeiten" gebraucht.
@@ -813,7 +814,7 @@ export default function SettingsView() {
           </AnchorSection>
 
           <FieldRow label="Gemeinde">
-            <input type="text" value={form.church_name} onChange={e => setField('church_name', e.target.value)} placeholder="z. B. Gemeinde Köln" style={inputStyle} />
+            <ChurchPicker value={form.church_name} onChange={v => setField('church_name', v)} inputStyle={inputStyle} />
             <ToggleRow label="Öffentlich anzeigen" checked={form.show_church} onChange={() => setField('show_church', !form.show_church)} />
           </FieldRow>
 
