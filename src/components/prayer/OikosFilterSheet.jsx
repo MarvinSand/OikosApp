@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Search } from 'lucide-react'
 import { hashString, getInitials } from '../../lib/communityTheme'
+import BodyPortal from '../common/BodyPortal'
 
 // Deterministische Akzentfarbe je Besitzer-ID – gleiche Idee wie
 // communityCover(), nur als flache Farbe statt Verlauf (für kleine Badges).
@@ -75,7 +76,7 @@ export default function OikosFilterSheet({ source, onClose }) {
   )
 
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 60 }} />
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -213,7 +214,7 @@ export default function OikosFilterSheet({ source, onClose }) {
           Fertig
         </button>
       </div>
-    </>
+    </BodyPortal>
   )
 }
 

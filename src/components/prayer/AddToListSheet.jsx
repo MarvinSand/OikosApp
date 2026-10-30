@@ -4,6 +4,7 @@ import { usePrayerLists } from '../../hooks/usePrayerLists'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import { listColumn } from '../../lib/prayerModel'
+import BodyPortal from '../common/BodyPortal'
 
 function isLightColor(hex) {
   if (!hex || hex[0] !== '#') return true
@@ -72,7 +73,7 @@ export default function AddToListSheet({ prayer, onClose }) {
   }
 
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }} />
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -169,6 +170,6 @@ export default function AddToListSheet({ prayer, onClose }) {
           })}
         </div>
       </div>
-    </>
+    </BodyPortal>
   )
 }

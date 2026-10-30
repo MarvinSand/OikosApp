@@ -3,6 +3,7 @@ import { X, Clock, Users, CalendarDays } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import { useCommunities } from '../../hooks/useCommunities'
 import SiblingPicker from './SiblingPicker'
+import BodyPortal from '../common/BodyPortal'
 
 const GOAL_COLORS = ['#5AC8FA', '#7A9E7E', '#D4A853', '#C0392B', '#8E44AD', '#2980B9', '#E67E22', '#2C3E50']
 const GOAL_EMOJIS = ['🙏', '🌍', '🇩🇪', '🔥', '🕊️', '❤️', '✝️', '🌅', '🛡️', '🤲', '⛪', '🌿']
@@ -50,7 +51,7 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', 
   }
 
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -183,7 +184,7 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', 
           {saving ? 'Erstelle…' : 'Ziel erstellen'}
         </button>
       </div>
-    </>
+    </BodyPortal>
   )
 }
 

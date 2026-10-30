@@ -20,6 +20,7 @@ import { useOikosFilterSource } from '../hooks/useOikosFilterSource'
 import { KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import VersePickerSheet from '../components/bible/VersePickerSheet'
+import BodyPortal from '../components/common/BodyPortal'
 
 // ─── Konstanten ───────────────────────────────────────────────
 
@@ -824,12 +825,12 @@ export default function Prayers() {
       )}
 
       {showCreate && (
-        <CreatePrayerSheet
+        <BodyPortal><CreatePrayerSheet
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
           onCreateGoal={handleCreateGoal}
           onDone={() => { setShowCreate(false); showToast('Gebet erstellt 🙏') }}
-        />
+        /></BodyPortal>
       )}
 
       {/* Gebetsmodus-Setup */}

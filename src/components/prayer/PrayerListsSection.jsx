@@ -5,6 +5,7 @@ import { usePrayerLists } from '../../hooks/usePrayerLists'
 import { useToast } from '../../context/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
+import BodyPortal from '../common/BodyPortal'
 
 const LIST_COLORS = ['#7A9E7E', '#D4A853', '#C0392B', '#2980B9', '#8E44AD', '#E67E22', '#5A6B7A', '#16A085']
 const LIST_EMOJIS = ['🙏', '👨‍👩‍👧', '🌍', '🏥', '💼', '🛡️', '💔', '➕', '🌅', '⭐', '🕊️', '🔥', '💡', '🌿', '🎯', '❤️', '🌸', '📖', '🌟', '🤲']
@@ -33,7 +34,7 @@ function CreateListSheet({ onClose, onCreate }) {
   }
 
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -112,7 +113,7 @@ function CreateListSheet({ onClose, onCreate }) {
           {saving ? 'Erstelle…' : 'Liste erstellen'}
         </button>
       </div>
-    </>
+    </BodyPortal>
   )
 }
 

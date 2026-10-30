@@ -1,5 +1,9 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Sheets im SwipePager: `position: fixed` landet im Track (Okt. 2026)
+
+`SwipePager` verschiebt einen 200 %-breiten Track per `transform`/`will-change`. Jeder Vorfahre mit `transform` macht `position: fixed` relativ zu sich selbst (nicht zum Viewport) und `overflow: hidden` schneidet ab → Gebete-Sheets (z. B. „Oikos-Gebete auswählen“) saßen um eine halbe Viewport-Breite nach rechts verschoben und abgeschnitten. **Fix:** Sheets/Overlays in Panes immer in `components/common/BodyPortal.jsx` (Portal an `document.body`) rendern. Neue Sheets unter `pages/Prayers`/`FeedTab`/Home-Panes also gleich portalen.
+
 ## Systemkarte „Meine Geschwister in Christus" (Okt. 2026, phase75)
 
 - Pro Account genau eine `oikos_maps`-Zeile mit `kind='siblings'` (Unique-Index, Trigger auf `profiles` + Backfill, `ensure_siblings_map`). Immer erste Map im Switcher (Pin), nicht umbenenn-/löschbar, **öffentlich** (`visibility='public'`, neuer Wert in Check-Constraint + `is_map_visible_to`; `'public'` bei Sichtbarkeitsfiltern im Client mitbehandeln). Aus Weltkarten-/Gebets-/Filterquellen per `.or('kind.is.null,kind.neq.siblings')` ausgeschlossen (`neq` allein würde NULL-Zeilen verlieren).

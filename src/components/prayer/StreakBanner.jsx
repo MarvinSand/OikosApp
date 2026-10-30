@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
+import BodyPortal from '../common/BodyPortal'
 
 function FreezeConfirmSheet({ streak, freezeDaysRemaining, onConfirm, onClose }) {
   const [loading, setLoading] = useState(false)
@@ -11,7 +12,7 @@ function FreezeConfirmSheet({ streak, freezeDaysRemaining, onConfirm, onClose })
   }
 
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -69,7 +70,7 @@ function FreezeConfirmSheet({ streak, freezeDaysRemaining, onConfirm, onClose })
           Lieber heute noch beten
         </button>
       </div>
-    </>
+    </BodyPortal>
   )
 }
 
