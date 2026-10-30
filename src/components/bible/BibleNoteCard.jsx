@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Heart, MessageCircle, Send, Trash2, MoreHorizontal } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -31,6 +32,7 @@ export default function BibleNoteCard({ note, onRemove }) {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [moderation, setModeration] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -84,7 +86,7 @@ export default function BibleNoteCard({ note, onRemove }) {
           <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{timeAgo(note.created_at)}</span>
         </div>
         {note.isOwn && onRemove && (
-          <button onClick={onRemove} aria-label="Notiz löschen" className="p-1" style={{ color: 'var(--color-text-tertiary)' }}>
+          <button onClick={() => setConfirmDelete(true)} aria-label="Notiz löschen" className="p-1" style={{ color: 'var(--color-text-tertiary)' }}>
             <Trash2 size={14} />
           </button>
         )}
@@ -150,6 +152,41 @@ export default function BibleNoteCard({ note, onRemove }) {
             </button>
           </div>
         </div>
+      )}
+
+      {confirmDelete && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center px-6"
+          style={{ zIndex: 90, backgroundColor: 'rgba(0,0,0,0.45)' }}
+          onClick={() => setConfirmDelete(false)}
+        >
+          <div
+            className="w-full max-w-xs rounded-2xl p-5"
+            style={{ backgroundColor: 'var(--color-bg)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="font-semibold text-center mb-4" style={{ color: 'var(--color-text)' }}>
+              Willst du die Notiz wirklich löschen?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2.5 rounded-xl font-medium"
+                style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)' }}
+              >
+                Nein
+              </button>
+              <button
+                onClick={() => { setConfirmDelete(false); onRemove() }}
+                className="flex-1 py-2.5 rounded-xl font-medium"
+                style={{ backgroundColor: '#dc2626', color: '#fff' }}
+              >
+                Ja
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
 
       {moderation && (
