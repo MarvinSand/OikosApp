@@ -4,6 +4,7 @@ import { ArrowLeft, Trash2, Check, X, User, Settings } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
+import { buildBibleLink } from '../lib/bibleLink'
 import { NOTIFICATION_TYPE_META } from '../lib/notificationTypeMeta'
 
 // Derive the best navigation target for a notification
@@ -13,6 +14,9 @@ function resolveDestination(n, currentUserId) {
   const { map_id, person_id, map_owner_id, request_id, requester_id, post_id, conversation_id } = n.data || {}
 
   if (n.type === 'message' && conversation_id) return `/chat/${conversation_id}`
+  if (n.type === 'bible_note_comment' && n.data?.book) {
+    return buildBibleLink({ bibleId: n.data.bible_id, book: n.data.book, chapter: n.data.chapter, verseStart: n.data.verse_start, verseEnd: n.data.verse_end })
+  }
   if (n.type === 'feed_post' && post_id) return `/feed/post/${post_id}`
   if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log' || n.type === 'prayer_reminder')) {
     const base = map_owner_id && map_owner_id !== currentUserId

@@ -506,7 +506,7 @@ export function useBibleMarkers(bibleId, book, chapter, { youversionConnected = 
 
   async function addNote({
     verseStart, verseEnd, referenceLabel, note, bibleId = DEFAULT_BIBLE_ID,
-    visibility = 'private', visibilityCommunityId = null, visibilitySiblingIds = [],
+    visibility = 'private', visibilityCommunityId = null, visibilitySiblingIds = [], linkedVerses = [],
   }) {
     const { data, error } = await supabase.from('bible_notes').insert({
       user_id: user.id, bible_id: bibleId, book, chapter,
@@ -515,6 +515,7 @@ export function useBibleMarkers(bibleId, book, chapter, { youversionConnected = 
       visibility,
       visibility_community_id: visibility === 'community' ? visibilityCommunityId : null,
       visibility_user_ids: visibility === 'specific' ? visibilitySiblingIds : [],
+      linked_verses: linkedVerses,
     }).select().single()
     if (!error) setNotes(prev => [...prev, { ...data, isOwn: true }])
     return { data, error }

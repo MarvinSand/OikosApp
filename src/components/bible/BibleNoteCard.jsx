@@ -3,6 +3,7 @@ import { Heart, MessageCircle, Send, Trash2, MoreHorizontal } from 'lucide-react
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { timeAgo } from '../../lib/prayerModel'
+import BibleReferenceChip from '../bible/BibleReferenceChip'
 import ModerationSheet from '../common/ModerationSheet'
 
 const COMMENT_SELECT = 'id, note_id, author_id, body, created_at, profiles:author_id(id, full_name, username, avatar_url)'
@@ -89,6 +90,11 @@ export default function BibleNoteCard({ note, onRemove }) {
         )}
       </div>
       <p style={{ fontSize: 13.5, color: 'var(--color-text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{note.note}</p>
+      {Array.isArray(note.linked_verses) && note.linked_verses.length > 0 && (
+        <div className="flex flex-col gap-1.5 mt-2">
+          {note.linked_verses.map((att, i) => <BibleReferenceChip key={i} attachment={att} variant="block" showVerse={false} />)}
+        </div>
+      )}
 
       <div className="flex items-center gap-4 mt-2">
         <button onClick={toggleLike} className="flex items-center gap-1" style={{ fontSize: 12, fontWeight: 600, color: liked ? '#E0245E' : 'var(--color-text-tertiary)' }}>

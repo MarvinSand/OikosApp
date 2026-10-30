@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star, Share2, Lock, Globe, Home as HomeIcon, UserCheck, Users, ChevronUp, MoreHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNote, X, Search, Plus, Star, Share2, Lock, Globe, Home as HomeIcon, UserCheck, Users, ChevronUp, MoreHorizontal, Link2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunities } from '../hooks/useCommunities'
 import {
@@ -11,9 +11,11 @@ import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
 import { useToast } from '../context/ToastContext'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
+import SavedVersesSheet from '../components/bible/SavedVersesSheet'
+import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import BibleNoteCard from '../components/bible/BibleNoteCard'
 import { HIGHLIGHT_COLORS, PRIMARY_COLORS, MORE_COLORS, resolveHighlightColor, highlightTextColor, colorsEqual, isCustomHex, normalizeColorKey } from '../lib/bibleColors'
-import { formatReferenceLabel, parseBibleLinkParams } from '../lib/bibleLink'
+import { formatReferenceLabel, parseBibleLinkParams, buildBibleLink } from '../lib/bibleLink'
 import { verseTextFromContainer } from '../lib/biblePassageHtml'
 import { DEFAULT_STARRED_VERSIONS } from '../lib/bibleVersionDefaults'
 import { createFeedPost } from '../hooks/useFeed'
@@ -58,6 +60,9 @@ export default function BibleView() {
   // hängenden) Bereich min…max der ausgewählten Versnummern.
   const [selectedVerses, setSelectedVerses] = useState(new Set())
   const [noteDraft, setNoteDraft] = useState('')
+  const [noteLinks, setNoteLinks] = useState([])
+  const [showLinkPicker, setShowLinkPicker] = useState(false)
+  const [showSaved, setShowSaved] = useState(false)
   const [noteVisibility, setNoteVisibility] = useState('private')
   const [noteCommunityId, setNoteCommunityId] = useState(null)
   const [noteSiblingIds, setNoteSiblingIds] = useState([])
@@ -302,13 +307,23 @@ export default function BibleView() {
           </button>
         </div>
 
-        <button
-          onClick={() => setShowVersionPicker(true)}
-          className="mt-2 flex items-center gap-1 text-xs font-medium"
-          style={{ color: 'var(--color-accent)' }}
-        >
-          {currentVersion?.localized_abbreviation || currentVersion?.abbreviation || '…'} <ChevronDown size={12} />
-        </button>
+        <div className="mt-2 flex items-center justify-between">
+          <button
+            onClick={() => setShowVersionPicker(true)}
+            className="flex items-center gap-1 text-xs font-medium"
+            style={{ color: 'var(--color-accent)' }}
+          >
+            {currentVersion?.localized_abbreviation || currentVersion?.abbreviation || '…'} <ChevronDown size={12} />
+          </button>
+          <button
+            onClick={() => setShowSaved(true)}
+            className="p-1.5 rounded-lg"
+            aria-label="Meine Verse"
+            style={{ color: 'var(--color-accent)' }}
+          >
+            <Bookmark size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -358,6 +373,9 @@ export default function BibleView() {
           currentUserId={user?.id}
           noteDraft={noteDraft}
           setNoteDraft={setNoteDraft}
+          noteLinks={noteLinks}
+          setNoteLinks={setNoteLinks}
+          onOpenLinkPicker={() => setShowLinkPicker(true)}
           noteVisibility={noteVisibility}
           setNoteVisibility={setNoteVisibility}
           noteCommunityId={noteCommunityId}
@@ -375,7 +393,7 @@ export default function BibleView() {
           onToggleSaveColor={toggleSaveColor}
           onClose={() => {
             setSelectedVerses(new Set())
-            setNoteDraft('')
+            setNoteDraft(''); setNoteLinks([])
             setNoteVisibility('private')
             setNoteCommunityId(null)
             setNoteSiblingIds([])
@@ -391,14 +409,31 @@ export default function BibleView() {
             await addNote({
               verseStart, verseEnd, referenceLabel: referenceLabel(), note: noteDraft.trim(), bibleId,
               visibility: noteVisibility, visibilityCommunityId: noteCommunityId, visibilitySiblingIds: noteSiblingIds,
+              linkedVerses: noteLinks,
             })
-            setNoteDraft('')
+            setNoteDraft(''); setNoteLinks([])
             setNoteVisibility('private')
             setNoteCommunityId(null)
             setNoteSiblingIds([])
           }}
           onRemoveNote={(id) => removeNote(id)}
           onShareToFeed={handleShareToFeed}
+        />
+      )}
+
+      {showLinkPicker && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
+          <VersePickerSheet
+            onClose={() => setShowLinkPicker(false)}
+            onSelect={(att) => { setNoteLinks(prev => [...prev, att]); setShowLinkPicker(false) }}
+          />
+        </div>
+      )}
+
+      {showSaved && (
+        <SavedVersesSheet
+          onClose={() => setShowSaved(false)}
+          onOpen={(v) => { setShowSaved(false); navigate(buildBibleLink({ ...v, bibleId: v.bibleId || bibleId })) }}
         />
       )}
 
@@ -435,7 +470,7 @@ export default function BibleView() {
             if (post) {
               showToast('Beitrag geteilt 🙌')
               setSelectedVerses(new Set())
-              setNoteDraft('')
+              setNoteDraft(''); setNoteLinks([])
             } else {
               showToast('Fehler beim Posten', 'error')
             }
@@ -474,7 +509,7 @@ function YouVersionBadge({ yv }) {
 }
 
 function VerseActionBar({
-  referenceLabel, existingHighlight, bookmarked, showBookmark, notes, currentUserId, noteDraft, setNoteDraft,
+  referenceLabel, existingHighlight, bookmarked, showBookmark, notes, currentUserId, noteDraft, setNoteDraft, noteLinks, setNoteLinks, onOpenLinkPicker,
   noteVisibility, setNoteVisibility, noteCommunityId, setNoteCommunityId, noteSiblingIds, setNoteSiblingIds, myCommunities,
   linkedFeedPosts, linkedPrayers, linkedCreeds, referencesLoading,
   savedColors, recentColors, isColorSaved, onToggleSaveColor,
@@ -646,13 +681,27 @@ function VerseActionBar({
 
         <div className="flex items-center gap-2 mb-2">
           <StickyNote size={16} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
-          <input
+          <textarea
             value={noteDraft}
-            onChange={e => setNoteDraft(e.target.value)}
+            onChange={e => { setNoteDraft(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px` }}
             placeholder="Notiz hinzufügen…"
+            rows={2}
             className="flex-1 px-3 py-2 rounded-xl text-sm"
-            style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+            style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)', resize: 'none', lineHeight: 1.4 }}
           />
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap mb-2">
+          {noteLinks.map((att, i) => (
+            <BibleReferenceChip key={i} attachment={att} variant="chip" onRemove={() => setNoteLinks(noteLinks.filter((_, j) => j !== i))} />
+          ))}
+          <button
+            onClick={onOpenLinkPicker}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+            style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}
+          >
+            <Link2 size={13} /> Bibelvers verknüpfen
+          </button>
         </div>
 
         {noteDraft.trim() && (
