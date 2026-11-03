@@ -315,10 +315,18 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
     const freePeople = primary.filter(p => !placeConnectedIds.has(p.id))
     const realPlaces = places.filter(pl => !pl.is_virtual)
 
+    // cx/cy müssen exakt der Formel entsprechen, mit der MapCanvas den
+    // eigenen Avatar zeichnet (ringRadius aus ALLEN Personen, nicht nur den
+    // unverbundenen) — sonst sitzt der Avatar beim nächsten Render woanders
+    // als die hier neu gesetzten Positionen, und alles wirkt zusammenhanglos
+    // verstreut statt um die Mitte herum angeordnet.
+    const totalN = people.length
+    const ringRadius = totalN === 0 ? 150 : Math.max(150, totalN * 18)
+    const cx = ringRadius + 70
+    const cy = ringRadius + 70
+
     const n = freePeople.length
     const innerRingRadius = n === 0 ? 150 : Math.max(150, n * 18)
-    const cx = innerRingRadius + 70
-    const cy = innerRingRadius + 70
 
     const posById = {}
     const personUpdates = []
