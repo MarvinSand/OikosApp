@@ -20,6 +20,7 @@ import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
 import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSheet'
 import WorldMapView from '../components/worldmap/WorldMapView'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
+import { fanOutSecondary } from '../components/map/mapLayout'
 
 // ─── Farb-Filter Panel ───────────────────────────────────────
 const EMPTY_LIST = []
@@ -275,7 +276,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
     maps, setMaps, activeMapId, setActiveMapId, activeMap,
     people, connections, overlayData, dataMapId, loading,
     createMap, updateMap, deleteMap, addPerson, setPersonSecondary, updatePerson, deletePerson,
-    movePersonPosition, resetLayout, createConnection, deleteConnection, updateConnectionColor,
+    movePersonPosition, createConnection, deleteConnection, updateConnectionColor,
     linkAccount, unlinkAccount, updatePersonOverlay, reloadMap,
   } = useOikosMaps({ initialMapId })
 
@@ -297,6 +298,72 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   // Orte nur zeigen, wenn sie zur aktiven Karte gehören
   const places = placesMapId === activeMapId ? rawPlaces : EMPTY_LIST
   const placeConnections = placesMapId === activeMapId ? rawPlaceConnections : EMPTY_LIST
+
+  // "Karte aufräumen": Orte wandern auf einen äußeren Ring, ihre verbundenen
+  // Personen kreisen eng um ihren Ort statt lose im Haupt-Ring zu hängen;
+  // unverbundene Personen bilden wie bisher den inneren Ring um die Mitte.
+  async function handleCleanup() {
+    const primary = people.filter(p => !p.is_secondary)
+    const secondary = people.filter(p => p.is_secondary)
+
+    const connectedIdsByPlace = {}
+    placeConnections.forEach(c => {
+      if (!primary.find(p => p.id === c.person_id)) return
+      ;(connectedIdsByPlace[c.place_id] ||= []).push(c.person_id)
+    })
+    const placeConnectedIds = new Set(Object.values(connectedIdsByPlace).flat())
+    const freePeople = primary.filter(p => !placeConnectedIds.has(p.id))
+    const realPlaces = places.filter(pl => !pl.is_virtual)
+
+    const n = freePeople.length
+    const innerRingRadius = n === 0 ? 150 : Math.max(150, n * 18)
+    const cx = innerRingRadius + 70
+    const cy = innerRingRadius + 70
+
+    const posById = {}
+    const personUpdates = []
+    freePeople.forEach((p, i) => {
+      const angle = (i * 2 * Math.PI / Math.max(n, 1)) - Math.PI / 2
+      const pos = { x: cx + innerRingRadius * Math.cos(angle), y: cy + innerRingRadius * Math.sin(angle) }
+      posById[p.id] = pos
+      personUpdates.push({ id: p.id, ...pos })
+    })
+
+    const placeRingRadius = Math.max(innerRingRadius + 150, 300)
+    const placeUpdates = realPlaces.map((pl, i) => {
+      const angle = (i * 2 * Math.PI / Math.max(realPlaces.length, 1)) - Math.PI / 2
+      return { id: pl.id, x: cx + placeRingRadius * Math.cos(angle), y: cy + placeRingRadius * Math.sin(angle), angle }
+    })
+    placeUpdates.forEach(({ id: placeId, x: px, y: py, angle }) => {
+      const memberIds = connectedIdsByPlace[placeId] || []
+      const clusterRadius = memberIds.length <= 1 ? 0 : Math.max(60, memberIds.length * 16)
+      memberIds.forEach((personId, j) => {
+        const memberAngle = memberIds.length <= 1 ? angle : (j * 2 * Math.PI / memberIds.length) - Math.PI / 2
+        const pos = memberIds.length <= 1
+          ? { x: px + 90 * Math.cos(angle), y: py + 90 * Math.sin(angle) }
+          : { x: px + clusterRadius * Math.cos(memberAngle), y: py + clusterRadius * Math.sin(memberAngle) }
+        posById[personId] = pos
+        personUpdates.push({ id: personId, ...pos })
+      })
+    })
+
+    const childCounts = {}
+    secondary.forEach(p => {
+      const conn = connections.find(c => c.source_person_id === p.id || c.target_person_id === p.id)
+      const parentId = conn ? (conn.source_person_id === p.id ? conn.target_person_id : conn.source_person_id) : null
+      const parentPos = parentId ? posById[parentId] : null
+      if (!parentPos) return
+      const idx = childCounts[parentId] ?? 0
+      childCounts[parentId] = idx + 1
+      const pos = fanOutSecondary(parentPos, cx, cy, idx)
+      personUpdates.push({ id: p.id, ...pos })
+    })
+
+    await Promise.all([
+      ...personUpdates.map(u => movePersonPosition(u.id, u.x, u.y)),
+      ...placeUpdates.map(u => movePlacePosition(u.id, u.x, u.y)),
+    ])
+  }
 
   // Systemkarte: virtuelle Kanten, Gen-2/3-Overlay und Community-Knoten einmischen
   const canvasConnections = isSiblingsMap ? [...connections, ...siblingsGraph.connections] : connections
@@ -520,7 +587,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                       disabled={cleaningUp}
                       onClick={async () => {
                         setCleaningUp(true)
-                        await resetLayout()
+                        await handleCleanup()
                         setCleaningUp(false)
                         setShowCleanupConfirm(false)
                         setResetOverlaySignal(s => s + 1)

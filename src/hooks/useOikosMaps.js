@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { useToast } from '../context/ToastContext'
 import { readCache, writeCache } from '../lib/swrCache'
-import { fanOutSecondary } from '../components/map/mapLayout'
 
 // Pro Karte zuletzt geladener Stand → Kartenwechsel rendert sofort, aktualisiert still.
 const mapCacheKey = (mapId) => `oikos-map:${mapId}`
@@ -293,39 +292,6 @@ export function useOikosMaps({ initialMapId = null, skipLoad = false } = {}) {
     setPeople(prev => prev.map(p => p.id === personId ? { ...p, pos_x: posX, pos_y: posY } : p))
   }
 
-  // "Karte aufräumen" — ordnet alle Personen wieder im sauberen Kreis an,
-  // genau wie MapCanvas das für neue Personen tut (gleiche Formel für
-  // ringRadius/cx/cy, siehe getDefaultPos dort), statt der manuell
-  // verschobenen Positionen.
-  async function resetLayout() {
-    const primary = people.filter(p => !p.is_secondary)
-    const secondary = people.filter(p => p.is_secondary)
-    const n = primary.length
-    const ringRadius = n === 0 ? 150 : Math.max(150, n * 18)
-    const cx = ringRadius + 70
-    const cy = ringRadius + 70
-
-    const updates = primary.map((p, i) => {
-      const angle = (i * 2 * Math.PI / Math.max(n, 1)) - Math.PI / 2
-      return { id: p.id, pos_x: cx + ringRadius * Math.cos(angle), pos_y: cy + ringRadius * Math.sin(angle) }
-    })
-    const posById = Object.fromEntries(updates.map(u => [u.id, { x: u.pos_x, y: u.pos_y }]))
-
-    const childCounts = {}
-    secondary.forEach(p => {
-      const conn = connections.find(c => c.source_person_id === p.id || c.target_person_id === p.id)
-      const parentId = conn ? (conn.source_person_id === p.id ? conn.target_person_id : conn.source_person_id) : null
-      const parentPos = parentId ? posById[parentId] : null
-      if (!parentPos) return
-      const idx = childCounts[parentId] ?? 0
-      childCounts[parentId] = idx + 1
-      const pos = fanOutSecondary(parentPos, cx, cy, idx)
-      updates.push({ id: p.id, pos_x: pos.x, pos_y: pos.y })
-    })
-
-    await Promise.all(updates.map(u => movePersonPosition(u.id, u.pos_x, u.pos_y)))
-  }
-
   async function createConnection(sourceId, targetId, label) {
     const existing = connections.find(c =>
       (c.source_person_id === sourceId && c.target_person_id === targetId) ||
@@ -449,7 +415,6 @@ export function useOikosMaps({ initialMapId = null, skipLoad = false } = {}) {
     updatePerson,
     deletePerson,
     movePersonPosition,
-    resetLayout,
     createConnection,
     deleteConnection,
     updateConnectionColor,

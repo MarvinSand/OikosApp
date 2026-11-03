@@ -29,14 +29,18 @@ function closestOnSegment(px, py, x1, y1, x2, y2) {
  * basePositions: { [id]: {x, y} }
  * nodes: [{ id, r, fixed }] — r is the effective radius (overlay parents get
  *        their disc radius), fixed nodes (currently dragged) never move.
- * opts: { cx, cy, centerR, gap, iterations, edges, lineGap }
- *   edges: [{ a, b }] — pairs of node ids (e.g. Oikos-Verbindungen). Nodes not
- *          part of an edge get nudged clear of that edge's line, best-effort —
- *          this runs after circle/circle repulsion, so it can leave a residual
- *          overlap when space is too tight to satisfy both constraints.
+ * opts: { cx, cy, centerR, gap, iterations, edges, lineGap, extraPositions }
+ *   edges: [{ a, b }] — pairs of ids (e.g. Oikos-Verbindungen, or a place/
+ *          center pseudo-id from extraPositions). Nodes not part of an edge
+ *          get nudged clear of that edge's line, best-effort — this runs
+ *          after circle/circle repulsion, so it can leave a residual overlap
+ *          when space is too tight to satisfy both constraints.
+ *   extraPositions: { [id]: {x, y} } — fixed points (e.g. places, the map's
+ *          center) that edges may reference as endpoints without taking part
+ *          in circle/circle or center repulsion themselves.
  * Returns basePositions unchanged (same reference) if nothing overlaps.
  */
-export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 12, iterations = 40, edges = [], lineGap = 10 } = {}) {
+export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 12, iterations = 40, edges = [], lineGap = 10, extraPositions = {} } = {}) {
   const sorted = [...nodes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const pos = {}
   for (const n of sorted) {
@@ -44,6 +48,7 @@ export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 
     if (p) pos[n.id] = { x: p.x, y: p.y }
   }
   const active = sorted.filter(n => pos[n.id])
+  const lookupPos = Object.keys(extraPositions).length > 0 ? { ...pos, ...extraPositions } : pos
   let anyMoved = false
 
   for (let iter = 0; iter < iterations; iter++) {
@@ -119,8 +124,8 @@ export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 
         const p = pos[n.id]
         for (const e of edges) {
           if (e.a === n.id || e.b === n.id) continue
-          const pa = pos[e.a]
-          const pb = pos[e.b]
+          const pa = lookupPos[e.a]
+          const pb = lookupPos[e.b]
           if (!pa || !pb) continue
           const { x: lx, y: ly, dist: d } = closestOnSegment(p.x, p.y, pa.x, pa.y, pb.x, pb.y)
           const required = n.r + lineGap

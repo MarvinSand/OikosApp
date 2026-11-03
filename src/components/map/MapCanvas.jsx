@@ -325,13 +325,24 @@ export default function MapCanvas({
       r: radii[p.id],
       fixed: dragging?.id === p.id && !dragging?.overlayKey && !dragging?.isPlace,
     }))
-    // Personen sollen möglichst nicht auf fremden Verbindungslinien landen
-    // (best-effort, siehe relaxLayout) — nur zwischen den eigenen Personen,
-    // nicht den Linien zu Orten oder zum Zentrum.
+    // Personen sollen möglichst nicht auf fremden Linien landen (best-effort,
+    // siehe relaxLayout) — Verbindungen zwischen Personen, aber auch die
+    // Zentrum→Ort- und Ort→Person-Linien. Orte/Zentrum selbst bewegen sich
+    // dabei nicht (extraPositions), sie dienen nur als Linien-Endpunkte.
     const edges = connections.map(c => ({ a: c.source_person_id, b: c.target_person_id }))
-    return relaxLayout(base, nodes, { cx, cy, centerR: userR, edges })
+    const extraPositions = { __center__: { x: cx, y: cy } }
+    places.forEach(pl => {
+      const pp = placePositions[pl.id]
+      if (!pp) return
+      extraPositions[pl.id] = pp
+      edges.push({ a: '__center__', b: pl.id })
+    })
+    placeConnections.forEach(c => {
+      if (extraPositions[c.place_id]) edges.push({ a: c.place_id, b: c.person_id })
+    })
+    return relaxLayout(base, nodes, { cx, cy, centerR: userR, edges, extraPositions })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions, people, overlayData, dragging, cx, cy, ringRadius, connections])
+  }, [positions, people, overlayData, dragging, cx, cy, ringRadius, connections, places, placeConnections, placePositions])
 
   function getPos(person, index) {
     if (layout[person.id]) return layout[person.id]
@@ -467,10 +478,23 @@ export default function MapCanvas({
         fixed: dragging?.overlayKey === overlayKey(od.parentPersonId, op.id) && dragging?.moved,
       }))
       // Auch bei eingeblendeten Personen sollen sie möglichst nicht auf
-      // fremden Verbindungslinien derselben Overlay-Gruppe landen.
+      // fremden Linien derselben Overlay-Gruppe landen — Verbindungen
+      // zwischen Personen, aber auch die Eltern→Ort- und Ort→Person-Linien
+      // (gleiche Übersetzung wie getOverlayPlacePos im Rendering).
       const edges = (od.connections || []).map(c => ({ a: c.source_person_id, b: c.target_person_id }))
+      const extraPositions = { __parent__: parentPos }
+      ;(od.places || []).forEach(pl => {
+        extraPositions[pl.id] = {
+          x: anchor.x + ((pl.pos_x ?? brotherCx) - brotherCx),
+          y: anchor.y + ((pl.pos_y ?? brotherCy) - brotherCy),
+        }
+        edges.push({ a: '__parent__', b: pl.id })
+      })
+      ;(od.placeConnections || []).forEach(c => {
+        if (extraPositions[c.place_id]) edges.push({ a: c.place_id, b: c.person_id })
+      })
       result[overlayGroupKey(od)] = relaxLayout(base, nodes, {
-        cx: parentPos.x, cy: parentPos.y, centerR: personR + 8, gap: 12, edges,
+        cx: parentPos.x, cy: parentPos.y, centerR: personR + 8, gap: 12, edges, extraPositions,
       })
     })
     return result
