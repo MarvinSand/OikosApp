@@ -12,15 +12,31 @@ function hashAngle(idA, idB) {
   return (Math.abs(h) % 360) * (Math.PI / 180)
 }
 
+// Closest point on segment (x1,y1)-(x2,y2) to (px,py), and the distance to it.
+function closestOnSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const lenSq = dx * dx + dy * dy
+  let t = lenSq > 0 ? ((px - x1) * dx + (py - y1) * dy) / lenSq : 0
+  t = Math.max(0, Math.min(1, t))
+  const cx = x1 + t * dx
+  const cy = y1 + t * dy
+  return { x: cx, y: cy, dist: Math.hypot(px - cx, py - cy) }
+}
+
 /**
  * Iterative collision relaxation.
  * basePositions: { [id]: {x, y} }
  * nodes: [{ id, r, fixed }] — r is the effective radius (overlay parents get
  *        their disc radius), fixed nodes (currently dragged) never move.
- * opts: { cx, cy, centerR, gap, iterations }
+ * opts: { cx, cy, centerR, gap, iterations, edges, lineGap }
+ *   edges: [{ a, b }] — pairs of node ids (e.g. Oikos-Verbindungen). Nodes not
+ *          part of an edge get nudged clear of that edge's line, best-effort —
+ *          this runs after circle/circle repulsion, so it can leave a residual
+ *          overlap when space is too tight to satisfy both constraints.
  * Returns basePositions unchanged (same reference) if nothing overlaps.
  */
-export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 12, iterations = 40 } = {}) {
+export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 12, iterations = 40, edges = [], lineGap = 10 } = {}) {
   const sorted = [...nodes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const pos = {}
   for (const n of sorted) {
@@ -91,6 +107,40 @@ export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 
           pb.y += dy * (overlap / 2)
         }
         maxMove = Math.max(maxMove, overlap)
+      }
+    }
+
+    // Keep nodes clear of connection lines they're not an endpoint of —
+    // best-effort, runs after circle/circle repulsion so it can leave a
+    // residual overlap when space is too tight for both constraints.
+    if (edges.length > 0) {
+      for (const n of active) {
+        if (n.fixed) continue
+        const p = pos[n.id]
+        for (const e of edges) {
+          if (e.a === n.id || e.b === n.id) continue
+          const pa = pos[e.a]
+          const pb = pos[e.b]
+          if (!pa || !pb) continue
+          const { x: lx, y: ly, dist: d } = closestOnSegment(p.x, p.y, pa.x, pa.y, pb.x, pb.y)
+          const required = n.r + lineGap
+          if (d >= required) continue
+          const dx = p.x - lx
+          const dy = p.y - ly
+          const push = required - d
+          if (d < 0.01) {
+            // Node sits exactly on the line — push perpendicular to it
+            const segDx = pb.x - pa.x
+            const segDy = pb.y - pa.y
+            const segLen = Math.hypot(segDx, segDy) || 1
+            p.x += (-segDy / segLen) * push
+            p.y += (segDx / segLen) * push
+          } else {
+            p.x += (dx / d) * push
+            p.y += (dy / d) * push
+          }
+          maxMove = Math.max(maxMove, push)
+        }
       }
     }
 

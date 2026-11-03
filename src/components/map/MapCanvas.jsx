@@ -51,6 +51,7 @@ export default function MapCanvas({
   connectionMode = false,
   hiddenColors,
   ownerDisconnectedIds = new Set(),
+  resetOverlaySignal,
 }) {
   const navigate = useNavigate()
   const n = people.length
@@ -66,6 +67,12 @@ export default function MapCanvas({
   const [positions, setPositions] = useState({})
   // Overlay person positions (local only, not persisted to DB)
   const [overlayPositions, setOverlayPositions] = useState({})
+  // "Karte aufräumen" löscht auch lokal verschobene Overlay-Personen, damit
+  // sie wieder im sauberen Kreis um ihren Elternknoten landen
+  useEffect(() => {
+    if (resetOverlaySignal) setOverlayPositions({})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetOverlaySignal])
   // Dragging state
   const [dragging, setDragging] = useState(null)
   // Connection mode selection state
@@ -318,9 +325,13 @@ export default function MapCanvas({
       r: radii[p.id],
       fixed: dragging?.id === p.id && !dragging?.overlayKey && !dragging?.isPlace,
     }))
-    return relaxLayout(base, nodes, { cx, cy, centerR: userR })
+    // Personen sollen möglichst nicht auf fremden Verbindungslinien landen
+    // (best-effort, siehe relaxLayout) — nur zwischen den eigenen Personen,
+    // nicht den Linien zu Orten oder zum Zentrum.
+    const edges = connections.map(c => ({ a: c.source_person_id, b: c.target_person_id }))
+    return relaxLayout(base, nodes, { cx, cy, centerR: userR, edges })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions, people, overlayData, dragging, cx, cy, ringRadius])
+  }, [positions, people, overlayData, dragging, cx, cy, ringRadius, connections])
 
   function getPos(person, index) {
     if (layout[person.id]) return layout[person.id]
@@ -455,8 +466,11 @@ export default function MapCanvas({
         r: personR,
         fixed: dragging?.overlayKey === overlayKey(od.parentPersonId, op.id) && dragging?.moved,
       }))
+      // Auch bei eingeblendeten Personen sollen sie möglichst nicht auf
+      // fremden Verbindungslinien derselben Overlay-Gruppe landen.
+      const edges = (od.connections || []).map(c => ({ a: c.source_person_id, b: c.target_person_id }))
       result[overlayGroupKey(od)] = relaxLayout(base, nodes, {
-        cx: parentPos.x, cy: parentPos.y, centerR: personR + 8, gap: 12,
+        cx: parentPos.x, cy: parentPos.y, centerR: personR + 8, gap: 12, edges,
       })
     })
     return result

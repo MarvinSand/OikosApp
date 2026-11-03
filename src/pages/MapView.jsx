@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense, useRef } from 'react'
-import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin, Wand2 } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePlaces } from '../hooks/usePlaces'
@@ -275,7 +275,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
     maps, setMaps, activeMapId, setActiveMapId, activeMap,
     people, connections, overlayData, dataMapId, loading,
     createMap, updateMap, deleteMap, addPerson, setPersonSecondary, updatePerson, deletePerson,
-    movePersonPosition, createConnection, deleteConnection, updateConnectionColor,
+    movePersonPosition, resetLayout, createConnection, deleteConnection, updateConnectionColor,
     linkAccount, unlinkAccount, updatePersonOverlay, reloadMap,
   } = useOikosMaps({ initialMapId })
 
@@ -313,6 +313,10 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [showSettings, setShowSettings] = useState(false)
   const [showGenerationen, setShowGenerationen] = useState(false)
   const [showColorFilter, setShowColorFilter] = useState(false)
+  const cleanupBtnRef = useRef(null)
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false)
+  const [cleaningUp, setCleaningUp] = useState(false)
+  const [resetOverlaySignal, setResetOverlaySignal] = useState(0)
   const [hiddenColors, setHiddenColors] = useState(new Set())
   const [connectionMode, setConnectionMode] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
@@ -491,6 +495,44 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             >
               <Layers size={18} />
             </button>
+            <button
+              ref={cleanupBtnRef}
+              onClick={() => setShowCleanupConfirm(v => !v)}
+              title="Karte aufräumen"
+              className="p-1 rounded-full transition-colors flex items-center text-dark-muted hover:bg-black/5"
+            >
+              <Wand2 size={18} />
+            </button>
+            {showCleanupConfirm && (
+              <AnchoredMenu anchorRef={cleanupBtnRef} onClose={() => setShowCleanupConfirm(false)} minWidth={240}>
+                <div style={{ padding: '12px 14px 10px' }}>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', lineHeight: 1.5, margin: '0 0 10px' }}>
+                    Alle Personen wieder sauber im Kreis anordnen? Manuell verschobene Positionen gehen dabei verloren.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => setShowCleanupConfirm(false)}
+                      style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      disabled={cleaningUp}
+                      onClick={async () => {
+                        setCleaningUp(true)
+                        await resetLayout()
+                        setCleaningUp(false)
+                        setShowCleanupConfirm(false)
+                        setResetOverlaySignal(s => s + 1)
+                      }}
+                      style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-bg)', cursor: cleaningUp ? 'default' : 'pointer', opacity: cleaningUp ? 0.7 : 1 }}
+                    >
+                      {cleaningUp ? 'Räume auf…' : 'Ja, aufräumen'}
+                    </button>
+                  </div>
+                </div>
+              </AnchoredMenu>
+            )}
             <div>
               <button
                 ref={addMenuBtnRef}
@@ -653,6 +695,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               onDisconnectPlacePerson={disconnectPlacePerson}
               hiddenColors={hiddenColors}
               ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
+              resetOverlaySignal={resetOverlaySignal}
             />
             {showColorFilter && (
               <ColorFilterPanel
