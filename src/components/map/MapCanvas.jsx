@@ -274,6 +274,13 @@ export default function MapCanvas({
     const radii = {}
     people.forEach(p => { radii[p.id] = personR })
 
+    // Mehrere gleichzeitig eingeblendete Maps derselben Person fächern sich
+    // um ihren Knoten herum auf (siehe getOverlayGroupMeta), statt sich zu
+    // überlappen — die Push-out-Distanz muss deshalb über ALLE Einträge
+    // desselben Elternteils aggregiert werden (max), nicht den letzten
+    // gewinnen lassen.
+    const parentGroups = {}
+    overlayData.forEach(od => { (parentGroups[od.parentPersonId] ||= []).push(od) })
     overlayData.forEach(od => {
       const parent = people.find(p => p.id === od.parentPersonId)
       if (!parent) return
@@ -285,21 +292,24 @@ export default function MapCanvas({
       const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
       const bVbSize = bRingRadius * 2 + 140
       const discR = overlayDiscRadius(visible, bVbSize / 2, bVbSize / 2, bRingRadius, personR)
-      radii[parent.id] = discR
-
-      // Push the parent outward (keeping its angle) so the overlay disc
-      // clears the center node — unless the user is dragging that parent
+      const fanDist = parentGroups[od.parentPersonId].length > 1 ? bRingRadius + 70 : 0
+      radii[parent.id] = Math.max(radii[parent.id] ?? personR, fanDist + discR)
+    })
+    Object.keys(parentGroups).forEach(parentId => {
+      const parent = people.find(p => p.id === parentId)
+      if (!parent || radii[parent.id] === personR) return
+      // Push the parent outward (keeping its angle) so the overlay disc(s)
+      // clear the center node — unless the user is dragging that parent
       const isDraggingParent = dragging?.id === parent.id && !dragging?.overlayKey && !dragging?.isPlace
-      if (!isDraggingParent) {
-        const pos = base[parent.id]
-        let dx = pos.x - cx
-        let dy = pos.y - cy
-        let d = Math.sqrt(dx * dx + dy * dy)
-        if (d < 1) { dx = 0; dy = -1; d = 1 }
-        const required = userR + discR + 24
-        if (d < required) {
-          base[parent.id] = { x: cx + (dx / d) * required, y: cy + (dy / d) * required }
-        }
+      if (isDraggingParent) return
+      const pos = base[parent.id]
+      let dx = pos.x - cx
+      let dy = pos.y - cy
+      let d = Math.sqrt(dx * dx + dy * dy)
+      if (d < 1) { dx = 0; dy = -1; d = 1 }
+      const required = userR + radii[parent.id] + 24
+      if (d < required) {
+        base[parent.id] = { x: cx + (dx / d) * required, y: cy + (dy / d) * required }
       }
     })
 
@@ -336,9 +346,11 @@ export default function MapCanvas({
     overlayData.forEach(od => {
       const parentPos = getParentPos(od.parentPersonId)
       if (!parentPos) return
+      const siblingCount = overlayData.filter(o => o.parentPersonId === od.parentPersonId).length
       const bCount = od.personCount ?? od.persons.length
       const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
-      maxExtent = Math.max(maxExtent, Math.hypot(parentPos.x - cx, parentPos.y - cy) + bRingRadius + personR)
+      const fanDist = siblingCount > 1 ? bRingRadius + 70 : 0
+      maxExtent = Math.max(maxExtent, Math.hypot(parentPos.x - cx, parentPos.y - cy) + fanDist + bRingRadius + personR)
     })
     // Places can be dragged freely too — include them so panning/zoom limits
     // account for the actual visible content, not just the person ring
@@ -366,6 +378,30 @@ export default function MapCanvas({
   // Overlay helpers
   function overlayKey(parentId, personId) {
     return `${parentId}__${personId}`
+  }
+
+  // Identifiziert einen Overlay-"Slot" eindeutig über (Elternperson, Map) —
+  // eine Person kann mehrere eigene Maps gleichzeitig eingeblendet haben.
+  function overlayGroupKey(od) {
+    return od.overlayMapId ? `${od.parentPersonId}::${od.overlayMapId}` : od.parentPersonId
+  }
+
+  // Mehrere gleichzeitig eingeblendete Maps derselben Person dürfen sich
+  // nicht exakt überlappen (unmöglich zu unterscheiden) — jede bekommt einen
+  // eigenen Anker-Punkt, der vom echten Elternknoten aus in eine eigene
+  // Richtung versetzt ist ("Fächer"). Bei nur einer Map bleibt der Anker
+  // exakt auf dem Elternknoten (unverändertes Verhalten).
+  function getOverlayGroupMeta(parentPos, od) {
+    const siblings = overlayData.filter(o => o.parentPersonId === od.parentPersonId)
+    const n = siblings.length
+    const idx = Math.max(0, siblings.indexOf(od))
+    const bCount = od.personCount ?? od.persons.length
+    const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+    const angle = n > 1 ? (idx * 2 * Math.PI / n) - Math.PI / 2 : -Math.PI / 2
+    const fanDist = n > 1 ? bRingRadius + 70 : 0
+    const anchor = { x: parentPos.x + fanDist * Math.cos(angle), y: parentPos.y + fanDist * Math.sin(angle) }
+    const labelPos = { x: anchor.x + (bRingRadius + 26) * Math.cos(angle), y: anchor.y + (bRingRadius + 26) * Math.sin(angle) }
+    return { anchor, bRingRadius, labelPos, isGrouped: n > 1 }
   }
 
   function getOverlayPos(parentId, person, parentPos, brotherCx, brotherCy, bRingRadius, allOverlayPersons) {
@@ -402,8 +438,7 @@ export default function MapCanvas({
       const parentPos = getParentPos(od.parentPersonId)
       if (!parentPos) return
 
-      const bCount = od.personCount ?? od.persons.length
-      const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+      const { anchor, bRingRadius } = getOverlayGroupMeta(parentPos, od)
       const bVbSize = bRingRadius * 2 + 140
       const brotherCx = bVbSize / 2
       const brotherCy = bVbSize / 2
@@ -414,14 +449,14 @@ export default function MapCanvas({
 
       const base = {}
       visible.forEach(op => {
-        base[op.id] = getOverlayPos(od.parentPersonId, op, parentPos, brotherCx, brotherCy, bRingRadius, od.persons)
+        base[op.id] = getOverlayPos(od.parentPersonId, op, anchor, brotherCx, brotherCy, bRingRadius, od.persons)
       })
       const nodes = visible.map(op => ({
         id: op.id,
         r: personR,
         fixed: dragging?.overlayKey === overlayKey(od.parentPersonId, op.id) && dragging?.moved,
       }))
-      result[od.parentPersonId] = relaxLayout(base, nodes, {
+      result[overlayGroupKey(od)] = relaxLayout(base, nodes, {
         cx: parentPos.x, cy: parentPos.y, centerR: personR + 8, gap: 12,
       })
     })
@@ -429,8 +464,9 @@ export default function MapCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overlayData, layout, placePositions, overlayPositions, dragging?.overlayKey, dragging?.moved, people])
 
-  function getOverlayDisplayPos(parentId, person) {
-    return overlayLayout[parentId]?.[person.id] || { x: 0, y: 0 }
+  function getOverlayDisplayPos(parentId, person, overlayMapId) {
+    const key = overlayMapId ? `${parentId}::${overlayMapId}` : parentId
+    return overlayLayout[key]?.[person.id] || { x: 0, y: 0 }
   }
 
   // Resolves any person ID to { person, pos } — works for both main and overlay persons
@@ -447,7 +483,7 @@ export default function MapCanvas({
       )
       const found = visible.find(op => op.id === personId)
       if (found) {
-        return { person: found, pos: getOverlayDisplayPos(od.parentPersonId, found) }
+        return { person: found, pos: getOverlayDisplayPos(od.parentPersonId, found, od.overlayMapId) }
       }
     }
     return null
@@ -1111,16 +1147,15 @@ export default function MapCanvas({
           // Für die Orte: gleiche Übersetzung wie bei den Personen (gleicher
           // Bezugsrahmen des Geschwister-Accounts), aber ohne Kollisions-
           // Auflösung — Orte sind hier rein lesend.
-          const bCount = od.personCount ?? od.persons.length
-          const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+          const { anchor, bRingRadius, labelPos } = getOverlayGroupMeta(parentPos, od)
           const bVbSize = bRingRadius * 2 + 140
           const brotherCx = bVbSize / 2
           const brotherCy = bVbSize / 2
           // Orte ohne gespeicherte Position (nie verschoben) fallen wie auf der
           // eigenen Map auf die Kartenmitte zurück, statt ganz zu verschwinden.
           const getOverlayPlacePos = (pl) => ({
-            x: parentPos.x + ((pl.pos_x ?? brotherCx) - brotherCx),
-            y: parentPos.y + ((pl.pos_y ?? brotherCy) - brotherCy),
+            x: anchor.x + ((pl.pos_x ?? brotherCx) - brotherCx),
+            y: anchor.y + ((pl.pos_y ?? brotherCy) - brotherCy),
           })
 
           const visibleSet = new Set(
@@ -1164,7 +1199,7 @@ export default function MapCanvas({
               const person = od.persons.find(p => p.id === c.person_id)
               if (!pl || !person) return null
               const placePos = getOverlayPlacePos(pl)
-              const personPos = getOverlayDisplayPos(od.parentPersonId, person)
+              const personPos = getOverlayDisplayPos(od.parentPersonId, person, od.overlayMapId)
               return (
                 <line
                   key={`overlay_pc_${od.parentPersonId}_${c.id}`}
@@ -1220,8 +1255,8 @@ export default function MapCanvas({
               const src = od.persons.find(p => p.id === c.source_person_id)
               const tgt = od.persons.find(p => p.id === c.target_person_id)
               if (!src || !tgt) return null
-              const srcPos = getOverlayDisplayPos(od.parentPersonId, src)
-              const tgtPos = getOverlayDisplayPos(od.parentPersonId, tgt)
+              const srcPos = getOverlayDisplayPos(od.parentPersonId, src, od.overlayMapId)
+              const tgtPos = getOverlayDisplayPos(od.parentPersonId, tgt, od.overlayMapId)
               return (
                 <line
                   key={`overlay_conn_${od.parentPersonId}_${c.id}`}
@@ -1236,7 +1271,7 @@ export default function MapCanvas({
             }).filter(Boolean)
 
           const personNodes = visible.map((op) => {
-            const pos = getOverlayDisplayPos(od.parentPersonId, op)
+            const pos = getOverlayDisplayPos(od.parentPersonId, op, od.overlayMapId)
             const ox = pos.x
             const oy = pos.y
             const personColor = op.circle_color || '#E8E4DC'
@@ -1346,7 +1381,28 @@ export default function MapCanvas({
             )
           })
 
-          return [...placeCenterLines, ...placeConnLines, ...placeNodes, ...connLines, ...personNodes]
+          // Kennzeichnung, aus welcher Map der Account diese eingeblendeten
+          // Inhalte stammen — wichtig sobald mehrere Maps einer Person
+          // gleichzeitig eingeblendet sind, aber auch bei nur einer hilfreich.
+          const mapLabel = od.mapName ? (
+            <g key={`overlay_label_${overlayGroupKey(od)}`} style={{ pointerEvents: 'none' }}>
+              <rect
+                x={labelPos.x - (od.mapName.length * 3.3 + 10)} y={labelPos.y - 9}
+                width={od.mapName.length * 6.6 + 20} height={18} rx={9}
+                fill="var(--color-warm-3)" opacity={0.92}
+              />
+              <text
+                x={labelPos.x} y={labelPos.y}
+                textAnchor="middle" dominantBaseline="middle"
+                fontSize={9} fontWeight="600" fontFamily="Lora, Georgia, serif"
+                fill="#3A2E24"
+              >
+                {od.mapName}
+              </text>
+            </g>
+          ) : null
+
+          return [...placeCenterLines, ...placeConnLines, ...placeNodes, ...connLines, ...personNodes, mapLabel].filter(Boolean)
         })}
 
         {/* Inter-person connections */}

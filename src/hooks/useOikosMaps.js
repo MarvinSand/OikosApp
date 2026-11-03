@@ -134,60 +134,50 @@ export function useOikosMaps({ initialMapId = null, skipLoad = false } = {}) {
     const withOverlay = persons.filter(p => p.overlay_map_ids?.length > 0)
     if (withOverlay.length === 0) { setOverlayData([]); return }
 
-    const [results, connResults, placeResults] = await Promise.all([
-      Promise.all(
-        withOverlay.map(p =>
-          supabase
-            .from('oikos_people')
-            .select('*')
-            .in('map_id', p.overlay_map_ids)
-            .order('created_at')
-        )
-      ),
-      Promise.all(
-        withOverlay.map(p =>
-          supabase
-            .from('oikos_connections')
-            .select('*')
-            .in('map_id', p.overlay_map_ids)
-        )
-      ),
-      Promise.all(
-        withOverlay.map(p =>
-          supabase
-            .from('oikos_places')
-            .select('*')
-            .in('map_id', p.overlay_map_ids)
-            .order('created_at')
-        )
-      ),
+    // Eine Overlay-"Slot" pro (Person, Map) statt pro Person — mehrere
+    // gleichzeitig eingeblendete Maps einer Person hätten sonst einen
+    // gemeinsamen, aus allen Maps kombinierten Bezugsrahmen (personCount der
+    // SUMME aller Maps), wodurch die übersetzten Positionen gegenüber ihrer
+    // jeweils eigenen Map verschoben wären. Jede Map bekommt so ihren eigenen,
+    // korrekten Maßstab und kann separat beschriftet werden.
+    const allMapIds = [...new Set(withOverlay.flatMap(p => p.overlay_map_ids))]
+
+    const [{ data: allPeople }, { data: allConns }, { data: allPlaces }, { data: allMaps }] = await Promise.all([
+      supabase.from('oikos_people').select('*').in('map_id', allMapIds).order('created_at'),
+      supabase.from('oikos_connections').select('*').in('map_id', allMapIds),
+      supabase.from('oikos_places').select('*').in('map_id', allMapIds).order('created_at'),
+      supabase.from('oikos_maps').select('id, name').in('id', allMapIds),
     ])
     if (activeMapIdRef.current !== mapId) return // Karte wurde inzwischen gewechselt
+
+    const mapNameById = Object.fromEntries((allMaps || []).map(m => [m.id, m.name]))
+    const placeIds = (allPlaces || []).map(pl => pl.id)
+    const { data: allPlaceConns } = placeIds.length
+      ? await supabase.from('person_place_connections').select('id, person_id, place_id').in('place_id', placeIds)
+      : { data: [] }
+    if (activeMapIdRef.current !== mapId) return
+
     const secondaryIds = getSecondaryIds()
-    const placeConnResults = await Promise.all(
-      placeResults.map(r => {
-        const placeIds = (r.data || []).map(pl => pl.id)
-        return placeIds.length
-          ? supabase.from('person_place_connections').select('id, person_id, place_id').in('place_id', placeIds)
-          : Promise.resolve({ data: [] })
-      })
-    )
-    setOverlayData(withOverlay.map((p, i) => {
-      const persons = (results[i].data || []).map(op => ({
-        ...op,
-        is_secondary: op.is_secondary || secondaryIds.has(op.id),
+    setOverlayData(
+      withOverlay.flatMap(p => p.overlay_map_ids.map(mid => {
+        const mapPeople = (allPeople || [])
+          .filter(op => op.map_id === mid)
+          .map(op => ({ ...op, is_secondary: op.is_secondary || secondaryIds.has(op.id) }))
+        const mapPersonIds = new Set(mapPeople.map(op => op.id))
+        return {
+          parentPersonId: p.id,
+          overlayMapId: mid,
+          mapName: mapNameById[mid] || 'Map',
+          persons: mapPeople,
+          personCount: mapPeople.length,
+          connections: (allConns || []).filter(c => c.map_id === mid),
+          places: (allPlaces || []).filter(pl => pl.map_id === mid),
+          placeConnections: (allPlaceConns || []).filter(c => mapPersonIds.has(c.person_id)),
+          showChristian: p.overlay_show_christian !== false,
+          showNonChristian: p.overlay_show_non_christian !== false,
+        }
       }))
-      return {
-        parentPersonId: p.id,
-        persons,
-        personCount: persons.length,
-        connections: connResults[i].data || [],
-        places: placeResults[i].data || [],
-        placeConnections: placeConnResults[i].data || [],
-        showChristian: p.overlay_show_christian !== false,
-        showNonChristian: p.overlay_show_non_christian !== false,
-      }
-    }))
+    )
   }
 
   async function loadConnections(mapId = activeMapIdRef.current) {
@@ -364,43 +354,42 @@ export function useOikosMaps({ initialMapId = null, skipLoad = false } = {}) {
     setPeople(prev => prev.map(p => p.id === personId ? { ...p, ...updates } : p))
 
     if (ids.length > 0) {
-      const [{ data }, { data: connData }, { data: placeData }] = await Promise.all([
-        supabase
-          .from('oikos_people')
-          .select('*')
-          .in('map_id', ids)
-          .order('created_at'),
-        supabase
-          .from('oikos_connections')
-          .select('*')
-          .in('map_id', ids),
-        supabase
-          .from('oikos_places')
-          .select('*')
-          .in('map_id', ids)
-          .order('created_at'),
+      // Ein Slot pro Map, nicht pro Person (siehe loadOverlayPeopleFor) – sonst
+      // gemeinsamer, aus allen Maps kombinierter Bezugsrahmen bei mehreren
+      // gleichzeitig gewählten Maps.
+      const [{ data: allPeople }, { data: allConns }, { data: allPlaces }, { data: allMaps }] = await Promise.all([
+        supabase.from('oikos_people').select('*').in('map_id', ids).order('created_at'),
+        supabase.from('oikos_connections').select('*').in('map_id', ids),
+        supabase.from('oikos_places').select('*').in('map_id', ids).order('created_at'),
+        supabase.from('oikos_maps').select('id, name').in('id', ids),
       ])
-      const placeIds = (placeData || []).map(pl => pl.id)
-      const { data: placeConnData } = placeIds.length
+      const mapNameById = Object.fromEntries((allMaps || []).map(m => [m.id, m.name]))
+      const placeIds = (allPlaces || []).map(pl => pl.id)
+      const { data: allPlaceConns } = placeIds.length
         ? await supabase.from('person_place_connections').select('id, person_id, place_id').in('place_id', placeIds)
         : { data: [] }
       setOverlayData(prev => {
         const rest = prev.filter(od => od.parentPersonId !== personId)
         const secondaryIds = getSecondaryIds()
-        const persons = (data || []).map(op => ({
-          ...op,
-          is_secondary: op.is_secondary || secondaryIds.has(op.id),
-        }))
-        return [...rest, {
-          parentPersonId: personId,
-          persons,
-          personCount: persons.length,
-          connections: connData || [],
-          places: placeData || [],
-          placeConnections: placeConnData || [],
-          showChristian: overlay_show_christian !== false,
-          showNonChristian: overlay_show_non_christian !== false,
-        }]
+        const newEntries = ids.map(mid => {
+          const mapPeople = (allPeople || [])
+            .filter(op => op.map_id === mid)
+            .map(op => ({ ...op, is_secondary: op.is_secondary || secondaryIds.has(op.id) }))
+          const mapPersonIds = new Set(mapPeople.map(op => op.id))
+          return {
+            parentPersonId: personId,
+            overlayMapId: mid,
+            mapName: mapNameById[mid] || 'Map',
+            persons: mapPeople,
+            personCount: mapPeople.length,
+            connections: (allConns || []).filter(c => c.map_id === mid),
+            places: (allPlaces || []).filter(pl => pl.map_id === mid),
+            placeConnections: (allPlaceConns || []).filter(c => mapPersonIds.has(c.person_id)),
+            showChristian: overlay_show_christian !== false,
+            showNonChristian: overlay_show_non_christian !== false,
+          }
+        })
+        return [...rest, ...newEntries]
       })
     } else {
       setOverlayData(prev => prev.filter(od => od.parentPersonId !== personId))
