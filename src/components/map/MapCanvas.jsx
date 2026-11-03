@@ -400,8 +400,7 @@ export default function MapCanvas({
     const angle = n > 1 ? (idx * 2 * Math.PI / n) - Math.PI / 2 : -Math.PI / 2
     const fanDist = n > 1 ? bRingRadius + 70 : 0
     const anchor = { x: parentPos.x + fanDist * Math.cos(angle), y: parentPos.y + fanDist * Math.sin(angle) }
-    const labelPos = { x: anchor.x + (bRingRadius + 26) * Math.cos(angle), y: anchor.y + (bRingRadius + 26) * Math.sin(angle) }
-    return { anchor, bRingRadius, labelPos, isGrouped: n > 1 }
+    return { anchor, bRingRadius }
   }
 
   function getOverlayPos(parentId, person, parentPos, brotherCx, brotherCy, bRingRadius, allOverlayPersons) {
@@ -1147,7 +1146,7 @@ export default function MapCanvas({
           // Für die Orte: gleiche Übersetzung wie bei den Personen (gleicher
           // Bezugsrahmen des Geschwister-Accounts), aber ohne Kollisions-
           // Auflösung — Orte sind hier rein lesend.
-          const { anchor, bRingRadius, labelPos } = getOverlayGroupMeta(parentPos, od)
+          const { anchor, bRingRadius } = getOverlayGroupMeta(parentPos, od)
           const bVbSize = bRingRadius * 2 + 140
           const brotherCx = bVbSize / 2
           const brotherCy = bVbSize / 2
@@ -1381,28 +1380,10 @@ export default function MapCanvas({
             )
           })
 
-          // Kennzeichnung, aus welcher Map der Account diese eingeblendeten
-          // Inhalte stammen — wichtig sobald mehrere Maps einer Person
-          // gleichzeitig eingeblendet sind, aber auch bei nur einer hilfreich.
-          const mapLabel = od.mapName ? (
-            <g key={`overlay_label_${overlayGroupKey(od)}`} style={{ pointerEvents: 'none' }}>
-              <rect
-                x={labelPos.x - (od.mapName.length * 3.3 + 10)} y={labelPos.y - 9}
-                width={od.mapName.length * 6.6 + 20} height={18} rx={9}
-                fill="var(--color-warm-3)" opacity={0.92}
-              />
-              <text
-                x={labelPos.x} y={labelPos.y}
-                textAnchor="middle" dominantBaseline="middle"
-                fontSize={9} fontWeight="600" fontFamily="Lora, Georgia, serif"
-                fill="#3A2E24"
-              >
-                {od.mapName}
-              </text>
-            </g>
-          ) : null
-
-          return [...placeCenterLines, ...placeConnLines, ...placeNodes, ...connLines, ...personNodes, mapLabel].filter(Boolean)
+          // Welche Map ein eingeblendeter Knoten/Ort stammt, zeigt — statt
+          // einem schwebenden Label auf der Karte — erst das Detail-Sheet
+          // beim Antippen (siehe OverlayPersonSheet/OverlayPlaceSheet).
+          return [...placeCenterLines, ...placeConnLines, ...placeNodes, ...connLines, ...personNodes]
         })}
 
         {/* Inter-person connections */}

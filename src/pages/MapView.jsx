@@ -700,15 +700,19 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           }}
         />
       )}
-      {selectedOverlayPerson && (
-        <OverlayPersonSheet
-          person={selectedOverlayPerson}
-          onClose={() => setSelectedOverlayPerson(null)}
-          hostConnections={connections}
-          hostPeople={people}
-          hostOverlayData={overlayData}
-        />
-      )}
+      {selectedOverlayPerson && (() => {
+        const od = overlayData.find(od => (od.persons || []).some(p => p.id === selectedOverlayPerson.id))
+        return (
+          <OverlayPersonSheet
+            person={selectedOverlayPerson}
+            onClose={() => setSelectedOverlayPerson(null)}
+            hostConnections={connections}
+            hostPeople={people}
+            hostOverlayData={overlayData}
+            mapName={od?.mapName}
+          />
+        )
+      })()}
       {selectedOverlayPlace && (() => {
         const od = overlayData.find(od => (od.places || []).some(pl => pl.id === selectedOverlayPlace.id))
         const connectedPersonNames = (od?.placeConnections || [])
@@ -720,6 +724,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             place={selectedOverlayPlace}
             onClose={() => setSelectedOverlayPlace(null)}
             connectedPersonNames={connectedPersonNames}
+            mapName={od?.mapName}
           />
         )
       })()}
