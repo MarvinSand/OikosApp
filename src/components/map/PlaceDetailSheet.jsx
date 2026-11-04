@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Trash2, Search, Plus, MapPin, Check } from 'lucide-react'
+import { X, Trash2, Search, Plus, MapPin, Check, Wand2 } from 'lucide-react'
 
 const PLACE_TYPES = [
   { type: 'sport',  emoji: '🏋️', label: 'Sport' },
@@ -24,7 +24,7 @@ function debounce(fn, ms) {
   let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) }
 }
 
-export default function PlaceDetailSheet({ place, people, placeConnections, onClose, onUpdate, onDelete, onConnectPeople, onDisconnectPerson, onAddPersonToPlace }) {
+export default function PlaceDetailSheet({ place, people, placeConnections, onClose, onUpdate, onDelete, onConnectPeople, onDisconnectPerson, onAddPersonToPlace, onCleanup }) {
   const [editing, setEditing]         = useState(false)
   const [name, setName]               = useState(place.name)
   const [type, setType]               = useState(place.type || 'place')
@@ -42,7 +42,18 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
   const [showNewPerson, setShowNewPerson] = useState(false)
   const [newPersonName, setNewPersonName] = useState('')
   const [addingNewPerson, setAddingNewPerson] = useState(false)
+  const [cleaningUp, setCleaningUp] = useState(false)
   const saveDebounced = useRef(null)
+
+  async function handleCleanup() {
+    if (cleaningUp) return
+    setCleaningUp(true)
+    try {
+      await onCleanup?.(place.id)
+    } finally {
+      setCleaningUp(false)
+    }
+  }
 
   function toggleSelected(personId) {
     setSelectedIds(prev => {
@@ -138,6 +149,16 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
             </span>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            {connectedPersonIds.length > 1 && (
+              <button
+                onClick={handleCleanup}
+                disabled={cleaningUp}
+                title="Personen im Kreis anordnen"
+                style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--color-warm-3)', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: cleaningUp ? 'default' : 'pointer', opacity: cleaningUp ? 0.6 : 1 }}
+              >
+                <Wand2 size={15} color="var(--color-text-muted)" />
+              </button>
+            )}
             <button
               onClick={() => setEditing(v => !v)}
               style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--color-warm-3)', backgroundColor: editing ? 'var(--color-warm-1)' : 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}

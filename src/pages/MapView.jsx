@@ -329,6 +329,44 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
     }
   }
 
+  // "Aufräumen" für einen einzelnen Ort — alle verbundenen Personen
+  // gleichmäßig im Kreis um ihn herum anordnen (der Ort selbst bleibt stehen).
+  async function cleanupPlacePeople(placeId) {
+    const place = places.find(pl => pl.id === placeId)
+    if (!place) return
+    const memberIds = placeConnections.filter(c => c.place_id === placeId).map(c => c.person_id)
+    if (memberIds.length === 0) return
+    const clusterRadius = memberIds.length <= 1 ? 0 : Math.max(60, memberIds.length * 16)
+    await Promise.all(memberIds.map((personId, j) => {
+      const angle = memberIds.length <= 1 ? -Math.PI / 2 : (j * 2 * Math.PI / memberIds.length) - Math.PI / 2
+      const pos = memberIds.length <= 1
+        ? { x: place.pos_x, y: place.pos_y - 90 }
+        : { x: place.pos_x + clusterRadius * Math.cos(angle), y: place.pos_y + clusterRadius * Math.sin(angle) }
+      return movePersonPosition(personId, pos.x, pos.y)
+    }))
+  }
+
+  // "Aufräumen" für eine einzelne Person — alle direkt mit ihr verbundenen
+  // Personen gleichmäßig im Kreis um sie herum anordnen.
+  async function cleanupPersonConnections(personId) {
+    const person = people.find(p => p.id === personId)
+    if (!person) return
+    const fallback = mapCenter()
+    const basePos = { x: person.pos_x ?? fallback.x, y: person.pos_y ?? fallback.y }
+    const memberIds = connections
+      .filter(c => c.source_person_id === personId || c.target_person_id === personId)
+      .map(c => c.source_person_id === personId ? c.target_person_id : c.source_person_id)
+    if (memberIds.length === 0) return
+    const clusterRadius = memberIds.length <= 1 ? 0 : Math.max(60, memberIds.length * 16)
+    await Promise.all(memberIds.map((id, j) => {
+      const angle = memberIds.length <= 1 ? -Math.PI / 2 : (j * 2 * Math.PI / memberIds.length) - Math.PI / 2
+      const pos = memberIds.length <= 1
+        ? { x: basePos.x, y: basePos.y - 90 }
+        : { x: basePos.x + clusterRadius * Math.cos(angle), y: basePos.y + clusterRadius * Math.sin(angle) }
+      return movePersonPosition(id, pos.x, pos.y)
+    }))
+  }
+
   // "Karte aufräumen": Orte wandern auf einen äußeren Ring, ihre verbundenen
   // Personen kreisen eng um ihren Ort statt lose im Haupt-Ring zu hängen;
   // unverbundene Personen bilden wie bisher den inneren Ring um die Mitte.
@@ -906,6 +944,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           placeConnections={placeConnections}
           places={places}
           onDisconnectFromPlace={disconnectPlacePerson}
+          onCleanup={cleanupPersonConnections}
         /></Suspense>
       )}
       {selectedPlace && (
@@ -923,6 +962,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             await connectPeopleToPlace(placeId, [p.id])
             return p
           }}
+          onCleanup={cleanupPlacePeople}
         />
       )}
       {showAddPlace && (
