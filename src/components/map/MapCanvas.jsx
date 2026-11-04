@@ -52,6 +52,7 @@ export default function MapCanvas({
   hiddenColors,
   ownerDisconnectedIds = new Set(),
   resetOverlaySignal,
+  onPreviewPersonMap,
 }) {
   const navigate = useNavigate()
   const n = people.length
@@ -1466,7 +1467,7 @@ export default function MapCanvas({
                     einen OIKOS-Account, genau wie bei eigenen Personen */}
                 {op.linked_user_id && (
                   <g
-                    onClick={e => { e.stopPropagation(); navigate(`/user/${op.linked_user_id}`) }}
+                    onClick={e => { e.stopPropagation(); onPreviewPersonMap ? onPreviewPersonMap(op.linked_user_id) : navigate(`/user/${op.linked_user_id}`) }}
                     style={{ cursor: 'pointer' }}
                   >
                     <circle
@@ -1794,7 +1795,7 @@ export default function MapCanvas({
               {/* Linked account indicator */}
               {p.linked_user_id && (
                 <g
-                  onClick={e => { e.stopPropagation(); navigate(`/user/${p.linked_user_id}`) }}
+                  onClick={e => { e.stopPropagation(); onPreviewPersonMap ? onPreviewPersonMap(p.linked_user_id) : navigate(`/user/${p.linked_user_id}`) }}
                   style={{ cursor: 'pointer' }}
                 >
                   <circle

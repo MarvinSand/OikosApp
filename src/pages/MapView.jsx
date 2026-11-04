@@ -16,6 +16,7 @@ import AddPersonModal from '../components/map/AddPersonModal'
 const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
+import MapPreviewSheet from '../components/map/MapPreviewSheet'
 import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
 import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSheet'
 import WorldMapView from '../components/worldmap/WorldMapView'
@@ -456,6 +457,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [connectionMode, setConnectionMode] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
+  const [previewUserId, setPreviewUserId] = useState(null)
   const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
   const [selectedPlace, setSelectedPlace] = useState(null)
   // linkedProfile cache: { [userId]: profile }
@@ -831,6 +833,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               hiddenColors={hiddenColors}
               ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
               resetOverlaySignal={resetOverlaySignal}
+              onPreviewPersonMap={setPreviewUserId}
             />
             {showColorFilter && (
               <ColorFilterPanel
@@ -973,6 +976,9 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             if (pl) setSelectedPlace(pl)
           }}
         />
+      )}
+      {previewUserId && (
+        <MapPreviewSheet userId={previewUserId} onClose={() => setPreviewUserId(null)} />
       )}
 
       {/* Gebetsmodus für die Personen dieser Map */}

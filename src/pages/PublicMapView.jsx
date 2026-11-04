@@ -8,6 +8,7 @@ import SiblingsToggles, { loadSiblingsView, saveSiblingsView, siblingsMapTitle }
 import MapCanvas from '../components/map/MapCanvas'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
 import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
+import MapPreviewSheet from '../components/map/MapPreviewSheet'
 const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 
 // ─── PublicMapView (Main) ─────────────────────────────────────
@@ -18,6 +19,7 @@ export default function PublicMapView() {
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
   const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
+  const [previewUserId, setPreviewUserId] = useState(null)
   // Systemkarte „Meine Geschwister in Christus": Auto-Kanten + Freunde von Freunden
   const [siblingsDepth, setSiblingsDepth] = useState(() => loadSiblingsView().depth)
   const isSiblingsMap = map?.kind === 'siblings'
@@ -98,6 +100,7 @@ export default function PublicMapView() {
           onOverlayPlaceClick={setSelectedOverlayPlace}
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
+          onPreviewPersonMap={setPreviewUserId}
         />
         {isSiblingsMap && (
           <SiblingsToggles
@@ -156,6 +159,9 @@ export default function PublicMapView() {
           />
         )
       })()}
+      {previewUserId && (
+        <MapPreviewSheet userId={previewUserId} onClose={() => setPreviewUserId(null)} />
+      )}
     </div>
   )
 }
