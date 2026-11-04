@@ -19,7 +19,7 @@ export default function PublicMapView() {
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
   const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
-  const [previewUserId, setPreviewUserId] = useState(null)
+  const [previewTarget, setPreviewTarget] = useState(null) // { userId, initialMapId }
   // Systemkarte „Meine Geschwister in Christus": Auto-Kanten + Freunde von Freunden
   const [siblingsDepth, setSiblingsDepth] = useState(() => loadSiblingsView().depth)
   const isSiblingsMap = map?.kind === 'siblings'
@@ -100,7 +100,8 @@ export default function PublicMapView() {
           onOverlayPlaceClick={setSelectedOverlayPlace}
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
-          onPreviewPersonMap={setPreviewUserId}
+          onPreviewPersonMap={userId => setPreviewTarget({ userId, initialMapId: null })}
+          onOverlayMapBoxClick={(userId, mapId) => setPreviewTarget({ userId, initialMapId: mapId })}
         />
         {isSiblingsMap && (
           <SiblingsToggles
@@ -159,8 +160,8 @@ export default function PublicMapView() {
           />
         )
       })()}
-      {previewUserId && (
-        <MapPreviewSheet userId={previewUserId} onClose={() => setPreviewUserId(null)} />
+      {previewTarget && (
+        <MapPreviewSheet userId={previewTarget.userId} initialMapId={previewTarget.initialMapId} onClose={() => setPreviewTarget(null)} />
       )}
     </div>
   )

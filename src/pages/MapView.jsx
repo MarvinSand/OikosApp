@@ -457,7 +457,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [connectionMode, setConnectionMode] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
-  const [previewUserId, setPreviewUserId] = useState(null)
+  const [previewTarget, setPreviewTarget] = useState(null) // { userId, initialMapId }
   const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
   const [selectedPlace, setSelectedPlace] = useState(null)
   // linkedProfile cache: { [userId]: profile }
@@ -833,7 +833,8 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               hiddenColors={hiddenColors}
               ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
               resetOverlaySignal={resetOverlaySignal}
-              onPreviewPersonMap={setPreviewUserId}
+              onPreviewPersonMap={userId => setPreviewTarget({ userId, initialMapId: null })}
+              onOverlayMapBoxClick={(userId, mapId) => setPreviewTarget({ userId, initialMapId: mapId })}
             />
             {showColorFilter && (
               <ColorFilterPanel
@@ -977,8 +978,8 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           }}
         />
       )}
-      {previewUserId && (
-        <MapPreviewSheet userId={previewUserId} onClose={() => setPreviewUserId(null)} />
+      {previewTarget && (
+        <MapPreviewSheet userId={previewTarget.userId} initialMapId={previewTarget.initialMapId} onClose={() => setPreviewTarget(null)} />
       )}
 
       {/* Gebetsmodus für die Personen dieser Map */}

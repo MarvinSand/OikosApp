@@ -53,6 +53,7 @@ export default function MapCanvas({
   ownerDisconnectedIds = new Set(),
   resetOverlaySignal,
   onPreviewPersonMap,
+  onOverlayMapBoxClick,
 }) {
   const navigate = useNavigate()
   const n = people.length
@@ -323,9 +324,22 @@ export default function MapCanvas({
     // gewinnen lassen.
     const parentGroups = {}
     overlayData.forEach(od => { (parentGroups[od.parentPersonId] ||= []).push(od) })
+    // Eigene-Map-Overlays (od.overlayMapId gesetzt) werden als kompaktes
+    // Kästchen dargestellt statt als explodierte Personenliste — dafür reicht
+    // ein kleiner, fester Abstand unabhängig von der Personenzahl der Map.
+    // Geschwister-/Community-Overlays (kein overlayMapId) bleiben wie bisher.
+    const boxGroups = {}
+    overlayData.forEach(od => { if (od.overlayMapId) (boxGroups[od.parentPersonId] ||= []).push(od) })
     overlayData.forEach(od => {
       const parent = people.find(p => p.id === od.parentPersonId)
       if (!parent) return
+      if (od.overlayMapId) {
+        if (!od.showChristian && !od.showNonChristian) return
+        const n = boxGroups[od.parentPersonId].length
+        const dist = n <= 1 ? 95 : Math.max(95, n * 26)
+        radii[parent.id] = Math.max(radii[parent.id] ?? personR, dist + 50)
+        return
+      }
       const visible = od.persons.filter(op =>
         (op.is_christian && od.showChristian) || (!op.is_christian && od.showNonChristian)
       )
@@ -418,6 +432,12 @@ export default function MapCanvas({
     overlayData.forEach(od => {
       const parentPos = getParentPos(od.parentPersonId)
       if (!parentPos) return
+      if (od.overlayMapId) {
+        const n = overlayData.filter(o => o.parentPersonId === od.parentPersonId && o.overlayMapId).length
+        const dist = n <= 1 ? 95 : Math.max(95, n * 26)
+        maxExtent = Math.max(maxExtent, Math.hypot(parentPos.x - cx, parentPos.y - cy) + dist + 60)
+        return
+      }
       const siblingCount = overlayData.filter(o => o.parentPersonId === od.parentPersonId).length
       const bCount = od.personCount ?? od.persons.length
       const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
@@ -475,6 +495,19 @@ export default function MapCanvas({
     return { anchor, bRingRadius }
   }
 
+  // Anker für ein Eigene-Map-Overlay-Kästchen: mehrere gleichzeitig gezeigte
+  // Maps derselben Person fächern sich in einem festen, kleinen Radius ring-
+  // förmig auf (nicht nur "weg vom Zentrum" wie bei der explodierten Ansicht,
+  // da ein Kästchen klein ist und mehrere Kästchen gut rundherum passen).
+  function getOverlayBoxAnchor(parentPos, od) {
+    const siblings = overlayData.filter(o => o.parentPersonId === od.parentPersonId && o.overlayMapId)
+    const n = siblings.length
+    const idx = Math.max(0, siblings.indexOf(od))
+    const angle = (idx * 2 * Math.PI / Math.max(n, 1)) - Math.PI / 2
+    const dist = n <= 1 ? 95 : Math.max(95, n * 26)
+    return { x: parentPos.x + dist * Math.cos(angle), y: parentPos.y + dist * Math.sin(angle) }
+  }
+
   function getOverlayPos(parentId, person, parentPos, brotherCx, brotherCy, bRingRadius, allOverlayPersons) {
     const key = overlayKey(parentId, person.id)
     // Stored drag offsets are relative to the parent, so overlay children
@@ -506,6 +539,9 @@ export default function MapCanvas({
   const overlayLayout = useMemo(() => {
     const result = {}
     overlayData.forEach(od => {
+      // Eigene-Map-Overlays rendern als Kästchen (siehe getOverlayBoxAnchor),
+      // keine Personen-Positionsauflösung nötig.
+      if (od.overlayMapId) return
       const parentPos = getParentPos(od.parentPersonId)
       if (!parentPos) return
 
@@ -1255,6 +1291,63 @@ export default function MapCanvas({
         {overlayData.flatMap(od => {
           const parentPos = getParentPos(od.parentPersonId)
           if (!parentPos) return []
+
+          // Eigene-Map-Overlays: kompaktes Kästchen mit Linie zur Elternperson
+          // statt alle Personen/Orte der Map einzeln zu explodieren — sonst
+          // stapeln sich bei mehreren gleichzeitig gezeigten Maps einer Person
+          // alle Personen übereinander. Antippen öffnet die echte Map 1:1
+          // (MapPreviewSheet, siehe onOverlayMapBoxClick).
+          if (od.overlayMapId) {
+            if (!od.showChristian && !od.showNonChristian) return []
+            const parent = people.find(p => p.id === od.parentPersonId)
+            const anchor = getOverlayBoxAnchor(parentPos, od)
+            const w = 100, h = 48, rx = 10
+            const dx = anchor.x - parentPos.x
+            const dy = anchor.y - parentPos.y
+            const dist = Math.hypot(dx, dy) || 1
+            const ux = dx / dist, uy = dy / dist
+            const x1 = parentPos.x + ux * personR
+            const y1 = parentPos.y + uy * personR
+            const label = (od.mapName || 'Map')
+            const shortLabel = label.length > 14 ? label.slice(0, 13) + '…' : label
+            const count = od.personCount ?? od.persons.length
+            return [
+              <line
+                key={`ovbox_line_${overlayGroupKey(od)}`}
+                x1={x1} y1={y1} x2={anchor.x} y2={anchor.y}
+                stroke="var(--color-warm-3)" strokeWidth={1.5} opacity={0.7}
+                style={{ pointerEvents: 'none' }}
+              />,
+              <g
+                key={`ovbox_${overlayGroupKey(od)}`}
+                style={{ cursor: 'pointer' }}
+                onClick={e => {
+                  e.stopPropagation()
+                  if (parent?.linked_user_id) onOverlayMapBoxClick?.(parent.linked_user_id, od.overlayMapId)
+                }}
+              >
+                <rect
+                  x={anchor.x - w / 2} y={anchor.y - h / 2} width={w} height={h} rx={rx}
+                  fill="var(--color-warm-1)" stroke="rgba(255,255,255,0.35)" strokeWidth={1.5}
+                  style={{ filter: 'drop-shadow(0 2px 4px rgba(58,46,36,0.15))' }}
+                />
+                <text
+                  x={anchor.x} y={anchor.y - 7} textAnchor="middle" dominantBaseline="middle"
+                  fill="white" fontSize={10} fontWeight="700" fontFamily="Lora, Georgia, serif"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {shortLabel}
+                </text>
+                <text
+                  x={anchor.x} y={anchor.y + 9} textAnchor="middle" dominantBaseline="middle"
+                  fill="rgba(255,255,255,0.8)" fontSize={9} fontFamily="Lora, Georgia, serif"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {count} {count === 1 ? 'Person' : 'Personen'}
+                </text>
+              </g>,
+            ]
+          }
 
           // Für die Orte: gleiche Übersetzung wie bei den Personen (gleicher
           // Bezugsrahmen des Geschwister-Accounts), aber ohne Kollisions-

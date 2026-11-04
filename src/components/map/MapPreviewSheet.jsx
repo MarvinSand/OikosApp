@@ -11,10 +11,10 @@ import MapCanvas from './MapCanvas'
 // tatsächlichen Daten dieser Map, daher 1:1 identisch zu dem, was die
 // Person selbst auf ihrer Map sieht. Ergänzt (ersetzt nicht) das
 // eingeblendete Overlay direkt auf der eigenen Karte.
-export default function MapPreviewSheet({ userId, onClose }) {
+export default function MapPreviewSheet({ userId, initialMapId, onClose }) {
   const navigate = useNavigate()
   const [maps, setMaps] = useState(null) // null = noch am Laden
-  const [selectedMapId, setSelectedMapId] = useState(null)
+  const [selectedMapId, setSelectedMapId] = useState(initialMapId || null)
 
   useEffect(() => {
     let cancelled = false
@@ -28,12 +28,15 @@ export default function MapPreviewSheet({ userId, onClose }) {
         if (cancelled) return
         const list = data || []
         setMaps(list)
-        // Geschwister-Systemkarte ist immer gepinnt zuerst (siehe CLAUDE.md) —
-        // sonst einfach die erste gefundene Map vorauswählen.
+        // Ausdrücklich angetippte Map (z. B. Eigene-Map-Kästchen im Overlay)
+        // hat Vorrang; sonst ist die Geschwister-Systemkarte immer gepinnt
+        // zuerst (siehe CLAUDE.md), sonst die erste gefundene Map.
+        if (initialMapId && list.some(m => m.id === initialMapId)) return
         const first = list.find(m => m.kind === 'siblings') || list[0]
         setSelectedMapId(first?.id || null)
       })
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
   const { people, connections, places, placeConnections, ownerName, loading } = usePublicMap(userId, selectedMapId)
