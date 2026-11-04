@@ -75,6 +75,10 @@ export default function MapCanvas({
   }, [resetOverlaySignal])
   // Dragging state
   const [dragging, setDragging] = useState(null)
+  // Mirrors `dragging` for effects that must read it without depending on
+  // it (depending on it would re-run them on every drag-move frame)
+  const draggingRef = useRef(null)
+  draggingRef.current = dragging
   // Connection mode selection state
   const [firstSelected, setFirstSelected] = useState(null) // stores an ID
   const [firstSelectedType, setFirstSelectedType] = useState(null) // 'person' | 'place'
@@ -123,6 +127,16 @@ export default function MapCanvas({
             next[pl.id] = { x: pl.pos_x ?? cx, y: pl.pos_y ?? cy }
           }
           changed = true
+        } else if (!pl.is_virtual && pl.pos_x != null && pl.pos_y != null) {
+          // Extern geänderte Position (z. B. "Karte aufräumen") sofort
+          // übernehmen, statt erst nach einem Reload — außer der Ort wird
+          // gerade selbst gezogen.
+          const isDraggingThis = draggingRef.current?.id === pl.id && draggingRef.current?.isPlace
+          const cur = next[pl.id]
+          if (!isDraggingThis && (cur.x !== pl.pos_x || cur.y !== pl.pos_y)) {
+            next[pl.id] = { x: pl.pos_x, y: pl.pos_y }
+            changed = true
+          }
         }
       })
       Object.keys(next).forEach(id => {
@@ -157,25 +171,45 @@ export default function MapCanvas({
     const next = { ...positions }
     let changed = false
 
+    // Positionen, die extern geändert wurden (z. B. per "Aufräumen"-Button
+    // oder beim Verbinden mit einem Ort), sofort übernehmen statt erst nach
+    // einem Reload — nur nicht für die Person, die gerade selbst gezogen
+    // wird, sonst würde ihr Drag unterbrochen.
+    function syncIfExternallyMoved(p) {
+      const isDraggingThis = draggingRef.current?.id === p.id && !draggingRef.current?.overlayKey && !draggingRef.current?.isPlace
+      if (isDraggingThis || p.pos_x == null || p.pos_y == null) return false
+      const cur = next[p.id]
+      if (cur && (cur.x !== p.pos_x || cur.y !== p.pos_y)) {
+        next[p.id] = { x: p.pos_x, y: p.pos_y }
+        return true
+      }
+      return false
+    }
+
     // First pass: 1st generation people — stored position or a free ring spot
     people.forEach((p) => {
       if (p.is_secondary) return
-      if (!(p.id in next)) {
-        if (p.pos_x != null && p.pos_y != null) {
-          next[p.id] = { x: p.pos_x, y: p.pos_y }
-        } else {
-          const existing = people.filter(q => q.id !== p.id && next[q.id]).map(q => next[q.id])
-          next[p.id] = findFreeSpot(existing, cx, cy, ringRadius, personR)
-          newlyPlaced.push({ id: p.id, ...next[p.id] })
-        }
-        changed = true
+      if (p.id in next) {
+        if (syncIfExternallyMoved(p)) changed = true
+        return
       }
+      if (p.pos_x != null && p.pos_y != null) {
+        next[p.id] = { x: p.pos_x, y: p.pos_y }
+      } else {
+        const existing = people.filter(q => q.id !== p.id && next[q.id]).map(q => next[q.id])
+        next[p.id] = findFreeSpot(existing, cx, cy, ringRadius, personR)
+        newlyPlaced.push({ id: p.id, ...next[p.id] })
+      }
+      changed = true
     })
 
     // Second pass: 2nd generation people — fan out behind their parent
     people.forEach((p) => {
       if (!p.is_secondary) return
-      if (p.id in next) return
+      if (p.id in next) {
+        if (syncIfExternallyMoved(p)) changed = true
+        return
+      }
       // Respect manually dragged position
       if (p.pos_x != null && p.pos_y != null) {
         next[p.id] = { x: p.pos_x, y: p.pos_y }
