@@ -349,6 +349,21 @@ export default function MapCanvas({
     return getDefaultPos(index, people.length, cx, cy, ringRadius)
   }
 
+  // Start-Positionen der mit einem Ort verbundenen Personen beim Beginn
+  // eines Ort-Drags — zieht man den Ort, wandern sie im selben Kreis mit,
+  // statt am alten Fleck zurückzubleiben.
+  function getConnectedPeopleStart(placeId) {
+    return placeConnections
+      .filter(c => c.place_id === placeId)
+      .map(c => {
+        const idx = people.findIndex(p => p.id === c.person_id)
+        if (idx === -1) return null
+        const pos = getPos(people[idx], idx)
+        return { id: c.person_id, x: pos.x, y: pos.y }
+      })
+      .filter(Boolean)
+  }
+
   // Elternposition eines Overlays: Person (Freund) oder Ort/Community-Knoten
   function getParentPos(parentId) {
     const idx = people.findIndex(p => p.id === parentId)
@@ -694,6 +709,13 @@ export default function MapCanvas({
       const newPos = { x: dragging.startPersonX + dx, y: dragging.startPersonY + dy }
       if (dragging.isPlace) {
         setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
+        if (dragging.connectedPeopleStart?.length) {
+          setPositions(prev => {
+            const next = { ...prev }
+            dragging.connectedPeopleStart.forEach(cp => { next[cp.id] = { x: cp.x + dx, y: cp.y + dy } })
+            return next
+          })
+        }
       } else if (dragging.overlayKey) {
         const parentPos = getParentPos(dragging.parentPersonId) || { x: cx, y: cy }
         setOverlayPositions(prev => ({
@@ -782,6 +804,13 @@ export default function MapCanvas({
     const newPos = { x: dragging.startPersonX + dx, y: dragging.startPersonY + dy }
     if (dragging.isPlace) {
       setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
+      if (dragging.connectedPeopleStart?.length) {
+        setPositions(prev => {
+          const next = { ...prev }
+          dragging.connectedPeopleStart.forEach(cp => { next[cp.id] = { x: cp.x + dx, y: cp.y + dy } })
+          return next
+        })
+      }
     } else if (dragging.overlayKey) {
       const parentPos = getParentPos(dragging.parentPersonId) || { x: cx, y: cy }
       setOverlayPositions(prev => ({
@@ -814,6 +843,13 @@ export default function MapCanvas({
       } else if (dragging.isPlace) {
         const pos = placePositions[dragging.id]
         if (pos) debouncedPlaceMoveRef.current?.(dragging.id, pos.x, pos.y)
+        // Mitgezogene verbundene Personen direkt speichern (nicht debounced —
+        // der Debounce-Timer ist pro Hook geteilt, mehrere Aufrufe kurz
+        // hintereinander würden sich sonst gegenseitig canceln)
+        dragging.connectedPeopleStart?.forEach(cp => {
+          const cpPos = positions[cp.id]
+          if (cpPos) onPersonMoved?.(cp.id, cpPos.x, cpPos.y)
+        })
       } else if (!dragging.overlayKey) {
         const pos = positions[dragging.id]
         if (pos) debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
@@ -846,6 +882,10 @@ export default function MapCanvas({
     } else if (dragging.isPlace) {
       const pos = placePositions[dragging.id]
       if (pos) debouncedPlaceMoveRef.current?.(dragging.id, pos.x, pos.y)
+      dragging.connectedPeopleStart?.forEach(cp => {
+        const cpPos = positions[cp.id]
+        if (cpPos) onPersonMoved?.(cp.id, cpPos.x, cpPos.y)
+      })
     } else if (!dragging.overlayKey) {
       const pos = positions[dragging.id]
       if (pos) debouncedMoveRef.current?.(dragging.id, pos.x, pos.y)
@@ -1599,14 +1639,14 @@ export default function MapCanvas({
                 if (connectionMode) return
                 e.stopPropagation(); e.preventDefault()
                 const svgPos = clientToSVG(e.clientX, e.clientY)
-                setDragging({ id: pl.id, isPlace: true, overlayKey: null, overlayPersonObj: null, startSVGX: svgPos.x, startSVGY: svgPos.y, startPersonX: pos.x, startPersonY: pos.y, startTime: Date.now(), moved: false })
+                setDragging({ id: pl.id, isPlace: true, overlayKey: null, overlayPersonObj: null, startSVGX: svgPos.x, startSVGY: svgPos.y, startPersonX: pos.x, startPersonY: pos.y, startTime: Date.now(), moved: false, connectedPeopleStart: getConnectedPeopleStart(pl.id) })
               }}
               onTouchStart={e => {
                 if (connectionMode) return
                 e.stopPropagation()
                 const touch = e.touches[0]
                 const svgPos = clientToSVG(touch.clientX, touch.clientY)
-                setDragging({ id: pl.id, isPlace: true, overlayKey: null, overlayPersonObj: null, startSVGX: svgPos.x, startSVGY: svgPos.y, startPersonX: pos.x, startPersonY: pos.y, startTime: Date.now(), moved: false })
+                setDragging({ id: pl.id, isPlace: true, overlayKey: null, overlayPersonObj: null, startSVGX: svgPos.x, startSVGY: svgPos.y, startPersonX: pos.x, startPersonY: pos.y, startTime: Date.now(), moved: false, connectedPeopleStart: getConnectedPeopleStart(pl.id) })
               }}
               onClick={e => { e.stopPropagation(); if (!dragging?.moved) handlePlaceTap(pl) }}
             >

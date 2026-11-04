@@ -299,6 +299,36 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const places = placesMapId === activeMapId ? rawPlaces : EMPTY_LIST
   const placeConnections = placesMapId === activeMapId ? rawPlaceConnections : EMPTY_LIST
 
+  // Muss exakt der Formel entsprechen, mit der MapCanvas den eigenen Avatar
+  // zeichnet (siehe handleCleanup) — sonst würde "um den Ort herum" relativ
+  // zu einer anderen Mitte berechnet als der Avatar tatsächlich sitzt.
+  function mapCenter() {
+    const n = people.length
+    const r = n === 0 ? 150 : Math.max(150, n * 18)
+    return { x: r + 70, y: r + 70 }
+  }
+
+  // Neu mit einem Ort verbundene Personen sollen sofort sichtbar um ihn
+  // herum stehen, statt irgendwo anders (z. B. im Haupt-Ring) hängen zu
+  // bleiben — gleiches Fächer-Muster wie bei sekundären Personen um ihren
+  // Elternknoten (fanOutSecondary), fächert links/rechts der Richtung vom
+  // Ort weg vom Kartenzentrum auf. Mehrere Personen werden nacheinander
+  // (nicht parallel) verbunden, damit jede den jeweils aktuellen Index
+  // bekommt statt alle denselben (stale) Stand zu sehen.
+  async function connectPeopleToPlace(placeId, personIds, context = null) {
+    const place = places.find(pl => pl.id === placeId)
+    const { x: cx, y: cy } = mapCenter()
+    let idx = placeConnections.filter(c => c.place_id === placeId).length
+    for (const personId of personIds) {
+      await connectPlacePerson(placeId, personId, context)
+      if (place) {
+        const pos = fanOutSecondary({ x: place.pos_x, y: place.pos_y }, cx, cy, idx, 90)
+        await movePersonPosition(personId, pos.x, pos.y)
+      }
+      idx++
+    }
+  }
+
   // "Karte aufräumen": Orte wandern auf einen äußeren Ring, ihre verbundenen
   // Personen kreisen eng um ihren Ort statt lose im Haupt-Ring zu hängen;
   // unverbundene Personen bilden wie bisher den inneren Ring um die Mitte.
@@ -315,15 +345,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
     const freePeople = primary.filter(p => !placeConnectedIds.has(p.id))
     const realPlaces = places.filter(pl => !pl.is_virtual)
 
-    // cx/cy müssen exakt der Formel entsprechen, mit der MapCanvas den
-    // eigenen Avatar zeichnet (ringRadius aus ALLEN Personen, nicht nur den
-    // unverbundenen) — sonst sitzt der Avatar beim nächsten Render woanders
-    // als die hier neu gesetzten Positionen, und alles wirkt zusammenhanglos
-    // verstreut statt um die Mitte herum angeordnet.
-    const totalN = people.length
-    const ringRadius = totalN === 0 ? 150 : Math.max(150, totalN * 18)
-    const cx = ringRadius + 70
-    const cy = ringRadius + 70
+    const { x: cx, y: cy } = mapCenter()
 
     const n = freePeople.length
     const innerRingRadius = n === 0 ? 150 : Math.max(150, n * 18)
@@ -766,7 +788,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               onCenterLineColorChange={(personId, color) => updatePerson(personId, { center_line_color: color })}
               onPlaceClick={(pl) => (pl.is_virtual ? navigate(`/community/${pl.community_id}`) : setSelectedPlace(pl))}
               onPlaceMoved={movePlacePosition}
-              onConnectPlacePerson={connectPlacePerson}
+              onConnectPlacePerson={(placeId, personId) => connectPeopleToPlace(placeId, [personId])}
               onDisconnectPlacePerson={disconnectPlacePerson}
               hiddenColors={hiddenColors}
               ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
@@ -812,7 +834,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           onAdd={async (name, target) => {
             if (!target || target.type === 'me') return addPerson(name)
             const p = await addPerson(name, true, { owner_disconnected: true })
-            if (target.type === 'place') await connectPlacePerson(target.id, p.id)
+            if (target.type === 'place') await connectPeopleToPlace(target.id, [p.id])
             if (target.type === 'person') await createConnection(p.id, target.id)
             return p
           }}
@@ -894,11 +916,11 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           onClose={() => setSelectedPlace(null)}
           onUpdate={updatePlace}
           onDelete={(id) => { deletePlace(id); setSelectedPlace(null) }}
-          onConnectPerson={connectPlacePerson}
+          onConnectPeople={connectPeopleToPlace}
           onDisconnectPerson={disconnectPlacePerson}
           onAddPersonToPlace={async (placeId, name) => {
             const p = await addPerson(name, true, { owner_disconnected: true })
-            await connectPlacePerson(placeId, p.id)
+            await connectPeopleToPlace(placeId, [p.id])
             return p
           }}
         />
