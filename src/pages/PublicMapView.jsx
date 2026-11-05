@@ -101,7 +101,6 @@ export default function PublicMapView() {
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
           onPreviewPersonMap={userId => setPreviewTarget({ userId, initialMapId: null })}
-          onOverlayMapBoxClick={(userId, mapId) => setPreviewTarget({ userId, initialMapId: mapId })}
         />
         {isSiblingsMap && (
           <SiblingsToggles

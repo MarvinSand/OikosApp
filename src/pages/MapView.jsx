@@ -834,7 +834,6 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
               resetOverlaySignal={resetOverlaySignal}
               onPreviewPersonMap={userId => setPreviewTarget({ userId, initialMapId: null })}
-              onOverlayMapBoxClick={(userId, mapId) => setPreviewTarget({ userId, initialMapId: mapId })}
             />
             {showColorFilter && (
               <ColorFilterPanel

@@ -1,5 +1,18 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Darkmode: theme-flippende CSS-Variablen nie als SVG-Fill mit festem Text kombinieren (Nov. 2026)
+
+**Problem:** Die neuen Overlay-Kästchen (eigene Map einer verlinkten Person, `MapCanvas.jsx`, Box-Modus) hatten `fill="var(--color-warm-1)"` als Kästchen-Hintergrund und `fill="white"` als Text-Farbe. Im Light Mode ist `--color-warm-1` `#000000` (schwarzes Kästchen, weißer Text – lesbar), im Dark Mode ist dieselbe Variable `#FFFFFF` (siehe `src/index.css`, `:root` vs. `[data-theme="dark"]`) → **weißer Text auf weißem Kästchen, komplett unsichtbar**. Nur auf einem echten Gerät mit Dark Mode sichtbar, nicht im Light-Mode-Browser-Testing.
+
+**Ursache:** `--color-warm-1` ist als "High-Contrast-Ink"-Variable gedacht (für Text/Ränder, die im jeweiligen Theme maximalen Kontrast zum Hintergrund haben sollen), nicht als neutrale Füllfarbe. Jede Variable, die zwischen Light/Dark den Wert *umdreht* (schwarz ↔ weiß), ist gefährlich als Fläche/Fill, wenn die dazugehörige Text-/Icon-Farbe **fest** (literal `white`/`black`, nicht ebenfalls themed) ist – dann bricht genau eine der beiden Kombinationen.
+
+**Fix:** Kästchen-Fill auf einen literalen, theme-unabhängigen Hex-Wert (`#3A5F8A`) gesetzt statt auf `--color-warm-1`.
+
+**Lektion:**
+- Vor dem Einsatz einer CSS-Variable als Fläche/Fill **immer** prüfen, ob sie in `src/index.css` zwischen `:root` und `[data-theme="dark"]` den Wert umdreht (grep nach dem Variablennamen in beiden Blöcken) – falls ja, nur verwenden, wenn die Text-/Icon-Farbe darüber ebenfalls themed ist (z. B. über eine zweite, passend gepaarte Variable), nie mit einer festen Literal-Farbe kombinieren.
+- Neue farbige UI-Elemente (Badges, Kästchen, Chips) mit festem Text/Icon drauf: entweder komplett literale, theme-unabhängige Farben verwenden, oder ein bereits als Fläche gedachtes Variablenpaar (z. B. `--color-bg`/`--color-text`), nie eine "Ink"-Variable wie `--color-warm-1`/`--color-text`.
+- Darkmode-Bugs dieser Art im Light-Mode-Browser-Testing **nicht sichtbar** – bei neuen farbigen Flächen immer kurz `data-theme="dark"` auf `<html>` setzen und per Playwright/Screenshot gegenprüfen, bevor committed wird.
+
 ## Sheets im SwipePager: `position: fixed` landet im Track (Okt. 2026)
 
 `SwipePager` verschiebt einen 200 %-breiten Track per `transform`/`will-change`. Jeder Vorfahre mit `transform` macht `position: fixed` relativ zu sich selbst (nicht zum Viewport) und `overflow: hidden` schneidet ab → Gebete-Sheets (z. B. „Oikos-Gebete auswählen“) saßen um eine halbe Viewport-Breite nach rechts verschoben und abgeschnitten. **Fix:** Sheets/Overlays in Panes immer in `components/common/BodyPortal.jsx` (Portal an `document.body`) rendern. Neue Sheets unter `pages/Prayers`/`FeedTab`/Home-Panes also gleich portalen.
