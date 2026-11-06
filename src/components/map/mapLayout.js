@@ -38,9 +38,14 @@ function closestOnSegment(px, py, x1, y1, x2, y2) {
  *   extraPositions: { [id]: {x, y} } — fixed points (e.g. places, the map's
  *          center) that edges may reference as endpoints without taking part
  *          in circle/circle or center repulsion themselves.
+ *   obstacles: [{ x, y, r }] — additional fixed circles (e.g. positions
+ *          already resolved by OTHER, independently-relaxed node groups, such
+ *          as another overlay group or the primary people) that movable
+ *          nodes keep clear of, exactly like the center. Not treated as edge
+ *          endpoints — obstacles are circles only.
  * Returns basePositions unchanged (same reference) if nothing overlaps.
  */
-export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 12, iterations = 40, edges = [], lineGap = 10, extraPositions = {} } = {}) {
+export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 12, iterations = 40, edges = [], lineGap = 10, extraPositions = {}, obstacles = [] } = {}) {
   const sorted = [...nodes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const pos = {}
   for (const n of sorted) {
@@ -49,30 +54,35 @@ export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 
   }
   const active = sorted.filter(n => pos[n.id])
   const lookupPos = Object.keys(extraPositions).length > 0 ? { ...pos, ...extraPositions } : pos
+  // Center node plus any extra fixed circles (e.g. already-resolved nodes
+  // from other, independently-relaxed groups) that movable nodes must avoid
+  const fixedCircles = [{ x: cx, y: cy, r: centerR }, ...obstacles]
   let anyMoved = false
 
   for (let iter = 0; iter < iterations; iter++) {
     let maxMove = 0
 
-    // Keep movable nodes clear of the fixed center node
+    // Keep movable nodes clear of the center node and any obstacles
     for (const n of active) {
       if (n.fixed) continue
       const p = pos[n.id]
-      const required = centerR + n.r + gap
-      const dx = p.x - cx
-      const dy = p.y - cy
-      const d = Math.sqrt(dx * dx + dy * dy)
-      if (d < required) {
-        const push = required - d
-        if (d < 0.01) {
-          const a = hashAngle(n.id, 'center')
-          p.x += Math.cos(a) * push
-          p.y += Math.sin(a) * push
-        } else {
-          p.x += (dx / d) * push
-          p.y += (dy / d) * push
+      for (const o of fixedCircles) {
+        const required = o.r + n.r + gap
+        const dx = p.x - o.x
+        const dy = p.y - o.y
+        const d = Math.sqrt(dx * dx + dy * dy)
+        if (d < required) {
+          const push = required - d
+          if (d < 0.01) {
+            const a = hashAngle(n.id, 'center')
+            p.x += Math.cos(a) * push
+            p.y += Math.sin(a) * push
+          } else {
+            p.x += (dx / d) * push
+            p.y += (dy / d) * push
+          }
+          maxMove = Math.max(maxMove, push)
         }
-        maxMove = Math.max(maxMove, push)
       }
     }
 

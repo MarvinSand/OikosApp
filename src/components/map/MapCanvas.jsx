@@ -317,14 +317,12 @@ export default function MapCanvas({
   // Derived display layout: raw positions + overlay push-out + collision
   // relaxation. Purely visual — `positions` stays the persisted source of
   // truth, so hiding an overlay returns nodes to their original spots.
-  const layout = useMemo(() => {
-    const base = {}
-    people.forEach((p, i) => {
-      base[p.id] = positions[p.id] || getDefaultPos(i, people.length, cx, cy, ringRadius)
-    })
-
-    // Effective radius per node — a parent with an active overlay occupies
-    // its whole overlay disc, so other nodes keep clear of the group
+  // Effective radius per primary person — a parent with an active overlay
+  // occupies its whole overlay disc, so other primary people (via `layout`'s
+  // own relaxLayout) and overlay groups (via `overlayLayout`'s `obstacles`)
+  // keep clear of it. Extracted into its own memo so both consumers share
+  // the exact same computation instead of duplicating it.
+  const personRadii = useMemo(() => {
     const radii = {}
     people.forEach(p => { radii[p.id] = personR })
 
@@ -362,11 +360,21 @@ export default function MapCanvas({
       const fanDist = parentGroups[od.parentPersonId].length > 1 ? bRingRadius + 70 : 0
       radii[parent.id] = Math.max(radii[parent.id] ?? personR, fanDist + discR)
     })
-    Object.keys(parentGroups).forEach(parentId => {
+    return radii
+  }, [people, overlayData])
+
+  const layout = useMemo(() => {
+    const base = {}
+    people.forEach((p, i) => {
+      base[p.id] = positions[p.id] || getDefaultPos(i, people.length, cx, cy, ringRadius)
+    })
+
+    // Push overlay parents outward (keeping their angle) so their overlay
+    // disc(s) clear the center node — unless the user is dragging that parent
+    Object.keys(personRadii).forEach(parentId => {
+      if (personRadii[parentId] === personR) return
       const parent = people.find(p => p.id === parentId)
-      if (!parent || radii[parent.id] === personR) return
-      // Push the parent outward (keeping its angle) so the overlay disc(s)
-      // clear the center node — unless the user is dragging that parent
+      if (!parent) return
       const isDraggingParent = dragging?.id === parent.id && !dragging?.overlayKey && !dragging?.isPlace
       if (isDraggingParent) return
       const pos = base[parent.id]
@@ -374,7 +382,7 @@ export default function MapCanvas({
       let dy = pos.y - cy
       let d = Math.sqrt(dx * dx + dy * dy)
       if (d < 1) { dx = 0; dy = -1; d = 1 }
-      const required = userR + radii[parent.id] + 24
+      const required = userR + personRadii[parentId] + 24
       if (d < required) {
         base[parent.id] = { x: cx + (dx / d) * required, y: cy + (dy / d) * required }
       }
@@ -382,7 +390,7 @@ export default function MapCanvas({
 
     const nodes = people.map(p => ({
       id: p.id,
-      r: radii[p.id],
+      r: personRadii[p.id],
       fixed: dragging?.id === p.id && !dragging?.overlayKey && !dragging?.isPlace,
     }))
     // Personen sollen möglichst nicht auf fremden Linien landen (best-effort,
@@ -402,7 +410,7 @@ export default function MapCanvas({
     })
     return relaxLayout(base, nodes, { cx, cy, centerR: userR, edges, extraPositions })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions, people, overlayData, dragging, cx, cy, ringRadius, connections, places, placeConnections, placePositions])
+  }, [positions, people, overlayData, dragging, cx, cy, ringRadius, connections, places, placeConnections, placePositions, personRadii])
 
   function getPos(person, index) {
     if (layout[person.id]) return layout[person.id]
@@ -569,15 +577,62 @@ export default function MapCanvas({
   // überlappen: getOverlayPos liefert nur die "rohe" (übersetzte/gespeicherte)
   // Position; hier wird sie wie bei den eigenen Personen per relaxLayout
   // pro Overlay-Gruppe aufgelöst, inkl. während des Ziehens.
+  //
+  // Jede Gruppe (Eigene-Map-Kästchen, Freund-von-Freund-Netzwerk, Community)
+  // bekam bisher einen komplett isolierten relaxLayout-Aufruf, der nichts von
+  // anderen Gruppen oder den primären Personen weiß (außer dem einen
+  // gemeinsamen Anker-Punkt) — bei mehreren gleichzeitig aktiven Gruppen
+  // überlappten sich deren Kreise beliebig. Fix: eine wachsende Liste
+  // bereits belegter Kreise wird durch alle Gruppen in fester, sortierter
+  // Reihenfolge durchgereicht, sodass jede Gruppe auch die primären Personen,
+  // alle Orte UND alle vorher verarbeiteten Gruppen als Hindernisse kennt.
   const overlayLayout = useMemo(() => {
     const result = {}
-    overlayData.forEach(od => {
+
+    // Primäre Personen (mit ihrem echten effektiven Radius) und alle Orte
+    // (inkl. virtueller Community-Knoten) sind von Anfang an "belegt" — sie
+    // bewegen sich hier nicht, dienen aber als Hindernisse für Overlay-
+    // Gruppen. `id` bleibt dran, damit eine Gruppe ihren EIGENEN Elternknoten
+    // aus ihrer eigenen Hindernisliste herausfiltern kann — der ist über
+    // centerPos/centerR schon korrekt berücksichtigt, ein zweiter Eintrag mit
+    // dem (ggf. viel größeren) personRadii-Wert würde die eigenen Mitglieder
+    // unnötig weit nach außen drücken.
+    const baseObstacles = []
+    people.forEach(p => {
+      const pos = layout[p.id]
+      if (pos) baseObstacles.push({ id: p.id, x: pos.x, y: pos.y, r: personRadii[p.id] ?? personR })
+    })
+    places.forEach(pl => {
+      const pos = placePositions[pl.id]
+      if (pos) baseObstacles.push({ id: pl.id, x: pos.x, y: pos.y, r: 48 })
+    })
+
+    // Deterministische Reihenfolge statt Array-Reihenfolge von overlayData —
+    // sonst würde sich beim Ziehen (oder bei jedem Neuladen) zufällig ändern,
+    // welche Gruppe welche andere als Hindernis sieht, und das Layout würde
+    // zwischen Renders hin- und herspringen.
+    const sortedOverlayData = [...overlayData].sort((a, b) => {
+      const ka = overlayGroupKey(a)
+      const kb = overlayGroupKey(b)
+      return ka < kb ? -1 : ka > kb ? 1 : 0
+    })
+
+    // Von vorherigen Gruppen bereits aufgelöste Kreise — wächst mit jeder
+    // verarbeiteten Gruppe.
+    const groupObstacles = []
+
+    sortedOverlayData.forEach(od => {
       const parentPos = getParentPos(od.parentPersonId)
       if (!parentPos) return
       const isBox = !!od.overlayMapId
       // Eigene-Map-Kästchen lösen Personen-Positionen nur auf, wenn
-      // aufgeklappt — zugeklappt brauchen sie das nicht.
-      if (isBox && !expandedOverlayBoxes.has(overlayGroupKey(od))) return
+      // aufgeklappt — zugeklappt reicht es, ihren Kästchen-Footprint als
+      // Hindernis für ANDERE Gruppen zu reservieren.
+      if (isBox && !expandedOverlayBoxes.has(overlayGroupKey(od))) {
+        const boxPos = getOverlayBoxPos(od, parentPos)
+        groupObstacles.push({ x: boxPos.x, y: boxPos.y, r: 58 })
+        return
+      }
 
       let anchor, bRingRadius, centerPos, centerR
       if (isBox) {
@@ -633,13 +688,28 @@ export default function MapCanvas({
       ;(od.placeConnections || []).forEach(c => {
         if (extraPositions[c.place_id]) edges.push({ a: c.place_id, b: c.person_id })
       })
-      result[overlayGroupKey(od)] = relaxLayout(base, nodes, {
-        cx: centerPos.x, cy: centerPos.y, centerR, gap: 12, edges, extraPositions,
+
+      // Eigener Elternknoten raus (schon über centerPos/centerR abgedeckt),
+      // alle anderen primären Personen/Orte + bereits aufgelöste Gruppen rein.
+      const obstacles = [
+        ...baseObstacles.filter(o => o.id !== od.parentPersonId),
+        ...groupObstacles,
+      ]
+      const resolved = relaxLayout(base, nodes, {
+        cx: centerPos.x, cy: centerPos.y, centerR, gap: 12, edges, extraPositions, obstacles,
       })
+      result[overlayGroupKey(od)] = resolved
+
+      // Eigene aufgelöste Kreise für NACHFOLGENDE Gruppen reservieren.
+      visible.forEach(op => {
+        const p = resolved[op.id]
+        if (p) groupObstacles.push({ x: p.x, y: p.y, r: personR })
+      })
+      if (isBox) groupObstacles.push({ x: anchor.x, y: anchor.y, r: 58 })
     })
     return result
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overlayData, layout, placePositions, overlayPositions, overlayBoxPositions, expandedOverlayBoxes, dragging?.overlayKey, dragging?.moved, people])
+  }, [overlayData, layout, places, placePositions, overlayPositions, overlayBoxPositions, expandedOverlayBoxes, dragging?.overlayKey, dragging?.moved, people, personRadii])
 
   function getOverlayDisplayPos(parentId, person, overlayMapId) {
     const key = overlayMapId ? `${parentId}::${overlayMapId}` : parentId
