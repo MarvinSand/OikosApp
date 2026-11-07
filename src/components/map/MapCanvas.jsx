@@ -1748,7 +1748,12 @@ export default function MapCanvas({
           // einem schwebenden Label auf der Karte — erst das Detail-Sheet
           // beim Antippen (siehe OverlayPersonSheet/OverlayPlaceSheet).
           const expandedContent = [...placeCenterLines, ...placeConnLines, ...placeNodes, ...connLines, ...personNodes]
-          return isBox ? [parentLine, box, ...expandedContent] : expandedContent
+          // Kästchen zuletzt zeichnen (nach den Linien, die an seinem
+          // Mittelpunkt enden) — genau wie bei einem Ort deckt das opake
+          // Rechteck dann den Teil der Linie ab, der auf seiner Fläche liegt,
+          // sodass sie optisch an der Außenkante endet statt sichtbar
+          // hineinzulaufen.
+          return isBox ? [parentLine, ...expandedContent, box] : expandedContent
         })}
 
         {/* Inter-person connections */}
