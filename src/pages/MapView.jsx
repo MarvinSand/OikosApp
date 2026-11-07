@@ -916,7 +916,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
             ))}
             onClose={() => setSelectedOverlayBoxOd(null)}
-            onSelectPerson={setSelectedOverlayPerson}
+            onSelectPerson={person => { setSelectedOverlayBoxOd(null); setSelectedOverlayPerson(person) }}
           />
         )
       })()}

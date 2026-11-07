@@ -65,6 +65,13 @@ export default function MapCanvas({
   const cy = vbSize / 2
   const userR = 48
   const personR = 38
+  // Radius, mit dem ein Eigene-Map-Kästchen gegenüber ANDEREM Inhalt
+  // (anderen Kästchen, Personen, Orten) Abstand hält — größer als die reine
+  // Kästchen-Hälfte-Diagonale (100x48 ≈ 55px), damit mehrere Kästchen
+  // sichtbar getrennt wirken statt aneinanderzukleben. Getrennt von
+  // `centerR` weiter unten, das steuert, wie eng die EIGENEN Mitglieder um
+  // das Kästchen fächern dürfen — unverändert.
+  const boxFootprintR = 75
 
   // Local positions state (initialized/updated from people prop)
   const [positions, setPositions] = useState({})
@@ -520,7 +527,7 @@ export default function MapCanvas({
   function resolveOverlayBoxAnchor(od, parentPos, obstacles) {
     const key = overlayGroupKey(od)
     if (overlayBoxPositions[key]) return overlayBoxPositions[key]
-    return pushClearOfObstacles(getOverlayBoxAnchor(parentPos, od), 58, obstacles)
+    return pushClearOfObstacles(getOverlayBoxAnchor(parentPos, od), boxFootprintR, obstacles)
   }
 
   function getOverlayPos(parentId, person, parentPos, brotherCx, brotherCy, bRingRadius, allOverlayPersons) {
@@ -613,7 +620,7 @@ export default function MapCanvas({
           ...groupObstacles,
         ])
         boxAnchors[overlayGroupKey(od)] = boxPos
-        groupObstacles.push({ x: boxPos.x, y: boxPos.y, r: 58 })
+        groupObstacles.push({ x: boxPos.x, y: boxPos.y, r: boxFootprintR })
         return
       }
 
@@ -695,7 +702,7 @@ export default function MapCanvas({
         const p = resolved[op.id]
         if (p) groupObstacles.push({ x: p.x, y: p.y, r: personR })
       })
-      if (isBox) groupObstacles.push({ x: anchor.x, y: anchor.y, r: 58 })
+      if (isBox) groupObstacles.push({ x: anchor.x, y: anchor.y, r: boxFootprintR })
     })
     return { members: result, boxAnchors }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -164,7 +164,7 @@ export default function PublicMapView() {
               prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
             ))}
             onClose={() => setSelectedOverlayBoxOd(null)}
-            onSelectPerson={setSelectedOverlayPerson}
+            onSelectPerson={person => { setSelectedOverlayBoxOd(null); setSelectedOverlayPerson(person) }}
           />
         )
       })()}
