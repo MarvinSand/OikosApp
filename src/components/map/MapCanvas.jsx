@@ -134,12 +134,29 @@ export default function MapCanvas({
       const next = { ...prev }
       let changed = false
       const virtualPlaces = places.filter(q => q.is_virtual)
+      // Der Ring-Radius für Community-Knoten war bisher fest (ringRadius+110),
+      // egal wie viele Mitglieder eine Community hat — bei großen Communities
+      // (z. B. 35 Mitglieder → bRingRadius 630) reichte der feste Abstand
+      // zwischen den Ring-Ankern nicht aus, ihre aufgefächerten Mitglieder
+      // blieben dann trotz Hindernisvermeidung teils überlappt, weil für
+      // beide Scheiben schlicht nicht genug Platz zwischen den Ankern war.
+      // Fix: Ring-Radius wächst mit der größten sichtbaren Community mit —
+      // gibt ALLEN Community-Ankern mehr Bogenlänge (= mehr Abstand)
+      // zueinander, wenn irgendeine von ihnen viel Platz braucht.
+      const maxCommunityBRingRadius = virtualPlaces.reduce((max, pl) => {
+        const od = overlayData.find(o => o.parentPersonId === pl.id)
+        if (!od) return max
+        const bCount = od.personCount ?? od.persons.length
+        const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+        return Math.max(max, bRingRadius)
+      }, 150)
+      const communityRingRadius = ringRadius + 110 + Math.max(0, maxCommunityBRingRadius - 150)
       places.forEach(pl => {
         if (!(pl.id in next)) {
           if (pl.is_virtual && pl.pos_x == null) {
             // Community-Knoten: gleichmäßig auf einem Ring außerhalb der Personen
             const a = (virtualPlaces.indexOf(pl) * 2 * Math.PI / Math.max(virtualPlaces.length, 1)) - Math.PI / 2 + Math.PI / 6
-            next[pl.id] = { x: cx + (ringRadius + 110) * Math.cos(a), y: cy + (ringRadius + 110) * Math.sin(a) }
+            next[pl.id] = { x: cx + communityRingRadius * Math.cos(a), y: cy + communityRingRadius * Math.sin(a) }
           } else {
             next[pl.id] = { x: pl.pos_x ?? cx, y: pl.pos_y ?? cy }
           }
@@ -161,7 +178,7 @@ export default function MapCanvas({
       })
       return changed ? next : prev
     })
-  }, [places, cx, cy, ringRadius])
+  }, [places, cx, cy, ringRadius, overlayData])
 
   useEffect(() => {
     debouncedPlaceMoveRef.current = debounce((placeId, x, y) => {
