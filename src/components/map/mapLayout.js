@@ -168,6 +168,42 @@ export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 
 }
 
 /**
+ * Pushes a single point clear of any {x, y, r} obstacle circle it's too
+ * close to — same push-vector math as relaxLayout's "keep movable nodes
+ * clear of fixedCircles" loop, just for one point instead of a batch.
+ * Used to make an overlay box's own anchor obstacle-aware (its FOOTPRINT
+ * was already reserved for other groups once resolved — this makes the
+ * box's own position respect that too, instead of only ever computing a
+ * context-free fan position).
+ */
+export function pushClearOfObstacles(point, r, obstacles, gap = 12, iterations = 20) {
+  let x = point.x
+  let y = point.y
+  for (let iter = 0; iter < iterations; iter++) {
+    let moved = false
+    for (const o of obstacles) {
+      const required = o.r + r + gap
+      const dx = x - o.x
+      const dy = y - o.y
+      const d = Math.sqrt(dx * dx + dy * dy)
+      if (d < required) {
+        const push = required - d
+        if (d < 0.01) {
+          // Exakt deckungsgleich — seltener Grenzfall, feste Ausweichrichtung
+          x += push
+        } else {
+          x += (dx / d) * push
+          y += (dy / d) * push
+        }
+        moved = true
+      }
+    }
+    if (!moved) break
+  }
+  return { x, y }
+}
+
+/**
  * Find a spot for a newly added person: the midpoint of the largest angular
  * gap on the ring, stepping outward if the ring is crowded.
  * existingPositions: array of {x, y} of already-placed primary people.
