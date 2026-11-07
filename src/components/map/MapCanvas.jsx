@@ -72,6 +72,15 @@ export default function MapCanvas({
   // `centerR` weiter unten, das steuert, wie eng die EIGENEN Mitglieder um
   // das Kästchen fächern dürfen — unverändert.
   const boxFootprintR = 75
+  // Basis-Abstand eines Eigene-Map-Kästchens zu seiner eigenen Elternperson —
+  // das Kästchen ist bewusst von der Hindernisvermeidung gegenüber dem
+  // EIGENEN Elternteil ausgenommen (siehe resolveOverlayBoxAnchor), diese
+  // Distanz ist daher die einzige Stellschraube für den Abstand zwischen
+  // einem eingeblendeten Kästchen und der eigenen Karte. Dieselbe Basis wird
+  // an drei Stellen gebraucht (Radius-Reservierung der Elternperson,
+  // Fächer-Anker des Kästchens, Auto-Fit-Zoom-Schätzung für zugeklappte
+  // Kästchen) — ein gemeinsamer Wert verhindert, dass sie auseinanderlaufen.
+  const boxFanBaseDist = 220
 
   // Local positions state (initialized/updated from people prop)
   const [positions, setPositions] = useState({})
@@ -366,7 +375,7 @@ export default function MapCanvas({
       if (od.overlayMapId) {
         if (!od.showChristian && !od.showNonChristian) return
         const n = boxGroups[od.parentPersonId].length
-        const dist = n <= 1 ? 95 : Math.max(95, n * 26)
+        const dist = n <= 1 ? boxFanBaseDist : Math.max(boxFanBaseDist, n * 26)
         radii[parent.id] = Math.max(radii[parent.id] ?? personR, dist + 50)
         return
       }
@@ -523,7 +532,7 @@ export default function MapCanvas({
     const n = siblings.length
     const idx = Math.max(0, siblings.indexOf(od))
     const angle = (idx * 2 * Math.PI / Math.max(n, 1)) - Math.PI / 2
-    const dist = n <= 1 ? 95 : Math.max(95, n * 26)
+    const dist = n <= 1 ? boxFanBaseDist : Math.max(boxFanBaseDist, n * 26)
     return { x: parentPos.x + dist * Math.cos(angle), y: parentPos.y + dist * Math.sin(angle) }
   }
 
@@ -741,7 +750,7 @@ export default function MapCanvas({
       if (!parentPos) return
       if (od.overlayMapId) {
         const n = overlayData.filter(o => o.parentPersonId === od.parentPersonId && o.overlayMapId).length
-        const dist = n <= 1 ? 95 : Math.max(95, n * 26)
+        const dist = n <= 1 ? boxFanBaseDist : Math.max(boxFanBaseDist, n * 26)
         const boxPos = overlayLayout.boxAnchors[overlayGroupKey(od)] || getOverlayBoxPos(od, parentPos)
         if (expandedOverlayBoxes.has(overlayGroupKey(od))) {
           // Aufgeklappt reicht der Personen-Ring um das Kästchen deutlich
