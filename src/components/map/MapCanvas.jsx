@@ -53,6 +53,8 @@ export default function MapCanvas({
   ownerDisconnectedIds = new Set(),
   resetOverlaySignal,
   onPreviewPersonMap,
+  expandedOverlayBoxKeys = EMPTY_ARR,
+  onOverlayBoxClick,
 }) {
   const navigate = useNavigate()
   const n = people.length
@@ -68,18 +70,13 @@ export default function MapCanvas({
   const [positions, setPositions] = useState({})
   // Overlay person positions (local only, not persisted to DB)
   const [overlayPositions, setOverlayPositions] = useState({})
-  // Eigene-Map-Kästchen: frei verschiebbar (lokal, nicht persistiert) und
-  // einzeln auf-/zuklappbar, ob die Personen der Map angezeigt werden.
+  // Eigene-Map-Kästchen: frei verschiebbar (lokal, nicht persistiert).
   const [overlayBoxPositions, setOverlayBoxPositions] = useState({})
-  const [expandedOverlayBoxes, setExpandedOverlayBoxes] = useState(() => new Set())
-  function toggleOverlayBoxExpanded(key) {
-    setExpandedOverlayBoxes(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
+  // Ob ein Kästchen aufgeklappt ist (Personen auf der Karte sichtbar) wird
+  // vom Elternteil gesteuert — der Schalter dafür sitzt im neuen
+  // OverlayMapPeopleSheet, das außerhalb von MapCanvas gerendert wird
+  // (gleiches Muster wie selectedOverlayPerson/previewTarget).
+  const expandedOverlayBoxes = useMemo(() => new Set(expandedOverlayBoxKeys), [expandedOverlayBoxKeys])
   // "Karte aufräumen" löscht auch lokal verschobene Overlay-Personen, damit
   // sie wieder im sauberen Kreis um ihren Elternknoten landen
   useEffect(() => {
@@ -1030,7 +1027,8 @@ export default function MapCanvas({
           const place = places.find(pl => pl.id === dragging.id)
           if (place) onPlaceClick?.(place)
         } else if (dragging.isOverlayBox) {
-          toggleOverlayBoxExpanded(dragging.id)
+          const od = overlayData.find(o => overlayGroupKey(o) === dragging.id)
+          if (od) onOverlayBoxClick?.(od)
         } else if (dragging.overlayKey) {
           const op = dragging.overlayPersonObj || findOverlayPerson(dragging.id)
           if (op) {
@@ -1071,7 +1069,8 @@ export default function MapCanvas({
         const place = places.find(pl => pl.id === dragging.id)
         if (place) onPlaceClick?.(place)
       } else if (dragging.isOverlayBox) {
-        toggleOverlayBoxExpanded(dragging.id)
+        const od = overlayData.find(o => overlayGroupKey(o) === dragging.id)
+        if (od) onOverlayBoxClick?.(od)
       } else if (dragging.overlayKey) {
         const op = dragging.overlayPersonObj || findOverlayPerson(dragging.id)
         if (op) {

@@ -16,6 +16,7 @@ import AddPersonModal from '../components/map/AddPersonModal'
 const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
+import OverlayMapPeopleSheet from '../components/map/OverlayMapPeopleSheet'
 import MapPreviewSheet from '../components/map/MapPreviewSheet'
 import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
 import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSheet'
@@ -458,6 +459,8 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
   const [previewTarget, setPreviewTarget] = useState(null) // { userId, initialMapId }
+  const [expandedOverlayBoxKeys, setExpandedOverlayBoxKeys] = useState([])
+  const [selectedOverlayBoxOd, setSelectedOverlayBoxOd] = useState(null)
   const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
   const [selectedPlace, setSelectedPlace] = useState(null)
   // linkedProfile cache: { [userId]: profile }
@@ -661,6 +664,8 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                         setCleaningUp(false)
                         setShowCleanupConfirm(false)
                         setResetOverlaySignal(s => s + 1)
+                        setExpandedOverlayBoxKeys([])
+                        setSelectedOverlayBoxOd(null)
                       }}
                       style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-bg)', cursor: cleaningUp ? 'default' : 'pointer', opacity: cleaningUp ? 0.7 : 1 }}
                     >
@@ -834,6 +839,11 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
               resetOverlaySignal={resetOverlaySignal}
               onPreviewPersonMap={userId => setPreviewTarget({ userId, initialMapId: null })}
+              expandedOverlayBoxKeys={expandedOverlayBoxKeys}
+              onToggleOverlayBoxExpanded={key => setExpandedOverlayBoxKeys(prev => (
+                prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+              ))}
+              onOverlayBoxClick={setSelectedOverlayBoxOd}
             />
             {showColorFilter && (
               <ColorFilterPanel
@@ -891,6 +901,22 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             hostPeople={people}
             hostOverlayData={overlayData}
             mapName={od?.mapName}
+          />
+        )
+      })()}
+      {selectedOverlayBoxOd && (() => {
+        const key = selectedOverlayBoxOd.overlayMapId
+          ? `${selectedOverlayBoxOd.parentPersonId}::${selectedOverlayBoxOd.overlayMapId}`
+          : selectedOverlayBoxOd.parentPersonId
+        return (
+          <OverlayMapPeopleSheet
+            od={selectedOverlayBoxOd}
+            isExpanded={expandedOverlayBoxKeys.includes(key)}
+            onToggleExpanded={() => setExpandedOverlayBoxKeys(prev => (
+              prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+            ))}
+            onClose={() => setSelectedOverlayBoxOd(null)}
+            onSelectPerson={setSelectedOverlayPerson}
           />
         )
       })()}
