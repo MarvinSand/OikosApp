@@ -14,7 +14,7 @@ import { timeAgo, getInitials } from '../../lib/prayerModel'
 // Wird in AccountLinkingSection (PersonDetailSheet) direkt unter der
 // Profil-Zeile eingehängt — egal ob eigene oder fremde (Geschwister-)Map.
 
-export default function LinkedProfilePreview({ person, linkedProfile, isOwner, overlayData = [], onOverlayPreview }) {
+export default function LinkedProfilePreview({ person, linkedProfile, isOwner, overlayData = [], onOverlayPreview, showMapsSection = !isOwner }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -54,7 +54,7 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
           .order('created_at', { ascending: false })
           .limit(5),
       ]
-      if (!isOwner) {
+      if (showMapsSection) {
         tasks.push(
           supabase
             .from('oikos_maps')
@@ -67,12 +67,13 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
       if (cancelled) return
       setConnections(results[0]?.data || [])
       setPrayers(results[1]?.data || [])
-      if (!isOwner) setMaps(results[2]?.data || [])
+      if (showMapsSection) setMaps(results[2]?.data || [])
       setLoading(false)
     }
     load()
     return () => { cancelled = true }
-  }, [linkedUserId, isOwner])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedUserId, showMapsSection])
 
   const mutualFriends = useMemo(() => {
     const myFriendIds = new Set(friends.map(f => f.otherUser?.id).filter(Boolean))
@@ -206,7 +207,7 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
       )}
 
       {/* Oikos-Maps der Person — nur beim Ansehen einer fremden Map */}
-      {!isOwner && !loading && maps.length > 0 && (
+      {showMapsSection && !loading && maps.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 5 }}>
             <MapIcon size={12} /> Oikos-Maps von {linkedProfile.full_name || linkedProfile.username}
