@@ -553,7 +553,10 @@ export default function MapCanvas({
   function resolveOverlayBoxAnchor(od, parentPos, obstacles) {
     const key = overlayGroupKey(od)
     if (overlayBoxPositions[key]) return overlayBoxPositions[key]
-    return pushClearOfObstacles(getOverlayBoxAnchor(parentPos, od), boxFootprintR, obstacles)
+    // Deutlich größerer Puffer als der relaxLayout-Standard (12) — der
+    // Nutzer hat per Hand demonstriert, wie viel Luft zwischen einem
+    // Kästchen und anderen Gruppen (z. B. Communities) mindestens sein soll.
+    return pushClearOfObstacles(getOverlayBoxAnchor(parentPos, od), boxFootprintR, obstacles, 150)
   }
 
   function getOverlayPos(parentId, person, parentPos, brotherCx, brotherCy, bRingRadius, allOverlayPersons) {
