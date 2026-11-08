@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { relaxLayout, findFreeSpot, fanOutSecondary, overlayDiscRadius, pushClearOfObstacles } from './mapLayout'
+import { relaxLayout, findFreeSpot, fanOutSecondary, overlayDiscRadius, buildRigidShape, placeRigidShape } from './mapLayout'
 
 const CONN_COLORS = [
   { label: 'Standard', hex: '#C8BFB0' },
@@ -81,6 +81,9 @@ export default function MapCanvas({
   // Fächer-Anker des Kästchens, Auto-Fit-Zoom-Schätzung für zugeklappte
   // Kästchen) — ein gemeinsamer Wert verhindert, dass sie auseinanderlaufen.
   const boxFanBaseDist = 220
+  // Mindest-Luft zwischen einem Kästchen bzw. einer eingeblendeten Map und
+  // jedem fremden Inhalt — vom Nutzer per Hand demonstrierter Abstand.
+  const groupGap = 150
 
   // Local positions state (initialized/updated from people prop)
   const [positions, setPositions] = useState({})
@@ -93,6 +96,20 @@ export default function MapCanvas({
   // OverlayMapPeopleSheet, das außerhalb von MapCanvas gerendert wird
   // (gleiches Muster wie selectedOverlayPerson/previewTarget).
   const expandedOverlayBoxes = useMemo(() => new Set(expandedOverlayBoxKeys), [expandedOverlayBoxKeys])
+  // Beim Einblenden immer automatisch frei platzieren — eine alte, im
+  // zugeklappten Zustand gezogene Position würde die Map sonst wieder auf
+  // die eigene Karte legen. Während des Renderns (nicht im Effekt), damit
+  // der Auto-Zoom beim Aufklappen schon die neue Position sieht.
+  const [prevExpandedOverlayBoxes, setPrevExpandedOverlayBoxes] = useState(expandedOverlayBoxes)
+  if (prevExpandedOverlayBoxes !== expandedOverlayBoxes) {
+    setPrevExpandedOverlayBoxes(expandedOverlayBoxes)
+    const stale = [...expandedOverlayBoxes].filter(k => !prevExpandedOverlayBoxes.has(k) && k in overlayBoxPositions)
+    if (stale.length > 0) {
+      const next = { ...overlayBoxPositions }
+      stale.forEach(k => { delete next[k] })
+      setOverlayBoxPositions(next)
+    }
+  }
   // "Karte aufräumen" löscht auch lokal verschobene Overlay-Personen, damit
   // sie wieder im sauberen Kreis um ihren Elternknoten landen
   useEffect(() => {
@@ -527,12 +544,25 @@ export default function MapCanvas({
   // Maps derselben Person fächern sich in einem festen, kleinen Radius ring-
   // förmig auf (nicht nur "weg vom Zentrum" wie bei der explodierten Ansicht,
   // da ein Kästchen klein ist und mehrere Kästchen gut rundherum passen).
-  function getOverlayBoxAnchor(parentPos, od) {
-    const siblings = overlayData.filter(o => o.parentPersonId === od.parentPersonId && o.overlayMapId)
+  // Kästchen liegen "hinter" ihrer Elternperson (radial weg von der Mitte);
+  // mehrere Kästchen derselben Person fächern sich um diese Richtung auf.
+  function getOverlayBoxPlacement(parentPos, od) {
+    const siblings = overlayData
+      .filter(o => o.parentPersonId === od.parentPersonId && o.overlayMapId)
+      .map(overlayGroupKey)
+      .sort()
     const n = siblings.length
-    const idx = Math.max(0, siblings.indexOf(od))
-    const angle = (idx * 2 * Math.PI / Math.max(n, 1)) - Math.PI / 2
+    const idx = Math.max(0, siblings.indexOf(overlayGroupKey(od)))
+    const dx = parentPos.x - cx
+    const dy = parentPos.y - cy
+    const radial = Math.hypot(dx, dy) < 1 ? -Math.PI / 2 : Math.atan2(dy, dx)
+    const angle = radial + (idx - (n - 1) / 2) * (Math.PI / 3)
     const dist = n <= 1 ? boxFanBaseDist : Math.max(boxFanBaseDist, n * 26)
+    return { angle, dist }
+  }
+
+  function getOverlayBoxAnchor(parentPos, od) {
+    const { angle, dist } = getOverlayBoxPlacement(parentPos, od)
     return { x: parentPos.x + dist * Math.cos(angle), y: parentPos.y + dist * Math.sin(angle) }
   }
 
@@ -547,16 +577,16 @@ export default function MapCanvas({
   // Hindernis-bewusste Position eines Kästchens: eine manuell gezogene
   // Position hat immer Vorrang (auch während des Ziehens, siehe
   // handleMouseMove/-TouchMove — overlayBoxPositions[key] wird dort schon
-  // live beim Ziehen gesetzt), sonst wird der rohe Fächer-Anker von bereits
-  // belegten Kreisen weggedrückt, statt wie bisher ungeprüft mit anderen
-  // Inhalten überlappen zu dürfen.
+  // live beim Ziehen gesetzt), sonst die erste freie Stelle auf dem Weg
+  // nach außen hinter der Elternperson.
   function resolveOverlayBoxAnchor(od, parentPos, obstacles) {
     const key = overlayGroupKey(od)
     if (overlayBoxPositions[key]) return overlayBoxPositions[key]
-    // Deutlich größerer Puffer als der relaxLayout-Standard (12) — der
-    // Nutzer hat per Hand demonstriert, wie viel Luft zwischen einem
-    // Kästchen und anderen Gruppen (z. B. Communities) mindestens sein soll.
-    return pushClearOfObstacles(getOverlayBoxAnchor(parentPos, od), boxFootprintR, obstacles, 150)
+    // Gerichtete Suche statt iterativem Wegdrücken — Letzteres pendelte bei
+    // vielen Hindernissen und blieb teils mitten auf Personen stehen.
+    const { angle, dist } = getOverlayBoxPlacement(parentPos, od)
+    const boxShape = { circles: [{ x: 0, y: 0, r: boxFootprintR }], D: boxFootprintR }
+    return placeRigidShape(boxShape, parentPos, angle, obstacles, { gap: groupGap, minDist: dist })
   }
 
   function getOverlayPos(parentId, person, parentPos, brotherCx, brotherCy, bRingRadius, allOverlayPersons) {
@@ -596,6 +626,51 @@ export default function MapCanvas({
   // bereits belegter Kreise wird durch alle Gruppen in fester, sortierter
   // Reihenfolge durchgereicht, sodass jede Gruppe auch die primären Personen,
   // alle Orte UND alle vorher verarbeiteten Gruppen als Hindernisse kennt.
+  // Aufgeklappte Kästchen: die eingeblendete Map wird als STARRE Form um den
+  // Ursprung aufgebaut (nur ihre eigenen Konstanten) und danach als Ganzes
+  // verschoben — einzelne Mitglieder zwischen fremde Personen zu drücken
+  // klappt bei großen Maps nicht. Unabhängig von `layout`, damit Ziehen
+  // anderer Personen die Form nicht jedes Mal neu berechnet.
+  const overlayShapes = useMemo(() => {
+    const shapes = {}
+    overlayData.forEach(od => {
+      if (!od.overlayMapId) return
+      const key = overlayGroupKey(od)
+      if (!expandedOverlayBoxes.has(key)) return
+      const bCount = od.personCount ?? od.persons.length
+      const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
+      const bVbSize = bRingRadius * 2 + 140
+      const brotherCx = bVbSize / 2
+      const brotherCy = bVbSize / 2
+      const origin = { x: 0, y: 0 }
+      const visible = od.persons.filter(op =>
+        (op.is_christian && od.showChristian) || (!op.is_christian && od.showNonChristian)
+      )
+      const base = {}
+      visible.forEach(op => {
+        base[op.id] = getOverlayPos(od.parentPersonId, op, origin, brotherCx, brotherCy, bRingRadius, od.persons)
+      })
+      const nodes = visible.map(op => ({ id: op.id, r: personR, fixed: false }))
+      const edges = (od.connections || []).map(c => ({ a: c.source_person_id, b: c.target_person_id }))
+      const extraPositions = { __parent__: origin }
+      const placeCircles = []
+      ;(od.places || []).forEach(pl => {
+        const pos = { x: (pl.pos_x ?? brotherCx) - brotherCx, y: (pl.pos_y ?? brotherCy) - brotherCy }
+        extraPositions[pl.id] = pos
+        placeCircles.push({ x: pos.x, y: pos.y, r: 48 })
+        edges.push({ a: '__parent__', b: pl.id })
+      })
+      ;(od.placeConnections || []).forEach(c => {
+        if (extraPositions[c.place_id]) edges.push({ a: c.place_id, b: c.person_id })
+      })
+      shapes[key] = buildRigidShape(base, nodes, {
+        centerR: 58, boxR: boxFootprintR, gap: 12, edges, extraPositions, placeCircles,
+      })
+    })
+    return shapes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayData, overlayPositions, expandedOverlayBoxes])
+
   const overlayLayout = useMemo(() => {
     const result = {}
     // Hindernis-bewusst aufgelöste Kästchen-Positionen (manuell verschoben
@@ -626,10 +701,45 @@ export default function MapCanvas({
     // sonst würde sich beim Ziehen (oder bei jedem Neuladen) zufällig ändern,
     // welche Gruppe welche andere als Hindernis sieht, und das Layout würde
     // zwischen Renders hin- und herspringen.
+    // Fest verankerte Gruppen zuerst, die beweglichsten (automatisch
+    // platzierte, eingeblendete Maps) zuletzt — die weichen dann allem aus.
+    const groupRank = od => {
+      if (!od.overlayMapId) return 0
+      const key = overlayGroupKey(od)
+      if (!expandedOverlayBoxes.has(key)) return 1
+      return overlayBoxPositions[key] ? 2 : 3
+    }
     const sortedOverlayData = [...overlayData].sort((a, b) => {
+      const ra = groupRank(a)
+      const rb = groupRank(b)
+      if (ra !== rb) return ra - rb
       const ka = overlayGroupKey(a)
       const kb = overlayGroupKey(b)
       return ka < kb ? -1 : ka > kb ? 1 : 0
+    })
+
+    // Die eigene Karte als Scheibe um die Mitte: eine eingeblendete Map muss
+    // KOMPLETT außerhalb davon liegen ("nach hinten gezogen"), sonst rutschen
+    // ihre Personen in Lücken zwischen die eigenen.
+    let ownMapR = userR
+    people.forEach(p => {
+      const pos = layout[p.id]
+      if (pos) ownMapR = Math.max(ownMapR, Math.hypot(pos.x - cx, pos.y - cy) + personR)
+    })
+    places.forEach(pl => {
+      const pos = placePositions[pl.id]
+      if (pos && !pl.is_virtual) ownMapR = Math.max(ownMapR, Math.hypot(pos.x - cx, pos.y - cy) + 48)
+    })
+    // Für eingeblendete Maps zählen die echten Kreise — der aufgeblähte
+    // personRadii-Wert reserviert nur Platz für ein zugeklapptes Kästchen.
+    const rigidBaseObstacles = [{ id: '__center__', x: cx, y: cy, r: userR }]
+    people.forEach(p => {
+      const pos = layout[p.id]
+      if (pos) rigidBaseObstacles.push({ id: p.id, x: pos.x, y: pos.y, r: personR })
+    })
+    places.forEach(pl => {
+      const pos = placePositions[pl.id]
+      if (pos) rigidBaseObstacles.push({ id: pl.id, x: pos.x, y: pos.y, r: 48 })
     })
 
     // Von vorherigen Gruppen bereits aufgelöste Kreise — wächst mit jeder
@@ -640,12 +750,42 @@ export default function MapCanvas({
       const parentPos = getParentPos(od.parentPersonId)
       if (!parentPos) return
       const isBox = !!od.overlayMapId
-      // Eigene-Map-Kästchen lösen Personen-Positionen nur auf, wenn
-      // aufgeklappt — zugeklappt reicht es, ihren Kästchen-Footprint als
-      // Hindernis für ANDERE Gruppen zu reservieren.
-      if (isBox && !expandedOverlayBoxes.has(overlayGroupKey(od))) {
+      const shape = isBox ? overlayShapes[overlayGroupKey(od)] : null
+      if (shape) {
+        const key = overlayGroupKey(od)
+        let anchor = overlayBoxPositions[key]
+        if (!anchor) {
+          const expandedSiblings = overlayData
+            .filter(o => o.parentPersonId === od.parentPersonId && o.overlayMapId && expandedOverlayBoxes.has(overlayGroupKey(o)))
+            .map(overlayGroupKey)
+            .sort()
+          const n = expandedSiblings.length
+          const idx = Math.max(0, expandedSiblings.indexOf(key))
+          const dx = parentPos.x - cx
+          const dy = parentPos.y - cy
+          const baseAngle = Math.hypot(dx, dy) < 1 ? -Math.PI / 2 : Math.atan2(dy, dx)
+          const angle = baseAngle + (idx - (n - 1) / 2) * (Math.PI / 6)
+          anchor = placeRigidShape(shape, { x: cx, y: cy }, angle, [...rigidBaseObstacles, ...groupObstacles], {
+            gap: groupGap,
+            minDist: ownMapR + shape.D + groupGap,
+          })
+        }
+        boxAnchors[key] = anchor
+        const members = {}
+        Object.entries(shape.rel).forEach(([id, p]) => {
+          members[id] = { x: anchor.x + p.x, y: anchor.y + p.y }
+        })
+        result[key] = members
+        shape.circles.forEach(c => groupObstacles.push({ x: anchor.x + c.x, y: anchor.y + c.y, r: c.r }))
+        return
+      }
+      // Zugeklappte Eigene-Map-Kästchen: nur der Kästchen-Footprint wird als
+      // Hindernis für ANDERE Gruppen reserviert.
+      // Die eigene Elternperson ist ausgenommen — ihren Abstand regelt
+      // boxFanBaseDist (minDist der Suche).
+      if (isBox) {
         const boxPos = resolveOverlayBoxAnchor(od, parentPos, [
-          ...baseObstacles.filter(o => o.id !== od.parentPersonId),
+          ...rigidBaseObstacles.filter(o => o.id !== od.parentPersonId),
           ...groupObstacles,
         ])
         boxAnchors[overlayGroupKey(od)] = boxPos
@@ -653,27 +793,9 @@ export default function MapCanvas({
         return
       }
 
-      let anchor, bRingRadius, centerPos, centerR
-      if (isBox) {
-        const bCount = od.personCount ?? od.persons.length
-        bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
-        anchor = resolveOverlayBoxAnchor(od, parentPos, [
-          ...baseObstacles.filter(o => o.id !== od.parentPersonId),
-          ...groupObstacles,
-        ])
-        boxAnchors[overlayGroupKey(od)] = anchor
-        centerPos = anchor
-        // Kästchen ist 100x48 (breiter als ein Personenkreis) — größerer
-        // Radius als bei der Elternperson, damit Personen nicht über die
-        // Kästchen-Ecken hinausragen.
-        centerR = 58
-      } else {
-        const meta = getOverlayGroupMeta(parentPos, od)
-        anchor = meta.anchor
-        bRingRadius = meta.bRingRadius
-        centerPos = parentPos
-        centerR = personR + 8
-      }
+      const { anchor, bRingRadius } = getOverlayGroupMeta(parentPos, od)
+      const centerPos = parentPos
+      const centerR = personR + 8
       const bVbSize = bRingRadius * 2 + 140
       const brotherCx = bVbSize / 2
       const brotherCy = bVbSize / 2
@@ -689,10 +811,6 @@ export default function MapCanvas({
       const nodes = visible.map(op => ({
         id: op.id,
         r: personR,
-        // Personen in einem aufgeklappten Kästchen sind nicht einzeln zieh-
-        // bar (siehe personNodes im Rendering) — "fixed" bleibt daher für sie
-        // immer false, sie nehmen aber ganz normal an der Kollisions-
-        // auflösung teil.
         fixed: dragging?.overlayKey === overlayKey(od.parentPersonId, op.id) && dragging?.moved,
       }))
       // Auch bei eingeblendeten Personen sollen sie möglichst nicht auf
@@ -712,13 +830,10 @@ export default function MapCanvas({
         if (extraPositions[c.place_id]) edges.push({ a: c.place_id, b: c.person_id })
       })
 
-      // Eigener Elternknoten raus — aber NUR wenn er auch das Zentrum dieser
-      // Gruppe ist (centerPos === parentPos, exploded-Modus): dann ist er
-      // schon über centerPos/centerR abgedeckt. Bei einem Kästchen ist das
-      // Zentrum dagegen das Kästchen selbst, nicht die Elternperson — die
-      // bleibt dann ein ganz normales Hindernis wie jede andere Person.
+      // Eigener Elternknoten raus — er ist das Zentrum dieser Gruppe und
+      // schon über centerPos/centerR abgedeckt.
       const obstacles = [
-        ...baseObstacles.filter(o => isBox || o.id !== od.parentPersonId),
+        ...baseObstacles.filter(o => o.id !== od.parentPersonId),
         ...groupObstacles,
       ]
       const resolved = relaxLayout(base, nodes, {
@@ -731,11 +846,10 @@ export default function MapCanvas({
         const p = resolved[op.id]
         if (p) groupObstacles.push({ x: p.x, y: p.y, r: personR })
       })
-      if (isBox) groupObstacles.push({ x: anchor.x, y: anchor.y, r: boxFootprintR })
     })
     return { members: result, boxAnchors }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overlayData, layout, places, placePositions, overlayPositions, overlayBoxPositions, expandedOverlayBoxes, dragging?.overlayKey, dragging?.moved, people, personRadii])
+  }, [overlayData, layout, places, placePositions, overlayPositions, overlayBoxPositions, expandedOverlayBoxes, overlayShapes, dragging?.overlayKey, dragging?.moved, people, personRadii])
 
   // Auto-fit the view when overlays are toggled: a pushed-out overlay group
   // can lie outside the initial viewBox, so zoom out to keep everything
@@ -755,13 +869,9 @@ export default function MapCanvas({
         const n = overlayData.filter(o => o.parentPersonId === od.parentPersonId && o.overlayMapId).length
         const dist = n <= 1 ? boxFanBaseDist : Math.max(boxFanBaseDist, n * 26)
         const boxPos = overlayLayout.boxAnchors[overlayGroupKey(od)] || getOverlayBoxPos(od, parentPos)
-        if (expandedOverlayBoxes.has(overlayGroupKey(od))) {
-          // Aufgeklappt reicht der Personen-Ring um das Kästchen deutlich
-          // weiter als das Kästchen selbst — sonst ragen Personen über den
-          // sichtbaren Bereich hinaus.
-          const bCount = od.personCount ?? od.persons.length
-          const bRingRadius = bCount === 0 ? 150 : Math.max(150, bCount * 18)
-          maxExtent = Math.max(maxExtent, Math.hypot(boxPos.x - cx, boxPos.y - cy) + bRingRadius + personR)
+        const shape = overlayShapes[overlayGroupKey(od)]
+        if (shape) {
+          maxExtent = Math.max(maxExtent, Math.hypot(boxPos.x - cx, boxPos.y - cy) + shape.D)
         } else {
           maxExtent = Math.max(maxExtent, Math.hypot(parentPos.x - cx, parentPos.y - cy) + dist + 60)
         }
@@ -831,6 +941,14 @@ export default function MapCanvas({
       x: viewOrigin.x + (clientX - rect.left) / rect.width * viewW,
       y: viewOrigin.y + (clientY - rect.top) / rect.height * viewH,
     }
+  }
+
+  // Ab wann eine Bewegung als Ziehen statt Antippen zählt — in Bildschirm-
+  // Pixeln: als feste SVG-Einheit wäre die Schwelle stark herausgezoomt
+  // (z. B. bei eingeblendeter großer Map) kleiner als ein Pixel.
+  function dragThresholdSVG() {
+    const w = svgRef.current?.getBoundingClientRect().width
+    return w ? 6 * (vbSize / zoom) / w : 5
   }
 
   // Smallest zoom (largest zoom-out) that still fits all content — grows
@@ -970,7 +1088,8 @@ export default function MapCanvas({
       const dx = svgPos.x - dragging.startSVGX
       const dy = svgPos.y - dragging.startSVGY
       const dist = Math.sqrt(dx * dx + dy * dy)
-      setDragging(prev => ({ ...prev, moved: dist > 5 }))
+      const isDrag = dist > dragThresholdSVG()
+      setDragging(prev => ({ ...prev, moved: isDrag }))
       const newPos = { x: dragging.startPersonX + dx, y: dragging.startPersonY + dy }
       if (dragging.isPlace) {
         setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
@@ -982,7 +1101,9 @@ export default function MapCanvas({
           })
         }
       } else if (dragging.isOverlayBox) {
-        setOverlayBoxPositions(prev => ({ ...prev, [dragging.id]: newPos }))
+        // Erst ab echtem Ziehen speichern — Finger-Zittern beim Antippen
+        // würde das Kästchen sonst als "manuell platziert" festnageln.
+        if (isDrag || dragging.moved) setOverlayBoxPositions(prev => ({ ...prev, [dragging.id]: newPos }))
       } else if (dragging.overlayKey) {
         const parentPos = getParentPos(dragging.parentPersonId) || { x: cx, y: cy }
         setOverlayPositions(prev => ({
@@ -1067,7 +1188,8 @@ export default function MapCanvas({
     const dx = svgPos.x - dragging.startSVGX
     const dy = svgPos.y - dragging.startSVGY
     const dist = Math.sqrt(dx * dx + dy * dy)
-    setDragging(prev => ({ ...prev, moved: dist > 5 }))
+    const isDrag = dist > dragThresholdSVG()
+    setDragging(prev => ({ ...prev, moved: isDrag }))
     const newPos = { x: dragging.startPersonX + dx, y: dragging.startPersonY + dy }
     if (dragging.isPlace) {
       setPlacePositions(prev => ({ ...prev, [dragging.id]: newPos }))
@@ -1079,7 +1201,7 @@ export default function MapCanvas({
         })
       }
     } else if (dragging.isOverlayBox) {
-      setOverlayBoxPositions(prev => ({ ...prev, [dragging.id]: newPos }))
+      if (isDrag || dragging.moved) setOverlayBoxPositions(prev => ({ ...prev, [dragging.id]: newPos }))
     } else if (dragging.overlayKey) {
       const parentPos = getParentPos(dragging.parentPersonId) || { x: cx, y: cy }
       setOverlayPositions(prev => ({

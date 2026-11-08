@@ -168,39 +168,62 @@ export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 
 }
 
 /**
- * Pushes a single point clear of any {x, y, r} obstacle circle it's too
- * close to — same push-vector math as relaxLayout's "keep movable nodes
- * clear of fixedCircles" loop, just for one point instead of a batch.
- * Used to make an overlay box's own anchor obstacle-aware (its FOOTPRINT
- * was already reserved for other groups once resolved — this makes the
- * box's own position respect that too, instead of only ever computing a
- * context-free fan position).
+ * Lays out an overlay group as a rigid shape around the origin (0,0), using
+ * only the group's own constraints — so it can afterwards be translated as a
+ * whole (placeRigidShape) instead of squeezing single members between
+ * foreign nodes.
+ * base/nodes/edges/extraPositions: as for relaxLayout, relative to (0,0).
+ * placeCircles: [{x, y, r}] the group's own places (members avoid them).
+ * Returns { rel, circles, D }: member positions, every occupied circle
+ * (center box, members, places) and the shape's bounding radius.
  */
-export function pushClearOfObstacles(point, r, obstacles, gap = 12, iterations = 20) {
-  let x = point.x
-  let y = point.y
-  for (let iter = 0; iter < iterations; iter++) {
-    let moved = false
+export function buildRigidShape(base, nodes, { centerR = 58, boxR = 75, gap = 12, edges = [], extraPositions = {}, placeCircles = [], iterations = 120 } = {}) {
+  const withEdges = relaxLayout(base, nodes, { cx: 0, cy: 0, centerR, gap, iterations, edges, extraPositions, obstacles: placeCircles })
+  // Zweiter Durchlauf ohne Linien-Ausweichen: die Linien-Regel läuft in
+  // relaxLayout nach der Kreis-Abstoßung und kann Kreise wieder ineinander
+  // schieben — Kreise dürfen sich aber auf keinen Fall überlappen.
+  const rel = relaxLayout(withEdges, nodes, { cx: 0, cy: 0, centerR, gap, iterations, obstacles: placeCircles })
+  const circles = [{ x: 0, y: 0, r: boxR }]
+  nodes.forEach(n => {
+    const p = rel[n.id]
+    if (p) circles.push({ x: p.x, y: p.y, r: n.r })
+  })
+  placeCircles.forEach(c => circles.push(c))
+  let D = 0
+  circles.forEach(c => { D = Math.max(D, Math.hypot(c.x, c.y) + c.r) })
+  return { rel, circles, D }
+}
+
+/**
+ * Finds an anchor for a rigid shape (buildRigidShape) so that none of its
+ * circles comes closer than `gap` to any obstacle circle. Searches outward
+ * from `origin` along `dirAngle` (with small angular deviations), starting
+ * at `minDist`. Always terminates: beyond dMax every obstacle is cleared.
+ */
+export function placeRigidShape(shape, origin, dirAngle, obstacles, { gap = 150, minDist = 0, step = 60, deviations = [0, 15, -15, 30, -30, 45, -45] } = {}) {
+  const { circles, D } = shape
+  let dMax = minDist
+  for (const o of obstacles) {
+    dMax = Math.max(dMax, Math.hypot(o.x - origin.x, o.y - origin.y) + o.r + D + gap)
+  }
+  const fits = (ax, ay) => {
     for (const o of obstacles) {
-      const required = o.r + r + gap
-      const dx = x - o.x
-      const dy = y - o.y
-      const d = Math.sqrt(dx * dx + dy * dy)
-      if (d < required) {
-        const push = required - d
-        if (d < 0.01) {
-          // Exakt deckungsgleich — seltener Grenzfall, feste Ausweichrichtung
-          x += push
-        } else {
-          x += (dx / d) * push
-          y += (dy / d) * push
-        }
-        moved = true
+      if (Math.hypot(ax - o.x, ay - o.y) >= D + o.r + gap) continue
+      for (const c of circles) {
+        if (Math.hypot(ax + c.x - o.x, ay + c.y - o.y) < c.r + o.r + gap) return false
       }
     }
-    if (!moved) break
+    return true
   }
-  return { x, y }
+  for (let d = minDist; d < dMax; d += step) {
+    for (const dev of deviations) {
+      const a = dirAngle + dev * (Math.PI / 180)
+      const ax = origin.x + d * Math.cos(a)
+      const ay = origin.y + d * Math.sin(a)
+      if (fits(ax, ay)) return { x: ax, y: ay }
+    }
+  }
+  return { x: origin.x + dMax * Math.cos(dirAngle), y: origin.y + dMax * Math.sin(dirAngle) }
 }
 
 /**
