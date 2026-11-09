@@ -130,9 +130,9 @@
     /* Subtle dark wash behind chat / community headers */
     --color-header-wash:           #161618;
 
-    --map-line-center:             #7C7C82;
-    --map-line-conn:               #D1D1D6;
-    --map-line-place:              #A1887F;
+    --map-line-center:             #FFFFFF;
+    --map-line-conn:               #FFFFFF;
+    --map-line-place:              #FFFFFF;
 
     color-scheme: dark;
   }
