@@ -14,6 +14,13 @@ const CONN_COLORS = [
   { label: 'Pink', hex: '#EC407A' },
 ]
 
+// Standardfarben der Linien folgen dem Theme (--map-line-* in index.css).
+// '#C8BFB0' (Standard-Farbpunkt der Verbindungen) und '#8A7060' (Standard-
+// farbe jedes Ortes) stehen oft explizit in der DB und zählen daher wie
+// "keine Farbe"; selbst gewählte Farben bleiben unverändert.
+const connLineColor = c => (!c || c === '#C8BFB0') ? 'var(--map-line-conn)' : c
+const placeLineColor = c => (!c || c === '#8A7060') ? 'var(--map-line-place)' : c
+
 // Debounce helper
 function debounce(fn, delay) {
   let timer = null
@@ -1586,7 +1593,7 @@ export default function MapCanvas({
           if (ownerDisconnectedIds.has(p.id)) return null
           if (placeConnections.some(c => c.person_id === p.id)) return null
           const pos = getPos(p, i)
-          const lineColor = centerLineColors[p.id] || p.center_line_color || 'var(--color-warm-3)'
+          const lineColor = centerLineColors[p.id] || p.center_line_color || 'var(--map-line-center)'
           const isPickerOpen = centerLinePicker?.personId === p.id
           return (
             <g key={p.id + '_centerline'}>
@@ -1647,7 +1654,7 @@ export default function MapCanvas({
               <line
                 key={`ovbox_line_${boxKey}`}
                 x1={x1} y1={y1} x2={boxPos.x} y2={boxPos.y}
-                stroke="var(--color-warm-3)" strokeWidth={1.5} opacity={0.7}
+                stroke="var(--map-line-center)" strokeWidth={1.5} opacity={0.7}
                 style={{ pointerEvents: 'none' }}
               />
             )
@@ -1740,7 +1747,7 @@ export default function MapCanvas({
               <line
                 key={`overlay_cpl_${od.parentPersonId}_${pl.id}`}
                 x1={x1} y1={y1} x2={pos.x} y2={pos.y}
-                stroke={pl.color || 'var(--color-warm-3)'}
+                stroke={pl.color ? placeLineColor(pl.color) : 'var(--map-line-center)'}
                 strokeWidth={1.5}
                 opacity={0.7}
                 style={{ pointerEvents: 'none' }}
@@ -1818,7 +1825,7 @@ export default function MapCanvas({
                   key={`overlay_conn_${od.parentPersonId}_${c.id}`}
                   x1={srcPos.x} y1={srcPos.y}
                   x2={tgtPos.x} y2={tgtPos.y}
-                  stroke={c.color || '#C8BFB0'}
+                  stroke={connLineColor(c.color)}
                   strokeWidth={1.5}
                   opacity={0.7}
                   style={{ pointerEvents: 'none' }}
@@ -1860,7 +1867,7 @@ export default function MapCanvas({
                   <line
                     x1={originPos.x} y1={originPos.y}
                     x2={ox} y2={oy}
-                    stroke={op.center_line_color || 'var(--color-warm-3)'}
+                    stroke={op.center_line_color || 'var(--map-line-center)'}
                     strokeWidth={1.5}
                     opacity={0.7}
                     style={{ pointerEvents: 'none' }}
@@ -1970,7 +1977,7 @@ export default function MapCanvas({
           const y2 = tgtPos.y - uy * tgtR
           const midX = (x1 + x2) / 2
           const midY = (y1 + y2) / 2
-          const connColor = connColors[conn.id] || conn.color || '#C8BFB0'
+          const connColor = connLineColor(connColors[conn.id] || conn.color)
           const isPickerOpen = connColorPicker?.conn?.id === conn.id
           return (
             <g key={conn.id}>
@@ -2044,7 +2051,8 @@ export default function MapCanvas({
           const uy = dy / dist
           const x1 = cx + ux * userR
           const y1 = cy + uy * userR
-          const lineColor = placeCenterLineColors[pl.id] || pl.color || 'var(--color-warm-3)'
+          const rawPlaceLine = placeCenterLineColors[pl.id] || pl.color
+          const lineColor = rawPlaceLine ? placeLineColor(rawPlaceLine) : 'var(--map-line-center)'
           const isPickerOpen = centerLinePicker?.placeId === pl.id
           return (
             <g key={`cpl_${pl.id}`}>
@@ -2078,7 +2086,7 @@ export default function MapCanvas({
           if (!placePos || personIdx === -1) return null
           const personPos = getPos(people[personIdx], personIdx)
           const pl = places.find(p => p.id === conn.place_id)
-          const lineColor = placeConnColors[conn.id] || pl?.color || '#8A7060'
+          const lineColor = placeLineColor(placeConnColors[conn.id] || pl?.color)
           const isPickerOpen = placeConnColorPicker?.conn?.id === conn.id
           return (
             <g key={`pc_${conn.id}`}>

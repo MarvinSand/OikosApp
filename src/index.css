@@ -68,6 +68,12 @@
 
     /* Warm wash behind chat / community headers */
     --color-header-wash:           #F7F3EC;
+
+    /* Oikos-Karte: Standardfarben der Linien (Dark Mode hebt sie an, sonst
+       verschwinden sie auf Schwarz) */
+    --map-line-center:             var(--color-warm-3);
+    --map-line-conn:               #C8BFB0;
+    --map-line-place:              #8A7060;
   }
 
   /* ── Dark Mode (Instagram-Stil, babyblaue Akzente bleiben) ── */
@@ -123,6 +129,10 @@
 
     /* Subtle dark wash behind chat / community headers */
     --color-header-wash:           #161618;
+
+    --map-line-center:             #7C7C82;
+    --map-line-conn:               #D1D1D6;
+    --map-line-place:              #A1887F;
 
     color-scheme: dark;
   }
