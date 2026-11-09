@@ -323,7 +323,7 @@ export default function PrayerCard({
 
         {/* Verknüpfte Bibelstelle */}
         {prayer.bibleVerse && (
-          <BibleReferenceChip attachment={prayer.bibleVerse} variant="block" />
+          <BibleReferenceChip attachment={prayer.bibleVerse} variant="block" openAsSheet />
         )}
 
         {/* Herkunft: für wen / aus welcher Map / von wem – bzw. Community */}
