@@ -1139,7 +1139,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         )}
 
         {post.bible_reference && (
-          <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" />
+          <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" openAsSheet />
         )}
 
         {post.type === 'photo' && post.photo_url && (

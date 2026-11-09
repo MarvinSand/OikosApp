@@ -281,7 +281,7 @@ export default function FeedPostView() {
               <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 8px' }}>{post.title}</p>
             )}
             {post.bible_reference && (
-              <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" />
+              <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" openAsSheet />
             )}
             {post.type === 'photo' && post.photo_url && (
               <img src={post.photo_url} alt="" style={{ width: '100%', maxHeight: 360, objectFit: 'cover', borderRadius: 12, marginBottom: 10, display: 'block' }} />

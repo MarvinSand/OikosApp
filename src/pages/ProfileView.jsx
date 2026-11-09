@@ -222,7 +222,6 @@ export default function ProfileView() {
         <Suspense fallback={null}>
           <QrHubSheet onClose={() => setShowQr(false)} />
         </Suspense>
-      )} onClose={() => setShowQr(false)} />
       )}
 
       {/* Profile section */}
