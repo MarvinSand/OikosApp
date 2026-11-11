@@ -11,7 +11,7 @@ function ToastContainer({ toasts }) {
     }}>
       {toasts.map(t => (
         <div key={t.id} style={{
-          backgroundColor: t.type === 'error' ? '#C0392B' : t.type === 'info' ? 'var(--color-text)' : 'var(--color-accent-dark)',
+          backgroundColor: t.type === 'error' ? '#C0392B' : t.type === 'info' ? 'var(--color-text)' : '#0B6BCB' /* fest statt --color-accent-dark: im Dark Mode war Weiß auf Hellblau kaum lesbar */,
           color: t.type === 'info' ? 'var(--color-bg)' : 'white',
           padding: '12px 16px',
           borderRadius: 12,

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import PageHeader from '../components/layout/PageHeader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, Shield, ChevronRight,
@@ -576,22 +577,7 @@ export default function SettingsView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
-      <header
-        className="flex items-center gap-3 px-2"
-        style={{
-          height: 52, borderBottom: '1px solid var(--color-border)',
-          backgroundColor: 'var(--color-bg)', position: 'sticky', top: 0, zIndex: 10,
-        }}
-      >
-        <button
-          onClick={handleBack}
-          aria-label="Zurück"
-          style={{ width: 40, height: 40, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ArrowLeft size={22} />
-        </button>
-        <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>{title}</h2>
-      </header>
+<PageHeader title={title} onBack={handleBack} />
 
       {/* ─── HUB ─── */}
       {section === 'hub' && (

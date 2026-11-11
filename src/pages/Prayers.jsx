@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useHideOnScroll } from '../hooks/useHideOnScroll'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, SlidersHorizontal, Play } from 'lucide-react'
 import { usePrayerFeed, PRAYER_SOURCES } from '../hooks/usePrayerFeed'
@@ -421,6 +422,7 @@ export default function Prayers() {
   const [highlightId, setHighlightId] = useState(null)
 
   const rootRef = useRef(null)
+  const fabHidden = useHideOnScroll(rootRef)
 
   // Gebetsmodus / Bookmark / Weiterleiten / Gebetsziel
   const [showPrayerModeSetup, setShowPrayerModeSetup] = useState(false)
@@ -811,13 +813,18 @@ export default function Prayers() {
         onClick={() => setShowCreate(true)}
         aria-label="Gebet teilen"
         style={{
-          position: 'fixed', bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)', right: 20,
-          width: 52, height: 52, borderRadius: '50%',
+          position: 'fixed', bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)', right: 16,
+          width: 48, height: 48, borderRadius: '50%',
           backgroundColor: 'var(--color-accent)', color: '#fff',
           border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 26, lineHeight: 1,
+          fontSize: 24, lineHeight: 1,
           boxShadow: '0 4px 16px rgba(0,0,0,0.18)', zIndex: 40,
+          // Beim Runterscrollen ausblenden, damit er keine Karten-Buttons verdeckt
+          transform: fabHidden ? 'translateY(calc(100% + 24px))' : 'none',
+          opacity: fabHidden ? 0 : 1,
+          pointerEvents: fabHidden ? 'none' : 'auto',
+          transition: 'transform 0.22s ease, opacity 0.22s ease',
         }}
       >
         +

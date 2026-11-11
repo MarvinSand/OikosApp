@@ -38,7 +38,7 @@ export default function PrayerCardList({
   const { user } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
-  const { logsMap, notesMap, pushLog, pushNote, removeNote } = usePrayerEngagement(prayers)
+  const { logsMap, notesMap, pending, pushLog, pushNote, removeNote } = usePrayerEngagement(prayers)
   const actions = usePrayerActions()
   const [listPrayer, setListPrayer] = useState(null)
   const [forwardPrayer, setForwardPrayer] = useState(null)
@@ -134,6 +134,7 @@ export default function PrayerCardList({
             <PrayerCard
               prayer={prayer}
               logs={logsMap[prayer.key]}
+              engagementPending={pending && !logsMap[prayer.key]}
               notes={notesMap[prayer.key]}
               currentUserId={user?.id}
               goal={goalByKey?.get(prayer.key) || null}

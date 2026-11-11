@@ -112,7 +112,7 @@ export default function CommentDetailView() {
     return (
       <div className="min-h-screen bg-bg">
         <div className="px-4 pt-12 space-y-3">
-          <div className="h-8 bg-warm-3/40 rounded w-1/3 mb-6" />
+          <div className="h-8 bg-warm-3 rounded w-1/3 mb-6" />
           <div className="h-32 bg-surface rounded-2xl" />
           <div className="h-16 bg-surface rounded-2xl" />
         </div>

@@ -1511,7 +1511,9 @@ export default function MapCanvas({
       {/* Connection mode banner + hint */}
       {connectionMode && (
         <div style={{
-          position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)',
+          // unterhalb der Menüleiste (54px + ~50px Höhe) – bei 72 lag der
+          // „Aktiv"-Hinweis zur Hälfte dahinter
+          position: 'absolute', top: 114, left: '50%', transform: 'translateX(-50%)',
           zIndex: 10,
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
         }}>

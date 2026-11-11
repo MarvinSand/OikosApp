@@ -590,7 +590,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       )}
 
       {/* Header Island (OIKOS mode only) */}
-      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-paper/90 backdrop-blur-md border border-warm-3 px-4 py-2.5 flex items-center justify-between z-30 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
+      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-surface border border-warm-3 px-4 py-2.5 flex items-center justify-between z-30 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
           className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg min-w-0 flex-1 mr-2 text-left hover:opacity-80 transition-opacity"
@@ -606,7 +606,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             <button
               onClick={() => setShowColorFilter(v => !v)}
               title="Nach Farbe filtern"
-              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Filter size={18} />
             </button>
@@ -617,21 +617,21 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             <button
               onClick={() => setConnectionMode(v => !v)}
               title="Verbindungsmodus"
-              className={`p-1 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Link size={18} />
             </button>
             <button
               onClick={() => setShowColorFilter(v => !v)}
               title="Nach Farbe filtern"
-              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Filter size={18} />
             </button>
             <button
               onClick={() => setShowGenerationen(v => !v)}
               title="Generationen-Ansicht"
-              className={`p-1 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Layers size={18} />
             </button>
@@ -680,7 +680,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                 ref={addMenuBtnRef}
                 onClick={() => setShowAddMenu(v => !v)}
                 aria-label="Hinzufügen"
-                className="flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1 bg-warm-1 hover:opacity-90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
               >
                 {/* Text erst ab ~420px: auf iPhone-Breite (390–402px) schob er
                     die Leiste sonst über den rechten Bildschirmrand hinaus. */}
@@ -708,7 +708,8 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       </div>
 
       {/* Gebetsmodus-Button (babyblau, unter der Menübar) */}
-      {activeTab === 'oikos' && activeMap && (
+      {/* Im Verbindungsmodus ausgeblendet – er lag sonst über dem „Aktiv"-Hinweis */}
+      {activeTab === 'oikos' && activeMap && !connectionMode && (
         <button
           onClick={startMapPrayerMode}
           disabled={loadingPrayerMode}

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
+import { useHideOnScroll } from '../hooks/useHideOnScroll'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Newspaper, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark, ArrowLeft } from 'lucide-react'
 import ShareSheet from '../components/feed/ShareSheet'
@@ -1206,6 +1207,7 @@ function FeedTab() {
 
   // Kollabierender Header beim Scrollen (rAF + Sperre gegen Flackern)
   const rootRef = useRef(null)
+  const fabHidden = useHideOnScroll(rootRef)
 
   // Direkt den Composer öffnen, wenn man vom Profil "+ Beitrag" kommt
   useEffect(() => {
@@ -1445,9 +1447,13 @@ function FeedTab() {
         style={{
           position: 'fixed',
           bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)',
-          right: 20,
-          width: 52,
-          height: 52,
+          right: 16,
+          transform: fabHidden ? 'translateY(calc(100% + 24px))' : 'none',
+          opacity: fabHidden ? 0 : 1,
+          pointerEvents: fabHidden ? 'none' : 'auto',
+          transition: 'transform 0.22s ease, opacity 0.22s ease',
+          width: 48,
+          height: 48,
           borderRadius: '50%',
           backgroundColor: 'var(--color-accent)',
           color: '#fff',
@@ -1456,7 +1462,7 @@ function FeedTab() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 26,
+          fontSize: 24,
           lineHeight: 1,
           boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
           zIndex: 40,

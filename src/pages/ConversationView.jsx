@@ -1693,7 +1693,7 @@ export default function ConversationView() {
       {/* Header */}
       <div className="bg-gradient-to-br from-[var(--color-header-wash)] to-[var(--color-bg)] px-3 pt-3 pb-3 shrink-0 relative overflow-hidden border-b border-warm-3">
         {/* Deko circles */}
-        <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full bg-warm-3/35 pointer-events-none blur-xl" />
+        <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full bg-warm-3 pointer-events-none blur-xl" />
 
         <div className="flex items-center gap-2 relative z-10">
           <button
@@ -1705,8 +1705,8 @@ export default function ConversationView() {
 
           {infoLoading ? (
             <div className="flex items-center gap-3 flex-1">
-              <div className="w-10 h-10 rounded-full bg-warm-3/50 animate-pulse" />
-              <div className="w-24 h-4 rounded bg-warm-3/50 animate-pulse" />
+              <div className="w-10 h-10 rounded-full bg-warm-3 animate-pulse" />
+              <div className="w-24 h-4 rounded bg-warm-3 animate-pulse" />
             </div>
           ) : (
             <div

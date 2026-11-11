@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import PageHeader from '../components/layout/PageHeader'
 import { ArrowLeft, Mail } from 'lucide-react'
 import { useFriendships } from '../hooks/useFriendships'
 import { useAllNotificationPrefs } from '../hooks/useAllNotificationPrefs'
@@ -41,24 +42,7 @@ export default function NotificationSettingsView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
-      <header
-        className="flex items-center gap-3 px-2"
-        style={{
-          height: 52, borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
-          position: 'sticky', top: 0, zIndex: 10,
-        }}
-      >
-        <button
-          onClick={() => navigate(-1)}
-          style={{ width: 40, height: 40, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          aria-label="Zurück"
-        >
-          <ArrowLeft size={22} />
-        </button>
-        <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-          Benachrichtigungs-Einstellungen
-        </h2>
-      </header>
+      <PageHeader title="Benachrichtigungs-Einstellungen" />
 
       {/* Per E-Mail benachrichtigen */}
       <div className="px-4 pt-5">

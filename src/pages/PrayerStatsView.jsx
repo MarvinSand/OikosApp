@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import PageHeader from '../components/layout/PageHeader'
 import { ChevronLeft } from 'lucide-react'
 import { usePrayerStats } from '../hooks/usePrayerStats'
 
@@ -237,28 +238,7 @@ export default function PrayerStatsView() {
       margin: '0 auto',
     }}>
       {/* Header */}
-      <div style={{
-        backgroundColor: 'var(--color-white)',
-        borderBottom: '1px solid var(--color-warm-3)',
-        padding: '14px 16px',
-        position: 'sticky', top: 0, zIndex: 10,
-        display: 'flex', alignItems: 'center', gap: 12,
-      }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4, display: 'flex', alignItems: 'center' }}
-        >
-          <ChevronLeft size={22} />
-        </button>
-        <div>
-          <h2 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            Meine Gebetsreise
-          </h2>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0, fontStyle: 'italic' }}>
-            Deine persönliche Geschichte mit Gott
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Meine Gebetsreise" subtitle="Deine persönliche Geschichte mit Gott" />
 
       <div style={{ padding: '16px 16px 0' }}>
         {loading ? (

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import PageHeader from '../components/layout/PageHeader'
 import { ArrowLeft } from 'lucide-react'
 import { useAnsweredPrayers } from '../hooks/useAnsweredPrayers'
 import PrayerCardList from '../components/prayer/PrayerCardList'
@@ -61,40 +62,19 @@ export default function AnsweredPrayersView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:max-w-2xl md:mx-auto">
       {/* Header */}
-      <div style={{
-        backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)',
-        padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10,
-        backdropFilter: 'blur(8px)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
-            onClick={() => navigate('/prayers')}
-            style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 6, borderRadius: 8, flexShrink: 0 }}
-          >
-            <ArrowLeft size={22} />
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 20 }}>🎉</span>
-              <h1 style={{
-                fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700,
-                color: 'var(--color-text)', margin: 0,
-              }}>
-                Erhörte Gebete
-              </h1>
-            </div>
-          </div>
-          {totalCount > 0 && (
-            <span style={{
-              fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700,
-              color: '#27AE60', backgroundColor: '#DFF5E8',
-              padding: '3px 10px', borderRadius: 20,
-            }}>
-              {totalCount} ✓
-            </span>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Erhörte Gebete"
+        onBack={() => navigate('/prayers')}
+        right={totalCount > 0 ? (
+          <span style={{
+            fontSize: 13, fontWeight: 700,
+            color: 'var(--color-success)', backgroundColor: 'var(--color-bg-secondary)',
+            padding: '3px 10px', borderRadius: 20,
+          }}>
+            {totalCount} ✓
+          </span>
+        ) : null}
+      />
 
       {/* Summary banner */}
       {!loading && totalCount > 0 && (

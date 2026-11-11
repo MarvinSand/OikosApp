@@ -321,7 +321,7 @@ export default function Auth() {
                       onChange={e => setFullName(e.target.value)} 
                       placeholder="Max Mustermann" 
                       required 
-                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                      className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -335,7 +335,7 @@ export default function Auth() {
                       minLength={3}
                       autoCapitalize="none"
                       autoCorrect="off"
-                      className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                      className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -368,7 +368,7 @@ export default function Auth() {
                   onChange={e => setEmail(e.target.value)} 
                   placeholder="name@beispiel.de" 
                   required 
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
 
@@ -392,7 +392,7 @@ export default function Auth() {
                     onChange={e => setPassword(e.target.value)} 
                     placeholder="Mindestens 6 Zeichen" 
                     required minLength={6} 
-                    className="w-full pl-4 pr-12 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                   />
                   <button 
                     type="button" 
@@ -468,7 +468,7 @@ export default function Auth() {
               type="button"
               onClick={youversionSignIn.start}
               disabled={youversionSignIn.starting}
-              className="w-full py-3.5 rounded-xl font-semibold text-dark bg-paper border-1.5 border-warm-3 hover:border-warm-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl font-semibold text-dark bg-paper border-[1.5px] border-warm-3 hover:border-warm-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2"
             >
               <BookMarked size={18} />
               {youversionSignIn.starting ? 'Einen Moment...' : (view === 'login' ? 'Mit YouVersion anmelden' : 'Mit YouVersion registrieren')}
@@ -510,7 +510,7 @@ export default function Auth() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="name@beispiel.de"
                   required
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
 
@@ -553,7 +553,7 @@ export default function Auth() {
                   onChange={e => resetFlow.setCode(e.target.value)}
                   placeholder="6-stelliger Code"
                   required
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light tracking-widest"
+                  className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light tracking-widest"
                 />
               </div>
 
@@ -566,7 +566,7 @@ export default function Auth() {
                   placeholder="Mindestens 8 Zeichen"
                   required
                   minLength={8}
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
 
@@ -578,7 +578,7 @@ export default function Auth() {
                   onChange={e => resetFlow.setConfirm(e.target.value)}
                   placeholder="Passwort wiederholen"
                   required
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
+                  className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
               </div>
 
@@ -642,7 +642,7 @@ export default function Auth() {
                   placeholder="••••••"
                   aria-label="6-stelliger Bestätigungscode"
                   required
-                  className="w-full px-4 py-3 rounded-xl border-1.5 border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light text-center text-2xl font-semibold tracking-[0.5em] tabular-nums"
+                  className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light text-center text-2xl font-semibold tracking-[0.5em] tabular-nums"
                 />
                 <p className="text-xs text-dark-light ml-1 mt-1">Keine E-Mail erhalten? Schau auch im Spam-Ordner nach.</p>
               </div>

@@ -158,6 +158,8 @@ export default function PrayerCard({
   prayer,
   logs,
   notes,
+  // Zähler werden noch geladen (und es gibt keinen gecachten Stand)
+  engagementPending = false,
   currentUserId,
   goal = null,
   showSourceBadge = false,
@@ -387,6 +389,9 @@ export default function PrayerCard({
                   {peopleCount} {peopleCount === 1 ? 'Person' : 'Personen'} · {totalCount} {totalCount === 1 ? 'Gebet' : 'Gebete'}
                 </span>
               </>
+            ) : engagementPending ? (
+              // Platzhalter statt „Noch keine Gebete", solange die Zahlen laden
+              <span aria-hidden="true" className="animate-pulse" style={{ display: 'inline-block', width: 150, height: 26, borderRadius: 20, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }} />
             ) : (
               <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>
                 Noch keine Gebete
@@ -398,7 +403,7 @@ export default function PrayerCard({
         </div>
 
         {/* Letztes Gebet – eigenes und fremdes */}
-        <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap', visibility: engagementPending ? 'hidden' : 'visible' }}>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
             Du: {formatLastPrayed(myLastPrayedAt)}
           </span>

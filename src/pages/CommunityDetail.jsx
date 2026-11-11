@@ -295,7 +295,13 @@ function CommunityReportsTab({ communityId }) {
   }
 
   if (loading) return <p style={{ padding: 16, color: 'var(--color-text-secondary)' }}>Laden…</p>
-  if (rows.length === 0) return <p style={{ padding: 16, color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>Keine offenen Meldungen in dieser Community.</p>
+  if (rows.length === 0) return (
+    // Gleiches Muster wie die leeren Zustände der anderen Tabs
+    <div style={{ textAlign: 'center', padding: '30px 16px' }}>
+      <p style={{ fontSize: 32, margin: '0 0 8px' }}>🛡️</p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Keine offenen Meldungen in dieser Community.</p>
+    </div>
+  )
 
   return (
     <div style={{ padding: 12 }}>
@@ -711,7 +717,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
   // das Profil dahinter.
   return (
     <>
-      <div onClick={onClose} className="fixed inset-0 bg-dark/20 backdrop-blur-[1px] z-[70] transition-opacity" />
+      <div onClick={onClose} className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[70] transition-opacity" />
       <div ref={sheetRef} className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[28px] z-[71] p-6 pb-12 shadow-[0_-8px_30px_rgba(44,36,22,0.15)] animate-[sheetSlideUp_0.25s_ease-out]">
         <div className="w-10 h-1.5 bg-warm-3 rounded-full mx-auto mb-6" />
         
@@ -750,7 +756,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
               {!isLastAdmin && (
                 <button
                   onClick={() => { onClose(); onRoleChange(member.user_id, member.role === 'admin' ? 'member' : 'admin') }}
-                  className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border-1.5 border-warm-3 text-dark font-serif font-bold text-[14px] hover:bg-warm-4 transition-colors"
+                  className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-warm-3 text-dark font-serif font-bold text-[14px] hover:bg-warm-4 transition-colors"
                 >
                   {member.role === 'admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
                   {member.role === 'admin' ? 'Admin-Rechte entziehen' : 'Zum Admin machen'}
@@ -944,8 +950,8 @@ function SettingsSheet({
       {showQr && (
         <QrShareSheet title={community.name} subtitle={community.is_public ? 'Öffentliche Community' : 'Einladung per QR-Code'} url={communityLink(community)} onClose={() => setShowQr(false)} />
       )}
-      <div onClick={onClose} className="fixed inset-0 bg-dark/40 backdrop-blur-[2px] z-50 transition-opacity" />
-      <div ref={sheetRef} className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface/95 backdrop-blur-xl rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
+      <div onClick={onClose} className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 transition-opacity" />
+      <div ref={sheetRef} className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
         <div className="w-9 h-1 bg-warm-3 rounded-full mx-auto mb-5" />
         
         <div className="flex items-center justify-between mb-6">
@@ -956,12 +962,12 @@ function SettingsSheet({
           <div className="flex flex-col gap-4">
             <div>
               <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Name</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
+              <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
             </div>
             
             <div>
               <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Beschreibung</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] resize-none focus:outline-none focus:border-warm-1" />
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] resize-none focus:outline-none focus:border-warm-1" />
             </div>
 
             {isGemeinde && (
@@ -974,7 +980,7 @@ function SettingsSheet({
                 </div>
                 <div>
                   <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Treffzeit</label>
-                  <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder="z.B. Wöchentlich, Mittwoch 19 Uhr" className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
+                  <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder="z.B. Wöchentlich, Mittwoch 19 Uhr" className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
                 </div>
               </>
             )}
@@ -1078,7 +1084,7 @@ function SettingsSheet({
 
             {/* Offene Beitrittsanfragen */}
             {joinRequests.length > 0 && (
-              <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4">
+              <div className="bg-surface border-[1.5px] border-warm-3 rounded-xl p-4">
                 <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3">
                   Beitrittsanfragen ({joinRequests.length})
                 </p>
@@ -1116,7 +1122,7 @@ function SettingsSheet({
             </button>
 
             {!isPublic && community.invite_code && (
-              <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4 mt-2">
+              <div className="bg-surface border-[1.5px] border-warm-3 rounded-xl p-4 mt-2">
                 <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
                   <Shield size={12} /> Einladungscode
                 </p>
@@ -1126,7 +1132,7 @@ function SettingsSheet({
                     <button onClick={generateNewCode} className="p-2 border border-warm-3 rounded-lg text-dark-muted hover:bg-black/5" title="Code erneuern">
                       <RefreshCw size={16} />
                     </button>
-                    <button onClick={copyCode} className="flex items-center gap-1.5 px-3 py-2 border-1.5 border-warm-1 rounded-lg text-warm-1 font-semibold text-sm hover:bg-warm-1 hover:text-bg transition-colors">
+                    <button onClick={copyCode} className="flex items-center gap-1.5 px-3 py-2 border-[1.5px] border-warm-1 rounded-lg text-warm-1 font-semibold text-sm hover:bg-warm-1 hover:text-bg transition-colors">
                       <Copy size={14} /> Kopieren
                     </button>
                   </div>
@@ -1134,7 +1140,7 @@ function SettingsSheet({
               </div>
             )}
 
-            <button onClick={handleSave} disabled={!isChanged || saving} className={`w-full py-3.5 rounded-xl font-serif text-[15px] font-bold mt-2 transition-all ${isChanged ? 'bg-warm-1 text-bg shadow-md' : 'bg-warm-3/50 text-dark-muted'}`}>
+            <button onClick={handleSave} disabled={!isChanged || saving} className={`w-full py-3.5 rounded-xl font-serif text-[15px] font-bold mt-2 transition-all ${isChanged ? 'bg-warm-1 text-bg shadow-md' : 'bg-warm-3 text-dark-muted'}`}>
               {saving ? 'Speichere...' : 'Änderungen speichern'}
             </button>
           </div>
@@ -1146,7 +1152,7 @@ function SettingsSheet({
 
         <div className="mt-8 pt-6 border-t border-warm-3">
           {!showLeaveConfirm ? (
-            <button onClick={() => setShowLeaveConfirm(true)} className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-1.5 border-red-200 text-red-600 font-serif text-[15px] font-bold hover:bg-red-50 transition-colors">
+            <button onClick={() => setShowLeaveConfirm(true)} className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-[1.5px] border-red-200 text-red-600 font-serif text-[15px] font-bold hover:bg-red-50 transition-colors">
               <LogOut size={18} /> Community verlassen
             </button>
           ) : (
@@ -1166,7 +1172,7 @@ function SettingsSheet({
             {!showDeleteConfirm ? (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-1.5 border-red-300 bg-red-50 text-red-700 font-serif text-[15px] font-bold hover:bg-red-100 transition-colors"
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-[1.5px] border-red-300 bg-red-50 text-red-700 font-serif text-[15px] font-bold hover:bg-red-100 transition-colors"
               >
                 <Trash2 size={18} /> Community löschen
               </button>
@@ -1181,7 +1187,7 @@ function SettingsSheet({
                 <input
                   type="text" value={deleteTyped} onChange={e => setDeleteTyped(e.target.value)}
                   placeholder={community.name}
-                  className="w-full bg-surface border-1.5 border-red-300 rounded-xl px-4 py-2.5 font-serif text-[15px] mb-3 focus:outline-none"
+                  className="w-full bg-surface border-[1.5px] border-red-300 rounded-xl px-4 py-2.5 font-serif text-[15px] mb-3 focus:outline-none"
                 />
                 <div className="flex gap-3">
                   <button

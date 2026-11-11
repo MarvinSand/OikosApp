@@ -22,6 +22,10 @@ export function usePrayerEngagement(prayers) {
   const [logsMap, setLogsMap] = useState(cached?.logs ?? EMPTY)
   const [notesMap, setNotesMap] = useState(cached?.notes ?? EMPTY)
   const [loading, setLoading] = useState(false)
+  // Für welche ID-Liste liegt schon eine Server-Antwort vor? Solange das nicht
+  // die aktuelle ist, sind Karten ohne (gecachte) Zahlen „noch unbekannt" –
+  // nicht „noch keine Gebete".
+  const [loadedSignature, setLoadedSignature] = useState(null)
 
   // Nur die IDs als Abhängigkeit – sonst lädt der Effekt bei jedem Render neu.
   // Optimistische 'temp-…'-IDs auslassen: die RPC erwartet uuid[] und würde
@@ -40,12 +44,13 @@ export function usePrayerEngagement(prayers) {
       setLogsMap(EMPTY)
       setNotesMap(EMPTY)
       setLoading(false)
+      setLoadedSignature(`${oIds.join(',')}|${pIds.join(',')}`)
       return
     }
     // Logs + Kommentare + Profile in EINER RPC (phase77, SECURITY INVOKER) statt
     // 4 parallelen Queries und einer davon abhängigen Profil-Query.
     const { data, error } = await supabase.rpc('get_prayer_engagement', { p_oikos_ids: oIds, p_personal_ids: pIds })
-    if (error || !data) { setLoading(false); return }
+    if (error || !data) { setLoading(false); setLoadedSignature(`${oIds.join(',')}|${pIds.join(',')}`); return }
     const oikosLogsWithProfile = data.oikosLogs || []
     const personalLogsWithProfile = data.personalLogs || []
     const oikosNotesWithProfile = data.oikosNotes || []
@@ -75,6 +80,7 @@ export function usePrayerEngagement(prayers) {
     if (signatureRef.current !== `${oIds.join(',')}|${pIds.join(',')}`) return
     setLogsMap(nextLogs)
     setNotesMap(nextNotes)
+    setLoadedSignature(signatureRef.current)
     writeCache(user?.id, 'prayerEngagement', { logs: nextLogs, notes: nextNotes })
     setLoading(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,7 +102,7 @@ export function usePrayerEngagement(prayers) {
     setNotesMap(prev => ({ ...prev, [prayerKey]: (prev[prayerKey] || []).filter(n => n.id !== noteId) }))
   }
 
-  return { logsMap, notesMap, loading, reload: load, pushLog, pushNote, removeNote }
+  return { logsMap, notesMap, loading, pending: loadedSignature !== signature, reload: load, pushLog, pushNote, removeNote }
 }
 
 // Aus den Logs eines Gebets die Anzeigewerte der Karte ableiten:

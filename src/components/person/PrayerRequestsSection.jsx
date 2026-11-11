@@ -11,7 +11,8 @@ import { normalizePrayer, KIND_OIKOS } from '../../lib/prayerModel'
 function AddRequestForm({ onSave, onCancel }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [isPublic, setIsPublic] = useState(true)
+  // Standard privat: es geht um namentlich genannte Dritte – öffentlich nur bewusst.
+  const [isPublic, setIsPublic] = useState(false)
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {

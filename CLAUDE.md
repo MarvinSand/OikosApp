@@ -10,6 +10,9 @@
 - **iOS-Push:** Der AppDelegate muss `didRegisterForRemoteNotificationsWithDeviceToken`/`didFailToRegister…` an Capacitor weiterreichen, sonst kommt nie ein Token an (`device_tokens` war live leer). Nach dem nächsten TestFlight-Build `select count(*) from device_tokens` prüfen.
 - **Vollbild-Overlays (`fixed; inset: 0`)** brauchen selbst `env(safe-area-inset-top)` (Gebetsmodus-Schließen-Button, Toasts lagen unter der Statusleiste).
 - **Logout:** `signOut({ scope: 'local' })` – der Standard meldet alle Geräte ab. Immer über `logout()` aus `useAuth` (entfernt auch das Push-Token dieses Geräts).
+- **Tailwind-Deckkraft auf Variablenfarben ist wirkungslos:** Alle Theme-Farben sind `var(--…)` – für `bg-surface/95`, `bg-dark/40`, `bg-warm-1/10` usw. erzeugt Tailwind 3 **gar kein CSS** (Sheet durchsichtig, Backdrop ohne Abdunklung, aktiver Zustand unsichtbar, Skelette fehlten). Stattdessen: Backdrops `bg-black/40`, Flächen deckend (`bg-surface`), aktive Zustände `bg-accent-light`. Ebenso ungültig: `border-1.5` → `border-[1.5px]`. Nach neuen Klassen im gebauten CSS nachsehen (`grep` in `dist/assets/index-*.css`).
+- **Unterseiten-Kopfzeile:** immer `components/layout/PageHeader.jsx` (Titel, optional `subtitle`, `right`, `children` für eine zweite Zeile) statt eigener Header.
+- **Schwebende „+"-Buttons:** `useHideOnScroll(rootRef)` blendet sie beim Runterscrollen aus. Gebetszähler: `engagementPending` zeigt ein Skelett statt „Noch keine Gebete".
 - **Testen gegen Live:** Demo-Konten `oikosdemo@oikosapp.net` / `oikosdemo2@oikosapp.net` (auch für die App-Review). Nur zwischen den Demo-Konten interagieren, nicht mit echten Nutzern.
 
 ## Safe-Area: `fixed inset-0`-Overlays und Border-Box-Höhen (Nov. 2026)
