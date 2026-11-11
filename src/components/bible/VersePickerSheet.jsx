@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { X } from 'lucide-react'
-import { useChapterText, useBibleVersions, useFavoriteBibleVersions, DEFAULT_BIBLE_ID } from '../../hooks/useBible'
+import { useChapterText, useVersionMeta, useFavoriteBibleVersions, DEFAULT_BIBLE_ID } from '../../hooks/useBible'
 import { formatReferenceLabel } from '../../lib/bibleLink'
 import { verseTextFromContainer } from '../../lib/biblePassageHtml'
-import { DEFAULT_STARRED_VERSIONS } from '../../lib/bibleVersionDefaults'
 import BookChapterPicker from './BookChapterPicker'
 import VersionPicker from './VersionPicker'
 
@@ -25,10 +24,9 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
     ?? DEFAULT_BIBLE_ID)
   const contentRef = useRef(null)
 
-  const { versions: bibleVersions, loading: versionsLoading } = useBibleVersions({ enabled: showVersionPicker })
   const { favorites: favoriteVersionIds, toggleFavorite: toggleFavoriteVersion } = useFavoriteBibleVersions()
-  const currentVersionMeta = DEFAULT_STARRED_VERSIONS.find(v => String(v.id) === String(bibleId))
-    ?? bibleVersions?.find(v => String(v.id) === String(bibleId))
+  const versionMetaOf = useVersionMeta([bibleId])
+  const currentVersionMeta = versionMetaOf(bibleId)
 
   const { html, loading, error } = useChapterText(bibleId, book, chapter)
 
@@ -97,7 +95,7 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <button onClick={() => setStep('book')} className="text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
           Buch wechseln
@@ -150,8 +148,6 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
 
       {showVersionPicker && (
         <VersionPicker
-          versions={bibleVersions}
-          loading={versionsLoading}
           currentId={bibleId}
           favorites={favoriteVersionIds}
           onToggleFavorite={toggleFavoriteVersion}

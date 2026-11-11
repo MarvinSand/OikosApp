@@ -4,7 +4,7 @@ import { useAuth } from './useAuth'
 import { fetchBiblePath } from '../lib/youversion'
 import { wrapVersesInHtml } from '../lib/biblePassageHtml'
 import { HIGHLIGHT_COLORS, normalizeColorKey, colorsEqual, isPresetColor } from '../lib/bibleColors'
-import { DEFAULT_STARRED_IDS } from '../lib/bibleVersionDefaults'
+import { DEFAULT_STARRED_IDS, DEFAULT_STARRED_VERSIONS } from '../lib/bibleVersionDefaults'
 
 // Numerische YouVersion-Bibel-ID. 73 = "Hoffnung für alle" (Default). Alle
 // ~1479 verfügbaren Übersetzungen liefert useBibleVersions() – darüber lässt
@@ -131,61 +131,139 @@ export function usePassageText(bibleId, book, chapter, verseStart, verseEnd) {
   return { html, loading, error }
 }
 
-// Modul-Cache: die Liste aller Übersetzungen ändert sich praktisch nie
-// innerhalb einer Session, muss also nicht bei jedem Öffnen des Version-
-// Pickers neu über ~20 Seiten nachgeladen werden.
-let bibleVersionsCache = null // { versions, timestamp }
-const BIBLE_VERSIONS_CACHE_MS = 6 * 60 * 60 * 1000
+// ─── Übersetzungs-Katalog (pro Sprache) ───
+//
+// Der Gesamtkatalog (~1479 Übersetzungen, ~20 Seiten) wird NICHT mehr am Stück
+// geladen. Stattdessen: Favoriten kommen aus Defaults/lokalem Meta-Cache, und
+// erst nach Sprachwahl wird nur diese Sprache abgerufen
+// (GET /v1/bibles?language_ranges[]=<tag>, paginiert über next_page_token).
 
-// GET /v1/bibles?language_ranges[]=* liefert ALLE Übersetzungen (aktuell
-// ~1479 Stück, Feld total_size), aber paginiert über next_page_token/
-// page_token (~65 Einträge pro Seite). Ohne language_ranges[] lehnt die API
-// mit 422 ab - "*" ist der (undokumentierte, aber funktionierende) Wildcard-
-// Language-Range.
-// `enabled: false` lädt nichts (auch nicht aus dem Cache) - Standard-Favoriten
-// + aktuell gewählte Übersetzung kommen ohne API-Call aus
-// bibleVersionDefaults.js, der ~1479 Einträge umfassende Katalog wird erst
-// abgerufen, sobald der Nutzer den Version-Picker tatsächlich öffnet.
-export function useBibleVersions({ enabled = true } = {}) {
-  const [versions, setVersions] = useState(bibleVersionsCache?.versions ?? null)
-  const [loading, setLoading] = useState(enabled && !bibleVersionsCache)
-  const [error, setError] = useState(null)
+const VERSION_META_KEY = 'oikos_bible_version_meta_v1'
+const versionMeta = new Map() // id -> { id, title, localized_title, abbreviation, localized_abbreviation, language_tag }
+let versionMetaLoaded = false
+const metaListeners = new Set()
+
+function slimVersion(v) {
+  return {
+    id: String(v.id),
+    title: v.title,
+    localized_title: v.localized_title,
+    abbreviation: v.abbreviation,
+    localized_abbreviation: v.localized_abbreviation,
+    language_tag: v.language_tag,
+  }
+}
+
+function loadVersionMeta() {
+  if (versionMetaLoaded) return
+  versionMetaLoaded = true
+  for (const v of DEFAULT_STARRED_VERSIONS) versionMeta.set(String(v.id), v)
+  try {
+    const entries = JSON.parse(localStorage.getItem(VERSION_META_KEY) || '[]')
+    for (const v of entries) if (v?.id && !versionMeta.has(String(v.id))) versionMeta.set(String(v.id), v)
+  } catch { /* ignore */ }
+}
+
+export function rememberVersions(list) {
+  loadVersionMeta()
+  let changed = false
+  for (const v of list || []) {
+    if (!v?.id) continue
+    const slim = slimVersion(v)
+    const old = versionMeta.get(slim.id)
+    if (!old || old.localized_title !== slim.localized_title || old.language_tag !== slim.language_tag) {
+      versionMeta.set(slim.id, slim)
+      changed = true
+    }
+  }
+  if (!changed) return
+  try {
+    const persist = [...versionMeta.values()].filter(v => !DEFAULT_STARRED_IDS.includes(String(v.id)))
+    localStorage.setItem(VERSION_META_KEY, JSON.stringify(persist.slice(-200)))
+  } catch { /* ignore */ }
+  metaListeners.forEach(fn => fn())
+}
+
+// Meta (Titel/Kürzel) für beliebige Übersetzungs-IDs. Unbekannte IDs (z. B. eine
+// früher favorisierte spanische Bibel) werden einzeln per GET /v1/bibles/{id}
+// nachgeladen und lokal gemerkt - statt dafür den Gesamtkatalog zu laden.
+export function useVersionMeta(ids) {
+  const [, force] = useState(0)
+  loadVersionMeta()
+  const key = [...ids].map(String).sort().join(',')
 
   useEffect(() => {
-    if (!enabled) return
-    if (bibleVersionsCache && Date.now() - bibleVersionsCache.timestamp < BIBLE_VERSIONS_CACHE_MS) {
-      setVersions(bibleVersionsCache.versions)
-      setLoading(false)
+    const fn = () => force(n => n + 1)
+    metaListeners.add(fn)
+    return () => { metaListeners.delete(fn) }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const missing = key.split(',').filter(id => id && !versionMeta.has(id))
+    if (!missing.length) return
+    ;(async () => {
+      const found = []
+      await Promise.all(missing.map(async id => {
+        try {
+          const res = await fetchBiblePath(`/v1/bibles/${id}`)
+          const v = res?.data ?? res
+          if (v?.id) found.push(v)
+        } catch { /* ignore */ }
+      }))
+      if (!cancelled && found.length) rememberVersions(found)
+    })()
+    return () => { cancelled = true }
+  }, [key])
+
+  return (id) => versionMeta.get(String(id))
+}
+
+const languageCache = new Map() // tag -> { versions, timestamp }
+const LANGUAGE_CACHE_MS = 6 * 60 * 60 * 1000
+
+export function useBibleVersionsByLanguage(tag) {
+  const [state, setState] = useState({ tag: null, versions: null, error: null })
+
+  useEffect(() => {
+    if (!tag) return
+    const cached = languageCache.get(tag)
+    if (cached && Date.now() - cached.timestamp < LANGUAGE_CACHE_MS) {
+      setState({ tag, versions: cached.versions, error: null })
       return
     }
     let cancelled = false
-    setLoading(true)
-    setError(null)
+    setState({ tag, versions: null, error: null })
     ;(async () => {
       try {
         const all = []
-        let path = '/v1/bibles?language_ranges[]=*'
+        const base = `/v1/bibles?language_ranges[]=${encodeURIComponent(tag)}`
+        let path = base
         let guard = 0
         while (path && guard < 40) {
           guard++
           const data = await fetchBiblePath(path)
           all.push(...(data?.data ?? []))
           const token = data?.next_page_token
-          path = token ? `/v1/bibles?language_ranges[]=*&page_token=${encodeURIComponent(token)}` : null
+          path = token ? `${base}&page_token=${encodeURIComponent(token)}` : null
         }
         if (cancelled) return
-        bibleVersionsCache = { versions: all, timestamp: Date.now() }
-        setVersions(all)
+        languageCache.set(tag, { versions: all, timestamp: Date.now() })
+        rememberVersions(all)
+        setState({ tag, versions: all, error: null })
       } catch (e) {
-        if (!cancelled) setError(e.message)
-      } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setState({ tag, versions: null, error: e.message })
       }
     })()
     return () => { cancelled = true }
-  }, [enabled])
+  }, [tag])
 
-  return { versions, loading, error }
+  const ready = state.tag === tag
+  return {
+    versions: ready ? state.versions : null,
+    loading: !!tag && (!ready || (!state.versions && !state.error)),
+    error: ready ? state.error : null,
+  }
 }
 
 // ─── Favoriten-Übersetzungen ───

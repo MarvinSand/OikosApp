@@ -43,3 +43,22 @@ export function groupVersionsByLanguage(versions) {
     .map(([tag, items]) => ({ tag, label: languageLabel(tag), items }))
     .sort((a, b) => a.label.localeCompare(b.label, 'de'))
 }
+
+// Sprachen, die zuerst im Sprach-Schritt des VersionPickers erscheinen.
+export const PINNED_LANGUAGES = ['de', 'en', 'es', 'fr', 'it', 'pt', 'nl', 'ru', 'pl', 'tr']
+
+// Auswahlliste für den Sprach-Schritt (ISO 639-1). Die Bibel-API filtert per
+// language_ranges[]=<code>; so muss nie der Gesamtkatalog geladen werden.
+const ALL_LANGUAGE_CODES = (
+  'af am ar az be bg bn bs ca cs cy da de el en es et eu fa fi fr ga gl gu he hi hr hu hy id is it ja ka kk km kn ko ky lo lt lv mk ml mn mr ms my ne nl no pa pl pt ro ru si sk sl sq sr sv sw ta te th tl tr uk ur uz vi zh zu ' +
+  'ak ee ha ig ln lg mg ny om rw sn so st tn ts xh yo'
+).split(' ')
+
+export function languageOptions() {
+  const pinned = PINNED_LANGUAGES.map(tag => ({ tag, label: languageLabel(tag) }))
+  const rest = ALL_LANGUAGE_CODES
+    .filter(tag => !PINNED_LANGUAGES.includes(tag))
+    .map(tag => ({ tag, label: languageLabel(tag) }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'de'))
+  return { pinned, rest }
+}

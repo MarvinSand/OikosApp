@@ -1,5 +1,11 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Safe-Area: `fixed inset-0`-Overlays und Border-Box-Höhen (Nov. 2026)
+
+- `App.jsx` padded den Container oben mit `env(safe-area-inset-top)`, `position: fixed; inset: 0`-Overlays (Bibel-Picker) liegen aber im Viewport-Koordinatensystem → ihr Header landete unter der Statusleiste. Overlays brauchen selbst `paddingTop: env(safe-area-inset-top)` und unten `var(--bottom-nav-h)`-Freiraum.
+- Seiten *innerhalb* des App-Containers dürfen die Safe-Area **nicht** nochmal als `padding-top` addieren: bei fester `height` (Tailwind `border-box`) frisst das die Inhaltshöhe (CommunityDetail: Zurück-Pfeil ragte aus der Kopfleiste).
+- Bibel-Übersetzungen: Favoriten ohne Netzwerk (Defaults + `useVersionMeta`), Katalog erst nach Sprachwahl pro Sprache (`useBibleVersionsByLanguage`) – nie wieder den Gesamtkatalog (~20 Seiten) am Stück laden.
+
 ## Darkmode: theme-flippende CSS-Variablen nie als SVG-Fill mit festem Text kombinieren (Nov. 2026)
 
 **Problem:** Die neuen Overlay-Kästchen (eigene Map einer verlinkten Person, `MapCanvas.jsx`, Box-Modus) hatten `fill="var(--color-warm-1)"` als Kästchen-Hintergrund und `fill="white"` als Text-Farbe. Im Light Mode ist `--color-warm-1` `#000000` (schwarzes Kästchen, weißer Text – lesbar), im Dark Mode ist dieselbe Variable `#FFFFFF` (siehe `src/index.css`, `:root` vs. `[data-theme="dark"]`) → **weißer Text auf weißem Kästchen, komplett unsichtbar**. Nur auf einem echten Gerät mit Dark Mode sichtbar, nicht im Light-Mode-Browser-Testing.
