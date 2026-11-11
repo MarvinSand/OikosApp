@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, BookMarked, Bookmark, StickyNot
 import { useAuth } from '../hooks/useAuth'
 import { useCommunities } from '../hooks/useCommunities'
 import {
-  useChapterText, useBibleMarkers, useBibleVersions, useFavoriteBibleVersions,
+  useChapterText, useBibleMarkers, useVersionMeta, useFavoriteBibleVersions,
   useSavedBibleColors, useRecentBibleColors, useReadingProgress, useVerseReferences, saveReadingProgress, getLocalReadingPosition, DEFAULT_BIBLE_ID,
 } from '../hooks/useBible'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
@@ -17,7 +17,6 @@ import BibleNoteCard from '../components/bible/BibleNoteCard'
 import { HIGHLIGHT_COLORS, PRIMARY_COLORS, MORE_COLORS, resolveHighlightColor, highlightTextColor, colorsEqual, isCustomHex, normalizeColorKey } from '../lib/bibleColors'
 import { formatReferenceLabel, parseBibleLinkParams, buildBibleLink } from '../lib/bibleLink'
 import { verseTextFromContainer } from '../lib/biblePassageHtml'
-import { DEFAULT_STARRED_VERSIONS } from '../lib/bibleVersionDefaults'
 import { createFeedPost } from '../hooks/useFeed'
 import FeedPostSheet from '../components/feed/FeedPostSheet'
 import BookChapterPicker from '../components/bible/BookChapterPicker'
@@ -84,8 +83,8 @@ export default function BibleView() {
   const { html, loading, error, retry: retryChapter } = useChapterText(bibleId, waitingForPosition ? null : book, chapter)
   // Der volle ~1479-Übersetzungen-Katalog wird erst geladen, wenn der Picker
   // tatsächlich geöffnet wird - nicht schon beim Öffnen des Bibel-Tabs.
-  const { versions: bibleVersions, loading: versionsLoading } = useBibleVersions({ enabled: showVersionPicker })
   const { favorites: favoriteVersionIds, toggleFavorite: toggleFavoriteVersion } = useFavoriteBibleVersions()
+  const versionMetaOf = useVersionMeta([bibleId])
   const yv = useYouVersionAccount()
   const { highlights, notes, bookmarks, addHighlight, removeHighlight, addNote, removeNote, toggleBookmark } = useBibleMarkers(bibleId, book, chapter, { youversionConnected: !!yv.connected })
   const { colors: savedColors, isSaved: isColorSaved, toggleColor: toggleSaveColor } = useSavedBibleColors()
@@ -95,8 +94,7 @@ export default function BibleView() {
   // nie offen), reicht die Chip-Anzeige der aktuellen Übersetzung aus den
   // Defaults - deckt HFA (Standardwert) und die anderen Standard-Favoriten
   // ohne jeden Netzwerk-Call ab.
-  const currentVersion = bibleVersions?.find(v => String(v.id) === String(bibleId))
-    ?? DEFAULT_STARRED_VERSIONS.find(v => String(v.id) === String(bibleId))
+  const currentVersion = versionMetaOf(bibleId)
 
   // Schreibt die aktuelle Position (Buch/Kapitel/Übersetzung) in die URL, damit
   // sie einen Tab-Reload übersteht (mobile/Desktop-Browser können einen im
@@ -448,8 +446,6 @@ export default function BibleView() {
 
       {showVersionPicker && (
         <VersionPicker
-          versions={bibleVersions}
-          loading={versionsLoading}
           currentId={bibleId}
           favorites={favoriteVersionIds}
           onToggleFavorite={toggleFavoriteVersion}

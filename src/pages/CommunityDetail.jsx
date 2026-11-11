@@ -1404,7 +1404,6 @@ export default function CommunityDetail() {
         <div style={{
           position: 'relative',
           height: hasBanner ? 132 : 56,
-          paddingTop: 'env(safe-area-inset-top, 0px)',
           backgroundColor: hasBanner ? 'transparent' : 'var(--color-header-wash)',
           backgroundImage: hasBanner ? `url(${community.banner_url})` : 'none',
           backgroundSize: 'cover',
