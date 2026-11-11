@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, SlidersHorizontal, Play } from 'lucide-react'
 import { usePrayerFeed, PRAYER_SOURCES } from '../hooks/usePrayerFeed'
 import { usePersonalPrayer } from '../hooks/usePersonalPrayer'
@@ -410,6 +410,7 @@ export default function Prayers() {
   const { createRequest } = usePersonalPrayer()
   const { createGoal, publicGoals, myGoals, communityGoals, sharedGoals } = usePrayerGoals()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -803,8 +804,10 @@ export default function Prayers() {
 
       </div>
 
-      {/* FAB */}
-      <button
+      {/* FAB – per Portal an body (sonst im transformierten SwipePager-Track verschoben),
+          nur sichtbar, solange der Gebete-Tab aktiv ist (Pane bleibt beim Wischen zum Feed gemountet) */}
+      {pathname === '/prayers' && (
+      <BodyPortal><button
         onClick={() => setShowCreate(true)}
         aria-label="Gebet teilen"
         style={{
@@ -818,7 +821,8 @@ export default function Prayers() {
         }}
       >
         +
-      </button>
+      </button></BodyPortal>
+      )}
 
       {showOikosFilterSheet && (
         <OikosFilterSheet source={oikosFilter} onClose={() => setShowOikosFilterSheet(false)} />
