@@ -18,7 +18,11 @@ export function isNativePushAvailable() {
 // überhaupt zu bemerken – deshalb ein sichtbarer Toast statt nur Konsole.
 const FIRST_REGISTRATION_KEY = 'oikos_push_registered_once'
 
+// Token dieses Geräts (für die Abmeldung beim Logout)
+let currentToken = null
+
 async function storeToken(userId, token, showToast) {
+  currentToken = token
   // Das Token ist unique: meldet sich auf demselben Gerät ein anderer Nutzer
   // an, wandert die Zeile zu ihm, statt ein Duplikat anzulegen.
   const { error } = await supabase.from('device_tokens').upsert({
@@ -82,7 +86,9 @@ export async function registerForPush(userId, { onOpen, showToast } = {}) {
 
 // Beim Logout das Token dieses Geräts entfernen, damit der nächste Nutzer
 // auf dem Gerät keine fremden Benachrichtigungen bekommt.
+// Nur die Zeile DIESES Geräts – andere Geräte desselben Kontos bleiben angemeldet.
 export async function unregisterCurrentDevice(userId) {
-  if (!isNativePushAvailable() || !userId) return
-  await supabase.from('device_tokens').delete().eq('user_id', userId)
+  if (!isNativePushAvailable() || !userId || !currentToken) return
+  await supabase.from('device_tokens').delete().eq('user_id', userId).eq('token', currentToken)
+  currentToken = null
 }

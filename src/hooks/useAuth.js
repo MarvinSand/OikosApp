@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabase'
 import { clearAllCaches } from '../lib/swrCache'
 import { publicOrigin } from '../lib/platform'
+import { unregisterCurrentDevice } from '../lib/nativePush'
 
 // ─────────────────────────────────────────────────────────────
 // Ein einziger, geteilter Auth-Store für die ganze App.
@@ -174,7 +175,19 @@ async function resendSignupCode(email) {
 }
 
 async function logout() {
-  const { error } = await supabase.auth.signOut()
+  // Push-Token dieses Geräts entfernen, solange die Session noch gilt – sonst
+  // bekäme das Gerät nach dem Abmelden weiter die Benachrichtigungen des
+  // Kontos (bzw. der nächste Nutzer auf dem Gerät fremde). Best effort, max. 3 s.
+  try {
+    await Promise.race([
+      unregisterCurrentDevice(state.user?.id),
+      new Promise(resolve => setTimeout(resolve, 3000)),
+    ])
+  } catch { /* nicht kritisch */ }
+  // scope 'local': nur dieses Gerät abmelden. Der Standard ('global') beendete
+  // die Sitzungen auf ALLEN Geräten – wer sich am Handy ausloggte, flog auch
+  // im Browser raus (Refresh-Token ungültig → 401-Schwall beim nächsten Start).
+  const { error } = await supabase.auth.signOut({ scope: 'local' })
   if (error) throw error
 }
 

@@ -96,7 +96,7 @@ export default function UserProfile() {
   const [activeTab, setActiveTab] = useState('maps')
   const [overlay, setOverlay] = useState(null) // 'communities' | null
   const [showModeration, setShowModeration] = useState(false)
-  const { isBlocked, unblock } = useBlocks()
+  const { isBlocked, unblock, loading: blocksLoading } = useBlocks()
   const { prefs: prefsHook, updatePref } = useNotificationPrefs(targetId)
   const prefs = bootMeta?.notif_prefs
     ? {
@@ -185,20 +185,28 @@ export default function UserProfile() {
     }
   }
 
+  // bootMeta.friendship ist ein Schnappschuss vom Laden der Seite. Nach einer
+  // eigenen Aktion (Anfragen/Annehmen/Zurückziehen) gilt der Live-Stand aus
+  // useFriendships – sonst blieb der Button z. B. nach „Anfrage gesendet" auf
+  // „Anfragen" stehen und ein zweiter Tap schickte die Anfrage erneut.
+  const [friendActed, setFriendActed] = useState(false)
+  useEffect(() => { setFriendActed(false) }, [targetId])
+
   async function handleFriendAction() {
-    const status = bootMeta?.friendship?.status || getFriendshipStatus(targetId)
+    const status = (!friendActed && bootMeta?.friendship?.status) || getFriendshipStatus(targetId)
     setActionLoading(true)
     try {
       if (status === 'none') {
         await sendRequest(targetId)
         showToast('Anfrage gesendet ✓')
       } else if (status === 'received') {
-        const f = getFriendship(targetId)
-        if (f) { await acceptRequest(f.id); showToast('Verbunden ✓') }
+        const fid = getFriendship(targetId)?.id || bootMeta?.friendship?.id
+        if (fid) { await acceptRequest(fid); showToast('Verbunden ✓') }
       } else if (status === 'sent') {
-        const f = getFriendship(targetId)
-        if (f) { await declineRequest(f.id); showToast('Anfrage zurückgezogen') }
+        const fid = getFriendship(targetId)?.id || bootMeta?.friendship?.id
+        if (fid) { await declineRequest(fid); showToast('Anfrage zurückgezogen') }
       }
+      setFriendActed(true)
     } catch (e) {
       showToast(e.message || 'Fehler', 'error')
     } finally {
@@ -206,7 +214,7 @@ export default function UserProfile() {
     }
   }
 
-  const status = bootMeta?.friendship?.status || getFriendshipStatus(targetId)
+  const status = (!friendActed && bootMeta?.friendship?.status) || getFriendshipStatus(targetId)
   const hasNotifPrefs = prefs.notify_prayer_requests || prefs.notify_feed_posts || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos || prefs.notify_storyline_entries
 
   function dismissBanner() {
@@ -316,7 +324,7 @@ export default function UserProfile() {
         />
       )}
 
-      {(bootMeta ? bootMeta.blocked_by_me : isBlocked(targetId)) && (
+      {(blocksLoading && bootMeta ? bootMeta.blocked_by_me : isBlocked(targetId)) && (
         <div style={{ margin: '12px 16px 0', padding: '12px 14px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10, backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)', fontSize: 13 }}>
           <Ban size={16} style={{ flexShrink: 0 }} />
           <span style={{ flex: 1 }}>Du hast diese Person blockiert. Ihr seht gegenseitig keine Inhalte.</span>

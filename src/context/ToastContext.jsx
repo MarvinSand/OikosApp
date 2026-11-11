@@ -5,14 +5,14 @@ const ToastCtx = createContext(null)
 function ToastContainer({ toasts }) {
   return (
     <div style={{
-      position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
+      position: 'fixed', top: 'calc(16px + env(safe-area-inset-top, 0px))', left: '50%', transform: 'translateX(-50%)',
       zIndex: 999, display: 'flex', flexDirection: 'column', gap: 8,
       width: '90%', maxWidth: 380, pointerEvents: 'none',
     }}>
       {toasts.map(t => (
         <div key={t.id} style={{
           backgroundColor: t.type === 'error' ? '#C0392B' : t.type === 'info' ? 'var(--color-text)' : 'var(--color-accent-dark)',
-          color: 'white',
+          color: t.type === 'info' ? 'var(--color-bg)' : 'white',
           padding: '12px 16px',
           borderRadius: 12,
           fontFamily: 'Lora, serif', fontSize: 14,

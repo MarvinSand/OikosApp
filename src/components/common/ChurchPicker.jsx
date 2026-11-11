@@ -114,7 +114,7 @@ export default function ChurchPicker({ value, onChange, inputStyle }) {
                 onClick={() => navigate(`/user/${m.id}`)}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', cursor: 'pointer' }}
               >
-                <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, backgroundColor: 'var(--color-warm-1)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontWeight: 700, fontSize: 14 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontWeight: 700, fontSize: 14 }}>
                   {m.avatar_url ? <img src={m.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : getInitials(m.full_name || m.username)}
                 </div>
                 <div style={{ minWidth: 0 }}>

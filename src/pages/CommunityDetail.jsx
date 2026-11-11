@@ -1053,7 +1053,7 @@ function SettingsSheet({
               <button
                 onClick={() => !isGemeinde && setIsPublic(v => !v)}
                 disabled={isGemeinde}
-                className={`relative w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-warm-1' : 'bg-warm-3'} ${isGemeinde ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`relative w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-accent' : 'bg-warm-3'} ${isGemeinde ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${isPublic ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
@@ -1069,7 +1069,7 @@ function SettingsSheet({
                 </div>
                 <button
                   onClick={() => setJoinMode(m => m === 'request' ? 'open' : 'request')}
-                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${joinMode === 'request' ? 'bg-warm-1' : 'bg-warm-3'}`}
+                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${joinMode === 'request' ? 'bg-accent' : 'bg-warm-3'}`}
                 >
                   <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${joinMode === 'request' ? 'left-[22px]' : 'left-0.5'}`} />
                 </button>
@@ -1097,7 +1097,7 @@ function SettingsSheet({
                         </button>
                         <button
                           onClick={() => onRespondJoinRequest(r.id, true)}
-                          className="px-3 py-2 rounded-lg bg-warm-1 text-white font-serif text-[13px] font-semibold"
+                          className="px-3 py-2 rounded-lg bg-warm-1 text-bg font-serif text-[13px] font-semibold"
                         >
                           Annehmen
                         </button>
@@ -1126,7 +1126,7 @@ function SettingsSheet({
                     <button onClick={generateNewCode} className="p-2 border border-warm-3 rounded-lg text-dark-muted hover:bg-black/5" title="Code erneuern">
                       <RefreshCw size={16} />
                     </button>
-                    <button onClick={copyCode} className="flex items-center gap-1.5 px-3 py-2 border-1.5 border-warm-1 rounded-lg text-warm-1 font-semibold text-sm hover:bg-warm-1 hover:text-white transition-colors">
+                    <button onClick={copyCode} className="flex items-center gap-1.5 px-3 py-2 border-1.5 border-warm-1 rounded-lg text-warm-1 font-semibold text-sm hover:bg-warm-1 hover:text-bg transition-colors">
                       <Copy size={14} /> Kopieren
                     </button>
                   </div>
@@ -1134,7 +1134,7 @@ function SettingsSheet({
               </div>
             )}
 
-            <button onClick={handleSave} disabled={!isChanged || saving} className={`w-full py-3.5 rounded-xl font-serif text-[15px] font-bold mt-2 transition-all ${isChanged ? 'bg-warm-1 text-white shadow-md' : 'bg-warm-3/50 text-dark-muted'}`}>
+            <button onClick={handleSave} disabled={!isChanged || saving} className={`w-full py-3.5 rounded-xl font-serif text-[15px] font-bold mt-2 transition-all ${isChanged ? 'bg-warm-1 text-bg shadow-md' : 'bg-warm-3/50 text-dark-muted'}`}>
               {saving ? 'Speichere...' : 'Änderungen speichern'}
             </button>
           </div>

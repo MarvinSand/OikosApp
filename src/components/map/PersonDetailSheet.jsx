@@ -718,10 +718,12 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
     setSearchQuery(query)
     if (!query.trim()) { setSearchResults([]); return }
     setSearching(true)
+    // Komma, Klammern & Co. sind Steuerzeichen im PostgREST-or()-Filter
+    const safe = query.trim().replace(/[,()%*\\"]/g, ' ')
     const { data } = await supabase
       .from('profiles')
       .select('id, full_name, username, avatar_url')
-      .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+      .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`)
       .limit(8)
     setSearchResults(data || [])
     setSearching(false)

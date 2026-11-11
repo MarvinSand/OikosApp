@@ -33,7 +33,7 @@ export default function MutualAvatars({ people = [], count = people.length, size
               style={{
                 width: size, height: size, borderRadius: '50%', flexShrink: 0,
                 border: '1.5px solid var(--color-bg)', marginLeft: i === 0 ? 0 : -6,
-                backgroundColor: 'var(--color-warm-1)', color: '#fff',
+                backgroundColor: 'var(--color-accent)', color: '#fff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: size * 0.42, fontWeight: 700,
               }}

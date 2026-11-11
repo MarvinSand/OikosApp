@@ -1,5 +1,17 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Gesamt-Audit (Nov. 2026): gefundene Fehlerklassen
+
+- **SwipePager & `position: fixed`:** Der Track lag dauerhaft per `transform` verschoben → jedes Sheet/Vollbild in einer Seite (Feed: Beitrag erstellen/Merken/Teilen, Home: Community erstellen/beitreten, Gebetsmodus) saß halb außerhalb des Bildschirms. Jetzt strukturell gelöst: `SwipePager` nutzt `transform` nur während Geste/Animation, im Ruhezustand `margin-left` (kein Bezugsrahmen). Portale bleiben erlaubt, sind aber nicht mehr Pflicht. Prüfen per Playwright: `position: fixed`-Elemente mit transformiertem Vorfahren suchen.
+- **Upsert + RLS:** `INSERT … ON CONFLICT DO UPDATE` prüft die SELECT-Policy als WITH CHECK gegen die NEUE Zeile. Erlaubt die SELECT-Policy nur „Zeilen aus Unterhaltungen, in denen ich schon bin", scheitert der allererste Eintrag immer (403). So gab es live 0 `conversation_members` für Community-Chats → dauerhaft „ungelesen". Fix `phase95`: eigene Zeile immer lesbar. Upserts ohne `onConflict` lösen über den Primärschlüssel auf – bei Unique auf einer anderen Spalte (`user_prayer_stats.user_id`) → 409, Streak blieb stehen.
+- **Dark Mode ist Standard:** `--color-warm-1`/`--color-text` als Fläche + feste weiße Schrift/Knopf = unsichtbar (Avatare, Buttons, Toggle-Tracks). Fläche `warm-1` → Schrift `var(--color-bg)` bzw. `text-bg`; Toggle-Track aktiv → `accent`.
+- **Schnappschuss vs. Live-Stand:** `bootMeta.friendship.status` (Bootstrap-RPC) hat Vorrang nur bis zur ersten eigenen Aktion – sonst blieb der Button nach „Anfrage gesendet" auf „Anfragen".
+- **Optimistische `temp-…`-IDs** nie in uuid-Filter/RPCs geben (400 für die ganze Abfrage).
+- **iOS-Push:** Der AppDelegate muss `didRegisterForRemoteNotificationsWithDeviceToken`/`didFailToRegister…` an Capacitor weiterreichen, sonst kommt nie ein Token an (`device_tokens` war live leer). Nach dem nächsten TestFlight-Build `select count(*) from device_tokens` prüfen.
+- **Vollbild-Overlays (`fixed; inset: 0`)** brauchen selbst `env(safe-area-inset-top)` (Gebetsmodus-Schließen-Button, Toasts lagen unter der Statusleiste).
+- **Logout:** `signOut({ scope: 'local' })` – der Standard meldet alle Geräte ab. Immer über `logout()` aus `useAuth` (entfernt auch das Push-Token dieses Geräts).
+- **Testen gegen Live:** Demo-Konten `oikosdemo@oikosapp.net` / `oikosdemo2@oikosapp.net` (auch für die App-Review). Nur zwischen den Demo-Konten interagieren, nicht mit echten Nutzern.
+
 ## Safe-Area: `fixed inset-0`-Overlays und Border-Box-Höhen (Nov. 2026)
 
 - `App.jsx` padded den Container oben mit `env(safe-area-inset-top)`, `position: fixed; inset: 0`-Overlays (Bibel-Picker) liegen aber im Viewport-Koordinatensystem → ihr Header landete unter der Statusleiste. Overlays brauchen selbst `paddingTop: env(safe-area-inset-top)` und unten `var(--bottom-nav-h)`-Freiraum.

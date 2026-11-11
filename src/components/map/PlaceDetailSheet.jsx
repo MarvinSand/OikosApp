@@ -379,7 +379,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
               <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>Für die Gemeinde sichtbar</span>
               <button
                 onClick={() => setPrayerPub(v => !v)}
-                style={{ width: 42, height: 24, borderRadius: 12, border: 'none', backgroundColor: prayerPublic ? 'var(--color-warm-1)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s' }}
+                style={{ width: 42, height: 24, borderRadius: 12, border: 'none', backgroundColor: prayerPublic ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s' }}
               >
                 <div style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: prayerPublic ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
               </button>
@@ -394,7 +394,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
             </div>
             <button
               onClick={() => setIsPublic(v => !v)}
-              style={{ width: 42, height: 24, borderRadius: 12, border: 'none', backgroundColor: isPublic ? 'var(--color-warm-1)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0, marginLeft: 12 }}
+              style={{ width: 42, height: 24, borderRadius: 12, border: 'none', backgroundColor: isPublic ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0, marginLeft: 12 }}
             >
               <div style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: isPublic ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
             </button>

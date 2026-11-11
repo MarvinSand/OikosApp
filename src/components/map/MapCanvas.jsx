@@ -1518,7 +1518,7 @@ export default function MapCanvas({
           {/* "Aktiv" banner — fades out after 2s */}
           <span style={{
             fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700,
-            color: 'white',
+            color: 'var(--color-bg)',
             backgroundColor: 'var(--color-warm-1)',
             padding: '6px 16px', borderRadius: 20,
             boxShadow: '0 2px 10px rgba(58,46,36,0.20)',

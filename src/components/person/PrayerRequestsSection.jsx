@@ -62,9 +62,12 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
   const [filterMode, setFilterMode] = useState('alle')
   const [sortMode, setSortMode] = useState('standard')
 
-  const reqIds = requests.map(r => r.id).join(',')
+  // Optimistisch eingefügte Anliegen tragen bis zur Server-Antwort eine
+  // 'temp-…'-ID – als uuid-Filter ließe sie die ganze Abfrage mit 400 scheitern.
+  const savedIds = requests.map(r => r.id).filter(id => !String(id).startsWith('temp-'))
+  const reqIds = savedIds.join(',')
   useEffect(() => {
-    if (!requests.length || !user) return
+    if (!savedIds.length || !user) return
     loadPrayerData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reqIds, user?.id])
@@ -73,7 +76,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
   // Anliegen, letztes Gebet von irgendjemandem pro Anliegen (für die
   // "am längsten nicht gebetet"-Sortierung) und die Gesamtstatistik.
   async function loadPrayerData() {
-    const ids = requests.map(r => r.id)
+    const ids = savedIds
     const { data } = await supabase
       .from('prayer_logs')
       .select('prayer_request_id, user_id, created_at')
@@ -188,7 +191,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
         <div style={skeleton} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <PrayerCardList prayers={active} onChanged={handleChanged} showContext={false} />
+          <PrayerCardList prayers={active} onChanged={handleChanged} onPrayed={loadPrayerData} showContext={false} />
 
           {showAddForm && (
             <AddRequestForm onSave={handleAdd} onCancel={() => setShowAddForm(false)} />
@@ -197,7 +200,7 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
           {answered.length > 0 && (
             <div style={{ marginTop: 4 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)', fontStyle: 'italic', marginBottom: 8 }}>Erhört ✓</p>
-              <PrayerCardList prayers={answered} onChanged={handleChanged} showContext={false} />
+              <PrayerCardList prayers={answered} onChanged={handleChanged} onPrayed={loadPrayerData} showContext={false} />
             </div>
           )}
 

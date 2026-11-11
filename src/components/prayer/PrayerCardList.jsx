@@ -31,6 +31,8 @@ export default function PrayerCardList({
   extraBadge = null,
   onOpenGoal,
   onChanged,
+  // Nach jedem protokollierten Gebet (z. B. um eine Statistik neu zu laden)
+  onPrayed,
   renderBetween,
 }) {
   const { user } = useAuth()
@@ -44,6 +46,7 @@ export default function PrayerCardList({
   async function handlePray(prayer) {
     const log = await actions.pray(prayer)
     pushLog(prayer.key, log)
+    onPrayed?.(prayer)
     // Ist ein (nicht-individuelles) Gebetsziel verknüpft, zählt das Gebet auch
     // dorthin – wie bisher im For-You-Feed.
     const goal = goalByKey?.get(prayer.key)

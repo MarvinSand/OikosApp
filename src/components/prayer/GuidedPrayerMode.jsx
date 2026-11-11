@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import BodyPortal from '../common/BodyPortal'
 import { X } from 'lucide-react'
 import { usePrayerSession } from '../../hooks/usePrayerSession'
 import { useAuth } from '../../hooks/useAuth'
@@ -445,7 +446,7 @@ function SetupScreen({ items, onStart, onClose }) {
       <button
         onClick={onClose}
         style={{
-          position: 'absolute', top: 20, right: 20,
+          position: 'absolute', top: 'calc(20px + env(safe-area-inset-top, 0px))', right: 20,
           width: 36, height: 36, borderRadius: '50%', border: 'none',
           backgroundColor: 'rgba(255,255,255,0.1)', color: '#F0EDE6',
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -596,7 +597,7 @@ function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
       <BgOrbs />
 
       {/* Header */}
-      <div style={{ padding: '16px 20px 0', zIndex: 1, flexShrink: 0 }}>
+      <div style={{ padding: 'calc(16px + env(safe-area-inset-top, 0px)) 20px 0', zIndex: 1, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <button
             onClick={onClose}
@@ -722,7 +723,7 @@ function SummaryScreen({ summary, onClose, onRestart }) {
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100, background: darkBg,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      padding: '24px', textAlign: 'center', overflowY: 'auto',
+      padding: 'calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px))', textAlign: 'center', overflowY: 'auto',
     }}>
       <BgOrbs />
       <div style={{ zIndex: 1, width: '100%', maxWidth: 360 }}>
@@ -952,14 +953,18 @@ export default function GuidedPrayerMode({ items, listId, listName, goalId, dail
     setPhase('finished')
   }
 
+  // Per Portal an body: der Gebetsmodus wird auch aus SwipePager-Seiten
+  // (Home, Gebete) geöffnet – dort verschiebt der transformierte Track jedes
+  // `position: fixed`-Vollbild um eine halbe Track-Breite aus dem Bild.
+  let screen
   if (phase === 'setup') {
-    return <SetupScreen items={items} onStart={handleStart} onClose={handleClose} />
+    screen = <SetupScreen items={items} onStart={handleStart} onClose={handleClose} />
+  } else if (phase === 'session') {
+    screen = <SessionScreen session={session} sessionGoalMinutes={goalMinutes} onClose={handleSessionClose} />
+  } else if (phase === 'continue') {
+    screen = <ContinueScreen excludeIds={excludeIds} onContinue={handleContinue} onSkip={handleSkipContinue} />
+  } else {
+    screen = <SummaryScreen summary={session.sessionSummary} onClose={handleClose} onRestart={handleRestart} />
   }
-  if (phase === 'session') {
-    return <SessionScreen session={session} sessionGoalMinutes={goalMinutes} onClose={handleSessionClose} />
-  }
-  if (phase === 'continue') {
-    return <ContinueScreen excludeIds={excludeIds} onContinue={handleContinue} onSkip={handleSkipContinue} />
-  }
-  return <SummaryScreen summary={session.sessionSummary} onClose={handleClose} onRestart={handleRestart} />
+  return <BodyPortal>{screen}</BodyPortal>
 }

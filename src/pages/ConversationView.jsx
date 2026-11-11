@@ -1079,7 +1079,7 @@ function ForwardSheet({ onClose, onSubmit, currentConversationId }) {
             style={{
               flex: 2, padding: '10px 0', borderRadius: 10, border: 'none',
               backgroundColor: selected.length > 0 ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
-              color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600,
+              color: selected.length > 0 ? 'var(--color-bg)' : 'var(--color-text-secondary)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600,
               cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
             }}
           >

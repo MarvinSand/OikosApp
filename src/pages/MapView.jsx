@@ -593,7 +593,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-paper/90 backdrop-blur-md border border-warm-3 px-4 py-2.5 flex items-center justify-between z-30 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
-          className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[65%] hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg min-w-0 flex-1 mr-2 text-left hover:opacity-80 transition-opacity"
         >
           <span className="overflow-hidden text-ellipsis whitespace-nowrap">
             {siblingsMapTitle(activeMap)}
@@ -602,7 +602,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         </button>
 
         {activeMap && isSiblingsMap && (
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-1 items-center shrink-0">
             <button
               onClick={() => setShowColorFilter(v => !v)}
               title="Nach Farbe filtern"
@@ -613,7 +613,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           </div>
         )}
         {activeMap && !isSiblingsMap && (
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-1 items-center shrink-0">
             <button
               onClick={() => setConnectionMode(v => !v)}
               title="Verbindungsmodus"
@@ -679,9 +679,12 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               <button
                 ref={addMenuBtnRef}
                 onClick={() => setShowAddMenu(v => !v)}
+                aria-label="Hinzufügen"
                 className="flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
               >
-                <Plus size={15} /> Hinzufügen
+                {/* Text erst ab ~420px: auf iPhone-Breite (390–402px) schob er
+                    die Leiste sonst über den rechten Bildschirmrand hinaus. */}
+                <Plus size={15} /> <span className="hidden min-[420px]:inline">Hinzufügen</span>
               </button>
               {showAddMenu && (
                 <AnchoredMenu anchorRef={addMenuBtnRef} onClose={() => setShowAddMenu(false)} minWidth={160}>
@@ -710,7 +713,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           onClick={startMapPrayerMode}
           disabled={loadingPrayerMode}
           aria-label="Gebetsmodus starten"
-          className="absolute top-[104px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border-none px-4 py-2 font-serif text-[13px] font-semibold text-white cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-60"
+          className="absolute top-[114px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border-none px-4 py-2 font-serif text-[13px] font-semibold text-white cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-60"
           style={{ backgroundColor: '#5AC8FA' }}
         >
           <HandHeart size={16} /> {loadingPrayerMode ? 'Lädt…' : 'Gebetsmodus'}

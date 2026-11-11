@@ -53,11 +53,10 @@ export function useStationPassage(book, chapter, verseStart, verseEnd, bibleId =
         const trimmed = extractVerseRange(wrapped, verseStart, verseEnd)
         setHtml(trimmed)
 
-        supabase.from('bible_verses_cache').upsert({
-          bible_id: bibleId, book, chapter,
-          verse_start: verseStart, verse_end: verseEnd ?? verseStart,
-          html: trimmed,
-        }, { onConflict: 'bible_id,book,chapter,verse_start,verse_end' }).then(() => {})
+        // Kein Zurückschreiben in bible_verses_cache: Die Tabelle ist für
+        // Clients bewusst nur lesbar (ihr HTML wird ungefiltert gerendert –
+        // ein Schreibrecht für alle wäre ein XSS-Einfallstor). Der frühere
+        // Upsert scheiterte deshalb bei jedem Aufruf mit 403.
       } catch (e) {
         if (!cancelled) setError(e.message)
       } finally {

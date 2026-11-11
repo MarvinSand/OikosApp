@@ -397,7 +397,7 @@ export default function SettingsView() {
   const { isAppAdmin } = useIsAppAdmin()
   const navigate = useNavigate()
   const { profile, updateProfile, uploadAvatar, deleteAccount, loading: profileLoading } = useProfile({ useCache: true, withStats: false })
-  const { user, resendVerificationEmail } = useAuth()
+  const { user, resendVerificationEmail, logout } = useAuth()
   const { showToast } = useToast()
   const { theme, toggleTheme } = useTheme()
   const fileInputRef = useRef(null)
@@ -679,7 +679,7 @@ export default function SettingsView() {
                 onClick={() => { window.location.href = `mailto:${LEGAL.contactEmail}` }}
               />
             )}
-            <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
+            <button onClick={() => logout().catch(() => supabase.auth.signOut({ scope: 'local' }))} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
               Ausloggen
             </button>
             <button onClick={() => setShowDelete(true)} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: 'none', fontSize: 14, color: 'var(--color-error)', cursor: 'pointer' }}>

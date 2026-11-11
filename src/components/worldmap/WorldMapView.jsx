@@ -293,8 +293,24 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
     applyPinScales(allMarkersRef.current, zoom)
   }, [zoom])
 
+  // Der Clusterer ruft beim Rendern map.getBounds() auf und wirft
+  // („assertion failed"), solange die Karte noch keine Bounds hat (vor dem
+  // ersten Layout bzw. wenn die Karte nicht initialisieren konnte). Der Fehler
+  // riss über die ErrorBoundary die ganze Seite mit – deshalb erst clustern,
+  // wenn Bounds vorliegen.
+  const [boundsReady, setBoundsReady] = useState(false)
   useEffect(() => {
-    if (!map || !window.google?.maps?.marker?.AdvancedMarkerElement) {
+    if (!map) { setBoundsReady(false); return }
+    if (map.getBounds?.()) { setBoundsReady(true); return }
+    setBoundsReady(false)
+    const listener = map.addListener('bounds_changed', () => {
+      if (map.getBounds?.()) { setBoundsReady(true); listener.remove() }
+    })
+    return () => listener.remove()
+  }, [map])
+
+  useEffect(() => {
+    if (!map || !boundsReady || !window.google?.maps?.marker?.AdvancedMarkerElement) {
       if (clustererRef.current) { clustererRef.current.clearMarkers(); clustererRef.current = null }
       allMarkersRef.current.forEach(m => { m.map = null })
       allMarkersRef.current = []
@@ -377,7 +393,7 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
       clustererRef.current = null
       allMarkersRef.current = []
     }
-  }, [map, users, activities, gemeinden, oikosPeople, showUsers, showEvents, showGemeinden, showOikosPeople, onUserClick, onActivityClick, onGemeindeClick, onOikosPersonClick])
+  }, [map, boundsReady, users, activities, gemeinden, oikosPeople, showUsers, showEvents, showGemeinden, showOikosPeople, onUserClick, onActivityClick, onGemeindeClick, onOikosPersonClick])
 }
 
 // Zoom-Level der Karte für Marker-Clustering & Pin-Größe; die frühere

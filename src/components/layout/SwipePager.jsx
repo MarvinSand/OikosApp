@@ -15,11 +15,32 @@ function crossesHorizontalScroller(target, root) {
   return false
 }
 
+// true, wenn target in einem `position: fixed`-Element innerhalb des Pagers
+// liegt (offenes Sheet/Overlay) – dort soll ein Wisch nicht die Seite wechseln.
+function insideFixedOverlay(target, root) {
+  let node = target
+  while (node && node !== root && node !== document.body) {
+    if (node.nodeType === 1 && window.getComputedStyle(node).position === 'fixed') return true
+    node = node.parentElement
+  }
+  return false
+}
+
 // Horizontaler Pager: Seiten liegen nebeneinander und folgen dem Finger.
 // Der Fortschritt (fraktionaler Index) wird als CSS-Variable `--pager-progress`
 // auf `syncRef` geschrieben, damit ein SegmentedTabs-Indikator (`synced`)
 // ohne Re-Render mitwandert. Seiten werden erst gerendert, wenn sie besucht
 // bzw. beim Wischen angedeutet werden (spart Requests beim Start).
+//
+// Wichtig: Ein Element mit `transform`/`will-change: transform` ist der
+// Bezugsrahmen für alle `position: fixed`-Nachfahren – Sheets, FABs und
+// Vollbild-Overlays in einer Seite saßen dadurch um eine halbe Track-Breite
+// verschoben und wurden abgeschnitten (Feed: Beitrag erstellen/Merken/Teilen,
+// Home: Community erstellen, Gebetsmodus …). Deshalb liegt der Track nur
+// WÄHREND einer Geste/Animation per `transform` verschoben; im Ruhezustand
+// wird dieselbe Position über `margin-left` gehalten (kein Bezugsrahmen) –
+// `fixed` bezieht sich dann wieder auf den Viewport, ohne dass jedes Sheet
+// einzeln per Portal an <body> gehängt werden muss.
 export default function SwipePager({ count, index, onIndexChange, renderPane, syncRef, paneClassName = '' }) {
   const rootRef = useRef(null)
   const trackRef = useRef(null)
@@ -30,11 +51,39 @@ export default function SwipePager({ count, index, onIndexChange, renderPane, sy
   indexRef.current = index
   changeRef.current = onIndexChange
 
+  const settleTimer = useRef(null)
+
+  // Ruhezustand: Position über margin statt transform halten (siehe oben).
+  function settle(i) {
+    clearTimeout(settleTimer.current)
+    const track = trackRef.current
+    if (!track) return
+    track.style.transition = 'none'
+    track.style.transform = 'none'
+    track.style.willChange = 'auto'
+    track.style.marginLeft = `${-i * 100}%`
+  }
+
   function setProgress(p, animate) {
+    clearTimeout(settleTimer.current)
     const track = trackRef.current
     if (track) {
+      if (animate && track.style.transform === 'none') {
+        // Aus dem Ruhezustand heraus animieren: zuerst ohne Übergang auf die
+        // gleichwertige transform-Position wechseln, damit die Transition
+        // einen Startwert hat.
+        const from = -parseFloat(track.style.marginLeft || '0') / 100
+        track.style.transition = 'none'
+        track.style.marginLeft = '0'
+        track.style.transform = `translate3d(${(-from * 100) / count}%, 0, 0)`
+        void track.offsetWidth
+      }
+      track.style.willChange = 'transform'
+      track.style.marginLeft = '0'
       track.style.transition = animate ? 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none'
       track.style.transform = `translate3d(${(-p * 100) / count}%, 0, 0)`
+      // Nach der Animation zurück in den Ruhezustand (nur auf ganzen Seiten).
+      if (animate && Number.isInteger(p)) settleTimer.current = setTimeout(() => settle(p), 340)
     }
     const sync = syncRef?.current
     if (sync) {
@@ -45,9 +94,12 @@ export default function SwipePager({ count, index, onIndexChange, renderPane, sy
 
   useLayoutEffect(() => {
     setVisited(v => (v.has(index) ? v : new Set(v).add(index)))
-    setProgress(index, mounted.current)
+    if (mounted.current) setProgress(index, true)
+    else { setProgress(index, false); settle(index) }
     mounted.current = true
   }, [index]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => clearTimeout(settleTimer.current), [])
 
   useEffect(() => {
     const el = rootRef.current
@@ -58,6 +110,8 @@ export default function SwipePager({ count, index, onIndexChange, renderPane, sy
       if (e.touches.length !== 1) { s = null; return }
       const t = e.touches[0]
       if (crossesHorizontalScroller(e.target, el)) { s = null; return }
+      // Geste auf einem Overlay (Sheet/Vollbild in der Seite): nicht blättern.
+      if (insideFixedOverlay(e.target, el)) { s = null; return }
       s = { x: t.clientX, y: t.clientY, time: Date.now(), lock: null, dx: 0 }
     }
 
@@ -118,7 +172,7 @@ export default function SwipePager({ count, index, onIndexChange, renderPane, sy
 
   return (
     <div ref={rootRef} style={{ height: '100%', width: '100%', overflow: 'hidden', position: 'relative' }}>
-      <div ref={trackRef} style={{ display: 'flex', width: `${count * 100}%`, height: '100%', willChange: 'transform' }}>
+      <div ref={trackRef} style={{ display: 'flex', width: `${count * 100}%`, height: '100%' }}>
         {Array.from({ length: count }, (_, i) => (
           <div
             key={i}

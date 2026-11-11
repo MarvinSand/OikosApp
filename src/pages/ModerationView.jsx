@@ -171,10 +171,12 @@ export default function ModerationView() {
   async function searchUsers() {
     const q = userQuery.trim()
     if (q.length < 2) { setUserHits([]); return }
+    // Komma, Klammern & Co. sind Steuerzeichen im PostgREST-or()-Filter
+    const safe = q.replace(/[,()%*\\"]/g, ' ')
     const { data } = await supabase
       .from('profiles')
       .select('id, username, full_name, avatar_url')
-      .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
+      .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`)
       .limit(15)
     setUserHits(data || [])
   }

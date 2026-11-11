@@ -56,7 +56,7 @@ export default function SideNav() {
       </nav>
 
       <div className="px-6 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <p className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>© 2025 Oikos Connect</p>
+        <p className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>© {new Date().getFullYear()} Oikos Connect</p>
       </div>
     </aside>
   )

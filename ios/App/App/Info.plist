@@ -27,11 +27,11 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Oikos nutzt deinen Standort, um dich auf der Weltkarte zu platzieren und Orte in deiner Nähe vorzuschlagen.</string>
+	<string>Oikos Connect nutzt deinen Standort, um dich auf der Weltkarte zu platzieren und Orte in deiner Nähe vorzuschlagen.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Oikos Connect benötigt Zugriff auf die Kamera, um ein Profilfoto aufzunehmen und QR-Codes zu scannen.</string>
+	<string>Oikos Connect benötigt Zugriff auf die Kamera, damit du Fotos für dein Profil, Beiträge und Chats aufnehmen und QR-Codes scannen kannst.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Oikos benötigt Zugriff auf deine Fotos, um ein Profilbild auszuwählen.</string>
+	<string>Oikos Connect benötigt Zugriff auf deine Fotos, damit du ein Profilbild auswählen und Bilder in Beiträgen, Chats und Communities teilen kannst.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

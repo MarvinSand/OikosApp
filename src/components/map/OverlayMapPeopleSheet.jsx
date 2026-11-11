@@ -162,7 +162,7 @@ export default function OverlayMapPeopleSheet({ od, isExpanded, onToggleExpanded
                   width: 42, height: 42, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
                   backgroundColor: person.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700,
+                  color: person.is_christian ? '#fff' : 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700,
                 }}>
                   {profile?.avatar_url
                     ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

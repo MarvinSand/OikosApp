@@ -2,6 +2,7 @@ import { useState, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useToast } from '../../context/ToastContext'
+import BodyPortal from '../common/BodyPortal'
 const AddressAutocomplete = lazy(() => import('../common/AddressAutocomplete'))
 
 // Community erstellen/beitreten – aus FriendsView.jsx ausgelagert, weil
@@ -57,8 +58,10 @@ export function CreateCommunitySheet({ onClose }) {
     }
   }
 
+  // BodyPortal: wird auch aus dem Home-SwipePager geöffnet (transformierter
+  // Track → `position: fixed` säße sonst halb außerhalb des Bildschirms).
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} className="fixed inset-0 bg-dark/40 backdrop-blur-[2px] z-40 transition-opacity" />
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
         <div style={sheetHandle} />
@@ -126,7 +129,7 @@ export function CreateCommunitySheet({ onClose }) {
           {saving ? 'Erstelle…' : isGemeinde ? 'Gemeinde erstellen' : 'Community erstellen'}
         </button>
       </div>
-    </>
+    </BodyPortal>
   )
 }
 
@@ -156,6 +159,7 @@ export function JoinCommunityModal({ onClose }) {
   }
 
   return (
+    <BodyPortal>
     <div style={overlay}>
       <div style={modal}>
         <h3 style={sheetTitleStyle}>Community beitreten</h3>
@@ -170,5 +174,6 @@ export function JoinCommunityModal({ onClose }) {
         </div>
       </div>
     </div>
+    </BodyPortal>
   )
 }

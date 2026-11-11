@@ -24,8 +24,11 @@ export function usePrayerEngagement(prayers) {
   const [loading, setLoading] = useState(false)
 
   // Nur die IDs als Abhängigkeit – sonst lädt der Effekt bei jedem Render neu.
-  const oikosIds = prayers.filter(p => p.kind === KIND_OIKOS).map(p => p.id)
-  const personalIds = prayers.filter(p => p.kind === KIND_PERSONAL).map(p => p.id)
+  // Optimistische 'temp-…'-IDs auslassen: die RPC erwartet uuid[] und würde
+  // sonst komplett mit 400 scheitern (Zähler aller Karten blieben leer).
+  const isSaved = p => !String(p.id).startsWith('temp-')
+  const oikosIds = prayers.filter(p => p.kind === KIND_OIKOS && isSaved(p)).map(p => p.id)
+  const personalIds = prayers.filter(p => p.kind === KIND_PERSONAL && isSaved(p)).map(p => p.id)
   const signature = `${oikosIds.join(',')}|${personalIds.join(',')}`
   const signatureRef = useRef(signature)
   signatureRef.current = signature
