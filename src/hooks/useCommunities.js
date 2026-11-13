@@ -88,7 +88,7 @@ export function useCommunities() {
     load()
   }, [userId, load])
 
-  async function createCommunity({ name, description, is_public = false, community_type = 'group', address = null, latitude = null, longitude = null, meeting_info = null }) {
+  async function createCommunity({ name, description, is_public = false, join_mode = 'open', community_type = 'group', address = null, latitude = null, longitude = null, meeting_info = null }) {
     const invite_code = Math.random().toString(36).substring(2, 8).toUpperCase()
     const { data, error } = await supabase.rpc('create_community', {
       p_name: name,
@@ -99,12 +99,14 @@ export function useCommunities() {
     if (error) throw error
     let community = typeof data === 'string' ? JSON.parse(data) : data
 
-    // Standortfelder gehören nicht zur create_community-RPC – als Admin
-    // dürfen wir die eigene, gerade erstellte Community direkt aktualisieren.
-    if (community_type === 'gemeinde') {
+    // Standortfelder und Beitritts-Modus gehören nicht zur create_community-RPC
+    // – als Admin dürfen wir die eigene, gerade erstellte Community direkt aktualisieren.
+    if (community_type === 'gemeinde' || join_mode !== 'open') {
+      const patch = { join_mode }
+      if (community_type === 'gemeinde') Object.assign(patch, { community_type, address, latitude, longitude, meeting_info })
       const { data: updated, error: updateError } = await supabase
         .from('communities')
-        .update({ community_type, address, latitude, longitude, meeting_info })
+        .update(patch)
         .eq('id', community.id)
         .select('*')
         .single()
@@ -122,31 +124,13 @@ export function useCommunities() {
     return community
   }
 
+  // RPC (SECURITY DEFINER): private Communities sind für Nicht-Mitglieder
+  // weder lesbar noch per Insert beitretbar – der Code ist die Einladung.
   async function joinByCode(code) {
-    const { data: community, error } = await supabase
-      .from('communities')
-      .select('id, name')
-      .eq('invite_code', code.trim().toUpperCase())
-      .single()
-
-    if (error || !community) throw new Error('Kein gültiger Code')
-
-    const { data: existing } = await supabase
-      .from('community_members')
-      .select('id')
-      .eq('community_id', community.id)
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    if (existing) throw new Error('Du bist bereits in dieser Community')
-
-    const { error: joinError } = await supabase
-      .from('community_members')
-      .insert({ community_id: community.id, user_id: userId, role: 'member' })
-    if (joinError) throw joinError
-
+    const { data, error } = await supabase.rpc('join_community_by_code', { p_code: code.trim() })
+    if (error) throw new Error(error.message || 'Kein gültiger Code')
     await load(true)
-    return community
+    return typeof data === 'string' ? JSON.parse(data) : data
   }
 
   async function leaveCommunity(communityId) {

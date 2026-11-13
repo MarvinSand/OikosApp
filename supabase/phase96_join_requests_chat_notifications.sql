@@ -221,7 +221,7 @@ begin
     coalesce(v_c.name, 'Die Gemeinde') || ' hat deine Frage beantwortet 💬',
     left(new.answer, 140),
     jsonb_build_object('community_id', new.community_id, 'question_id', new.id,
-                       'url', '/world?gemeinde=' || new.community_id)
+                       'url', '/worldmap?gemeinde=' || new.community_id)
   );
   return new;
 exception when others then

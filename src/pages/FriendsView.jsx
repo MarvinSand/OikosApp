@@ -27,7 +27,7 @@ import { isPrayerFeedRoute } from '../lib/prayerFeedRoute'
 import DateFilterControl from '../components/ui/DateFilterControl'
 import ExpandableSearch from '../components/common/ExpandableSearch'
 import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
-import { CreateCommunitySheet, JoinCommunityModal } from '../components/community/CommunitySheets'
+import { CreateCommunitySheet, JoinCommunityModal, RequestJoinSheet } from '../components/community/CommunitySheets'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import { verseAttachmentFromRow } from '../lib/bibleLink'
 import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
@@ -595,6 +595,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
   const [loadingPublic, setLoadingPublic] = useState(() => readCache(user?.id, 'publicCommunitiesFull') === undefined)
   const [requestedIds, setRequestedIds] = useState(new Set())
   const [joiningId, setJoiningId] = useState(null)
+  const [requestTarget, setRequestTarget] = useState(null)
   const myIdSet = new Set(myCommunities.map(c => c.id))
   const publicCommunities = allPublic.filter(c => !myIdSet.has(c.id))
   const previews = useCommunityMembersPreview([...myCommunities.map(c => c.id), ...publicCommunities.map(c => c.id)])
@@ -631,12 +632,8 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
     setJoiningId(community.id)
     try {
       if (community.join_mode === 'request') {
-        const { error } = await supabase
-          .from('community_join_requests')
-          .insert({ community_id: community.id, user_id: user.id })
-        if (error) throw error
-        setRequestedIds(prev => new Set(prev).add(community.id))
-        showToast('Beitrittsanfrage gesendet ✓')
+        // Anfrage mit optionalem Text → Chat der Community (RPC im Sheet)
+        setRequestTarget(community)
         return
       }
       const { error } = await supabase
@@ -713,6 +710,13 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
           </div>
         )}
       </div>
+      {requestTarget && (
+        <RequestJoinSheet
+          community={requestTarget}
+          onClose={() => setRequestTarget(null)}
+          onSent={id => setRequestedIds(prev => new Set(prev).add(id))}
+        />
+      )}
     </div>
   )
 }

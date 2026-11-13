@@ -15,5 +15,9 @@ export const NOTIFICATION_TYPE_META = {
   sibling_requests_reminder: { icon: '📋', label: 'Offene Anliegen von Geschwistern' },
   weekly_digest: { icon: '📊', label: 'Wochenrückblick' },
   bible_note_comment: { icon: '💬', label: 'Kommentare zu Bibel-Notizen' },
+  community_join_request: { icon: '🙋', label: 'Beitrittsanfragen' },
+  community_join_decision: { icon: '✅', label: 'Entscheidung zu deiner Anfrage' },
+  community_question: { icon: '❓', label: 'Fragen an deine Gemeinde' },
+  community_answer: { icon: '💬', label: 'Antworten auf deine Fragen' },
   message: { icon: '💬', label: 'Direktnachrichten' },
 }
