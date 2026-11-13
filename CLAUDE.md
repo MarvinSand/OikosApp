@@ -22,6 +22,8 @@
 - Gemeinde-Fragen: Trigger benachrichtigen Admins (Frage) bzw. Fragesteller (Antwort, Deep-Link `/worldmap?gemeinde=<id>`). Nicht-Mitglieder sehen ihren Verlauf im `GemeindePinSheet`.
 - **Lektion:** `notifications_type_check` muss JEDEN Typ enthalten, den ein Trigger/Client einfügt – `notify_on_direct_message` nutzte `'message'`, das fehlte → DM-Benachrichtigungen scheiterten monatelang still (Trigger schlucken Fehler). Nach neuen Typen: `select type, count(*) from notifications group by 1` live prüfen. Push-Deep-Link kommt aus `data.url`.
 
+- **Lektion (phase97):** Policies dürfen ihre eigene Tabelle nicht in einer Unterabfrage lesen (`infinite recursion detected in policy` → HTTP 500; so ging „Community verlassen“ nie). Immer eine SECURITY-DEFINER-Hilfsfunktion nutzen (`is_community_admin`, `get_my_community_ids`). Bei „Fehler“ ohne Details: Edge-Logs (Status 500) + Postgres-Logs ansehen.
+
 ## Safe-Area: `fixed inset-0`-Overlays und Border-Box-Höhen (Nov. 2026)
 
 - `App.jsx` padded den Container oben mit `env(safe-area-inset-top)`, `position: fixed; inset: 0`-Overlays (Bibel-Picker) liegen aber im Viewport-Koordinatensystem → ihr Header landete unter der Statusleiste. Overlays brauchen selbst `paddingTop: env(safe-area-inset-top)` und unten `var(--bottom-nav-h)`-Freiraum.
