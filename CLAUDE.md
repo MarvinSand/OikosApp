@@ -15,6 +15,13 @@
 - **Schwebende „+"-Buttons:** `useHideOnScroll(rootRef)` blendet sie beim Runterscrollen aus. Gebetszähler: `engagementPending` zeigt ein Skelett statt „Noch keine Gebete".
 - **Testen gegen Live:** Demo-Konten `oikosdemo@oikosapp.net` / `oikosdemo2@oikosapp.net` (auch für die App-Review). Nur zwischen den Demo-Konten interagieren, nicht mit echten Nutzern.
 
+## Community-Zugang, Beitrittsanfragen & Benachrichtigungen (Nov. 2026, phase96)
+
+- **Zugang** = `is_public` + `join_mode`: Öffentlich (`true/open`), Mit Anfrage (`true/request`), Privat (`false/open`, nur Code). Gemeinden: nie privat, Default „Mit Anfrage“.
+- Anfrage nur über RPC `request_to_join_community` (legt Request + Chat-Nachricht `type='join_request'` + Admin-Benachrichtigung an); Entscheidung über `decide_join_request(id, approve, note)`. Chat rendert `JoinRequestCard`. Beitritt per Code nur über `join_community_by_code` (private Communities sind für Nicht-Mitglieder per RLS unlesbar/unbeitretbar).
+- Gemeinde-Fragen: Trigger benachrichtigen Admins (Frage) bzw. Fragesteller (Antwort, Deep-Link `/worldmap?gemeinde=<id>`). Nicht-Mitglieder sehen ihren Verlauf im `GemeindePinSheet`.
+- **Lektion:** `notifications_type_check` muss JEDEN Typ enthalten, den ein Trigger/Client einfügt – `notify_on_direct_message` nutzte `'message'`, das fehlte → DM-Benachrichtigungen scheiterten monatelang still (Trigger schlucken Fehler). Nach neuen Typen: `select type, count(*) from notifications group by 1` live prüfen. Push-Deep-Link kommt aus `data.url`.
+
 ## Safe-Area: `fixed inset-0`-Overlays und Border-Box-Höhen (Nov. 2026)
 
 - `App.jsx` padded den Container oben mit `env(safe-area-inset-top)`, `position: fixed; inset: 0`-Overlays (Bibel-Picker) liegen aber im Viewport-Koordinatensystem → ihr Header landete unter der Statusleiste. Overlays brauchen selbst `paddingTop: env(safe-area-inset-top)` und unten `var(--bottom-nav-h)`-Freiraum.

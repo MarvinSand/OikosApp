@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X, ArrowRight, Send } from 'lucide-react'
@@ -34,7 +34,7 @@ export default function GemeindePinSheet({ gemeinde, onClose }) {
   const [asking, setAsking] = useState(false)
   const [question, setQuestion] = useState('')
   const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
+  const [myQuestions, setMyQuestions] = useState([])
 
   useEffect(() => {
     let active = true
@@ -58,6 +58,34 @@ export default function GemeindePinSheet({ gemeinde, onClose }) {
     return () => { active = false }
   }, [gemeinde.id, user])
 
+  // Eigene Fragen + Antworten wie ein Chat (RLS: Fragesteller sieht seine
+  // Fragen auch ohne Mitgliedschaft). Bei Öffnen und beim Zurückkehren in die
+  // App neu laden, damit eingetroffene Antworten sichtbar werden.
+  const loadQuestions = useCallback(async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from('community_questions')
+      .select('id, question, answer, status, answered_by, answered_at, created_at')
+      .eq('community_id', gemeinde.id)
+      .eq('asked_by', user.id)
+      .order('created_at', { ascending: true })
+    if (!data) return
+    const ids = [...new Set(data.map(q => q.answered_by).filter(Boolean))]
+    let names = {}
+    if (ids.length) {
+      const { data: profs } = await supabase.from('profiles').select('id, full_name, username').in('id', ids)
+      names = Object.fromEntries((profs || []).map(p => [p.id, p.full_name || p.username]))
+    }
+    setMyQuestions(data.map(q => ({ ...q, answererName: names[q.answered_by] || null })))
+  }, [gemeinde.id, user?.id])
+
+  useEffect(() => {
+    loadQuestions()
+    const onVisible = () => { if (document.visibilityState === 'visible') loadQuestions() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loadQuestions])
+
   async function handleSendQuestion() {
     if (!question.trim() || !user) return
     setSending(true)
@@ -69,10 +97,10 @@ export default function GemeindePinSheet({ gemeinde, onClose }) {
       showToast('Fehler beim Senden', 'error')
       return
     }
-    setSent(true)
     setAsking(false)
     setQuestion('')
     showToast('Frage gesendet ✓')
+    loadQuestions()
   }
 
   return createPortal(
@@ -148,41 +176,62 @@ export default function GemeindePinSheet({ gemeinde, onClose }) {
           </span>
         </div>
 
-        {/* Frage stellen (nur Nicht-Mitglieder) */}
+        {/* Fragen & Antworten (nur Nicht-Mitglieder) – wie ein Chat */}
         {!isMember && user && (
-          sent ? (
-            <p style={{ fontSize: 13, color: C.accentDark, fontWeight: 600, textAlign: 'center', margin: '0 0 16px' }}>
-              Deine Frage wurde gesendet ✓
-            </p>
-          ) : asking ? (
-            <div style={{ marginBottom: 16 }}>
-              <textarea
-                autoFocus
-                value={question}
-                onChange={e => setQuestion(e.target.value.slice(0, 500))}
-                placeholder="Was möchtest du die Gemeinde fragen?"
-                rows={3}
-                style={{ width: '100%', padding: '10px 13px', borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.bgSec, fontSize: 14, color: C.text, resize: 'none', boxSizing: 'border-box' }}
-              />
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button onClick={() => setAsking(false)} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: `1.5px solid ${C.border}`, background: 'none', fontSize: 13, color: C.textSec, cursor: 'pointer' }}>Abbrechen</button>
-                <button
-                  onClick={handleSendQuestion}
-                  disabled={!question.trim() || sending}
-                  style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: question.trim() ? C.accent : C.border, color: '#fff', fontSize: 13, fontWeight: 600, cursor: question.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                >
-                  <Send size={13} /> {sending ? 'Sende…' : 'Senden'}
-                </button>
+          <div style={{ marginBottom: 12 }}>
+            {myQuestions.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                {myQuestions.map(q => (
+                  <div key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ alignSelf: 'flex-end', maxWidth: '82%', padding: '9px 13px', borderRadius: '18px 18px 5px 18px', background: C.accent, color: '#fff', fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {q.question}
+                    </div>
+                    {q.status === 'answered' && q.answer ? (
+                      <div style={{ alignSelf: 'flex-start', maxWidth: '82%', padding: '9px 13px', borderRadius: '18px 18px 18px 5px', background: C.bgSec, border: `1px solid ${C.border}`, color: C.text, fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: C.accentDark, marginBottom: 2 }}>
+                          {q.answererName ? `Antwort von ${q.answererName}` : 'Antwort der Gemeinde'}
+                        </span>
+                        {q.answer}
+                      </div>
+                    ) : (
+                      <p style={{ alignSelf: 'flex-start', fontSize: 11.5, fontStyle: 'italic', color: C.textTer, margin: '0 0 0 4px' }}>
+                        Noch keine Antwort – du wirst benachrichtigt.
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAsking(true)}
-              style={{ width: '100%', padding: '13px 0', border: `1.5px solid ${C.border}`, borderRadius: 14, background: 'none', color: C.text, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
-            >
-              Frage an die Gemeinde stellen
-            </button>
-          )
+            )}
+            {asking ? (
+              <div>
+                <textarea
+                  autoFocus
+                  value={question}
+                  onChange={e => setQuestion(e.target.value.slice(0, 500))}
+                  placeholder="Was möchtest du die Gemeinde fragen?"
+                  rows={3}
+                  style={{ width: '100%', padding: '10px 13px', borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.bgSec, fontSize: 14, color: C.text, resize: 'none', boxSizing: 'border-box' }}
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button onClick={() => setAsking(false)} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: `1.5px solid ${C.border}`, background: 'none', fontSize: 13, color: C.textSec, cursor: 'pointer' }}>Abbrechen</button>
+                  <button
+                    onClick={handleSendQuestion}
+                    disabled={!question.trim() || sending}
+                    style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: question.trim() ? C.accent : C.border, color: '#fff', fontSize: 13, fontWeight: 600, cursor: question.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    <Send size={13} /> {sending ? 'Sende…' : 'Senden'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAsking(true)}
+                style={{ width: '100%', padding: '13px 0', border: `1.5px solid ${C.border}`, borderRadius: 14, background: 'none', color: C.text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                {myQuestions.length > 0 ? 'Weitere Frage stellen' : 'Frage an die Gemeinde stellen'}
+              </button>
+            )}
+          </div>
         )}
 
         {isMember && (

@@ -15,6 +15,8 @@ function resolveDestination(n, currentUserId) {
   const { map_id, person_id, map_owner_id, request_id, requester_id, post_id, conversation_id } = n.data || {}
 
   if (n.type === 'message' && conversation_id) return `/chat/${conversation_id}`
+  // Neue Community-Typen und friend_accepted liefern ihr Ziel direkt in data.url
+  if (n.data?.url && ['community_join_request', 'community_join_decision', 'community_question', 'community_answer', 'community_event', 'friend_accepted'].includes(n.type)) return n.data.url
   if (n.type === 'bible_note_comment' && n.data?.book) {
     return buildBibleLink({ bibleId: n.data.bible_id, book: n.data.book, chapter: n.data.chapter, verseStart: n.data.verse_start, verseEnd: n.data.verse_end })
   }

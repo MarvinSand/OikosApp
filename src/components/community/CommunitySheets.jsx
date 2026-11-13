@@ -1,5 +1,7 @@
 import { useState, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Globe, HandHeart, Lock } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useToast } from '../../context/ToastContext'
 import BodyPortal from '../common/BodyPortal'
@@ -20,6 +22,78 @@ const sheetTitleStyle = { fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 6
 const lbl = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }
 const inp = { width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }
 
+// ─── Zugang: Öffentlich / Mit Anfrage / Privat ───────────────
+function AccessPicker({ value, onChange, allowPrivate = true }) {
+  const opts = [
+    { key: 'open', label: 'Öffentlich', hint: 'Jeder kann direkt beitreten', Icon: Globe },
+    { key: 'request', label: 'Mit Anfrage', hint: 'Beitritt braucht Freigabe der Admins', Icon: HandHeart },
+    ...(allowPrivate ? [{ key: 'private', label: 'Privat', hint: 'Nur per Einladungscode', Icon: Lock }] : []),
+  ]
+  return (
+    <div style={{ marginTop: 14 }}>
+      <label style={lbl}>Zugang</label>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {opts.map(o => {
+          const active = value === o.key
+          return (
+            <button key={o.key} onClick={() => onChange(o.key)} style={{
+              display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '10px 13px', borderRadius: 12, cursor: 'pointer',
+              border: active ? '1.5px solid var(--color-accent)' : '1.5px solid var(--color-warm-3)',
+              backgroundColor: active ? 'var(--color-warm-4)' : 'transparent',
+            }}>
+              <o.Icon size={18} color={active ? 'var(--color-accent)' : 'var(--color-text-muted)'} />
+              <span style={{ flex: 1 }}>
+                <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 600, color: 'var(--color-text)' }}>{o.label}</span>
+                <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)' }}>{o.hint}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Beitrittsanfrage senden (optionaler Text) ────────────────
+export function RequestJoinSheet({ community, onClose, onSent }) {
+  const { showToast } = useToast()
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
+
+  async function handleSend() {
+    setSending(true)
+    const { error } = await supabase.rpc('request_to_join_community', {
+      p_community_id: community.id, p_message: message.trim() || null,
+    })
+    setSending(false)
+    if (error) { showToast(error.message || 'Fehler beim Senden', 'error'); return }
+    showToast('Beitrittsanfrage gesendet ✓')
+    onSent?.(community.id)
+    onClose()
+  }
+
+  return (
+    <BodyPortal>
+      <div onClick={onClose} className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40" />
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 shadow-glass animate-[sheetSlideUp_0.3s_ease-out]" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
+        <div style={sheetHandle} />
+        <h3 style={sheetTitleStyle}>Beitritt anfragen</h3>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: '-8px 0 14px' }}>
+          Deine Anfrage geht an die Admins von „{community.name}“.
+        </p>
+        <label style={lbl}>Nachricht (optional)</label>
+        <textarea autoFocus value={message} onChange={e => setMessage(e.target.value.slice(0, 500))} rows={3} placeholder="Wer bist du, warum möchtest du beitreten?" style={{ ...inp, resize: 'none' }} />
+        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
+          <button onClick={handleSend} disabled={sending} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            {sending ? 'Sende…' : 'Anfrage senden'}
+          </button>
+        </div>
+      </div>
+    </BodyPortal>
+  )
+}
+
 // ─── CreateCommunitySheet ────────────────────────────────────
 export function CreateCommunitySheet({ onClose }) {
   const navigate = useNavigate()
@@ -27,7 +101,8 @@ export function CreateCommunitySheet({ onClose }) {
   const { showToast } = useToast()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [isPublic, setIsPublic] = useState(false)
+  // Zugang: 'private' (nur Code) | 'open' (öffentlich) | 'request' (öffentlich, mit Anfrage)
+  const [access, setAccess] = useState('private')
   const [communityType, setCommunityType] = useState('group')
   const [location, setLocation] = useState(null)
   const [meetingInfo, setMeetingInfo] = useState('')
@@ -41,7 +116,8 @@ export function CreateCommunitySheet({ onClose }) {
       const community = await createCommunity({
         name: name.trim(),
         description: description.trim() || null,
-        is_public: isGemeinde ? true : isPublic,
+        is_public: isGemeinde ? true : access !== 'private',
+        join_mode: access === 'private' ? 'open' : access,
         community_type: communityType,
         address: isGemeinde ? (location?.address || null) : null,
         latitude: isGemeinde ? (location?.lat ?? null) : null,
@@ -72,7 +148,7 @@ export function CreateCommunitySheet({ onClose }) {
           {[{ key: 'group', label: 'Community' }, { key: 'gemeinde', label: 'Gemeinde/Hausgemeinde' }].map(opt => (
             <button
               key={opt.key}
-              onClick={() => setCommunityType(opt.key)}
+              onClick={() => { setCommunityType(opt.key); setAccess(a => opt.key === 'gemeinde' ? (a === 'private' ? 'request' : a) : a) }}
               style={{
                 flex: 1, padding: '9px 6px', borderRadius: 12,
                 border: communityType === opt.key ? '1.5px solid var(--color-accent)' : '1.5px solid var(--color-warm-3)',
@@ -103,23 +179,12 @@ export function CreateCommunitySheet({ onClose }) {
             <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder="z.B. Wöchentlich, Mittwoch 19 Uhr" style={inp} />
 
             <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 10 }}>
-              Gemeinden sind immer öffentlich und erscheinen als Pin auf der Karte, damit sie gefunden werden können.
+              Gemeinden erscheinen als Pin auf der Karte, damit sie gefunden werden können.
             </p>
           </>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
-            <div>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>Öffentlich</p>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>Für alle sichtbar und beitrittsfähig</p>
-            </div>
-            <button
-              onClick={() => setIsPublic(v => !v)}
-              style={{ width: 44, height: 26, borderRadius: 13, border: 'none', backgroundColor: isPublic ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}
-            >
-              <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: isPublic ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-            </button>
-          </div>
-        )}
+        ) : null}
+
+        <AccessPicker value={access} onChange={setAccess} allowPrivate={!isGemeinde} />
 
         <button
           onClick={handleCreate}

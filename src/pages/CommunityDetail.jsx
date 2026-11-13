@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense, useEffect, useRef } from 'react'
 import { scrollContainerToBottom } from '../lib/scroll'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Settings, Copy, LogOut, SendHorizontal,
   MoreVertical, Shield, Plus, Trash2, MapPin, Clock, Pin, Globe, Lock, Users,
@@ -661,6 +661,79 @@ function AddPrayerSheet({ onClose, onSubmit }) {
 }
 
 // ─── Fragen an die Gemeinde ────────────────────────────────────
+// ─── Beitrittsanfrage im Chat ─────────────────────────────────
+// Admins nehmen an oder lehnen ab (Ablehnung optional mit Text); alle
+// Mitglieder sehen den Stand. Status kommt live aus community_join_requests.
+function JoinRequestCard({ msg, isAdmin, onDecide }) {
+  const [req, setReq] = useState(null)
+  const [declining, setDeclining] = useState(false)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const name = msg.profiles?.full_name || msg.profiles?.username || 'Jemand'
+
+  useEffect(() => {
+    if (!msg.join_request_id) return
+    let active = true
+    supabase
+      .from('community_join_requests')
+      .select('id, status, message, decision_note')
+      .eq('id', msg.join_request_id)
+      .maybeSingle()
+      .then(({ data }) => { if (active) setReq(data) })
+    return () => { active = false }
+  }, [msg.join_request_id])
+
+  async function decide(approve) {
+    setBusy(true)
+    const ok = await onDecide(msg.join_request_id, approve, approve ? null : note.trim() || null)
+    setBusy(false)
+    if (ok) {
+      setReq(r => ({ ...(r || {}), status: approve ? 'approved' : 'declined', decision_note: approve ? null : note.trim() || null }))
+      setDeclining(false)
+    }
+  }
+
+  const status = req?.status || 'pending'
+  const text = req?.message ?? msg.text
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 10px' }}>
+      <div style={{ width: '88%', backgroundColor: 'var(--color-white)', border: '1.5px solid var(--color-warm-3)', borderRadius: 16, padding: '12px 14px' }}>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-accent)', margin: '0 0 4px' }}>🙋 Beitrittsanfrage</p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{name} möchte beitreten</p>
+        {text && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', margin: '6px 0 0', lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</p>}
+
+        {status === 'pending' && isAdmin && !declining && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button disabled={busy} onClick={() => setDeclining(true)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Ablehnen</button>
+            <button disabled={busy} onClick={() => decide(true)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{busy ? '…' : 'Annehmen'}</button>
+          </div>
+        )}
+        {status === 'pending' && isAdmin && declining && (
+          <div style={{ marginTop: 10 }}>
+            <textarea autoFocus value={note} onChange={e => setNote(e.target.value.slice(0, 500))} rows={2} placeholder="Begründung (optional)" style={{ ...inp, resize: 'none' }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button disabled={busy} onClick={() => setDeclining(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Zurück</button>
+              <button disabled={busy} onClick={() => decide(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', backgroundColor: '#C0392B', color: '#fff', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{busy ? '…' : 'Ablehnen'}</button>
+            </div>
+          </div>
+        )}
+        {status === 'pending' && !isAdmin && (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-muted)', margin: '8px 0 0' }}>Wartet auf Entscheidung der Admins</p>
+        )}
+        {status === 'approved' && (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', margin: '8px 0 0' }}>✓ Angenommen</p>
+        )}
+        {status === 'declined' && (
+          <div style={{ margin: '8px 0 0' }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: '#C0392B', margin: 0 }}>✕ Abgelehnt</p>
+            {req?.decision_note && <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', margin: '3px 0 0', fontStyle: 'italic' }}>„{req.decision_note}“</p>}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function QuestionCard({ q, currentUserId, onAnswer }) {
   const [answering, setAnswering] = useState(false)
   const [text, setText] = useState('')
@@ -1049,38 +1122,37 @@ function SettingsSheet({
               </div>
             </div>
 
-            <div className="flex items-center justify-between bg-warm-4 border border-warm-3 rounded-xl p-4">
-              <div>
-                <p className="font-serif text-[14px] font-bold text-dark m-0">Öffentliche Community</p>
-                <p className="font-serif text-[12px] text-dark-muted m-0 leading-tight mt-0.5">
-                  {isGemeinde ? 'Gemeinden sind immer öffentlich, damit sie auf der Karte gefunden werden.' : 'Jeder kann beitreten und mitlesen.'}
-                </p>
+            {/* Zugang: Öffentlich / Mit Anfrage / Privat */}
+            <div className="bg-warm-4 border border-warm-3 rounded-xl p-3">
+              <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-2 px-1">Zugang</p>
+              <div className="flex flex-col gap-2">
+                {[
+                  { key: 'open', label: 'Öffentlich', hint: 'Jeder kann direkt beitreten und mitlesen.', Icon: Globe },
+                  { key: 'request', label: 'Mit Anfrage', hint: 'Sichtbar bei „Entdecken“, Beitritt braucht deine Freigabe.', Icon: HandHeart },
+                  ...(isGemeinde ? [] : [{ key: 'private', label: 'Privat', hint: 'Nur per Einladungscode oder QR-Code.', Icon: Lock }]),
+                ].map(opt => {
+                  const current = !isPublic ? 'private' : joinMode
+                  const active = current === opt.key
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => {
+                        if (opt.key === 'private') { setIsPublic(false); setJoinMode('open') }
+                        else { setIsPublic(true); setJoinMode(opt.key) }
+                      }}
+                      className={`flex items-center gap-3 text-left rounded-xl p-3 border-[1.5px] ${active ? 'border-accent bg-accent-light' : 'border-warm-3 bg-surface'}`}
+                    >
+                      <opt.Icon size={18} color={active ? 'var(--color-accent)' : 'var(--color-text-muted)'} />
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-serif text-[14px] font-bold text-dark">{opt.label}</span>
+                        <span className="block font-serif text-[12px] text-dark-muted leading-tight">{opt.hint}</span>
+                      </span>
+                      {active && <Check size={16} color="var(--color-accent)" />}
+                    </button>
+                  )
+                })}
               </div>
-              <button
-                onClick={() => !isGemeinde && setIsPublic(v => !v)}
-                disabled={isGemeinde}
-                className={`relative w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-accent' : 'bg-warm-3'} ${isGemeinde ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${isPublic ? 'left-[22px]' : 'left-0.5'}`} />
-              </button>
             </div>
-
-            {isPublic && (
-              <div className="flex items-center justify-between bg-warm-4 border border-warm-3 rounded-xl p-4">
-                <div>
-                  <p className="font-serif text-[14px] font-bold text-dark m-0">Beitritt nur mit Anfrage</p>
-                  <p className="font-serif text-[12px] text-dark-muted m-0 leading-tight mt-0.5">
-                    Community wird bei „Entdecken" angezeigt, ein Beitritt braucht aber deine Freigabe.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setJoinMode(m => m === 'request' ? 'open' : 'request')}
-                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${joinMode === 'request' ? 'bg-accent' : 'bg-warm-3'}`}
-                >
-                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${joinMode === 'request' ? 'left-[22px]' : 'left-0.5'}`} />
-                </button>
-              </div>
-            )}
 
             {/* Offene Beitrittsanfragen */}
             {joinRequests.length > 0 && (
@@ -1237,7 +1309,12 @@ export default function CommunityDetail() {
   const { messages, loading: chatLoading, sendMessage, deleteMessage, updateMessage } = useChat(conversationId)
   const { prayers, loading: prayersLoading, createPrayer, reload: reloadPrayers } = useCommunityPrayers(id, conversationId)
 
-  const [activeTab, setActiveTab] = useState('chat')
+  // Deep-Link aus Benachrichtigungen: /community/:id?tab=questions|events
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get('tab')
+    return ['chat', 'board', 'events', 'prayers', 'questions', 'reports'].includes(t) ? t : 'chat'
+  })
   const [showSettings, setShowSettings] = useState(false)
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [showCreatePost, setShowCreatePost] = useState(false)
@@ -1278,8 +1355,12 @@ export default function CommunityDetail() {
   }
 
   async function handleRoleChange(userId, role) {
-    await changeRole(userId, role)
-    showToast(role === 'admin' ? 'Admin-Rechte vergeben ✓' : 'Admin-Rechte entzogen')
+    try {
+      await changeRole(userId, role)
+      showToast(role === 'admin' ? 'Admin-Rechte vergeben ✓' : 'Admin-Rechte entzogen')
+    } catch {
+      showToast('Rolle konnte nicht geändert werden', 'error')
+    }
   }
 
   async function handleRemove(userId) {
@@ -1289,11 +1370,19 @@ export default function CommunityDetail() {
   }
 
   async function handleLeave() {
-    if (isAdmin && adminCount <= 1) {
-      showToast('Als einziger Admin kannst du nicht austreten.', 'error')
-      return
-    }
     try {
+      // Letzter Admin: dienstältestes anderes Mitglied wird automatisch Admin,
+      // damit die Community nicht ohne Verwaltung zurückbleibt.
+      if (isAdmin && adminCount <= 1) {
+        const successor = members
+          .filter(m => m.user_id !== user?.id)
+          .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))[0]
+        if (!successor) {
+          showToast('Du bist das einzige Mitglied – lösche die Community stattdessen.', 'error')
+          return
+        }
+        await changeRole(successor.user_id, 'admin')
+      }
       await leaveCommunity(id)
       showToast('Community verlassen')
       navigate('/friends', { replace: true })
@@ -1319,12 +1408,14 @@ export default function CommunityDetail() {
     }
   }
 
-  async function handleRespondJoinRequest(requestId, approve) {
+  async function handleRespondJoinRequest(requestId, approve, note = null) {
     try {
-      await respondToJoinRequest(requestId, approve)
-      showToast(approve ? 'Beigetreten ✓' : 'Anfrage abgelehnt')
+      await respondToJoinRequest(requestId, approve, note)
+      showToast(approve ? 'Anfrage angenommen ✓' : 'Anfrage abgelehnt')
+      return true
     } catch {
       showToast('Fehler beim Bearbeiten', 'error')
+      return false
     }
   }
 
@@ -1524,7 +1615,9 @@ export default function CommunityDetail() {
                   return (
                     <div key={msg.id || `opt-${i}`}>
                       {showDay && <DaySeparator label={formatDaySeparator(msg.created_at)} />}
-                      <MessageBubble msg={msg} isOwn={isOwn} />
+                      {msg.type === 'join_request'
+                        ? <JoinRequestCard msg={msg} isAdmin={isAdmin} onDecide={handleRespondJoinRequest} />
+                        : <MessageBubble msg={msg} isOwn={isOwn} />}
                     </div>
                   )
                 })}
@@ -1684,7 +1777,7 @@ export default function CommunityDetail() {
           isAdmin={isAdmin}
           adminCount={adminCount}
           onClose={() => setSelectedMember(null)}
-          onRoleChange={changeRole}
+          onRoleChange={handleRoleChange}
           onRemove={removeMember}
         />
       )}

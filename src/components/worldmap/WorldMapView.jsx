@@ -651,6 +651,22 @@ export default function WorldMapView({ onNavigateToProfile }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, visibleUsers, loading, map])
 
+  // Deep-Link aus Benachrichtigungen: ?gemeinde=<id> → Pin-Sheet der Gemeinde
+  // öffnen (z. B. „Deine Frage wurde beantwortet“ für Nicht-Mitglieder).
+  useEffect(() => {
+    const gid = searchParams.get('gemeinde')
+    if (!gid || loading || !map) return
+    const target = gemeinden.find(g => g.id === gid)
+    if (target) {
+      focusOn(target.latitude, target.longitude)
+      setSelectedGemeinde(target)
+    } else {
+      showToast('Diese Gemeinde ist auf der Karte nicht sichtbar')
+    }
+    setSearchParams(prev => { prev.delete('gemeinde'); return prev }, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, gemeinden, loading, map])
+
   useCombinedClusterer({
     map,
     users: visibleUsers,
@@ -723,12 +739,13 @@ export default function WorldMapView({ onNavigateToProfile }) {
             },
           }}
         >
-          {/* Own pin (never clustered, always on top) – immer sichtbar */}
+          {/* Own pin (never clustered) – liegt bewusst HINTER allen anderen Pins,
+              damit das eigene Bild nichts überdeckt; immer sichtbar */}
           {myProfile?.latitude && showGeschwister && (
             <AdvancedMarker
               map={map}
               position={{ lat: myProfile.latitude, lng: myProfile.longitude }}
-              zIndex={9999}
+              zIndex={1}
             >
               <OwnPinContent user={myProfile} zoom={snapZoom.currentZoom} />
             </AdvancedMarker>
