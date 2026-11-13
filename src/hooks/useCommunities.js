@@ -140,7 +140,8 @@ export function useCommunities() {
       cache = { userId, rows: cache.rows.filter(c => c.id !== communityId) }
       writeCache(userId, 'communities', cache.rows)
     }
-    await supabase.from('community_members').delete().eq('community_id', communityId).eq('user_id', userId)
+    const { error } = await supabase.from('community_members').delete().eq('community_id', communityId).eq('user_id', userId)
+    if (error) { await load(true); throw error }
   }
 
   // Nur der Ersteller darf löschen (RLS: created_by = auth.uid()). Alle

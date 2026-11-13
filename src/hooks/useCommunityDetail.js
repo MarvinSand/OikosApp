@@ -166,7 +166,11 @@ export function useCommunityDetail(communityId) {
     const member = members.find(m => m.user_id === userId)
     if (!member) return
     setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role } : m))
-    await supabase.from('community_members').update({ role }).eq('id', member.id)
+    const { error } = await supabase.from('community_members').update({ role }).eq('id', member.id)
+    if (error) {
+      setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role: member.role } : m))
+      throw error
+    }
   }
 
   async function removeMember(userId) {

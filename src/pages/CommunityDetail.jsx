@@ -1355,8 +1355,12 @@ export default function CommunityDetail() {
   }
 
   async function handleRoleChange(userId, role) {
-    await changeRole(userId, role)
-    showToast(role === 'admin' ? 'Admin-Rechte vergeben ✓' : 'Admin-Rechte entzogen')
+    try {
+      await changeRole(userId, role)
+      showToast(role === 'admin' ? 'Admin-Rechte vergeben ✓' : 'Admin-Rechte entzogen')
+    } catch {
+      showToast('Rolle konnte nicht geändert werden', 'error')
+    }
   }
 
   async function handleRemove(userId) {
@@ -1366,11 +1370,19 @@ export default function CommunityDetail() {
   }
 
   async function handleLeave() {
-    if (isAdmin && adminCount <= 1) {
-      showToast('Als einziger Admin kannst du nicht austreten.', 'error')
-      return
-    }
     try {
+      // Letzter Admin: dienstältestes anderes Mitglied wird automatisch Admin,
+      // damit die Community nicht ohne Verwaltung zurückbleibt.
+      if (isAdmin && adminCount <= 1) {
+        const successor = members
+          .filter(m => m.user_id !== user?.id)
+          .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))[0]
+        if (!successor) {
+          showToast('Du bist das einzige Mitglied – lösche die Community stattdessen.', 'error')
+          return
+        }
+        await changeRole(successor.user_id, 'admin')
+      }
       await leaveCommunity(id)
       showToast('Community verlassen')
       navigate('/friends', { replace: true })
@@ -1765,7 +1777,7 @@ export default function CommunityDetail() {
           isAdmin={isAdmin}
           adminCount={adminCount}
           onClose={() => setSelectedMember(null)}
-          onRoleChange={changeRole}
+          onRoleChange={handleRoleChange}
           onRemove={removeMember}
         />
       )}
