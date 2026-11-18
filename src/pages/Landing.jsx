@@ -29,6 +29,35 @@ const HERO_SCREENS = ['01-oikos-map', '03-gebete', '02-weltkarte', '06-communiti
   alt: ['Oikos Map der App', 'Gebete in der App', 'Weltkarte der App', 'Communities in der App', 'Bibel in der App'][i],
 }))
 
+// Schwebende Karten um das Hero-Handy: passend zur gerade gezeigten App-Ansicht
+// (gleiche Reihenfolge wie HERO_SCREENS). Je 3 Pin-Karten + 1 Avatar-Karte.
+const HERO_CARDS = [
+  { pins: [['🧑‍🤝‍🧑', 'Dein Umfeld', '12 Menschen im Blick'], ['🔗', 'Verbindungen', 'Familie · Freunde'], ['🙏', 'Gebetsmodus', 'Für alle beten']], avs: [['L', '#FFD2B8'], ['B', '#BDF0DC'], ['M', '#D9C8FF']], avTitle: 'Lisa, Ben, Mama', avSub: 'heute im Gebet' },
+  { pins: [['🙏', 'Gebetsmodus', 'Person für Person'], ['✅', 'Gebet erhört', 'Für Lisa'], ['📋', 'Gebetslisten', 'Familie · Freunde']], avs: [['A', '#BDF0DC'], ['K', '#D9C8FF'], ['S', '#FFE08A']], avTitle: '9 Personen', avSub: 'beten mit dir' },
+  { pins: [['🎵', 'Lobpreisabend', 'Heute · 19:30'], ['🏠', 'Hausgemeinde', 'in deiner Nähe'], ['📖', 'Bibelstudium', 'Do · 20:00']], avs: [['B', '#FFD2B8'], ['A', '#BDF0DC'], ['K', '#D9C8FF']], avTitle: 'Geschwister', avSub: 'in deiner Nähe' },
+  { pins: [['🏠', 'Hauskreis', 'Frankfurt-Bornheim'], ['💬', 'Gruppenchat', '3 neue Nachrichten'], ['📅', 'Treffen', 'Jeden Mittwoch']], avs: [['J', '#FFE08A'], ['N', '#FFC9D6'], ['T', '#BFE3FF']], avTitle: '12 Mitglieder', avSub: 'in deiner Community' },
+  { pins: [['📖', 'Psalm 23', 'Vers markiert'], ['📝', 'Meine Notiz', 'Ein Gedanke dazu'], ['📤', 'Teilen', 'Im Feed oder Chat']], avs: [['E', '#BDF0DC'], ['D', '#FFD2B8'], ['R', '#D9C8FF']], avTitle: 'Gemeinsam lesen', avSub: '5 Freunde dabei' },
+]
+const HERO_SLOTS = ['lp-fc-a', 'lp-fc-b', 'lp-fc-c']
+const HERO_DEPTH = [90, 70, 120]
+const heroCards = (i) => {
+  const c = HERO_CARDS[i]
+  const out = c.pins.map(([emoji, title, sub], k) => ({
+    id: `${i}-${k}`, className: HERO_SLOTS[k], depth: HERO_DEPTH[k], decorative: true, index: k,
+    children: (<div className="lp-chipcard"><Pin emoji={emoji} pulse={k === 0} /><span><b>{title}</b><i>{sub}</i></span></div>),
+  }))
+  out.push({
+    id: `${i}-d`, className: 'lp-fc-d', depth: 55, decorative: true, index: 3,
+    children: (
+      <div className="lp-chipcard lp-chipcard-avatars">
+        <span className="lp-avs">{c.avs.map(([l, bg]) => <u key={l} style={{ background: bg }}>{l}</u>)}</span>
+        <span><b>{c.avTitle}</b><i>{c.avSub}</i></span>
+      </div>
+    ),
+  })
+  return out
+}
+
 const MARQUEE = [
   ['🌍', 'Weltweit connecten'], ['📍', 'Die Weltkarte'], ['📖', 'Bibelstudium'], ['🏠', 'Hausgemeinde'],
   ['🤝', 'Outreach'], ['📢', 'Evangelisation'], ['🎵', 'Lobpreis'], ['🙏', 'Gebetskreise'],
@@ -321,12 +350,7 @@ export default function Landing() {
               <Phone3D
                 screens={HERO_SCREENS}
                 active={heroScreen}
-                cards={[
-                  { id: 'a', className: 'lp-fc-a', depth: 90, decorative: true, children: (<div className="lp-chipcard"><Pin emoji="🎵" pulse /><span><b>Lobpreisabend</b><i>Heute · 19:30</i></span></div>) },
-                  { id: 'b', className: 'lp-fc-b', depth: 70, decorative: true, children: (<div className="lp-chipcard"><Pin emoji="🙏" /><span><b>Gebet erhört</b><i>Für Lisa</i></span></div>) },
-                  { id: 'c', className: 'lp-fc-c', depth: 120, decorative: true, children: (<div className="lp-chipcard"><Pin emoji="🏠" /><span><b>Hausgemeinde</b><i>in deiner Nähe</i></span></div>) },
-                  { id: 'd', className: 'lp-fc-d', depth: 55, decorative: true, children: (<div className="lp-chipcard lp-chipcard-avatars"><span className="lp-avs"><u style={{ background: '#FFD2B8' }}>B</u><u style={{ background: '#BDF0DC' }}>A</u><u style={{ background: '#D9C8FF' }}>K</u></span><span><b>Geschwister</b><i>in deiner Nähe</i></span></div>) },
-                ]}
+                cards={heroCards(heroScreen)}
               />
             </div>
           </div>

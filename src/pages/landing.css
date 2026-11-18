@@ -431,12 +431,14 @@
 .lp .lp-p3d-card {
   position: absolute; z-index: 5; white-space: nowrap;
   transform: translateZ(calc(var(--d) * 1px)) translate3d(calc(var(--mx) * var(--d) * -0.35px), calc(var(--my) * var(--d) * -0.25px), 0);
-  animation: lp-bob 6s ease-in-out infinite;
+  animation: lp-cardin 0.7s var(--ease) both, lp-bob 6s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 110ms), var(--bob, 0s);
 }
-.lp .lp-fc-a { left: -34%; top: 10%; animation-delay: -1s; }
-.lp .lp-fc-b { right: -30%; top: 30%; animation-delay: -3s; }
-.lp .lp-fc-c { left: -40%; bottom: 20%; animation-delay: -4.5s; }
-.lp .lp-fc-d { right: -22%; bottom: 7%; animation-delay: -2s; }
+@keyframes lp-cardin { from { opacity: 0; filter: blur(6px); scale: 0.82; } to { opacity: 1; filter: blur(0); scale: 1; } }
+.lp .lp-fc-a { left: -34%; top: 10%; --bob: -1s; }
+.lp .lp-fc-b { right: -30%; top: 30%; --bob: -3s; }
+.lp .lp-fc-c { left: -40%; bottom: 20%; --bob: -4.5s; }
+.lp .lp-fc-d { right: -22%; bottom: 7%; --bob: -2s; }
 .lp .lp-fc-e { right: -16%; top: 18%; }
 @keyframes lp-bob { 0%, 100% { margin-top: 0; } 50% { margin-top: -10px; } }
 @media (max-width: 520px) {

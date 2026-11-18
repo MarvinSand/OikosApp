@@ -86,7 +86,7 @@ export default function Phone3D({ screens, active = 0, cards = [], className = '
             <div
               key={c.id}
               className={`lp-p3d-card ${c.className || ''}`}
-              style={{ '--d': c.depth ?? 60 }}
+              style={{ '--d': c.depth ?? 60, '--i': c.index ?? 0 }}
               aria-hidden={c.decorative ? 'true' : undefined}
             >
               {c.children}
