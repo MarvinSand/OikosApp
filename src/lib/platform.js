@@ -17,3 +17,10 @@ export function publicOrigin() {
   const h = window.location.hostname
   return h === 'localhost' || h === '127.0.0.1' ? window.location.origin : PUBLIC_APP_URL
 }
+
+// Hauptdomain der App. Die Domain oikosconnect.site zeigt nur die Landingpage
+// (immer, auch eingeloggt); alle anderen Pfade (/auth, /privacy …) leitet
+// App.jsx auf die Hauptdomain weiter. Die alte Domain oikosapp.net läuft
+// unverändert weiter.
+export const MAIN_APP_URL = 'https://oikosconnect.net'
+export const isLandingOnlyHost = typeof window !== 'undefined' && /(^|\.)oikosconnect\.site$/i.test(window.location.hostname)

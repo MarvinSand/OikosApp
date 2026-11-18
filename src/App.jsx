@@ -7,7 +7,7 @@ import { pathFromScan } from './lib/qrLinks'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { supabase } from './lib/supabase'
 import { registerForPush } from './lib/nativePush'
-import { isNativeApp } from './lib/platform'
+import { isNativeApp, isLandingOnlyHost, MAIN_APP_URL } from './lib/platform'
 // Public pages stay eager so the login screen renders without a second fetch
 import Auth from './pages/Auth'
 import AuthCallback from './pages/AuthCallback'
@@ -56,7 +56,7 @@ const Landing = lazy(loadLanding)
 // Session-Prüfung; `lazy` greift danach auf den Modul-Cache zu) und die
 // übrigen Haupt-Tabs nachziehen, sobald der Browser Leerlauf hat.
 import('./pages/Home')
-if (typeof window !== 'undefined' && !isNativeApp && window.location.pathname === '/' && !getCurrentUser()) loadLanding()
+if (typeof window !== 'undefined' && !isNativeApp && window.location.pathname === '/' && (isLandingOnlyHost || !getCurrentUser())) loadLanding()
 
 const idle = typeof requestIdleCallback === 'function'
   ? requestIdleCallback
@@ -322,6 +322,7 @@ function takeReturnTo() {
 // In der nativen App (Capacitor) entfällt sie: dort geht es direkt zum Login.
 function showsLanding(pathname, user) {
   if (pathname === '/welcome') return true
+  if (isLandingOnlyHost) return pathname === '/'
   return pathname === '/' && !user && !isNativeApp
 }
 
@@ -336,6 +337,13 @@ function RootGate() {
 
 export default function App() {
   const { user, loading } = useAuth()
+
+  // oikosconnect.site: nur die Landingpage; alles andere (Login, Rechtstexte …)
+  // läuft auf der Hauptdomain.
+  if (isLandingOnlyHost && window.location.pathname !== '/') {
+    window.location.replace(MAIN_APP_URL + window.location.pathname + window.location.search + window.location.hash)
+    return <LoadingSpinner />
+  }
 
   if (loading) return <LoadingSpinner />
 
