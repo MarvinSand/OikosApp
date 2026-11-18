@@ -660,3 +660,33 @@
 .lp .lp-prayer .lp-verse blockquote { text-shadow: 0 2px 22px rgba(0, 0, 0, 0.85); }
 .lp .lp-prayer .lp-verse figcaption { color: #cfd9ec; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.8); }
 .lp .lp-prayer .lp-photo-card { box-shadow: 0 50px 90px -35px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(246, 193, 119, 0.22); }
+
+/* ══════════ Oikos/Gebet: Himmel-Video proportional (ganz sichtbar, nicht zugeschnitten) ══════════
+   Das Medium (21:9) liegt als Streifen oben in der Sektion und blendet nach unten in den
+   Hintergrund aus; Inhalte darunter stehen auf ruhigem Grund. Gilt für Handy und Desktop. */
+.lp .lp-prayer::before { display: none; }
+.lp .lp-prayer-media, .lp .lp-prayer-video {
+  position: absolute; left: 0; right: 0; top: 0; bottom: auto; width: 100%; height: 440px; z-index: -2;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14%, #000 58%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 14%, #000 58%, transparent 100%);
+}
+.lp .lp-prayer-video { z-index: -1; }
+.lp .lp-prayer-media img, .lp .lp-prayer-video { object-fit: cover; opacity: 0.92; filter: none; }
+.lp .lp-prayer-media img { display: block; width: 100%; height: 100%; }
+@media (min-width: 768px) {
+  .lp .lp-prayer-media, .lp .lp-prayer-video { height: auto; aspect-ratio: 21 / 9; }
+  .lp .lp-prayer-media img { height: 100%; }
+}
+/* sehr breite Bildschirme: Inhalt wächst mit, damit nichts winzig wirkt */
+@media (min-width: 1700px) {
+  .lp .lp-wrap { max-width: 1360px; }
+  .lp .lp-prayer-stage { max-width: 1120px; }
+}
+
+/* Handy: Himmel-Bild zuerst sichtbar, die Glas-Überschrift schiebt sich darüber */
+@media (max-width: 767px) {
+  .lp .lp-prayer-media, .lp .lp-prayer-video { height: 320px; }
+  .lp .lp-prayer-head { margin-top: 150px; padding: 30px 22px 28px; }
+  .lp .lp-prayer-stats li { font-size: 13px; padding: 7px 12px; }
+  .lp .lp-prayer-stats b { font-size: 17px; }
+}
