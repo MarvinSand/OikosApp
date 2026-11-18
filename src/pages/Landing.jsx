@@ -1,52 +1,62 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, Globe, HandHeart, HeartHandshake,
-  Home, MapPin, MessageCircle, Monitor, Network, Newspaper, Route, ScrollText, ShieldCheck,
-  Smartphone, Sparkles, TrendingUp, Users,
+  ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Globe,
+  HandHeart, HeartHandshake, Home, MessageCircle, Monitor, Network, Newspaper, Route,
+  ScrollText, ShieldCheck, Smartphone, Sparkles, Users,
 } from 'lucide-react'
 import { PLAY_STORE_URL, APP_STORE_URL } from '../lib/stores'
+import Phone3D from '../components/landing/Phone3D'
+import Tilt from '../components/landing/Tilt'
 import './landing.css'
 
 // Öffentliche Startseite der Domain (nur Web, ausgeloggt). Erzählt die Vision
-// von Oikos Connect als cineastische Geschichte: vom eigenen Umfeld bis zur
-// weltweiten Familie. Bilder: mit Higgsfield generierte Szenen (public/landing/img)
-// und echte App-Screens (public/landing/app). Keine Datenabfragen.
+// von Oikos Connect als cineastische Geschichte: vom eigenen Umfeld über das
+// gezielte Gebet bis zur weltweiten Familie. Bilder/Videos: mit Higgsfield
+// generiert (public/landing/img, /video), App-Screens: echte Screenshots
+// (public/landing/app). Keine Datenabfragen.
 
-// Weltkugel + Länderdaten als eigener Chunk: Text und Bilder erscheinen sofort.
+// Schwere Teile (Weltkugel mit Länderdaten, Gebets-Animation) als eigene Chunks
 const NetworkGlobe = lazy(() => import('../components/landing/NetworkGlobe'))
+const PrayerField = lazy(() => import('../components/landing/PrayerField'))
 
 const IMG = '/landing/img/'
 const APP = '/landing/app/'
+const VID = '/landing/video/'
 
-const CHAPTERS = [
+const HERO_SCREENS = ['01-oikos-map', '03-gebete', '02-weltkarte', '06-communities', '08-bibel'].map((s, i) => ({
+  src: `${APP}${s}.webp`,
+  alt: ['Oikos Map der App', 'Gebete in der App', 'Weltkarte der App', 'Communities in der App', 'Bibel in der App'][i],
+}))
+
+const MARQUEE = [
+  ['🌍', 'Weltweit connecten'], ['📍', 'Die Weltkarte'], ['📖', 'Bibelstudium'], ['🏠', 'Hausgemeinde'],
+  ['🤝', 'Outreach'], ['📢', 'Evangelisation'], ['🎵', 'Lobpreis'], ['🙏', 'Gebetskreise'],
+]
+
+const TOPICS = [
+  { img: 'earth', emoji: '🌍', title: 'Weltweit connecten', text: 'Vernetze dich mit Christen auf allen Kontinenten, bete füreinander und erlebe, wie Gott weltweit am Werk ist.', alt: 'Die Erde bei Sonnenaufgang mit leuchtenden Verbindungen zwischen den Kontinenten' },
+  { img: 'weltkarte', emoji: '📍', title: 'Die Weltkarte', text: 'Finde Geschwister, Hausgemeinden und Events in deiner Nähe. Deinen Standort steuerst du selbst.', alt: 'Eine Hand hält ein Smartphone mit der Weltkarte der App, goldene Lichtlinien führen über eine Stadt bei Nacht' },
+  { img: 'bibel', emoji: '📖', title: 'Bibelstudium', text: 'Lest gemeinsam, markiert Verse, tauscht Gedanken aus und startet Bibelstudien mit Freunden.', alt: 'Fünf Freunde im Bibelkreis, eine Person zeigt die Bibel-Ansicht der App auf dem Smartphone' },
+  { img: 'haus', emoji: '🏠', title: 'Hausgemeinde', text: 'Gründe oder finde Hauskreise: mit eigenem Chat, gemeinsamen Anliegen und Mitgliederübersicht.', alt: 'Hausgemeinde im Wohnzimmer, ein Mann zeigt die Community-Liste der App' },
+  { img: 'outreach', emoji: '🤝', title: 'Outreach', text: 'Plant Einsätze in eurer Stadt, ladet Geschwister ein und erreicht Menschen dort, wo sie leben.', alt: 'Freiwillige sprechen in einer Fußgängerzone mit Passanten, eine Person zeigt die Karten-Ansicht der App' },
+  { img: 'evangelisation', emoji: '📢', title: 'Evangelisation', text: 'Teile deinen Glauben ganz natürlich: Zeugnisse, Bibelverse, Gespräche. Begleite Menschen Schritt für Schritt.', alt: 'Zwei Kolleginnen im Gespräch auf einer Parkbank, eine zeigt einen Bibelvers in der App' },
+  { img: 'lobpreis', emoji: '🎵', title: 'Lobpreis & Events', text: 'Lobpreisabende, Gebetsabende, Sport und mehr: Erstelle Events und lade andere ein.', alt: 'Lobpreisabend im Freien unter Lichterketten, eine Person hält die App hoch' },
+  { img: 'gebet', emoji: '🙏', title: 'Gebet & Gebetskreise', text: 'Teile Anliegen, bete mit, setzt euch Gebetsziele. Erhörte Gebete bleiben als Zeugnis erhalten.', alt: 'Eine Frau betet im Morgenlicht mit dem Smartphone an der Brust' },
+]
+
+const PILLARS = [
   {
-    img: 'ch1', label: 'Sehen', tag: 'Oikos Map', tagIcon: Network,
-    title: <>Es beginnt mit den Menschen <span className="lp-gold">um dich herum.</span></>,
-    text: 'Familie, Freunde, Kollegen, Nachbarn: Gott hat dir Menschen anvertraut. Auf deiner Oikos Map siehst du sie alle auf einen Blick, mit Orten, Farben und Verbindungen. Niemand gerät mehr in Vergessenheit.',
-    chips: [[Network, 'Oikos Map'], [MapPin, 'Orte & Verbindungen']],
-    alt: 'Junge Frau steht im Morgenlicht am Fenster und blickt nachdenklich über die Dächer der Stadt',
+    icon: Network, title: 'Besser merken, wer zu dir gehört',
+    text: 'Auf deiner Oikos Map hältst du alle Menschen aus deinem Umfeld fest, mit Namen, Anliegen und ihrer Geschichte. Nichts geht im Alltag unter, und du siehst sofort, für wen du lange nicht gebetet hast.',
   },
   {
-    img: 'ch2', label: 'Beten', tag: 'Gebetsmodus', tagIcon: HandHeart,
-    title: <>Gebet, das <span className="lp-gold">trägt.</span></>,
-    text: 'Halte Anliegen fest, bete gezielt und erlebe, wie andere mit dir beten. Der Gebetsmodus führt dich Person für Person durch deine Listen, und erhörte Gebete bleiben als Zeugnis erhalten.',
-    chips: [[HandHeart, 'Gemeinsam beten'], [Sparkles, 'Erhörte Gebete']],
-    alt: 'Vier Freunde beten gemeinsam an einem Küchentisch bei warmem Kerzenlicht, eine offene Bibel liegt vor ihnen',
+    icon: HandHeart, title: 'Gezielt für sie beten',
+    text: 'Statt „irgendwie an alle zu denken“ betest du mit Namen und konkretem Anliegen: für Lisa, für Ben, für den Nachbarn von nebenan. Der Gebetsmodus führt dich Person für Person durch deine Liste.',
   },
   {
-    img: 'ch3', label: 'Begleiten', tag: 'Story-Line', tagIcon: Route,
-    title: <>Menschen auf ihrem Weg <span className="lp-gold">begleiten.</span></>,
-    text: 'Eine Story-Line für wichtige Momente und sechs Impact-Stufen zeigen dir, wo jemand gerade steht und wie Gott Schritt für Schritt wirkt. So wird aus Fürsorge echte Begleitung.',
-    chips: [[Route, 'Story-Line'], [TrendingUp, 'Impact-Stufen']],
-    alt: 'Zwei junge Männer im Gespräch auf einer Parkbank im Abendlicht, einer legt dem anderen ermutigend die Hand auf die Schulter',
-  },
-  {
-    img: 'ch4', label: 'Gemeinschaft', tag: 'Hauskreise & Events', tagIcon: Users,
-    title: <>Gemeinsam statt <span className="lp-gold">allein.</span></>,
-    text: 'Gründe Hauskreise, finde Gemeinden und Events in deiner Nähe, teile Zeugnisse im Feed und schreib direkt mit Geschwistern. Glaube wird lebendig, wenn wir ihn miteinander teilen.',
-    chips: [[Users, 'Communities'], [CalendarDays, 'Events'], [MessageCircle, 'Chats']],
-    alt: 'Hauskreis auf einer Terrasse unter Lichterketten am Abend, ein junger Mann spielt Gitarre, die anderen singen',
+    icon: Sparkles, title: 'Und in der geistlichen Welt etwas bewegen',
+    text: 'Gebet ist keine Floskel. Es öffnet Türen, die kein Argument öffnen kann. Wer für Menschen einsteht, bewegt etwas in der unsichtbaren Welt, lange bevor man es sieht.',
   },
 ]
 
@@ -102,32 +112,75 @@ function Reveal({ children, className = '', delay = 0, as: Tag = 'div' }) {
   )
 }
 
-function Photo({ name, alt, sizes = '(min-width: 900px) 560px, 92vw', children, eager = false }) {
+// Hintergrund-Video: nur auf breiten Bildschirmen, ohne Bewegungsreduktion und
+// Datensparmodus; spielt nur, solange es sichtbar ist. Darunter liegt das Standbild.
+function BgVideo({ name, className = '' }) {
+  const ref = useRef(null)
+  const [ok, setOk] = useState(false)
+
+  useEffect(() => {
+    const wide = window.matchMedia?.('(min-width: 768px)').matches
+    if (wide && !reduceMotion() && !navigator.connection?.saveData) setOk(true)
+  }, [])
+  useEffect(() => {
+    const v = ref.current
+    if (!ok || !v) return
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) v.play().catch(() => {}); else v.pause() }, { threshold: 0.15 })
+    io.observe(v)
+    return () => io.disconnect()
+  }, [ok])
+
+  if (!ok) return null
   return (
-    <div className="lp-photo">
-      <img
-        src={`${IMG}${name}-1000.webp`}
-        srcSet={`${IMG}${name}-600.webp 600w, ${IMG}${name}-1000.webp 1000w`}
-        sizes={sizes}
-        width="1000"
-        height="1250"
-        alt={alt}
-        loading={eager ? 'eager' : 'lazy'}
-        decoding="async"
-      />
-      {children}
-    </div>
+    <video
+      ref={ref}
+      className={`lp-bgvideo ${className}`}
+      src={`${VID}${name}.mp4`}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      aria-hidden="true"
+      tabIndex={-1}
+      onError={() => setOk(false)}
+    />
+  )
+}
+
+function Photo({ name, alt, ratio = 'p', sizes = '(min-width: 900px) 360px, 80vw', eager = false }) {
+  return (
+    <img
+      src={`${IMG}${name}-1000.webp`}
+      srcSet={`${IMG}${name}-600.webp 600w, ${IMG}${name}-1000.webp 1000w`}
+      sizes={sizes}
+      width={ratio === 'p' ? 1000 : 1600}
+      height={ratio === 'p' ? 1250 : 900}
+      alt={alt}
+      loading={eager ? 'eager' : 'lazy'}
+      decoding="async"
+    />
+  )
+}
+
+// Event-Pin im Look der App (babyblaues Quadrat, weißer Rand, Radar-Ringe)
+function Pin({ emoji, pulse = false }) {
+  return (
+    <span className={`lp-pin ${pulse ? 'is-pulse' : ''}`} aria-hidden="true">
+      <span>{emoji}</span>
+    </span>
   )
 }
 
 export default function Landing() {
   const rootRef = useRef(null)
   const manifestRef = useRef(null)
+  const topicsRef = useRef(null)
+  const showcaseRef = useRef(null)
   const [scrolled, setScrolled] = useState(false)
   const [kinds, setKinds] = useState({ sibling: true, event: true, gemeinde: true })
+  const [heroScreen, setHeroScreen] = useState(0)
   const [feature, setFeature] = useState(0)
   const [autoplay, setAutoplay] = useState(true)
-  const showcaseRef = useRef(null)
 
   useEffect(() => {
     const prevTitle = document.title
@@ -135,7 +188,7 @@ export default function Landing() {
     return () => { document.title = prevTitle }
   }, [])
 
-  // Header-Glas + Manifest-Wörter, die sich beim Scrollen aufhellen
+  // Scroll: Header-Glas, Fortschrittsbalken, Parallax-Variable, Manifest-Wörter
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
@@ -144,7 +197,11 @@ export default function Landing() {
     let raf = 0
     const update = () => {
       raf = 0
-      setScrolled(root.scrollTop > 24)
+      const st = root.scrollTop
+      const max = Math.max(1, root.scrollHeight - root.clientHeight)
+      setScrolled(prev => (prev !== st > 24 ? st > 24 : prev))
+      root.style.setProperty('--prog', (st / max).toFixed(4))
+      if (!still) root.style.setProperty('--sy', String(Math.round(st)))
       if (!words.length || still) return
       const r = manifestRef.current.getBoundingClientRect()
       const vh = root.clientHeight
@@ -156,6 +213,13 @@ export default function Landing() {
     root.addEventListener('scroll', onScroll, { passive: true })
     update()
     return () => { root.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf) }
+  }, [])
+
+  // Hero-Handy blättert durch die App
+  useEffect(() => {
+    if (reduceMotion()) return
+    const t = setInterval(() => setHeroScreen(s => (s + 1) % HERO_SCREENS.length), 3600)
+    return () => clearInterval(t)
   }, [])
 
   // App-Showcase blättert von selbst weiter, solange niemand selbst wählt
@@ -173,11 +237,27 @@ export default function Landing() {
   const scrollToId = useCallback((id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' })
   }, [])
-
+  const scrollTopics = (dir) => {
+    const el = topicsRef.current
+    if (!el) return
+    el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.7), behavior: reduceMotion() ? 'auto' : 'smooth' })
+  }
   const pickFeature = (i) => { setAutoplay(false); setFeature(i) }
+
+  // Magnetische Buttons (nur mit Maus)
+  const magnet = (e) => {
+    if (e.pointerType === 'touch' || reduceMotion()) return
+    const el = e.currentTarget
+    const r = el.getBoundingClientRect()
+    el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width - 0.5) * 10}px`)
+    el.style.setProperty('--my', `${((e.clientY - r.top) / r.height - 0.5) * 8}px`)
+  }
+  const unmagnet = (e) => { e.currentTarget.style.setProperty('--mx', '0px'); e.currentTarget.style.setProperty('--my', '0px') }
 
   return (
     <div ref={rootRef} className="lp h-full w-full overflow-y-auto overflow-x-hidden">
+      <div className="lp-progress" aria-hidden="true" />
+      <div className="lp-grain" aria-hidden="true" />
       <a href="#main" className="lp-skip" onClick={(e) => { e.preventDefault(); scrollToId('main') }}>
         Zum Inhalt springen
       </a>
@@ -190,7 +270,7 @@ export default function Landing() {
             <span>Oikos Connect</span>
           </Link>
           <nav aria-label="Hauptnavigation" className="hidden lg:flex items-center gap-1">
-            {[['vision', 'Vision'], ['weltweit', 'Weltweit'], ['app', 'Die App'], ['download', 'Download']].map(([id, label]) => (
+            {[['oikos', 'Was ist Oikos?'], ['themen', 'Themen'], ['weltweit', 'Weltweit'], ['app', 'Die App'], ['download', 'Download']].map(([id, label]) => (
               <button key={id} type="button" className="lp-navlink" onClick={() => scrollToId(id)}>{label}</button>
             ))}
           </nav>
@@ -202,7 +282,7 @@ export default function Landing() {
       </header>
 
       <main id="main" tabIndex={-1} className="outline-none">
-        {/* ── Hero ──────────────────────────────────────────── */}
+        {/* ── Hero: Sonnenaufgang + 3D-Handy ─────────────────── */}
         <section className="lp-hero" aria-labelledby="hero-title">
           <picture className="lp-hero-media">
             <source media="(max-aspect-ratio: 4/5)" srcSet={`${IMG}hero-tall-1080.webp`} />
@@ -215,36 +295,63 @@ export default function Landing() {
               decoding="async"
             />
           </picture>
-          <div className="lp-wrap lp-hero-inner">
-            <p className="lp-eyebrow center lp-rise">One Family · One Mission · One Oikos</p>
-            <h1 id="hero-title" className="lp-display mt-6 lp-rise" style={{ animationDelay: '120ms' }}>
-              Glaube, der <span className="lp-gold">verbindet.</span>
-            </h1>
-            <p className="lp-lead lp-rise" style={{ animationDelay: '260ms' }}>
-              Oikos Connect bringt Christen zusammen. Bete für die Menschen, die Gott dir anvertraut hat,
-              finde Geschwister in deiner Nähe und erlebe, wie aus deinem Umfeld eine weltweite Familie wird.
-            </p>
-            <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center lp-rise" style={{ animationDelay: '400ms' }}>
-              <Link to="/auth?mode=register" className="lp-btn lp-btn-primary">
-                Kostenlos starten <ArrowRight size={18} className="lp-arrow" aria-hidden="true" />
-              </Link>
-              <button type="button" className="lp-btn lp-btn-glass" onClick={() => scrollToId('vision')}>
-                Die Vision entdecken
-              </button>
+          <div className="lp-aurora" aria-hidden="true"><i /><i /><i /></div>
+          <div className="lp-wrap lp-hero-grid">
+            <div className="lp-hero-copy">
+              <p className="lp-eyebrow lp-rise">One Family · One Mission · One Oikos</p>
+              <h1 id="hero-title" className="lp-display mt-6 lp-rise" style={{ animationDelay: '120ms' }}>
+                Glaube, der <span className="lp-gold">verbindet.</span>
+              </h1>
+              <p className="lp-lead lp-rise" style={{ animationDelay: '260ms' }}>
+                Merke dir die Menschen, die Gott dir anvertraut hat, bete gezielt für sie, finde
+                Geschwister in deiner Nähe und erlebe, wie aus deinem Umfeld eine weltweite Familie wird.
+              </p>
+              <div className="lp-cta lp-rise" style={{ animationDelay: '400ms' }}>
+                <Link to="/auth?mode=register" className="lp-btn lp-btn-primary lp-magnet" onPointerMove={magnet} onPointerLeave={unmagnet}>
+                  Kostenlos starten <ArrowRight size={18} className="lp-arrow" aria-hidden="true" />
+                </Link>
+                <button type="button" className="lp-btn lp-btn-glass" onClick={() => scrollToId('oikos')}>
+                  Die Vision entdecken
+                </button>
+              </div>
+              <ul className="lp-avail lp-rise" style={{ animationDelay: '520ms' }} aria-label="Verfügbar auf">
+                <li><Monitor size={16} aria-hidden="true" /> Web-App</li>
+                <li><Smartphone size={16} aria-hidden="true" /> iPhone</li>
+                <li><Smartphone size={16} aria-hidden="true" /> Android</li>
+                <li><Check size={16} aria-hidden="true" /> Kostenlos &amp; werbefrei</li>
+              </ul>
+            </div>
+
+            <div className="lp-hero-phone lp-rise" style={{ animationDelay: '300ms' }}>
+              <Phone3D
+                screens={HERO_SCREENS}
+                active={heroScreen}
+                cards={[
+                  { id: 'a', className: 'lp-fc-a', depth: 90, decorative: true, children: (<div className="lp-chipcard"><Pin emoji="🎵" pulse /><span><b>Lobpreisabend</b><i>Heute · 19:30</i></span></div>) },
+                  { id: 'b', className: 'lp-fc-b', depth: 70, decorative: true, children: (<div className="lp-chipcard"><Pin emoji="🙏" /><span><b>Gebet erhört</b><i>Für Lisa</i></span></div>) },
+                  { id: 'c', className: 'lp-fc-c', depth: 120, decorative: true, children: (<div className="lp-chipcard"><Pin emoji="🏠" /><span><b>Hausgemeinde</b><i>in deiner Nähe</i></span></div>) },
+                  { id: 'd', className: 'lp-fc-d', depth: 55, decorative: true, children: (<div className="lp-chipcard lp-chipcard-avatars"><span className="lp-avs"><u style={{ background: '#FFD2B8' }}>B</u><u style={{ background: '#BDF0DC' }}>A</u><u style={{ background: '#D9C8FF' }}>K</u></span><span><b>Geschwister</b><i>in deiner Nähe</i></span></div>) },
+                ]}
+              />
             </div>
           </div>
-          <div className="lp-wrap lp-hero-foot lp-rise" style={{ animationDelay: '600ms' }}>
-            <ul className="lp-avail" aria-label="Verfügbar auf">
-              <li><Monitor size={16} aria-hidden="true" /> Web-App</li>
-              <li><Smartphone size={16} aria-hidden="true" /> iPhone</li>
-              <li><Smartphone size={16} aria-hidden="true" /> Android</li>
-              <li><Check size={16} aria-hidden="true" /> Kostenlos &amp; werbefrei</li>
-            </ul>
-            <button type="button" className="lp-scroll" onClick={() => scrollToId('manifest')} aria-label="Weiter nach unten">
-              <ChevronDown size={20} aria-hidden="true" />
-            </button>
-          </div>
+          <button type="button" className="lp-scroll" onClick={() => scrollToId('themen-band')} aria-label="Weiter nach unten">
+            <ChevronDown size={20} aria-hidden="true" />
+          </button>
         </section>
+
+        {/* ── Themen-Band ────────────────────────────────────── */}
+        <div id="themen-band" className="lp-marquee" aria-label="Themen von Oikos Connect">
+          <div className="lp-marquee-track">
+            {[0, 1].map(k => (
+              <div key={k} className="lp-marquee-row" aria-hidden={k === 1}>
+                {MARQUEE.map(([e, t]) => (
+                  <span key={t} className="lp-mq-item"><Pin emoji={e} />{t}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* ── Manifest ──────────────────────────────────────── */}
         <section id="manifest" className="lp-section lp-manifest scroll-mt-16" aria-label="Unsere Hoffnung">
@@ -261,62 +368,112 @@ export default function Landing() {
                 )
               })}
             </p>
-            <Reveal className="lp-define">
-              <b>οἶκος · oikos</b>
-              <span>griechisch für „Haus“: die Menschen, die zu deinem Leben gehören.</span>
-            </Reveal>
           </div>
         </section>
 
-        {/* ── Vision in vier Kapiteln ───────────────────────── */}
-        <section id="vision" className="lp-section scroll-mt-16" aria-labelledby="vision-title" style={{ paddingTop: 24, paddingBottom: 72 }}>
-          <div className="lp-wrap">
+        {/* ── Was ist Oikos? ────────────────────────────────── */}
+        <section id="oikos" className="lp-section lp-oikos scroll-mt-16" aria-labelledby="oikos-title">
+          <div className="lp-bigword" aria-hidden="true" style={{ transform: 'translate3d(calc(var(--sy, 0) * -0.12px), 0, 0)' }}>OIKOS · οἶκος · OIKOS</div>
+          <div className="lp-wrap relative">
             <Reveal className="max-w-3xl">
-              <p className="lp-eyebrow">Die Vision</p>
-              <h2 id="vision-title" className="lp-h2 mt-5">Vier Schritte, die alles verändern können.</h2>
+              <p className="lp-eyebrow">Was ist Oikos?</p>
+              <h2 id="oikos-title" className="lp-h2 mt-5">
+                Dein Umfeld. <span className="lp-gold">Dein Gebet.</span> Echte Wirkung.
+              </h2>
+              <p className="lp-lead mt-6">
+                „Oikos“ ist das griechische Wort für „Haus“: die Menschen, die zu deinem Leben gehören.
+                Familie, Freunde, Kollegen, Nachbarn. Menschen, die Gott dir ganz bewusst anvertraut hat.
+              </p>
             </Reveal>
 
-            <div className="mt-16 lg:mt-24">
-              {CHAPTERS.map((c, i) => {
-                const TagIcon = c.tagIcon
-                return (
-                  <Reveal key={c.img} className={`lp-chapter ${i % 2 ? 'flip' : ''}`}>
-                    <Photo name={c.img} alt={c.alt}>
-                      <span className="lp-photo-tag"><TagIcon size={15} aria-hidden="true" /> {c.tag}</span>
-                    </Photo>
+            <div className="lp-oikos-grid">
+              <Reveal className="lp-oikos-visual">
+                <Tilt className="lp-photo-card" max={7}>
+                  <Photo name="oikos" alt="Ein junger Mann sitzt im Café, vor ihm ein Notizbuch mit Namen, und blickt auf die Oikos Map in der App" sizes="(min-width: 1024px) 440px, 90vw" />
+                  <span className="lp-photo-tag"><Network size={15} aria-hidden="true" /> Deine Oikos Map</span>
+                </Tilt>
+              </Reveal>
+              <ol className="lp-pillars">
+                {PILLARS.map(({ icon: Icon, title, text }, i) => (
+                  <Reveal as="li" key={title} delay={i * 110} className="lp-pillar">
+                    <span className="lp-pillar-num" aria-hidden="true">0{i + 1}</span>
+                    <span className="lp-card-icon"><Icon size={22} aria-hidden="true" /></span>
                     <div>
-                      <div className="flex items-end gap-5">
-                        <span className="lp-num" aria-hidden="true">0{i + 1}</span>
-                        <p className="lp-eyebrow pb-2">{c.label}</p>
-                      </div>
-                      <h3 className="lp-h3 mt-6">{c.title}</h3>
-                      <p className="lp-body mt-5 max-w-xl">{c.text}</p>
-                      <ul className="lp-chips" aria-label="In der App">
-                        {c.chips.map(([Icon, label]) => (
-                          <li key={label} className="lp-chip"><Icon size={16} aria-hidden="true" /> {label}</li>
-                        ))}
-                      </ul>
+                      <h3>{title}</h3>
+                      <p>{text}</p>
                     </div>
                   </Reveal>
-                )
-              })}
+                ))}
+              </ol>
             </div>
           </div>
         </section>
 
+        {/* ── Gebet bewegt: interaktive Animation ───────────── */}
+        <section className="lp-section lp-prayer" aria-labelledby="prayer-title">
+          <picture className="lp-prayer-media" aria-hidden="true">
+            <img src={`${IMG}beams-1400.webp`} srcSet={`${IMG}beams-1400.webp 1400w, ${IMG}beams-2400.webp 2400w`} sizes="100vw" alt="" loading="lazy" decoding="async" />
+          </picture>
+          <BgVideo name="beams" className="lp-prayer-video" />
+          <div className="lp-wrap relative">
+            <Reveal className="max-w-3xl mx-auto text-center">
+              <p className="lp-eyebrow center">Wenn du betest, passiert etwas</p>
+              <h2 id="prayer-title" className="lp-h2 mt-5">Jedes Gebet <span className="lp-gold">steigt auf.</span></h2>
+              <p className="lp-lead mt-6">
+                Tippe auf eine Person und sieh, was geschieht: ein Lichtstrahl, ein Himmel, der aufreißt.
+                Ein Bild dafür, was im Verborgenen passiert, wenn du für jemanden einstehst.
+              </p>
+            </Reveal>
+            <Reveal delay={120} className="mt-10">
+              <Suspense fallback={<div className="lp-prayer-stage" />}>
+                <PrayerField className="lp-prayer-field" />
+              </Suspense>
+            </Reveal>
+            <Reveal delay={160}>
+              <figure className="lp-verse">
+                <blockquote>„Des Gerechten Gebet vermag viel, wenn es ernstlich ist.“</blockquote>
+                <figcaption>Jakobus 5,16 (Lutherbibel)</figcaption>
+              </figure>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ── Themen ────────────────────────────────────────── */}
+        <section id="themen" className="lp-section scroll-mt-16" aria-labelledby="topics-title" style={{ paddingBottom: 56 }}>
+          <div className="lp-wrap">
+            <div className="flex items-end justify-between gap-6">
+              <Reveal className="max-w-3xl">
+                <p className="lp-eyebrow">Alles, was Reich Gottes bewegt</p>
+                <h2 id="topics-title" className="lp-h2 mt-5">Acht Wege, <span className="lp-gold">Menschen zu verbinden.</span></h2>
+              </Reveal>
+              <div className="hidden md:flex gap-2 pb-2">
+                <button type="button" className="lp-iconbtn" onClick={() => scrollTopics(-1)} aria-label="Vorherige Themen"><ChevronLeft size={20} aria-hidden="true" /></button>
+                <button type="button" className="lp-iconbtn" onClick={() => scrollTopics(1)} aria-label="Nächste Themen"><ChevronRight size={20} aria-hidden="true" /></button>
+              </div>
+            </div>
+          </div>
+          <div ref={topicsRef} className="lp-topics" role="region" aria-label="Themen" tabIndex={0}>
+            {TOPICS.map((t) => (
+              <Tilt as="article" key={t.title} className="lp-topic" max={8}>
+                <Photo name={t.img} alt={t.alt} sizes="(min-width: 900px) 340px, 78vw" />
+                <div className="lp-topic-shade" aria-hidden="true" />
+                <div className="lp-topic-body">
+                  <Pin emoji={t.emoji} pulse />
+                  <h3>{t.title}</h3>
+                  <p>{t.text}</p>
+                </div>
+              </Tilt>
+            ))}
+          </div>
+        </section>
+
         {/* ── Weltweit ─────────────────────────────────────── */}
-        <section id="weltweit" className="scroll-mt-16" aria-labelledby="world-title">
+        <section id="weltweit" className="lp-world-sec scroll-mt-16" aria-labelledby="world-title">
           <div className="lp-band lp-band-earth">
             <picture className="lp-band-media">
-              <img
-                src={`${IMG}earth-2200.webp`}
-                srcSet={`${IMG}earth-1200.webp 1200w, ${IMG}earth-2200.webp 2200w`}
-                sizes="100vw"
-                alt=""
-                loading="lazy"
-                decoding="async"
-              />
+              <img src={`${IMG}earth-2200.webp`} srcSet={`${IMG}earth-1200.webp 1200w, ${IMG}earth-2200.webp 2200w`} sizes="100vw" alt="" loading="lazy" decoding="async" />
             </picture>
+            <BgVideo name="earth" className="lp-band-video" />
             <div className="lp-wrap">
               <Reveal className="max-w-2xl">
                 <p className="lp-eyebrow">Weltweit verbunden</p>
@@ -340,16 +497,11 @@ export default function Landing() {
                   Auf der Weltkarte findest du Geschwister, Hausgemeinden und Events wie Bibelstudium,
                   Lobpreis oder Gebetsabende. Wie genau dein eigener Standort sichtbar ist, bestimmst du selbst.
                 </p>
-                <div className="lp-moments">
-                  <figure className="lp-moment">
-                    <Photo name="world-nairobi" alt="Lobpreis unter freiem Himmel in einem Dorf in Ostafrika bei Sonnenuntergang" sizes="(min-width: 1024px) 260px, 45vw" />
-                    <figcaption><b>Lobpreisabend</b>Ostafrika</figcaption>
-                  </figure>
-                  <figure className="lp-moment">
-                    <Photo name="world-seoul" alt="Junge Menschen beten am frühen Morgen gemeinsam in einem Raum mit Blick auf Seoul" sizes="(min-width: 1024px) 260px, 45vw" />
-                    <figcaption><b>Morgengebet</b>Seoul</figcaption>
-                  </figure>
-                </div>
+                <Tilt className="lp-photo-card lp-photo-wide" max={6}>
+                  <picture>
+                    <img src={`${IMG}weltkarte-1600.webp`} srcSet={`${IMG}weltkarte-900.webp 900w, ${IMG}weltkarte-1600.webp 1600w`} sizes="(min-width: 1024px) 520px, 90vw" width="1600" height="900" alt="Eine Hand hält ein Smartphone mit der Weltkarte der App; goldene Lichtlinien führen über eine Stadt bei Nacht in die Ferne" loading="lazy" decoding="async" />
+                  </picture>
+                </Tilt>
               </Reveal>
               <Reveal delay={120}>
                 <div className="lp-globe">
@@ -379,7 +531,7 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ── App-Showcase ─────────────────────────────────── */}
+        {/* ── App-Showcase mit 3D-Handy ────────────────────── */}
         <section id="app" ref={showcaseRef} className="lp-section lp-showcase scroll-mt-16" aria-labelledby="app-title">
           <div className="lp-wrap">
             <Reveal className="max-w-3xl">
@@ -413,25 +565,15 @@ export default function Landing() {
                 </div>
                 <p className="lp-body lp-tab-mobile-text" aria-live="polite">{FEATURES[feature].text}</p>
               </div>
-              <div className="relative" style={{ isolation: 'isolate' }}>
-                <div className="lp-phone-halo" aria-hidden="true" />
-                <div className="lp-phone">
-                  <div id="app-screen" role="tabpanel" aria-labelledby={`tab-${feature}`} className="lp-phone-screen">
-                    {FEATURES.map((f, i) => (
-                      <img
-                        key={f.screen}
-                        src={`${APP}${f.screen}.webp`}
-                        alt={i === feature ? `App-Ansicht: ${f.title}` : ''}
-                        aria-hidden={i !== feature}
-                        className={i === feature ? 'is-active' : ''}
-                        loading="lazy"
-                        decoding="async"
-                        width="720"
-                        height="1657"
-                      />
-                    ))}
-                  </div>
-                </div>
+              <div id="app-screen" role="tabpanel" aria-labelledby={`tab-${feature}`}>
+                <Phone3D
+                  tiltMax={16}
+                  screens={FEATURES.map(f => ({ src: `${APP}${f.screen}.webp`, alt: `App-Ansicht: ${f.title}` }))}
+                  active={feature}
+                  cards={[
+                    { id: 'f', className: 'lp-fc-e', depth: 90, decorative: true, children: (<div className="lp-chipcard"><Pin emoji="✨" pulse /><span><b>{FEATURES[feature].title}</b><i>in Oikos Connect</i></span></div>) },
+                  ]}
+                />
               </div>
             </div>
           </div>
@@ -447,11 +589,11 @@ export default function Landing() {
             <div className="lp-values">
               {VALUES.map(({ icon: Icon, title, text }, i) => (
                 <Reveal key={title} delay={i * 90}>
-                  <div className="lp-card">
+                  <Tilt className="lp-card" max={5}>
                     <span className="lp-card-icon"><Icon size={22} aria-hidden="true" /></span>
                     <h3>{title}</h3>
                     <p>{text}</p>
-                  </div>
+                  </Tilt>
                 </Reveal>
               ))}
             </div>
@@ -509,14 +651,7 @@ export default function Landing() {
         <section className="lp-band lp-final" aria-labelledby="final-title">
           <picture className="lp-band-media">
             <source media="(max-aspect-ratio: 4/5)" srcSet={`${IMG}final-tall-1080.webp`} />
-            <img
-              src={`${IMG}final-2400.webp`}
-              srcSet={`${IMG}final-1400.webp 1400w, ${IMG}final-2400.webp 2400w`}
-              sizes="100vw"
-              alt=""
-              loading="lazy"
-              decoding="async"
-            />
+            <img src={`${IMG}final-2400.webp`} srcSet={`${IMG}final-1400.webp 1400w, ${IMG}final-2400.webp 2400w`} sizes="100vw" alt="" loading="lazy" decoding="async" />
           </picture>
           <div className="lp-wrap lp-final-inner">
             <Reveal>
@@ -531,7 +666,7 @@ export default function Landing() {
                 </footer>
               </blockquote>
               <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/auth?mode=register" className="lp-btn lp-btn-primary">
+                <Link to="/auth?mode=register" className="lp-btn lp-btn-primary lp-magnet" onPointerMove={magnet} onPointerLeave={unmagnet}>
                   Kostenlos starten <ArrowRight size={18} className="lp-arrow" aria-hidden="true" />
                 </Link>
                 <Link to="/auth" className="lp-btn lp-btn-glass">Ich habe schon ein Konto</Link>
