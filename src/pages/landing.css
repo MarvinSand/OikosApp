@@ -512,11 +512,11 @@
 /* Gebet bewegt */
 .lp .lp-prayer { position: relative; overflow: hidden; isolation: isolate; background: var(--ink); }
 .lp .lp-prayer-media, .lp .lp-prayer-video { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; }
-.lp .lp-prayer-media img, .lp .lp-prayer-video { width: 100%; height: 100%; object-fit: cover; opacity: 0.55; }
+.lp .lp-prayer-media img, .lp .lp-prayer-video { width: 100%; height: 100%; object-fit: cover; opacity: 0.4; filter: saturate(0.9) brightness(0.8); }
 .lp .lp-prayer-video { z-index: -1; }
 .lp .lp-prayer::before {
   content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background: linear-gradient(180deg, var(--ink) 0%, rgba(5, 10, 24, 0.55) 22%, rgba(5, 10, 24, 0.5) 70%, var(--ink) 100%);
+  background: linear-gradient(180deg, var(--ink) 0%, rgba(5, 10, 24, 0.62) 22%, rgba(5, 10, 24, 0.55) 70%, var(--ink) 100%);
 }
 .lp .lp-prayer .lp-wrap { z-index: 1; }
 .lp .lp-prayer-stage { position: relative; -webkit-mask-image: radial-gradient(ellipse 72% 78% at 50% 58%, #000 52%, transparent 100%); mask-image: radial-gradient(ellipse 72% 78% at 50% 58%, #000 52%, transparent 100%); width: 100%; max-width: 980px; margin: 0 auto; aspect-ratio: 1 / 1.05; max-height: 680px; }
@@ -595,3 +595,45 @@
   .lp .lp-marquee-row { flex-wrap: wrap; justify-content: center; gap: 18px 36px; padding: 0 20px; }
   .lp .lp-marquee-track { width: 100%; }
 }
+
+
+/* ══════════ Gebets-Überschrift: Glas-Panel (immer gut lesbar) ══════════ */
+.lp .lp-prayer-head {
+  position: relative; max-width: 820px; margin: 0 auto; text-align: center; padding: 38px 28px 34px; border-radius: 32px;
+  background: linear-gradient(180deg, rgba(8, 14, 34, 0.78), rgba(5, 10, 24, 0.66));
+  border: 1px solid rgba(246, 193, 119, 0.28);
+  -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 80px -20px rgba(246, 193, 119, 0.28);
+}
+.lp .lp-prayer-head::before {
+  content: ''; position: absolute; left: 12%; right: 12%; top: -1px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent); box-shadow: 0 0 18px 2px rgba(246, 193, 119, 0.7);
+}
+.lp .lp-prayer-head .lp-h2 { text-shadow: 0 2px 24px rgba(0, 0, 0, 0.75); }
+.lp .lp-prayer-head .lp-lead { color: #e3eaf8; text-shadow: 0 1px 14px rgba(0, 0, 0, 0.8); }
+.lp .lp-prayer-head .lp-eyebrow { color: #ffd596; }
+@media (min-width: 768px) { .lp .lp-prayer-head { padding: 48px 56px 44px; } }
+
+/* ══════════ Entdecken: Globus + acht Wege kombiniert ══════════ */
+.lp .lp-discover { padding-top: 40px; }
+.lp .lp-discover-grid { display: grid; gap: 28px; margin-top: 44px; align-items: start; }
+@media (min-width: 1024px) {
+  .lp .lp-discover-grid { grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); gap: 36px; }
+  .lp .lp-discover-map { position: sticky; top: 96px; }
+}
+.lp .lp-discover .lp-topics {
+  display: flex; gap: 14px; overflow-x: auto; padding: 8px 20px 18px; margin: 0 -20px; scrollbar-width: none; scroll-snap-type: x proximity; perspective: none;
+}
+.lp .lp-discover .lp-topics::-webkit-scrollbar { display: none; }
+.lp .lp-discover .lp-topic { width: min(260px, 70vw); flex: none; aspect-ratio: 4 / 5.2; }
+.lp .lp-discover .lp-topic-body { padding: 16px; }
+.lp .lp-discover .lp-topic-body h3 { font-size: 1.3rem; margin-top: 10px; }
+.lp .lp-discover .lp-topic-body p { font-size: 13.5px; line-height: 1.5; }
+.lp .lp-discover .lp-pin { width: 34px; height: 34px; }
+.lp .lp-discover .lp-pin > span { font-size: 16px; }
+@media (min-width: 1024px) {
+  .lp .lp-discover .lp-topics { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; overflow: visible; padding: 0; margin: 0; perspective: 1400px; }
+  .lp .lp-discover .lp-topic { width: auto; aspect-ratio: 4 / 5.1; }
+}
+.lp .lp-discover .lp-topic:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.lp .lp-discover .lp-globe { max-height: 600px; }

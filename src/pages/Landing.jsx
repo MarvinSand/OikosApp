@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Globe,
+  ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, Globe,
   HandHeart, HeartHandshake, Home, MessageCircle, Monitor, Network, Newspaper, Route,
   ScrollText, ShieldCheck, Smartphone, Sparkles, Users,
 } from 'lucide-react'
@@ -37,12 +37,12 @@ const MARQUEE = [
 const TOPICS = [
   { img: 'earth', emoji: '🌍', title: 'Weltweit connecten', text: 'Vernetze dich mit Christen auf allen Kontinenten, bete füreinander und erlebe, wie Gott weltweit am Werk ist.', alt: 'Die Erde bei Sonnenaufgang mit leuchtenden Verbindungen zwischen den Kontinenten' },
   { img: 'weltkarte', emoji: '📍', title: 'Die Weltkarte', text: 'Finde Geschwister, Hausgemeinden und Events in deiner Nähe. Deinen Standort steuerst du selbst.', alt: 'Eine Hand hält ein Smartphone mit der Weltkarte der App, goldene Lichtlinien führen über eine Stadt bei Nacht' },
-  { img: 'bibel', emoji: '📖', title: 'Bibelstudium', text: 'Lest gemeinsam, markiert Verse, tauscht Gedanken aus und startet Bibelstudien mit Freunden.', alt: 'Fünf Freunde im Bibelkreis, eine Person zeigt die Bibel-Ansicht der App auf dem Smartphone' },
-  { img: 'haus', emoji: '🏠', title: 'Hausgemeinde', text: 'Gründe oder finde Hauskreise: mit eigenem Chat, gemeinsamen Anliegen und Mitgliederübersicht.', alt: 'Hausgemeinde im Wohnzimmer, ein Mann zeigt die Community-Liste der App' },
-  { img: 'outreach', emoji: '🤝', title: 'Outreach', text: 'Plant Einsätze in eurer Stadt, ladet Geschwister ein und erreicht Menschen dort, wo sie leben.', alt: 'Freiwillige sprechen in einer Fußgängerzone mit Passanten, eine Person zeigt die Karten-Ansicht der App' },
-  { img: 'evangelisation', emoji: '📢', title: 'Evangelisation', text: 'Teile deinen Glauben ganz natürlich: Zeugnisse, Bibelverse, Gespräche. Begleite Menschen Schritt für Schritt.', alt: 'Zwei Kolleginnen im Gespräch auf einer Parkbank, eine zeigt einen Bibelvers in der App' },
-  { img: 'lobpreis', emoji: '🎵', title: 'Lobpreis & Events', text: 'Lobpreisabende, Gebetsabende, Sport und mehr: Erstelle Events und lade andere ein.', alt: 'Lobpreisabend im Freien unter Lichterketten, eine Person hält die App hoch' },
-  { img: 'gebet', emoji: '🙏', title: 'Gebet & Gebetskreise', text: 'Teile Anliegen, bete mit, setzt euch Gebetsziele. Erhörte Gebete bleiben als Zeugnis erhalten.', alt: 'Eine Frau betet im Morgenlicht mit dem Smartphone an der Brust' },
+  { img: 'bibel', emoji: '📖', title: 'Bibelstudium', kind: 'event', text: 'Lest gemeinsam, markiert Verse, tauscht Gedanken aus und startet Bibelstudien mit Freunden.', alt: 'Fünf Freunde im Bibelkreis, eine Person zeigt die Bibel-Ansicht der App auf dem Smartphone' },
+  { img: 'haus', emoji: '🏠', title: 'Hausgemeinde', kind: 'gemeinde', text: 'Gründe oder finde Hauskreise: mit eigenem Chat, gemeinsamen Anliegen und Mitgliederübersicht.', alt: 'Hausgemeinde im Wohnzimmer, ein Mann zeigt die Community-Liste der App' },
+  { img: 'outreach', emoji: '🤝', title: 'Outreach', kind: 'event', text: 'Plant Einsätze in eurer Stadt, ladet Geschwister ein und erreicht Menschen dort, wo sie leben.', alt: 'Freiwillige sprechen in einer Fußgängerzone mit Passanten, eine Person zeigt die Karten-Ansicht der App' },
+  { img: 'evangelisation', emoji: '📢', title: 'Evangelisation', kind: 'sibling', text: 'Teile deinen Glauben ganz natürlich: Zeugnisse, Bibelverse, Gespräche. Begleite Menschen Schritt für Schritt.', alt: 'Zwei Kolleginnen im Gespräch auf einer Parkbank, eine zeigt einen Bibelvers in der App' },
+  { img: 'lobpreis', emoji: '🎵', title: 'Lobpreis & Events', kind: 'event', text: 'Lobpreisabende, Gebetsabende, Sport und mehr: Erstelle Events und lade andere ein.', alt: 'Lobpreisabend im Freien unter Lichterketten, eine Person hält die App hoch' },
+  { img: 'gebet', emoji: '🙏', title: 'Gebet & Gebetskreise', kind: 'sibling', text: 'Teile Anliegen, bete mit, setzt euch Gebetsziele. Erhörte Gebete bleiben als Zeugnis erhalten.', alt: 'Eine Frau betet im Morgenlicht mit dem Smartphone an der Brust' },
 ]
 
 const PILLARS = [
@@ -174,10 +174,10 @@ function Pin({ emoji, pulse = false }) {
 export default function Landing() {
   const rootRef = useRef(null)
   const manifestRef = useRef(null)
-  const topicsRef = useRef(null)
   const showcaseRef = useRef(null)
   const [scrolled, setScrolled] = useState(false)
   const [kinds, setKinds] = useState({ sibling: true, event: true, gemeinde: true })
+  const [focusKind, setFocusKind] = useState(null)
   const [heroScreen, setHeroScreen] = useState(0)
   const [feature, setFeature] = useState(0)
   const [autoplay, setAutoplay] = useState(true)
@@ -237,11 +237,6 @@ export default function Landing() {
   const scrollToId = useCallback((id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' })
   }, [])
-  const scrollTopics = (dir) => {
-    const el = topicsRef.current
-    if (!el) return
-    el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.7), behavior: reduceMotion() ? 'auto' : 'smooth' })
-  }
   const pickFeature = (i) => { setAutoplay(false); setFeature(i) }
 
   // Magnetische Buttons (nur mit Maus)
@@ -416,7 +411,7 @@ export default function Landing() {
           </picture>
           <BgVideo name="beams" className="lp-prayer-video" />
           <div className="lp-wrap relative">
-            <Reveal className="max-w-3xl mx-auto text-center">
+            <Reveal className="lp-prayer-head">
               <p className="lp-eyebrow center">Wenn du betest, passiert etwas</p>
               <h2 id="prayer-title" className="lp-h2 mt-5">Jedes Gebet <span className="lp-gold">steigt auf.</span></h2>
               <p className="lp-lead mt-6">
@@ -435,35 +430,6 @@ export default function Landing() {
                 <figcaption>Jakobus 5,16 (Lutherbibel)</figcaption>
               </figure>
             </Reveal>
-          </div>
-        </section>
-
-        {/* ── Themen ────────────────────────────────────────── */}
-        <section id="themen" className="lp-section scroll-mt-16" aria-labelledby="topics-title" style={{ paddingBottom: 56 }}>
-          <div className="lp-wrap">
-            <div className="flex items-end justify-between gap-6">
-              <Reveal className="max-w-3xl">
-                <p className="lp-eyebrow">Alles, was Reich Gottes bewegt</p>
-                <h2 id="topics-title" className="lp-h2 mt-5">Acht Wege, <span className="lp-gold">Menschen zu verbinden.</span></h2>
-              </Reveal>
-              <div className="hidden md:flex gap-2 pb-2">
-                <button type="button" className="lp-iconbtn" onClick={() => scrollTopics(-1)} aria-label="Vorherige Themen"><ChevronLeft size={20} aria-hidden="true" /></button>
-                <button type="button" className="lp-iconbtn" onClick={() => scrollTopics(1)} aria-label="Nächste Themen"><ChevronRight size={20} aria-hidden="true" /></button>
-              </div>
-            </div>
-          </div>
-          <div ref={topicsRef} className="lp-topics" role="region" aria-label="Themen" tabIndex={0}>
-            {TOPICS.map((t) => (
-              <Tilt as="article" key={t.title} className="lp-topic" max={8}>
-                <Photo name={t.img} alt={t.alt} sizes="(min-width: 900px) 340px, 78vw" />
-                <div className="lp-topic-shade" aria-hidden="true" />
-                <div className="lp-topic-body">
-                  <Pin emoji={t.emoji} pulse />
-                  <h3>{t.title}</h3>
-                  <p>{t.text}</p>
-                </div>
-              </Tilt>
-            ))}
           </div>
         </section>
 
@@ -489,44 +455,70 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="lp-section" style={{ paddingTop: 40, paddingBottom: 48 }}>
-            <div className="lp-wrap lp-world">
-              <Reveal>
-                <h3 className="lp-h3">Entdecke, wer in deiner Nähe glaubt.</h3>
-                <p className="lp-body mt-5 max-w-xl">
-                  Auf der Weltkarte findest du Geschwister, Hausgemeinden und Events wie Bibelstudium,
-                  Lobpreis oder Gebetsabende. Wie genau dein eigener Standort sichtbar ist, bestimmst du selbst.
+          <div id="themen" className="lp-section lp-discover scroll-mt-16" aria-labelledby="discover-title">
+            <div className="lp-wrap">
+              <Reveal className="max-w-3xl">
+                <p className="lp-eyebrow">Alles, was Reich Gottes bewegt</p>
+                <h2 id="discover-title" className="lp-h2 mt-5">
+                  Entdecke, wer in deiner Nähe glaubt. <span className="lp-gold">Acht Wege, Menschen zu verbinden.</span>
+                </h2>
+                <p className="lp-lead mt-6">
+                  Auf der Weltkarte findest du Geschwister, Hausgemeinden und Events. Wie genau dein eigener
+                  Standort sichtbar ist, bestimmst du selbst. Fahre über ein Thema und sieh, wo es auf der Karte lebt.
                 </p>
-                <Tilt className="lp-photo-card lp-photo-wide" max={6}>
-                  <picture>
-                    <img src={`${IMG}weltkarte-1600.webp`} srcSet={`${IMG}weltkarte-900.webp 900w, ${IMG}weltkarte-1600.webp 1600w`} sizes="(min-width: 1024px) 520px, 90vw" width="1600" height="900" alt="Eine Hand hält ein Smartphone mit der Weltkarte der App; goldene Lichtlinien führen über eine Stadt bei Nacht in die Ferne" loading="lazy" decoding="async" />
-                  </picture>
-                </Tilt>
               </Reveal>
-              <Reveal delay={120}>
-                <div className="lp-globe">
-                  <div className="lp-globe-glow" aria-hidden="true" />
-                  <Suspense fallback={<div className="w-full h-full" />}>
-                    <NetworkGlobe fit="box" className="relative w-full h-full" kinds={kinds} />
-                  </Suspense>
-                  <div className="lp-layers" role="group" aria-label="Ebenen der Weltkarte">
-                    {LAYERS.map(({ key, icon: Icon, label }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        aria-pressed={kinds[key]}
-                        className={`lp-layer ${kinds[key] ? 'is-on' : ''}`}
-                        onClick={() => setKinds(k => ({ ...k, [key]: !k[key] }))}
-                      >
-                        <Icon size={15} aria-hidden="true" /> {label}
-                      </button>
-                    ))}
+
+              <div className="lp-discover-grid">
+                <Reveal delay={80} className="lp-discover-map">
+                  <div className="lp-globe">
+                    <div className="lp-globe-glow" aria-hidden="true" />
+                    <Suspense fallback={<div className="w-full h-full" />}>
+                      <NetworkGlobe fit="box" className="relative w-full h-full" kinds={focusKind ? { sibling: false, event: false, gemeinde: false, [focusKind]: true } : kinds} />
+                    </Suspense>
+                    <div className="lp-layers" role="group" aria-label="Ebenen der Weltkarte">
+                      {LAYERS.map(({ key, icon: Icon, label }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          aria-pressed={kinds[key]}
+                          className={`lp-layer ${kinds[key] ? 'is-on' : ''}`}
+                          onClick={() => setKinds(k => ({ ...k, [key]: !k[key] }))}
+                        >
+                          <Icon size={15} aria-hidden="true" /> {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                  <p className="text-center text-xs mt-4" style={{ color: 'var(--muted)' }}>
+                    Symbolische Darstellung. Orte, Personen und Aktivitäten dienen der Illustration.
+                  </p>
+                </Reveal>
+
+                <div className="lp-topics" role="list" aria-label="Acht Wege, Menschen zu verbinden">
+                  {TOPICS.map((t) => (
+                    <Tilt
+                      as="article"
+                      key={t.title}
+                      role="listitem"
+                      tabIndex={0}
+                      className="lp-topic"
+                      max={7}
+                      onPointerEnter={(e) => { if (e.pointerType !== 'touch') setFocusKind(t.kind || null) }}
+                      onPointerLeave={() => setFocusKind(null)}
+                      onFocus={() => setFocusKind(t.kind || null)}
+                      onBlur={() => setFocusKind(null)}
+                    >
+                      <Photo name={t.img} alt={t.alt} sizes="(min-width: 1024px) 270px, 72vw" />
+                      <div className="lp-topic-shade" aria-hidden="true" />
+                      <div className="lp-topic-body">
+                        <Pin emoji={t.emoji} pulse />
+                        <h3>{t.title}</h3>
+                        <p>{t.text}</p>
+                      </div>
+                    </Tilt>
+                  ))}
                 </div>
-                <p className="text-center text-xs mt-4" style={{ color: 'var(--muted)' }}>
-                  Symbolische Darstellung. Orte, Personen und Aktivitäten dienen der Illustration.
-                </p>
-              </Reveal>
+              </div>
             </div>
           </div>
         </section>
