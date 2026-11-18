@@ -41,7 +41,7 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath()
 }
 
-export default function PrayerField({ className = '' }) {
+export default function PrayerField({ className = '', backdrop = null }) {
   const wrapRef = useRef(null)
   const canvasRef = useRef(null)
   const apiRef = useRef({ pray: () => {}, reset: () => {} })
@@ -563,6 +563,7 @@ export default function PrayerField({ className = '' }) {
   return (
     <div className={className}>
       <div ref={wrapRef} className="lp-prayer-stage">
+        {backdrop}
         <canvas
           ref={canvasRef}
           className="block w-full h-full touch-manipulation"

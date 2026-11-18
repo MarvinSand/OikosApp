@@ -141,13 +141,13 @@ function Reveal({ children, className = '', delay = 0, as: Tag = 'div' }) {
 
 // Hintergrund-Video: nur auf breiten Bildschirmen, ohne Bewegungsreduktion und
 // Datensparmodus; spielt nur, solange es sichtbar ist. Darunter liegt das Standbild.
-function BgVideo({ name, className = '' }) {
+function BgVideo({ name, className = '', when = 'wide' }) {
   const ref = useRef(null)
   const [ok, setOk] = useState(false)
 
   useEffect(() => {
     const wide = window.matchMedia?.('(min-width: 768px)').matches
-    if (wide && !reduceMotion() && !navigator.connection?.saveData) setOk(true)
+    if ((when === 'wide' ? wide : !wide) && !reduceMotion() && !navigator.connection?.saveData) setOk(true)
   }, [])
   useEffect(() => {
     const v = ref.current
@@ -411,7 +411,15 @@ export default function Landing() {
 
             <Reveal delay={100} className="mt-10">
               <Suspense fallback={<div className="lp-prayer-stage" />}>
-                <PrayerField className="lp-prayer-field" />
+                <PrayerField
+                  className="lp-prayer-field"
+                  backdrop={(
+                    <div className="lp-stage-backdrop" aria-hidden="true">
+                      <img src={`${IMG}beams-tall-1000.webp`} alt="" width="1000" height="1333" loading="lazy" decoding="async" />
+                      <BgVideo name="beams-tall" when="narrow" className="lp-stage-video" />
+                    </div>
+                  )}
+                />
               </Suspense>
             </Reveal>
 
