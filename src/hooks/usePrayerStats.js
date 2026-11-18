@@ -71,7 +71,7 @@ export function usePrayerStats() {
       { data: categoryData },
       { count: peopleCnt },
     ] = await Promise.all([
-      supabase.from('user_prayer_stats').select('*').eq('user_id', user.id).single(),
+      supabase.from('user_prayer_stats').select('*').eq('user_id', user.id).maybeSingle(),
       supabase.from('personal_prayer_logs').select('created_at').eq('user_id', user.id).gte('created_at', logsSince),
       supabase.from('prayer_sessions').select('duration_seconds, started_at').eq('user_id', user.id),
       supabase.from('personal_prayer_requests').select('answered_at, created_at, id').eq('owner_id', user.id).eq('is_answered', true),
@@ -114,7 +114,7 @@ export function usePrayerStats() {
           ...(updated ? { current_streak: newStreak, longest_streak: newLongest, last_prayer_date: newLastDate } : {}),
           updated_at: new Date().toISOString(),
         }).eq('user_id', user.id)
-        const { data: refreshed } = await supabase.from('user_prayer_stats').select('*').eq('user_id', user.id).single()
+        const { data: refreshed } = await supabase.from('user_prayer_stats').select('*').eq('user_id', user.id).maybeSingle()
         currentStats = refreshed || currentStats
       } else if (updated) {
         await supabase.from('user_prayer_stats').update({

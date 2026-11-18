@@ -10,7 +10,7 @@ const STEPS = [
     key: 'account',
     weight: 10,
     title: 'Account erstellt',
-    text: 'Willkommen bei OIKOS!',
+    text: 'Willkommen bei Oikos Connect!',
     target: '/settings',
     done: () => true,
   },

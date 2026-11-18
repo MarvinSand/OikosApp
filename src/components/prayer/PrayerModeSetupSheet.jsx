@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import { fetchPrayerModeItems, sortItems } from '../../hooks/usePrayerModeSource'
+import BodyPortal from '../common/BodyPortal'
 
 const CATEGORIES = [
   { key: 'heilung',    label: 'Heilung',    emoji: '🌿' },
@@ -90,7 +91,7 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
   }
 
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -237,7 +238,7 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
           {loading ? 'Lädt…' : '🙏 Gebetsmodus starten'}
         </button>
       </div>
-    </>
+    </BodyPortal>
   )
 }
 

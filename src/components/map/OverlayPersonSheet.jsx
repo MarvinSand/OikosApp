@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import PrayerRequestsSection from '../person/PrayerRequestsSection'
 import ImpactMapSection from '../person/ImpactMapSection'
 import StoryLineSection from '../person/StoryLineSection'
+import LinkedProfilePreview from './LinkedProfilePreview'
 
 const BADGE_COLORS = {
   'Freund/in':    { bg: '#E8F4E8', color: 'var(--color-warm-1)' },
@@ -26,10 +28,13 @@ export default function OverlayPersonSheet({
   hostConnections = [],
   hostPeople = [],
   hostOverlayData = [],
+  mapName,
 }) {
+  const navigate = useNavigate()
   const [person, setPerson] = useState(initialPerson)
   const [connections, setConnections] = useState([])
   const [mapPeople, setMapPeople] = useState([])
+  const [linkedProfile, setLinkedProfile] = useState(null)
 
   // Load full person data + connections when sheet opens
   useEffect(() => {
@@ -38,13 +43,25 @@ export default function OverlayPersonSheet({
     // Fetch full person record
     supabase
       .from('oikos_people')
-      .select('id, name, is_christian, impact_stage, relationship_type, notes, map_id')
+      .select('id, name, is_christian, impact_stage, relationship_type, notes, map_id, linked_user_id')
       .eq('id', initialPerson.id)
       .single()
       .then(({ data }) => {
         if (data) setPerson(data)
       })
   }, [initialPerson?.id])
+
+  // Verlinkter OIKOS-Account dieser (fremden) Overlay-Person — genau wie bei
+  // den eigenen Personen soll man von hier aus zum Profil springen können.
+  useEffect(() => {
+    if (!person?.linked_user_id) { setLinkedProfile(null); return }
+    supabase
+      .from('profiles')
+      .select('id, full_name, username, avatar_url, bio_text, bio, city, country, church_name, show_bio, show_city, show_church, has_location')
+      .eq('id', person.linked_user_id)
+      .single()
+      .then(({ data }) => setLinkedProfile(data || null))
+  }, [person?.linked_user_id])
 
   // Load connections and sibling people once we have map_id
   useEffect(() => {
@@ -149,9 +166,14 @@ export default function OverlayPersonSheet({
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, lineHeight: 1.2 }}>
+                <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 2, lineHeight: 1.2 }}>
                   {person.name}
                 </h3>
+                {mapName && (
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 6 }}>
+                    aus Karte „{mapName}"
+                  </p>
+                )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {person.relationship_type && (
                     <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: relBadge?.bg || 'var(--color-warm-4)', color: relBadge?.color || 'var(--color-text-muted)' }}>
@@ -175,6 +197,45 @@ export default function OverlayPersonSheet({
               <X size={18} color="var(--color-text-muted)" />
             </button>
           </div>
+
+          {/* Oikos Connect Account — verlinkter Account dieser Person, mit denselben
+              Profildetails wie bei eigenen Personen (PersonDetailSheet/AccountLinkingSection) */}
+          {person.linked_user_id && linkedProfile && (
+            <div style={{ marginBottom: 20 }}>
+              <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Oikos Connect Account
+              </h4>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
+                  {linkedProfile.avatar_url
+                    ? <img src={linkedProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : getInitials(linkedProfile.full_name || linkedProfile.username || '?')
+                  }
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', fontWeight: 600 }}>
+                    {linkedProfile.full_name || linkedProfile.username}
+                  </div>
+                  {linkedProfile.username && (
+                    <div style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>@{linkedProfile.username}</div>
+                  )}
+                </div>
+                <button
+                  onClick={() => navigate(`/user/${person.linked_user_id}`)}
+                  style={{ padding: '7px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                >
+                  Profil →
+                </button>
+              </div>
+
+              <LinkedProfilePreview
+                person={person}
+                linkedProfile={linkedProfile}
+                isOwner={false}
+                showMapsSection={false}
+              />
+            </div>
+          )}
 
           {/* Notes */}
           {person.notes && (

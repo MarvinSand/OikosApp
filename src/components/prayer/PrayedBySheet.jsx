@@ -1,9 +1,10 @@
 import { getInitials } from '../../lib/prayerModel'
+import BodyPortal from '../common/BodyPortal'
 
 // „Haben gebetet"-Sheet: alle Beter eines Anliegens mit ihrer Anzahl.
 export default function PrayedBySheet({ prayersByUser, totalCount, currentUserId, onClose }) {
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 40 }} />
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -46,6 +47,6 @@ export default function PrayedBySheet({ prayersByUser, totalCount, currentUserId
           )
         })}
       </div>
-    </>
+    </BodyPortal>
   )
 }

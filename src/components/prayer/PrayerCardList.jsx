@@ -31,12 +31,14 @@ export default function PrayerCardList({
   extraBadge = null,
   onOpenGoal,
   onChanged,
+  // Nach jedem protokollierten Gebet (z. B. um eine Statistik neu zu laden)
+  onPrayed,
   renderBetween,
 }) {
   const { user } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
-  const { logsMap, notesMap, pushLog, pushNote, removeNote } = usePrayerEngagement(prayers)
+  const { logsMap, notesMap, pending, pushLog, pushNote, removeNote } = usePrayerEngagement(prayers)
   const actions = usePrayerActions()
   const [listPrayer, setListPrayer] = useState(null)
   const [forwardPrayer, setForwardPrayer] = useState(null)
@@ -44,6 +46,7 @@ export default function PrayerCardList({
   async function handlePray(prayer) {
     const log = await actions.pray(prayer)
     pushLog(prayer.key, log)
+    onPrayed?.(prayer)
     // Ist ein (nicht-individuelles) Gebetsziel verknüpft, zählt das Gebet auch
     // dorthin – wie bisher im For-You-Feed.
     const goal = goalByKey?.get(prayer.key)
@@ -131,6 +134,7 @@ export default function PrayerCardList({
             <PrayerCard
               prayer={prayer}
               logs={logsMap[prayer.key]}
+              engagementPending={pending && !logsMap[prayer.key]}
               notes={notesMap[prayer.key]}
               currentUserId={user?.id}
               goal={goalByKey?.get(prayer.key) || null}

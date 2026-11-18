@@ -3,6 +3,7 @@ import { X, Globe, Lock } from 'lucide-react'
 import { KIND_OIKOS } from '../../lib/prayerModel'
 import { useCommunities } from '../../hooks/useCommunities'
 import { FEED_VISIBILITY, SiblingPickerFeed } from '../feed/FeedPostSheet'
+import BodyPortal from '../common/BodyPortal'
 
 // Bearbeiten eines Gebets (Titel, Beschreibung, Sichtbarkeit).
 // Oikos-Anliegen: Sichtbarkeit wie beim Feedpost (öffentlich / Community /
@@ -43,7 +44,7 @@ export default function EditPrayerSheet({ prayer, onSave, onClose }) {
   }
 
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 60 }} />
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -141,7 +142,7 @@ export default function EditPrayerSheet({ prayer, onSave, onClose }) {
           {saving ? 'Speichere…' : 'Speichern'}
         </button>
       </div>
-    </>
+    </BodyPortal>
   )
 }
 

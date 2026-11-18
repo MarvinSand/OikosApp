@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavi
 import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { useAuth, getCurrentUser } from './hooks/useAuth'
-import { useSwipeNav } from './hooks/useSwipeNav'
+import { isPrayerFeedRoute } from './lib/prayerFeedRoute'
+import { pathFromScan } from './lib/qrLinks'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { supabase } from './lib/supabase'
 import { registerForPush } from './lib/nativePush'
@@ -13,6 +14,7 @@ import AuthCallback from './pages/AuthCallback'
 import YouVersionCallback from './pages/YouVersionCallback'
 import LegalPage from './pages/LegalPage'
 import BottomNav from './components/layout/BottomNav'
+import { useKeyboardInset } from './hooks/useKeyboardInset'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
 // All authenticated pages load lazily: each route becomes its own chunk and
@@ -24,6 +26,7 @@ const ProfileView = lazy(() => import('./pages/ProfileView'))
 const SettingsView = lazy(() => import('./pages/SettingsView'))
 const ConnectionsView = lazy(() => import('./pages/ConnectionsView'))
 const FriendsView = lazy(() => import('./pages/FriendsView'))
+const JoinByCode = lazy(() => import('./pages/JoinByCode'))
 const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
 const UserProfile = lazy(() => import('./pages/UserProfile'))
 const PrayerListDetailView = lazy(() => import('./pages/PrayerListDetailView'))
@@ -35,11 +38,11 @@ const SavedPostsView = lazy(() => import('./pages/SavedPostsView'))
 const CommentDetailView = lazy(() => import('./pages/CommentDetailView'))
 const PrayerDetailView = lazy(() => import('./pages/PrayerDetailView'))
 const PublicMapView = lazy(() => import('./pages/PublicMapView'))
-const Prayers = lazy(() => import('./pages/Prayers'))
 const MapView = lazy(() => import('./pages/MapView'))
 const ConversationView = lazy(() => import('./pages/ConversationView'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const NotificationSettingsView = lazy(() => import('./pages/NotificationSettingsView'))
+const ModerationView = lazy(() => import('./pages/ModerationView'))
 const BibleView = lazy(() => import('./pages/BibleView'))
 // Öffentliche Startseite (nur Web, ausgeloggt) – eigener Chunk, damit die App
 // selbst nichts davon mitlädt
@@ -93,10 +96,30 @@ function LoadingSpinner() {
   )
 }
 
+// Universal Links / App Links: Tippt jemand in der App-installierten Umgebung
+// auf einen oikosapp.net-Link (z. B. QR-Code mit der Kamera-App), öffnet sich
+// die App direkt auf der Zielseite.
+function useNativeLinkHandler() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!isNativeApp) return
+    let handle
+    let cancelled = false
+    import('@capacitor/app').then(({ App: CapApp }) => {
+      CapApp.addListener('appUrlOpen', ({ url }) => {
+        const path = pathFromScan(url)
+        if (path) navigate(path)
+      }).then(h => { if (cancelled) h.remove(); else handle = h })
+    }).catch(() => {})
+    return () => { cancelled = true; handle?.remove() }
+  }, [navigate])
+}
+
 function AppShellInner() {
   const location = useLocation()
-  useSwipeNav()
+  useNativeLinkHandler()
   useNativePushRegistration()
+  useKeyboardInset()
   // Routes where the inner container should not be vertically scrollable
   // (full-bleed map views)
   const isFullScreenRoute =
@@ -104,7 +127,8 @@ function AppShellInner() {
     location.pathname === '/worldmap' ||
     location.pathname.startsWith('/map/') ||
     location.pathname.startsWith('/chat/') ||
-    location.pathname.startsWith('/community/')
+    location.pathname.startsWith('/community/') ||
+    isPrayerFeedRoute(location.pathname, location.search)
 
   return (
     // h-full statt h-[100dvh]: der Eltern-Container (App) hat oben
@@ -112,19 +136,19 @@ function AppShellInner() {
     // darin ragte in der iOS-App um genau diese Notch-Höhe (~59pt) unten aus
     // dem Bildschirm – im Browser ist der Wert 0, deshalb trat der Versatz
     // (Weltkarte-Leiste über den Nav-Icons) nur in TestFlight auf.
-    <div className="h-full flex flex-col md:flex-row bg-bg w-full relative overflow-hidden">
+    <div className="h-full flex flex-col md:flex-row bg-bg w-full relative overflow-clip">
       <SideNav />
 
       <div
         className={`flex-1 min-h-0 min-w-0 hide-scrollbar ${
-          isFullScreenRoute ? 'overflow-hidden' : 'overflow-y-auto mobile-nav-padding'
+          isFullScreenRoute ? 'overflow-clip' : 'overflow-y-auto mobile-nav-padding'
         }`}
       >
         <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/worldmap" element={<WorldMap />} />
-          <Route path="/prayers" element={<Prayers />} />
+          <Route path="/prayers" element={<FriendsView />} />
           <Route path="/prayer/list/:listId" element={<PrayerListDetailView />} />
           <Route path="/goals/:id" element={<PrayerGoalDetail />} />
           <Route path="/prayer/answered" element={<AnsweredPrayersView />} />
@@ -141,6 +165,7 @@ function AppShellInner() {
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/notifications/settings" element={<NotificationSettingsView />} />
           <Route path="/community/:id" element={<CommunityDetail />} />
+          <Route path="/join/:code" element={<JoinByCode />} />
           <Route path="/user/:id" element={<UserProfile />} />
           <Route path="/user/:id/map/:mapId" element={<PublicMapView />} />
           <Route path="/map/:mapId" element={<OwnMapPage />} />
@@ -148,6 +173,7 @@ function AppShellInner() {
           <Route path="/profile" element={<ProfileView />} />
           <Route path="/profile/connections" element={<ConnectionsView />} />
           <Route path="/settings" element={<SettingsView />} />
+          <Route path="/settings/moderation" element={<ModerationView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>
@@ -163,6 +189,16 @@ function AppShell() {
   useEffect(() => {
     if (!user) return
     checkBirthdays(user.id)
+  }, [user?.id])
+
+  // Feed im Hintergrund vorladen (erst nach dem Start-Ansturm von Home), damit
+  // der Feed-Tab nicht bei jedem ersten Öffnen Skelette zeigt.
+  useEffect(() => {
+    if (!user) return
+    const t = setTimeout(() => {
+      import('./hooks/useFeed').then(m => m.prefetchFeed(user.id)).catch(() => {})
+    }, 6000)
+    return () => clearTimeout(t)
   }, [user?.id])
 
   return <AppShellInner />
@@ -256,13 +292,30 @@ function AppFrame({ children }) {
   return (
     <div className="min-h-screen bg-bg w-full flex justify-center md:block">
       <div
-        className={`w-full ${wide ? '' : 'max-w-md md:max-w-none'} h-[100dvh] relative overflow-hidden bg-bg`}
+        className={`w-full ${wide ? '' : 'max-w-md md:max-w-none'} h-[100dvh] relative overflow-clip bg-bg`}
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         {children}
       </div>
     </div>
   )
+}
+
+// Öffnet jemand per QR-Code /join/… oder /user/… ohne Login, wird der Pfad
+// vorgemerkt und nach der Anmeldung geöffnet.
+const RETURN_KEY = 'oikos_return_to'
+function RedirectToAuth() {
+  const loc = useLocation()
+  try { if (loc.pathname !== '/') sessionStorage.setItem(RETURN_KEY, loc.pathname + loc.search) } catch { /* ignore */ }
+  return <Navigate to="/auth" replace />
+}
+function takeReturnTo() {
+  try {
+    const v = sessionStorage.getItem(RETURN_KEY)
+    sessionStorage.removeItem(RETURN_KEY)
+    if (v && v.startsWith('/')) return v
+  } catch { /* ignore */ }
+  return '/'
 }
 
 // Domain öffnen → Landingpage. `/welcome` zeigt sie auch eingeloggten Nutzern.
@@ -278,7 +331,7 @@ function RootGate() {
   if (showsLanding(pathname, user)) {
     return <Suspense fallback={<LoadingSpinner />}><Landing /></Suspense>
   }
-  return user ? <AppShell /> : <Navigate to="/auth" replace />
+  return user ? <AppShell /> : <RedirectToAuth />
 }
 
 export default function App() {
@@ -294,7 +347,7 @@ export default function App() {
             <Routes>
               <Route
                 path="/auth"
-                element={user ? <Navigate to="/" replace /> : <Auth />}
+                element={user ? <Navigate to={takeReturnTo()} replace /> : <Auth />}
               />
               {/* Öffentlich (auch ohne Login), damit dieselben URLs in App
                   Store Connect als Datenschutz-/Nutzungsbedingungen-Link

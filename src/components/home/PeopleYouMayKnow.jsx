@@ -29,7 +29,7 @@ function Avatar({ name, size, avatarUrl, isChristian }) {
       width: size, height: size, borderRadius: '50%',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       backgroundColor: isChristian ? 'var(--color-accent)' : 'var(--color-warm-1)',
-      color: '#fff', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
+      color: isChristian ? '#fff' : 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: size * 0.32, fontWeight: 700,
     }}>{initials}</div>
   )
 }
@@ -158,7 +158,7 @@ export default function PeopleYouMayKnow() {
                   onClick={() => handleAdd(p.id)}
                   disabled={sent || sendingId === p.id}
                   style={{
-                    marginTop: 10, width: '100%', padding: '7px 0', borderRadius: 10, border: 'none',
+                    marginTop: 10, width: '100%', padding: '7px 0', borderRadius: 10,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                     backgroundColor: sent ? 'var(--color-bg)' : 'var(--color-accent)',
                     color: sent ? 'var(--color-text-muted)' : '#fff',

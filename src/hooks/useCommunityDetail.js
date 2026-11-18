@@ -57,7 +57,7 @@ export function useCommunityDetail(communityId) {
       // hier höchstens 1 Zeile zurück, ungefährlich mitzuladen.
       supabase
         .from('community_join_requests')
-        .select('id, user_id, status, created_at')
+        .select('id, user_id, status, message, created_at')
         .eq('community_id', communityId)
         .eq('status', 'pending')
         .order('created_at'),
@@ -166,7 +166,11 @@ export function useCommunityDetail(communityId) {
     const member = members.find(m => m.user_id === userId)
     if (!member) return
     setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role } : m))
-    await supabase.from('community_members').update({ role }).eq('id', member.id)
+    const { error } = await supabase.from('community_members').update({ role }).eq('id', member.id)
+    if (error) {
+      setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role: member.role } : m))
+      throw error
+    }
   }
 
   async function removeMember(userId) {
@@ -179,12 +183,12 @@ export function useCommunityDetail(communityId) {
   }
 
   // Beitrittsanfrage annehmen/ablehnen – läuft über die Security-Definer-RPC
-  // (respond_to_join_request), da direktes Einfügen in community_members für
+  // (decide_join_request, optional mit Text), da direktes Einfügen in community_members für
   // request-Communities per RLS gesperrt ist.
-  async function respondToJoinRequest(requestId, approve) {
+  async function respondToJoinRequest(requestId, approve, note = null) {
     setJoinRequests(prev => prev.filter(r => r.id !== requestId))
-    const { error } = await supabase.rpc('respond_to_join_request', {
-      p_request_id: requestId, p_approve: approve,
+    const { error } = await supabase.rpc('decide_join_request', {
+      p_request_id: requestId, p_approve: approve, p_note: note || null,
     })
     if (error) { await load(); throw error }
     if (approve) await load()

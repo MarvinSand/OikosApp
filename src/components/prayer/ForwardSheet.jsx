@@ -3,6 +3,7 @@ import { X, Search, Send, Check } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
+import BodyPortal from '../common/BodyPortal'
 
 function Avatar({ profile, size = 36 }) {
   const name = profile?.full_name || profile?.username || '?'
@@ -89,7 +90,7 @@ export default function ForwardSheet({ previewTitle, buildMessage, onClose }) {
   }
 
   return (
-    <>
+    <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }} />
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -175,6 +176,6 @@ export default function ForwardSheet({ previewTitle, buildMessage, onClose }) {
           {sending ? 'Sende…' : selected.length > 0 ? `Senden (${selected.length})` : 'Senden'}
         </button>
       </div>
-    </>
+    </BodyPortal>
   )
 }

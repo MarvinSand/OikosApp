@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MoreHorizontal, Trash2 } from 'lucide-react'
 import PostEngagementBar from './PostEngagementBar'
@@ -6,7 +6,10 @@ import ShareSheet from './ShareSheet'
 import SavePostSheet from './SavePostSheet'
 import FeedCardFrame, { CONTENT_INSET } from './FeedCardFrame'
 import ModerationSheet from '../common/ModerationSheet'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
+import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
 import { useBlocks } from '../../hooks/useBlocks'
+import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 
 function timeAgo(iso) {
   const d = new Date(iso)
@@ -45,7 +48,9 @@ function CommentAvatar({ profile, size = 36 }) {
 export default function CommentCard({ comment, currentUserId, onLike, onRepost, onBookmark, onBookmarkSaved, onDelete, onClick, threadLineBefore, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
+  const menuBtnRef = useRef(null)
   const [showModeration, setShowModeration] = useState(false)
+  const { isAppAdmin } = useIsAppAdmin()
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const [showShareSheet, setShowShareSheet] = useState(false)
   const { isBlocked } = useBlocks()
@@ -82,9 +87,26 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
           </span>
         </div>
         {!isOwn && (
-          <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
-            <MoreHorizontal size={16} />
-          </button>
+          <>
+            <button ref={menuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label="Optionen" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+              <MoreHorizontal size={16} />
+            </button>
+            {showMenu && (
+              <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setShowMenu(false)} minWidth={220}>
+                <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
+                  Melden / Blockieren
+                </button>
+                {isAppAdmin && (
+                  <AdminContentMenuItems
+                    contentType="feed_comment"
+                    contentId={comment.id}
+                    hiddenAt={comment.moderation_hidden_at}
+                    onClose={() => setShowMenu(false)}
+                  />
+                )}
+              </AnchoredMenu>
+            )}
+          </>
         )}
         {showModeration && (
           <ModerationSheet
@@ -96,24 +118,21 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
           />
         )}
         {isOwn && (
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+          <>
+            <button ref={menuBtnRef} onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
               <MoreHorizontal size={16} />
             </button>
             {showMenu && (
-              <>
-                <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
-                  <button
-                    onClick={() => { setShowMenu(false); onDelete?.(comment.id) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
-                  >
-                    <Trash2 size={14} /> Löschen
-                  </button>
-                </div>
-              </>
+              <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setShowMenu(false)} minWidth={130}>
+                <button
+                  onClick={() => { setShowMenu(false); onDelete?.(comment.id) }}
+                  style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                >
+                  <Trash2 size={14} /> Löschen
+                </button>
+              </AnchoredMenu>
             )}
-          </div>
+          </>
         )}
       </div>
 

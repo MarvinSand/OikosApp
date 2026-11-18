@@ -12,15 +12,40 @@ function hashAngle(idA, idB) {
   return (Math.abs(h) % 360) * (Math.PI / 180)
 }
 
+// Closest point on segment (x1,y1)-(x2,y2) to (px,py), and the distance to it.
+function closestOnSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const lenSq = dx * dx + dy * dy
+  let t = lenSq > 0 ? ((px - x1) * dx + (py - y1) * dy) / lenSq : 0
+  t = Math.max(0, Math.min(1, t))
+  const cx = x1 + t * dx
+  const cy = y1 + t * dy
+  return { x: cx, y: cy, dist: Math.hypot(px - cx, py - cy) }
+}
+
 /**
  * Iterative collision relaxation.
  * basePositions: { [id]: {x, y} }
  * nodes: [{ id, r, fixed }] — r is the effective radius (overlay parents get
  *        their disc radius), fixed nodes (currently dragged) never move.
- * opts: { cx, cy, centerR, gap, iterations }
+ * opts: { cx, cy, centerR, gap, iterations, edges, lineGap, extraPositions }
+ *   edges: [{ a, b }] — pairs of ids (e.g. Oikos-Verbindungen, or a place/
+ *          center pseudo-id from extraPositions). Nodes not part of an edge
+ *          get nudged clear of that edge's line, best-effort — this runs
+ *          after circle/circle repulsion, so it can leave a residual overlap
+ *          when space is too tight to satisfy both constraints.
+ *   extraPositions: { [id]: {x, y} } — fixed points (e.g. places, the map's
+ *          center) that edges may reference as endpoints without taking part
+ *          in circle/circle or center repulsion themselves.
+ *   obstacles: [{ x, y, r }] — additional fixed circles (e.g. positions
+ *          already resolved by OTHER, independently-relaxed node groups, such
+ *          as another overlay group or the primary people) that movable
+ *          nodes keep clear of, exactly like the center. Not treated as edge
+ *          endpoints — obstacles are circles only.
  * Returns basePositions unchanged (same reference) if nothing overlaps.
  */
-export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 12, iterations = 40 } = {}) {
+export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 12, iterations = 40, edges = [], lineGap = 10, extraPositions = {}, obstacles = [] } = {}) {
   const sorted = [...nodes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const pos = {}
   for (const n of sorted) {
@@ -28,30 +53,36 @@ export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 
     if (p) pos[n.id] = { x: p.x, y: p.y }
   }
   const active = sorted.filter(n => pos[n.id])
+  const lookupPos = Object.keys(extraPositions).length > 0 ? { ...pos, ...extraPositions } : pos
+  // Center node plus any extra fixed circles (e.g. already-resolved nodes
+  // from other, independently-relaxed groups) that movable nodes must avoid
+  const fixedCircles = [{ x: cx, y: cy, r: centerR }, ...obstacles]
   let anyMoved = false
 
   for (let iter = 0; iter < iterations; iter++) {
     let maxMove = 0
 
-    // Keep movable nodes clear of the fixed center node
+    // Keep movable nodes clear of the center node and any obstacles
     for (const n of active) {
       if (n.fixed) continue
       const p = pos[n.id]
-      const required = centerR + n.r + gap
-      const dx = p.x - cx
-      const dy = p.y - cy
-      const d = Math.sqrt(dx * dx + dy * dy)
-      if (d < required) {
-        const push = required - d
-        if (d < 0.01) {
-          const a = hashAngle(n.id, 'center')
-          p.x += Math.cos(a) * push
-          p.y += Math.sin(a) * push
-        } else {
-          p.x += (dx / d) * push
-          p.y += (dy / d) * push
+      for (const o of fixedCircles) {
+        const required = o.r + n.r + gap
+        const dx = p.x - o.x
+        const dy = p.y - o.y
+        const d = Math.sqrt(dx * dx + dy * dy)
+        if (d < required) {
+          const push = required - d
+          if (d < 0.01) {
+            const a = hashAngle(n.id, 'center')
+            p.x += Math.cos(a) * push
+            p.y += Math.sin(a) * push
+          } else {
+            p.x += (dx / d) * push
+            p.y += (dy / d) * push
+          }
+          maxMove = Math.max(maxMove, push)
         }
-        maxMove = Math.max(maxMove, push)
       }
     }
 
@@ -94,12 +125,105 @@ export function relaxLayout(basePositions, nodes, { cx, cy, centerR = 48, gap = 
       }
     }
 
+    // Keep nodes clear of connection lines they're not an endpoint of —
+    // best-effort, runs after circle/circle repulsion so it can leave a
+    // residual overlap when space is too tight for both constraints.
+    if (edges.length > 0) {
+      for (const n of active) {
+        if (n.fixed) continue
+        const p = pos[n.id]
+        for (const e of edges) {
+          if (e.a === n.id || e.b === n.id) continue
+          const pa = lookupPos[e.a]
+          const pb = lookupPos[e.b]
+          if (!pa || !pb) continue
+          const { x: lx, y: ly, dist: d } = closestOnSegment(p.x, p.y, pa.x, pa.y, pb.x, pb.y)
+          const required = n.r + lineGap
+          if (d >= required) continue
+          const dx = p.x - lx
+          const dy = p.y - ly
+          const push = required - d
+          if (d < 0.01) {
+            // Node sits exactly on the line — push perpendicular to it
+            const segDx = pb.x - pa.x
+            const segDy = pb.y - pa.y
+            const segLen = Math.hypot(segDx, segDy) || 1
+            p.x += (-segDy / segLen) * push
+            p.y += (segDx / segLen) * push
+          } else {
+            p.x += (dx / d) * push
+            p.y += (dy / d) * push
+          }
+          maxMove = Math.max(maxMove, push)
+        }
+      }
+    }
+
     if (maxMove > 0.5) anyMoved = true
     else break
   }
 
   if (!anyMoved) return basePositions
   return { ...basePositions, ...pos }
+}
+
+/**
+ * Lays out an overlay group as a rigid shape around the origin (0,0), using
+ * only the group's own constraints — so it can afterwards be translated as a
+ * whole (placeRigidShape) instead of squeezing single members between
+ * foreign nodes.
+ * base/nodes/edges/extraPositions: as for relaxLayout, relative to (0,0).
+ * placeCircles: [{x, y, r}] the group's own places (members avoid them).
+ * Returns { rel, circles, D }: member positions, every occupied circle
+ * (center box, members, places) and the shape's bounding radius.
+ */
+export function buildRigidShape(base, nodes, { centerR = 58, boxR = 75, gap = 12, edges = [], extraPositions = {}, placeCircles = [], iterations = 120 } = {}) {
+  const withEdges = relaxLayout(base, nodes, { cx: 0, cy: 0, centerR, gap, iterations, edges, extraPositions, obstacles: placeCircles })
+  // Zweiter Durchlauf ohne Linien-Ausweichen: die Linien-Regel läuft in
+  // relaxLayout nach der Kreis-Abstoßung und kann Kreise wieder ineinander
+  // schieben — Kreise dürfen sich aber auf keinen Fall überlappen.
+  const rel = relaxLayout(withEdges, nodes, { cx: 0, cy: 0, centerR, gap, iterations, obstacles: placeCircles })
+  const circles = [{ x: 0, y: 0, r: boxR }]
+  nodes.forEach(n => {
+    const p = rel[n.id]
+    if (p) circles.push({ x: p.x, y: p.y, r: n.r })
+  })
+  placeCircles.forEach(c => circles.push(c))
+  let D = 0
+  circles.forEach(c => { D = Math.max(D, Math.hypot(c.x, c.y) + c.r) })
+  return { rel, circles, D }
+}
+
+/**
+ * Finds an anchor for a rigid shape (buildRigidShape) so that none of its
+ * circles comes closer than `gap` to any obstacle circle. Searches outward
+ * from `origin` along `dirAngle` (with small angular deviations), starting
+ * at `minDist`. Always terminates: beyond dMax every obstacle is cleared.
+ */
+export function placeRigidShape(shape, origin, dirAngle, obstacles, { gap = 150, minDist = 0, step = 60, deviations = [0, 15, -15, 30, -30, 45, -45] } = {}) {
+  const { circles, D } = shape
+  let dMax = minDist
+  for (const o of obstacles) {
+    dMax = Math.max(dMax, Math.hypot(o.x - origin.x, o.y - origin.y) + o.r + D + gap)
+  }
+  const fits = (ax, ay) => {
+    for (const o of obstacles) {
+      if (Math.hypot(ax - o.x, ay - o.y) >= D + o.r + gap) continue
+      for (const c of circles) {
+        if (Math.hypot(ax + c.x - o.x, ay + c.y - o.y) < c.r + o.r + gap) return false
+      }
+    }
+    return true
+  }
+  for (let d = minDist; d < dMax; d += step) {
+    for (const dev of deviations) {
+      const a = dirAngle + dev * (Math.PI / 180)
+      const ax = origin.x + d * Math.cos(a)
+      const ay = origin.y + d * Math.sin(a)
+      if (fits(ax, ay)) return { x: ax, y: ay }
+    }
+  }
+  return { x: origin.x + dMax * Math.cos(dirAngle), y: origin.y + dMax * Math.sin(dirAngle) }
 }
 
 /**

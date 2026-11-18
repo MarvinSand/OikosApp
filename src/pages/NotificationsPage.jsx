@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
+import PageHeader from '../components/layout/PageHeader'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Trash2, Check, X, User, Settings } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
+import { buildBibleLink } from '../lib/bibleLink'
 import { NOTIFICATION_TYPE_META } from '../lib/notificationTypeMeta'
 
 // Derive the best navigation target for a notification
@@ -13,6 +15,11 @@ function resolveDestination(n, currentUserId) {
   const { map_id, person_id, map_owner_id, request_id, requester_id, post_id, conversation_id } = n.data || {}
 
   if (n.type === 'message' && conversation_id) return `/chat/${conversation_id}`
+  // Neue Community-Typen und friend_accepted liefern ihr Ziel direkt in data.url
+  if (n.data?.url && ['community_join_request', 'community_join_decision', 'community_question', 'community_answer', 'community_event', 'friend_accepted'].includes(n.type)) return n.data.url
+  if (n.type === 'bible_note_comment' && n.data?.book) {
+    return buildBibleLink({ bibleId: n.data.bible_id, book: n.data.book, chapter: n.data.chapter, verseStart: n.data.verse_start, verseEnd: n.data.verse_end })
+  }
   if (n.type === 'feed_post' && post_id) return `/feed/post/${post_id}`
   if (map_id && (n.type === 'oikos_entry' || n.type === 'prayer_shared' || n.type === 'prayer_log' || n.type === 'prayer_reminder')) {
     const base = map_owner_id && map_owner_id !== currentUserId
@@ -79,7 +86,7 @@ function NotificationItem({ n, onClick, onDelete, onViewProfile, onAccept, onDec
     <div
       onClick={onClick}
       className={`group flex items-start gap-3.5 p-4 border-b border-warm-3 transition-all duration-200 cursor-pointer active:scale-[0.99] ${
-        n.is_read ? 'bg-transparent hover:bg-surface' : 'bg-warm-1/10 hover:bg-warm-1/15'
+        n.is_read ? 'bg-transparent hover:bg-surface' : 'bg-accent-light'
       }`}
     >
       {/* Icon bubble */}
@@ -238,19 +245,18 @@ export default function NotificationsPage() {
   return (
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }} className="pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
-      <div style={headerStyle}>
-        <button onClick={() => navigate(-1)} style={backBtn}>
-          <ArrowLeft size={20} />
-        </button>
-        <span style={headerTitle}>Benachrichtigungen</span>
-        <button
-          onClick={() => navigate('/notifications/settings')}
-          style={backBtn}
-          aria-label="Benachrichtigungs-Einstellungen"
-        >
-          <Settings size={20} />
-        </button>
-      </div>
+      <PageHeader
+        title="Benachrichtigungen"
+        right={
+          <button
+            onClick={() => navigate('/notifications/settings')}
+            style={backBtn}
+            aria-label="Benachrichtigungs-Einstellungen"
+          >
+            <Settings size={20} />
+          </button>
+        }
+      />
 
       {/* Loading */}
       {loading && <LoadingSkeleton />}
@@ -294,18 +300,6 @@ export default function NotificationsPage() {
 
 // ─── Styles ───────────────────────────────────────────────────
 
-const headerStyle = {
-  backgroundColor: 'var(--color-white)',
-  borderBottom: '1px solid var(--color-warm-3)',
-  padding: '14px 16px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  position: 'sticky',
-  top: 0,
-  zIndex: 5,
-}
-
 const backBtn = {
   border: 'none',
   background: 'none',
@@ -316,15 +310,3 @@ const backBtn = {
   alignItems: 'center',
 }
 
-const headerTitle = {
-  fontFamily: 'Lora, serif',
-  fontSize: 16,
-  fontWeight: 600,
-  color: 'var(--color-text)',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  flex: 1,
-  textAlign: 'center',
-  margin: '0 8px',
-}

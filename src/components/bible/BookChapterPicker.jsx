@@ -11,7 +11,7 @@ export default function BookChapterPicker({ currentBook, currentChapter, onSelec
     const info = findBook(pendingBook)
     const chapters = Array.from({ length: info?.chapters || 0 }, (_, i) => i + 1)
     return (
-      <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+      <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="flex items-center gap-2 px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
           <button onClick={() => setPendingBook(null)} className="p-1 -ml-1">
             <ChevronLeft size={20} style={{ color: 'var(--color-text-tertiary)' }} />
@@ -19,7 +19,7 @@ export default function BookChapterPicker({ currentBook, currentChapter, onSelec
           <h2 className="font-bold flex-1" style={{ color: 'var(--color-text)' }}>{info?.name} – Kapitel wählen</h2>
           <button onClick={onClose}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4" style={{ paddingBottom: 'calc(var(--bottom-nav-h, 64px) + 16px)' }}>
           <div className="grid grid-cols-6 gap-2">
             {chapters.map(ch => {
               const isCurrent = pendingBook === currentBook && ch === currentChapter
@@ -44,12 +44,12 @@ export default function BookChapterPicker({ currentBook, currentChapter, onSelec
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <h2 className="font-bold" style={{ color: 'var(--color-text)' }}>Buch wählen</h2>
         <button onClick={onClose}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 py-2">
+      <div className="flex-1 overflow-y-auto px-4 py-2" style={{ paddingBottom: 'calc(var(--bottom-nav-h, 64px) + 16px)' }}>
         {BIBLE_BOOKS.map(b => (
           <button
             key={b.code}

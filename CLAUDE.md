@@ -13,6 +13,51 @@
 - **Weltkugel** (`components/landing/NetworkGlobe.jsx`, eigener Lazy-Chunk ~38 kB gzip): Canvas-Globus mit Ländern (Punktraster in 4-Farben-Färbung, Grenzen, Küsten, Länder-/Kontinentnamen) und Markern im **Design der App-Weltkarte** (Geschwister = runde Avatare mit „Du“-Pill, Events = pulsierende babyblaue Squircles mit Emoji, Gemeinden = Haus-Squircle), verbunden durch Lichtbögen. Bei Gedränge schrumpfen Marker zum Punkt. `kinds` filtert Markertypen (Ebenen-Kapsel), `stage` 0–3 (Zoom auf Deutschland/Europa, stufenweises Netz) wird aktuell nicht genutzt, bleibt aber unterstützt. Reine Illustration (Hinweis „Symbolische Darstellung“), keine echten Nutzerdaten.
 - Geodaten `src/lib/worldGeo.js` sind **generiert** (Natural Earth 110m/50m, public domain): Punktraster (weltweit 1,7°, Europa 0,55°), Länder-Töne per 4-Farben-Färbung (`topojson.neighbors`), Grenzen/Küsten als Delta-Polylinien (0,05°). Neu erzeugen mit `world-atlas` + `topojson-client` + `topojson-simplify` + `d3-geo` in einem Temp-Ordner (nicht als Projekt-Abhängigkeit); Format steht im Dateikopf. Pausiert außerhalb des Viewports/bei versteckter Tab, `prefers-reduced-motion` → Standbild.
 
+## Gesamt-Audit (Nov. 2026): gefundene Fehlerklassen
+
+- **SwipePager & `position: fixed`:** Der Track lag dauerhaft per `transform` verschoben → jedes Sheet/Vollbild in einer Seite (Feed: Beitrag erstellen/Merken/Teilen, Home: Community erstellen/beitreten, Gebetsmodus) saß halb außerhalb des Bildschirms. Jetzt strukturell gelöst: `SwipePager` nutzt `transform` nur während Geste/Animation, im Ruhezustand `margin-left` (kein Bezugsrahmen). Portale bleiben erlaubt, sind aber nicht mehr Pflicht. Prüfen per Playwright: `position: fixed`-Elemente mit transformiertem Vorfahren suchen.
+- **Upsert + RLS:** `INSERT … ON CONFLICT DO UPDATE` prüft die SELECT-Policy als WITH CHECK gegen die NEUE Zeile. Erlaubt die SELECT-Policy nur „Zeilen aus Unterhaltungen, in denen ich schon bin", scheitert der allererste Eintrag immer (403). So gab es live 0 `conversation_members` für Community-Chats → dauerhaft „ungelesen". Fix `phase95`: eigene Zeile immer lesbar. Upserts ohne `onConflict` lösen über den Primärschlüssel auf – bei Unique auf einer anderen Spalte (`user_prayer_stats.user_id`) → 409, Streak blieb stehen.
+- **Dark Mode ist Standard:** `--color-warm-1`/`--color-text` als Fläche + feste weiße Schrift/Knopf = unsichtbar (Avatare, Buttons, Toggle-Tracks). Fläche `warm-1` → Schrift `var(--color-bg)` bzw. `text-bg`; Toggle-Track aktiv → `accent`.
+- **Schnappschuss vs. Live-Stand:** `bootMeta.friendship.status` (Bootstrap-RPC) hat Vorrang nur bis zur ersten eigenen Aktion – sonst blieb der Button nach „Anfrage gesendet" auf „Anfragen".
+- **Optimistische `temp-…`-IDs** nie in uuid-Filter/RPCs geben (400 für die ganze Abfrage).
+- **iOS-Push:** Der AppDelegate muss `didRegisterForRemoteNotificationsWithDeviceToken`/`didFailToRegister…` an Capacitor weiterreichen, sonst kommt nie ein Token an (`device_tokens` war live leer). Nach dem nächsten TestFlight-Build `select count(*) from device_tokens` prüfen.
+- **Vollbild-Overlays (`fixed; inset: 0`)** brauchen selbst `env(safe-area-inset-top)` (Gebetsmodus-Schließen-Button, Toasts lagen unter der Statusleiste).
+- **Logout:** `signOut({ scope: 'local' })` – der Standard meldet alle Geräte ab. Immer über `logout()` aus `useAuth` (entfernt auch das Push-Token dieses Geräts).
+- **Tailwind-Deckkraft auf Variablenfarben ist wirkungslos:** Alle Theme-Farben sind `var(--…)` – für `bg-surface/95`, `bg-dark/40`, `bg-warm-1/10` usw. erzeugt Tailwind 3 **gar kein CSS** (Sheet durchsichtig, Backdrop ohne Abdunklung, aktiver Zustand unsichtbar, Skelette fehlten). Stattdessen: Backdrops `bg-black/40`, Flächen deckend (`bg-surface`), aktive Zustände `bg-accent-light`. Ebenso ungültig: `border-1.5` → `border-[1.5px]`. Nach neuen Klassen im gebauten CSS nachsehen (`grep` in `dist/assets/index-*.css`).
+- **Unterseiten-Kopfzeile:** immer `components/layout/PageHeader.jsx` (Titel, optional `subtitle`, `right`, `children` für eine zweite Zeile) statt eigener Header.
+- **Schwebende „+"-Buttons:** `useHideOnScroll(rootRef)` blendet sie beim Runterscrollen aus. Gebetszähler: `engagementPending` zeigt ein Skelett statt „Noch keine Gebete".
+- **Testen gegen Live:** Demo-Konten `oikosdemo@oikosapp.net` / `oikosdemo2@oikosapp.net` (auch für die App-Review). Nur zwischen den Demo-Konten interagieren, nicht mit echten Nutzern.
+
+## Community-Zugang, Beitrittsanfragen & Benachrichtigungen (Nov. 2026, phase96)
+
+- **Zugang** = `is_public` + `join_mode`: Öffentlich (`true/open`), Mit Anfrage (`true/request`), Privat (`false/open`, nur Code). Gemeinden: nie privat, Default „Mit Anfrage“.
+- Anfrage nur über RPC `request_to_join_community` (legt Request + Chat-Nachricht `type='join_request'` + Admin-Benachrichtigung an); Entscheidung über `decide_join_request(id, approve, note)`. Chat rendert `JoinRequestCard`. Beitritt per Code nur über `join_community_by_code` (private Communities sind für Nicht-Mitglieder per RLS unlesbar/unbeitretbar).
+- Gemeinde-Fragen: Trigger benachrichtigen Admins (Frage) bzw. Fragesteller (Antwort, Deep-Link `/worldmap?gemeinde=<id>`). Nicht-Mitglieder sehen ihren Verlauf im `GemeindePinSheet`.
+- **Lektion:** `notifications_type_check` muss JEDEN Typ enthalten, den ein Trigger/Client einfügt – `notify_on_direct_message` nutzte `'message'`, das fehlte → DM-Benachrichtigungen scheiterten monatelang still (Trigger schlucken Fehler). Nach neuen Typen: `select type, count(*) from notifications group by 1` live prüfen. Push-Deep-Link kommt aus `data.url`.
+
+## Safe-Area: `fixed inset-0`-Overlays und Border-Box-Höhen (Nov. 2026)
+
+- `App.jsx` padded den Container oben mit `env(safe-area-inset-top)`, `position: fixed; inset: 0`-Overlays (Bibel-Picker) liegen aber im Viewport-Koordinatensystem → ihr Header landete unter der Statusleiste. Overlays brauchen selbst `paddingTop: env(safe-area-inset-top)` und unten `var(--bottom-nav-h)`-Freiraum.
+- Seiten *innerhalb* des App-Containers dürfen die Safe-Area **nicht** nochmal als `padding-top` addieren: bei fester `height` (Tailwind `border-box`) frisst das die Inhaltshöhe (CommunityDetail: Zurück-Pfeil ragte aus der Kopfleiste).
+- Bibel-Übersetzungen: Favoriten ohne Netzwerk (Defaults + `useVersionMeta`), Katalog erst nach Sprachwahl pro Sprache (`useBibleVersionsByLanguage`) – nie wieder den Gesamtkatalog (~20 Seiten) am Stück laden.
+
+## Darkmode: theme-flippende CSS-Variablen nie als SVG-Fill mit festem Text kombinieren (Nov. 2026)
+
+**Problem:** Die neuen Overlay-Kästchen (eigene Map einer verlinkten Person, `MapCanvas.jsx`, Box-Modus) hatten `fill="var(--color-warm-1)"` als Kästchen-Hintergrund und `fill="white"` als Text-Farbe. Im Light Mode ist `--color-warm-1` `#000000` (schwarzes Kästchen, weißer Text – lesbar), im Dark Mode ist dieselbe Variable `#FFFFFF` (siehe `src/index.css`, `:root` vs. `[data-theme="dark"]`) → **weißer Text auf weißem Kästchen, komplett unsichtbar**. Nur auf einem echten Gerät mit Dark Mode sichtbar, nicht im Light-Mode-Browser-Testing.
+
+**Ursache:** `--color-warm-1` ist als "High-Contrast-Ink"-Variable gedacht (für Text/Ränder, die im jeweiligen Theme maximalen Kontrast zum Hintergrund haben sollen), nicht als neutrale Füllfarbe. Jede Variable, die zwischen Light/Dark den Wert *umdreht* (schwarz ↔ weiß), ist gefährlich als Fläche/Fill, wenn die dazugehörige Text-/Icon-Farbe **fest** (literal `white`/`black`, nicht ebenfalls themed) ist – dann bricht genau eine der beiden Kombinationen.
+
+**Fix:** Kästchen-Fill auf einen literalen, theme-unabhängigen Hex-Wert (`#3A5F8A`) gesetzt statt auf `--color-warm-1`.
+
+**Lektion:**
+- Vor dem Einsatz einer CSS-Variable als Fläche/Fill **immer** prüfen, ob sie in `src/index.css` zwischen `:root` und `[data-theme="dark"]` den Wert umdreht (grep nach dem Variablennamen in beiden Blöcken) – falls ja, nur verwenden, wenn die Text-/Icon-Farbe darüber ebenfalls themed ist (z. B. über eine zweite, passend gepaarte Variable), nie mit einer festen Literal-Farbe kombinieren.
+- Neue farbige UI-Elemente (Badges, Kästchen, Chips) mit festem Text/Icon drauf: entweder komplett literale, theme-unabhängige Farben verwenden, oder ein bereits als Fläche gedachtes Variablenpaar (z. B. `--color-bg`/`--color-text`), nie eine "Ink"-Variable wie `--color-warm-1`/`--color-text`.
+- Darkmode-Bugs dieser Art im Light-Mode-Browser-Testing **nicht sichtbar** – bei neuen farbigen Flächen immer kurz `data-theme="dark"` auf `<html>` setzen und per Playwright/Screenshot gegenprüfen, bevor committed wird.
+
+## Sheets im SwipePager: `position: fixed` landet im Track (Okt. 2026)
+
+`SwipePager` verschiebt einen 200 %-breiten Track per `transform`/`will-change`. Jeder Vorfahre mit `transform` macht `position: fixed` relativ zu sich selbst (nicht zum Viewport) und `overflow: hidden` schneidet ab → Gebete-Sheets (z. B. „Oikos-Gebete auswählen“) saßen um eine halbe Viewport-Breite nach rechts verschoben und abgeschnitten. **Fix:** Sheets/Overlays in Panes immer in `components/common/BodyPortal.jsx` (Portal an `document.body`) rendern. Neue Sheets unter `pages/Prayers`/`FeedTab`/Home-Panes also gleich portalen.
+
 ## Systemkarte „Meine Geschwister in Christus" (Okt. 2026, phase75)
 
 - Pro Account genau eine `oikos_maps`-Zeile mit `kind='siblings'` (Unique-Index, Trigger auf `profiles` + Backfill, `ensure_siblings_map`). Immer erste Map im Switcher (Pin), nicht umbenenn-/löschbar, **öffentlich** (`visibility='public'`, neuer Wert in Check-Constraint + `is_map_visible_to`; `'public'` bei Sichtbarkeitsfiltern im Client mitbehandeln). Aus Weltkarten-/Gebets-/Filterquellen per `.or('kind.is.null,kind.neq.siblings')` ausgeschlossen (`neq` allein würde NULL-Zeilen verlieren).
@@ -155,7 +200,7 @@ git push -u origin temp-fix:main
 
 ## Deployment
 
-- Vercel deployed automatisch von `main` → https://oikos-app-tau.vercel.app/
+- Vercel deployed automatisch von `main` → https://oikosapp.net/ (die alte Adresse oikos-app-tau.vercel.app bleibt für Bestandsnutzer aktiv, wird aber nie mehr als Link-Ziel erzeugt: `publicOrigin()` in `src/lib/platform.js` liefert immer `oikosapp.net`)
 - Feature-Branches haben eigene Preview-URLs (Vercel Dashboard → Deployments)
 - Alle Änderungen direkt auf `main` pushen (die App hat noch keine aktiven User)
 

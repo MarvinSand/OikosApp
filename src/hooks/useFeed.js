@@ -15,6 +15,33 @@ export const POST_SELECT = `
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 
+// Kategorie-Filter → category-Wert (null = alle)
+const FILTER_CATEGORY = { bibelstelle: 'bibelstelle', zeugnis: 'zeugnis', frage: 'frage', meilenstein: 'meilenstein', ermutigung: 'ermutigung' }
+
+// Eine Feed-Seite in EINEM Request (get_feed_page, phase88) – bei Last kostet
+// jeder zusätzliche Round-Trip mehrere Sekunden. Fehlt die Funktion (Migration
+// noch nicht eingespielt) oder schlägt sie fehl, greift der alte Weg.
+async function fetchFeedPageViaRpc(filter, from) {
+  const { data, error } = await supabase.rpc('get_feed_page', {
+    p_category: FILTER_CATEGORY[filter] ?? null,
+    p_offset: from,
+    p_limit: PAGE_SIZE,
+  })
+  if (error || !Array.isArray(data)) return null
+  return data
+}
+
+// Erste Feed-Seite im Hintergrund vorladen, damit der Feed-Tab beim ersten
+// Öffnen nicht erst Skelette zeigt (siehe App.jsx).
+export async function prefetchFeed(userId, filter = 'all') {
+  const cacheName = `feed:${filter}`
+  if (!userId || readCache(userId, cacheName) !== undefined) return
+  try {
+    const rows = await fetchFeedPageViaRpc(filter, 0)
+    if (rows) writeCache(userId, cacheName, rows)
+  } catch { /* nur Optimierung */ }
+}
+
 export function useFeed(filter = 'all') {
   const { user } = useAuth()
   // Letzte erste Seite je Filter sofort zeigen (siehe swrCache.js), still aktualisieren
@@ -51,20 +78,27 @@ export function useFeed(filter = 'all') {
     }
     setOffset(0)
     try {
-      const { data, error } = await buildQuery(0)
-      // Fehler: gecachten Stand behalten statt ihn zu leeren
-      if (!error) {
-        const withReactions = await attachReactions(data || [])
-        setPosts(withReactions)
-        setHasMore((data || []).length === PAGE_SIZE)
-        writeCache(user.id, cacheName, withReactions)
+      const viaRpc = await fetchFeedPageViaRpc(filter, 0)
+      if (viaRpc) {
+        setPosts(viaRpc)
+        setHasMore(viaRpc.length === PAGE_SIZE)
+        writeCache(user.id, cacheName, viaRpc)
+      } else {
+        const { data, error } = await buildQuery(0)
+        // Fehler: gecachten Stand behalten statt ihn zu leeren
+        if (!error) {
+          const withReactions = await attachReactions(data || [])
+          setPosts(withReactions)
+          setHasMore((data || []).length === PAGE_SIZE)
+          writeCache(user.id, cacheName, withReactions)
+        }
       }
     } catch {
       /* Netzwerkfehler: bisherigen Stand behalten */
     } finally {
       setLoading(false)
     }
-  }, [user?.id, buildQuery, cacheName])
+  }, [user?.id, buildQuery, cacheName, filter])
 
   useEffect(() => { loadPosts() }, [loadPosts])
 
@@ -106,6 +140,13 @@ export function useFeed(filter = 'all') {
   async function loadMore() {
     if (!hasMore || loading) return
     const nextOffset = offset + PAGE_SIZE
+    const viaRpc = await fetchFeedPageViaRpc(filter, nextOffset)
+    if (viaRpc) {
+      setPosts(prev => [...prev, ...viaRpc])
+      setHasMore(viaRpc.length === PAGE_SIZE)
+      setOffset(nextOffset)
+      return
+    }
     const { data } = await buildQuery(nextOffset)
     if (data) {
       const withReactions = await attachReactions(data)

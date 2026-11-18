@@ -1,7 +1,7 @@
 import { useState, useRef, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Settings, Camera, MapPin, Church, Map as MapIcon, Newspaper, HandHeart,
+  Settings, QrCode, Camera, MapPin, Church, Map as MapIcon, Newspaper, HandHeart,
   Loader2, Maximize2, X, Repeat2, ScrollText,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -9,6 +9,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useProfileTabs } from '../hooks/useProfileTabs'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePublicMap } from '../hooks/usePublicMap'
+const QrHubSheet = lazy(() => import('../components/common/QrHubSheet'))
 import { useToast } from '../context/ToastContext'
 import MapCanvas from '../components/map/MapCanvas'
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
@@ -115,6 +116,7 @@ export default function ProfileView() {
   const [activeTab, setActiveTab] = useState('maps')
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [settingsMap, setSettingsMap] = useState(null)
+  const [showQr, setShowQr] = useState(false)
   const [overlay, setOverlay] = useState(null) // 'siblings' | 'communities' | null
   const [showNewMap, setShowNewMap] = useState(false)
 
@@ -189,6 +191,14 @@ export default function ProfileView() {
         <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>
           @{profile?.username || '…'}
         </h2>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <button
+          onClick={() => setShowQr(true)}
+          aria-label="Mein QR-Code"
+          style={{ width: 40, height: 40, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <QrCode size={22} />
+        </button>
         <button
           onClick={() => navigate('/settings')}
           aria-label="Einstellungen"
@@ -206,7 +216,13 @@ export default function ProfileView() {
         >
           <Settings size={22} />
         </button>
+        </div>
       </header>
+      {showQr && (
+        <Suspense fallback={null}>
+          <QrHubSheet onClose={() => setShowQr(false)} />
+        </Suspense>
+      )}
 
       {/* Profile section */}
       <div className="px-4 pt-4 pb-4">

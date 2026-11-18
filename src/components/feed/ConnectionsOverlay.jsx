@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useFriendships } from '../../hooks/useFriendships'
 import { useToast } from '../../context/ToastContext'
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../../lib/googleMaps'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function getInitials(name) {
@@ -173,6 +174,7 @@ function PlacesAutocompleteInput({ value, onChange, types, placeholder }) {
 // ─── Friend row with 3-dot menu ───────────────────────────────
 function FriendRow({ profile, onProfile, onMessage, onRemove }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuBtnRef = useRef(null)
 
   return (
     <div
@@ -223,6 +225,7 @@ function FriendRow({ profile, onProfile, onMessage, onRemove }) {
       </button>
 
       <button
+        ref={menuBtnRef}
         onClick={() => setMenuOpen(v => !v)}
         aria-label="Mehr"
         style={{
@@ -235,42 +238,26 @@ function FriendRow({ profile, onProfile, onMessage, onRemove }) {
       </button>
 
       {menuOpen && (
-        <>
-          <div
-            onClick={() => setMenuOpen(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 50 }}
-          />
-          <div
-            style={{
-              position: 'absolute', right: 4, top: '100%',
-              backgroundColor: 'var(--color-bg)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 10,
-              boxShadow: '0 6px 20px rgba(0,0,0,0.10)',
-              zIndex: 51, minWidth: 200,
-              overflow: 'hidden',
-            }}
+        <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setMenuOpen(false)} minWidth={200}>
+          <button
+            onClick={() => { setMenuOpen(false); onProfile() }}
+            style={anchoredMenuItemStyle}
           >
-            <button
-              onClick={() => { setMenuOpen(false); onProfile() }}
-              style={menuItemStyle()}
-            >
-              Profil öffnen
-            </button>
-            <button
-              onClick={() => { setMenuOpen(false); onMessage() }}
-              style={menuItemStyle()}
-            >
-              Nachricht schreiben
-            </button>
-            <button
-              onClick={() => { setMenuOpen(false); onRemove() }}
-              style={menuItemStyle('var(--color-error)')}
-            >
-              Verbindung entfernen
-            </button>
-          </div>
-        </>
+            Profil öffnen
+          </button>
+          <button
+            onClick={() => { setMenuOpen(false); onMessage() }}
+            style={anchoredMenuItemStyle}
+          >
+            Nachricht schreiben
+          </button>
+          <button
+            onClick={() => { setMenuOpen(false); onRemove() }}
+            style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}
+          >
+            Verbindung entfernen
+          </button>
+        </AnchoredMenu>
       )}
     </div>
   )

@@ -4,7 +4,7 @@ import { compressImage } from '../lib/image'
 import { useAuth } from './useAuth'
 
 const PAGE_SIZE = 50
-const MSG_SELECT = 'id, conversation_id, sender_id, type, text, bible_verse_reference, bible_verse_text, personal_prayer_request_id, prayer_request_id, is_deleted, created_at, reply_to_id, forwarded_from_id, is_pinned, pinned_at, image_path, is_view_once, viewed_at'
+const MSG_SELECT = 'id, conversation_id, sender_id, type, text, bible_verse_reference, bible_verse_text, personal_prayer_request_id, prayer_request_id, is_deleted, created_at, reply_to_id, forwarded_from_id, is_pinned, pinned_at, image_path, is_view_once, viewed_at, join_request_id'
 
 async function attachProfiles(messages) {
   if (!messages || messages.length === 0) return messages

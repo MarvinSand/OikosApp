@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { fetchBiblePath } from '../lib/youversion'
 import { wrapVersesInHtml } from '../lib/biblePassageHtml'
-import { HIGHLIGHT_COLORS } from '../lib/bibleColors'
-import { DEFAULT_STARRED_IDS } from '../lib/bibleVersionDefaults'
+import { HIGHLIGHT_COLORS, normalizeColorKey, colorsEqual, isPresetColor } from '../lib/bibleColors'
+import { DEFAULT_STARRED_IDS, DEFAULT_STARRED_VERSIONS } from '../lib/bibleVersionDefaults'
 
 // Numerische YouVersion-Bibel-ID. 73 = "Hoffnung für alle" (Default). Alle
 // ~1479 verfügbaren Übersetzungen liefert useBibleVersions() – darüber lässt
@@ -131,61 +131,139 @@ export function usePassageText(bibleId, book, chapter, verseStart, verseEnd) {
   return { html, loading, error }
 }
 
-// Modul-Cache: die Liste aller Übersetzungen ändert sich praktisch nie
-// innerhalb einer Session, muss also nicht bei jedem Öffnen des Version-
-// Pickers neu über ~20 Seiten nachgeladen werden.
-let bibleVersionsCache = null // { versions, timestamp }
-const BIBLE_VERSIONS_CACHE_MS = 6 * 60 * 60 * 1000
+// ─── Übersetzungs-Katalog (pro Sprache) ───
+//
+// Der Gesamtkatalog (~1479 Übersetzungen, ~20 Seiten) wird NICHT mehr am Stück
+// geladen. Stattdessen: Favoriten kommen aus Defaults/lokalem Meta-Cache, und
+// erst nach Sprachwahl wird nur diese Sprache abgerufen
+// (GET /v1/bibles?language_ranges[]=<tag>, paginiert über next_page_token).
 
-// GET /v1/bibles?language_ranges[]=* liefert ALLE Übersetzungen (aktuell
-// ~1479 Stück, Feld total_size), aber paginiert über next_page_token/
-// page_token (~65 Einträge pro Seite). Ohne language_ranges[] lehnt die API
-// mit 422 ab - "*" ist der (undokumentierte, aber funktionierende) Wildcard-
-// Language-Range.
-// `enabled: false` lädt nichts (auch nicht aus dem Cache) - Standard-Favoriten
-// + aktuell gewählte Übersetzung kommen ohne API-Call aus
-// bibleVersionDefaults.js, der ~1479 Einträge umfassende Katalog wird erst
-// abgerufen, sobald der Nutzer den Version-Picker tatsächlich öffnet.
-export function useBibleVersions({ enabled = true } = {}) {
-  const [versions, setVersions] = useState(bibleVersionsCache?.versions ?? null)
-  const [loading, setLoading] = useState(enabled && !bibleVersionsCache)
-  const [error, setError] = useState(null)
+const VERSION_META_KEY = 'oikos_bible_version_meta_v1'
+const versionMeta = new Map() // id -> { id, title, localized_title, abbreviation, localized_abbreviation, language_tag }
+let versionMetaLoaded = false
+const metaListeners = new Set()
+
+function slimVersion(v) {
+  return {
+    id: String(v.id),
+    title: v.title,
+    localized_title: v.localized_title,
+    abbreviation: v.abbreviation,
+    localized_abbreviation: v.localized_abbreviation,
+    language_tag: v.language_tag,
+  }
+}
+
+function loadVersionMeta() {
+  if (versionMetaLoaded) return
+  versionMetaLoaded = true
+  for (const v of DEFAULT_STARRED_VERSIONS) versionMeta.set(String(v.id), v)
+  try {
+    const entries = JSON.parse(localStorage.getItem(VERSION_META_KEY) || '[]')
+    for (const v of entries) if (v?.id && !versionMeta.has(String(v.id))) versionMeta.set(String(v.id), v)
+  } catch { /* ignore */ }
+}
+
+export function rememberVersions(list) {
+  loadVersionMeta()
+  let changed = false
+  for (const v of list || []) {
+    if (!v?.id) continue
+    const slim = slimVersion(v)
+    const old = versionMeta.get(slim.id)
+    if (!old || old.localized_title !== slim.localized_title || old.language_tag !== slim.language_tag) {
+      versionMeta.set(slim.id, slim)
+      changed = true
+    }
+  }
+  if (!changed) return
+  try {
+    const persist = [...versionMeta.values()].filter(v => !DEFAULT_STARRED_IDS.includes(String(v.id)))
+    localStorage.setItem(VERSION_META_KEY, JSON.stringify(persist.slice(-200)))
+  } catch { /* ignore */ }
+  metaListeners.forEach(fn => fn())
+}
+
+// Meta (Titel/Kürzel) für beliebige Übersetzungs-IDs. Unbekannte IDs (z. B. eine
+// früher favorisierte spanische Bibel) werden einzeln per GET /v1/bibles/{id}
+// nachgeladen und lokal gemerkt - statt dafür den Gesamtkatalog zu laden.
+export function useVersionMeta(ids) {
+  const [, force] = useState(0)
+  loadVersionMeta()
+  const key = [...ids].map(String).sort().join(',')
 
   useEffect(() => {
-    if (!enabled) return
-    if (bibleVersionsCache && Date.now() - bibleVersionsCache.timestamp < BIBLE_VERSIONS_CACHE_MS) {
-      setVersions(bibleVersionsCache.versions)
-      setLoading(false)
+    const fn = () => force(n => n + 1)
+    metaListeners.add(fn)
+    return () => { metaListeners.delete(fn) }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const missing = key.split(',').filter(id => id && !versionMeta.has(id))
+    if (!missing.length) return
+    ;(async () => {
+      const found = []
+      await Promise.all(missing.map(async id => {
+        try {
+          const res = await fetchBiblePath(`/v1/bibles/${id}`)
+          const v = res?.data ?? res
+          if (v?.id) found.push(v)
+        } catch { /* ignore */ }
+      }))
+      if (!cancelled && found.length) rememberVersions(found)
+    })()
+    return () => { cancelled = true }
+  }, [key])
+
+  return (id) => versionMeta.get(String(id))
+}
+
+const languageCache = new Map() // tag -> { versions, timestamp }
+const LANGUAGE_CACHE_MS = 6 * 60 * 60 * 1000
+
+export function useBibleVersionsByLanguage(tag) {
+  const [state, setState] = useState({ tag: null, versions: null, error: null })
+
+  useEffect(() => {
+    if (!tag) return
+    const cached = languageCache.get(tag)
+    if (cached && Date.now() - cached.timestamp < LANGUAGE_CACHE_MS) {
+      setState({ tag, versions: cached.versions, error: null })
       return
     }
     let cancelled = false
-    setLoading(true)
-    setError(null)
+    setState({ tag, versions: null, error: null })
     ;(async () => {
       try {
         const all = []
-        let path = '/v1/bibles?language_ranges[]=*'
+        const base = `/v1/bibles?language_ranges[]=${encodeURIComponent(tag)}`
+        let path = base
         let guard = 0
         while (path && guard < 40) {
           guard++
           const data = await fetchBiblePath(path)
           all.push(...(data?.data ?? []))
           const token = data?.next_page_token
-          path = token ? `/v1/bibles?language_ranges[]=*&page_token=${encodeURIComponent(token)}` : null
+          path = token ? `${base}&page_token=${encodeURIComponent(token)}` : null
         }
         if (cancelled) return
-        bibleVersionsCache = { versions: all, timestamp: Date.now() }
-        setVersions(all)
+        languageCache.set(tag, { versions: all, timestamp: Date.now() })
+        rememberVersions(all)
+        setState({ tag, versions: all, error: null })
       } catch (e) {
-        if (!cancelled) setError(e.message)
-      } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setState({ tag, versions: null, error: e.message })
       }
     })()
     return () => { cancelled = true }
-  }, [enabled])
+  }, [tag])
 
-  return { versions, loading, error }
+  const ready = state.tag === tag
+  return {
+    versions: ready ? state.versions : null,
+    loading: !!tag && (!ready || (!state.versions && !state.error)),
+    error: ready ? state.error : null,
+  }
 }
 
 // ─── Favoriten-Übersetzungen ───
@@ -270,25 +348,37 @@ export function useSavedBibleColors() {
       .select('color')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-    setColors((data || []).map(r => r.color))
+    const seen = new Set()
+    const next = []
+    for (const r of data || []) {
+      const key = normalizeColorKey(r.color)
+      if (!key.startsWith('#') || seen.has(key)) continue
+      seen.add(key)
+      next.push(key)
+    }
+    setColors(next)
     setLoading(false)
   }, [user?.id])
 
   useEffect(() => { load() }, [load])
 
   function isSaved(hex) {
-    return colors.some(c => c.toLowerCase() === hex?.toLowerCase())
+    return colors.some(c => colorsEqual(c, hex))
   }
 
   async function toggleColor(hex) {
-    if (!hex?.startsWith('#') || !user) return
-    const value = hex.toLowerCase()
+    const value = normalizeColorKey(hex)
+    if (!value.startsWith('#') || !user) return
     const wasSaved = isSaved(value)
-    setColors(prev => wasSaved ? prev.filter(c => c.toLowerCase() !== value) : [value, ...prev])
+    setColors(prev => wasSaved
+      ? prev.filter(c => !colorsEqual(c, value))
+      : [value, ...prev.filter(c => !colorsEqual(c, value))])
     if (wasSaved) {
+      // Delete any case/format variants the user may have accumulated.
       await supabase.from('bible_saved_colors').delete().eq('user_id', user.id).eq('color', value)
+      await supabase.from('bible_saved_colors').delete().eq('user_id', user.id).eq('color', hex)
     } else {
-      await supabase.from('bible_saved_colors').insert({ user_id: user.id, color: value })
+      await supabase.from('bible_saved_colors').upsert({ user_id: user.id, color: value }, { onConflict: 'user_id,color' })
     }
   }
 
@@ -316,11 +406,13 @@ export function useRecentBibleColors(limit = 6) {
     const deduped = []
     for (const row of data || []) {
       const c = row.color
-      if (!c || !c.startsWith('#') || HIGHLIGHT_COLORS[c]) continue
-      const key = c.toLowerCase()
+      const key = normalizeColorKey(c)
+      if (!key.startsWith('#') || isPresetColor(key)) continue
+      // Skip hex values that equal a preset hex (e.g. '#fde68a')
+      if (Object.values(HIGHLIGHT_COLORS).some(h => h.toLowerCase() === key)) continue
       if (seen.has(key)) continue
       seen.add(key)
-      deduped.push(c)
+      deduped.push(key)
       if (deduped.length >= limit) break
     }
     setColors(deduped)
@@ -410,24 +502,89 @@ export function useBibleMarkers(bibleId, book, chapter, { youversionConnected = 
 
   useEffect(() => { load() }, [load])
 
+  // Ranges überlappen, wenn sie Verse teilen (inkl. verse_end = null → Single).
+  function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+    const aE = aEnd ?? aStart
+    const bE = bEnd ?? bStart
+    return aStart <= bE && bStart <= aE
+  }
+
   async function addHighlight({ verseStart, verseEnd, referenceLabel, color = 'yellow', bibleId = DEFAULT_BIBLE_ID }) {
-    const { data, error } = await supabase.from('bible_highlights').insert({
+    if (!user) return { data: null, error: new Error('not signed in') }
+    const end = verseEnd ?? null
+    // Farbe normalisieren: Preset-Namen bleiben Namen, Hex wird lowercase #rrggbb.
+    const storedColor = isPresetColor(color) ? normalizeColorKey(color) : (normalizeColorKey(color) || color)
+
+    // Bestehende eigene Oikos-Highlights im gleichen Kapitel, die den neuen
+    // Bereich überlappen → ersetzen (Update Farbe/Range), statt Duplikate
+    // anzulegen. Sonst zeigt highlightFor() die älteste Farbe und die UI
+    // wirkt "buggy" beim Umfärben.
+    const overlapping = highlights.filter(h =>
+      h.source === 'oikos'
+      && rangesOverlap(verseStart, end, h.verse_start, h.verse_end)
+    )
+
+    const tempId = `tmp-${Date.now()}`
+    const optimistic = {
+      id: overlapping[0]?.id || tempId,
       user_id: user.id, bible_id: bibleId, book, chapter,
-      verse_start: verseStart, verse_end: verseEnd ?? null,
-      reference_label: referenceLabel, color, source: 'oikos',
-    }).select().single()
-    if (!error) setHighlights(prev => [...prev, data])
-    return { data, error }
+      verse_start: verseStart, verse_end: end,
+      reference_label: referenceLabel, color: storedColor, source: 'oikos',
+    }
+
+    // Optimistic: overlapping raus, neuer rein.
+    setHighlights(prev => [
+      ...prev.filter(h => !overlapping.some(o => o.id === h.id)),
+      optimistic,
+    ])
+
+    // Persist: delete extras first, then update-or-insert the keeper.
+    const extras = overlapping.slice(1)
+    if (extras.length) {
+      await supabase.from('bible_highlights').delete().in('id', extras.map(h => h.id))
+    }
+
+    let data = null
+    let error = null
+    if (overlapping[0]) {
+      const res = await supabase.from('bible_highlights').update({
+        verse_start: verseStart, verse_end: end,
+        reference_label: referenceLabel, color: storedColor, bible_id: bibleId,
+      }).eq('id', overlapping[0].id).select().single()
+      data = res.data; error = res.error
+    } else {
+      const res = await supabase.from('bible_highlights').insert({
+        user_id: user.id, bible_id: bibleId, book, chapter,
+        verse_start: verseStart, verse_end: end,
+        reference_label: referenceLabel, color: storedColor, source: 'oikos',
+      }).select().single()
+      data = res.data; error = res.error
+    }
+
+    if (error) {
+      // Rollback optimistic change by reloading chapter markers.
+      const { data: fresh } = await supabase.from('bible_highlights').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter)
+      if (fresh) setHighlights(fresh)
+      return { data: null, error }
+    }
+    setHighlights(prev => prev.map(h => (h.id === optimistic.id || h.id === tempId) ? data : h))
+    return { data, error: null }
   }
 
   async function removeHighlight(id) {
-    await supabase.from('bible_highlights').delete().eq('id', id)
+    if (!id) return
     setHighlights(prev => prev.filter(h => h.id !== id))
+    if (String(id).startsWith('tmp-')) return
+    const { error } = await supabase.from('bible_highlights').delete().eq('id', id)
+    if (error) {
+      const { data: fresh } = await supabase.from('bible_highlights').select('*').eq('user_id', user.id).eq('book', book).eq('chapter', chapter)
+      if (fresh) setHighlights(fresh)
+    }
   }
 
   async function addNote({
     verseStart, verseEnd, referenceLabel, note, bibleId = DEFAULT_BIBLE_ID,
-    visibility = 'private', visibilityCommunityId = null, visibilitySiblingIds = [],
+    visibility = 'private', visibilityCommunityId = null, visibilitySiblingIds = [], linkedVerses = [],
   }) {
     const { data, error } = await supabase.from('bible_notes').insert({
       user_id: user.id, bible_id: bibleId, book, chapter,
@@ -436,6 +593,7 @@ export function useBibleMarkers(bibleId, book, chapter, { youversionConnected = 
       visibility,
       visibility_community_id: visibility === 'community' ? visibilityCommunityId : null,
       visibility_user_ids: visibility === 'specific' ? visibilitySiblingIds : [],
+      linked_verses: linkedVerses,
     }).select().single()
     if (!error) setNotes(prev => [...prev, { ...data, isOwn: true }])
     return { data, error }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   MoreVertical, Pencil, Check, Trash2, Pin, Lock, Globe, Flag,
@@ -14,6 +14,9 @@ import { useToast } from '../../context/ToastContext'
 import { summarizeLogs } from '../../hooks/usePrayerEngagement'
 import BibleReferenceChip from '../bible/BibleReferenceChip'
 import ModerationSheet from '../common/ModerationSheet'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
+import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
+import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 import {
   timeAgo, formatLastPrayed, getInitials, authorName as displayName, KIND_OIKOS,
   prayerContext,
@@ -155,6 +158,8 @@ export default function PrayerCard({
   prayer,
   logs,
   notes,
+  // Zähler werden noch geladen (und es gibt keinen gecachten Stand)
+  engagementPending = false,
   currentUserId,
   goal = null,
   showSourceBadge = false,
@@ -179,7 +184,9 @@ export default function PrayerCard({
   const navigate = useNavigate()
   const [showPrayedBy, setShowPrayedBy] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const menuBtnRef = useRef(null)
   const [showModeration, setShowModeration] = useState(false)
+  const { isAppAdmin } = useIsAppAdmin()
   const [showEdit, setShowEdit] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [confetti, setConfetti] = useState(false)
@@ -318,7 +325,7 @@ export default function PrayerCard({
 
         {/* Verknüpfte Bibelstelle */}
         {prayer.bibleVerse && (
-          <BibleReferenceChip attachment={prayer.bibleVerse} variant="block" />
+          <BibleReferenceChip attachment={prayer.bibleVerse} variant="block" openAsSheet />
         )}
 
         {/* Herkunft: für wen / aus welcher Map / von wem – bzw. Community */}
@@ -382,6 +389,9 @@ export default function PrayerCard({
                   {peopleCount} {peopleCount === 1 ? 'Person' : 'Personen'} · {totalCount} {totalCount === 1 ? 'Gebet' : 'Gebete'}
                 </span>
               </>
+            ) : engagementPending ? (
+              // Platzhalter statt „Noch keine Gebete", solange die Zahlen laden
+              <span aria-hidden="true" className="animate-pulse" style={{ display: 'inline-block', width: 150, height: 26, borderRadius: 20, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }} />
             ) : (
               <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>
                 Noch keine Gebete
@@ -393,7 +403,7 @@ export default function PrayerCard({
         </div>
 
         {/* Letztes Gebet – eigenes und fremdes */}
-        <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap', visibility: engagementPending ? 'hidden' : 'visible' }}>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
             Du: {formatLastPrayed(myLastPrayedAt)}
           </span>
@@ -410,67 +420,67 @@ export default function PrayerCard({
             {showComments ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
 
-          <div style={{ marginLeft: 'auto', position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setShowMenu(v => !v)} aria-label="Weitere Optionen" style={{ ...actionBtn, padding: '6px 10px' }}>
+          <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+            <button ref={menuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label="Weitere Optionen" style={{ ...actionBtn, padding: '6px 10px' }}>
               <MoreVertical size={16} />
             </button>
             {showMenu && (
-              <>
-                <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                <div style={{
-                  position: 'absolute', right: 0, bottom: '100%', marginBottom: 6,
-                  backgroundColor: 'var(--color-white)', borderRadius: 12,
-                  boxShadow: 'var(--shadow-lg)', border: '1px solid var(--color-border)',
-                  zIndex: 20, minWidth: 215, overflow: 'hidden',
-                }}>
-                  {extraMenuItems.map((mi, i) => (
-                    <button
-                      key={mi.label}
-                      onClick={() => { setShowMenu(false); mi.onClick() }}
-                      style={{ ...menuItem, ...(i > 0 ? { borderTop: '1px solid var(--color-border)' } : {}), ...(mi.danger ? { color: 'var(--color-error)' } : {}) }}
-                    >
-                      {mi.label}
+              <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setShowMenu(false)} minWidth={215} preferred="above">
+                {extraMenuItems.map((mi) => (
+                  <button
+                    key={mi.label}
+                    onClick={() => { setShowMenu(false); mi.onClick() }}
+                    style={{ ...anchoredMenuItemStyle, ...(mi.danger ? { color: 'var(--color-error)' } : {}) }}
+                  >
+                    {mi.label}
+                  </button>
+                ))}
+                <button onClick={() => { setShowMenu(false); onAddToList?.(prayer) }} style={anchoredMenuItemStyle}>
+                  <BookmarkPlus size={15} /> Zur Gebetsliste hinzufügen
+                </button>
+                <button onClick={() => { setShowMenu(false); onLaterPray?.(prayer) }} style={anchoredMenuItemStyle}>
+                  ⏰ Später beten
+                </button>
+                <button onClick={() => { setShowMenu(false); onForward?.(prayer) }} style={anchoredMenuItemStyle}>
+                  <Forward size={15} /> Weiterleiten
+                </button>
+                {isOwner && (
+                  <>
+                    <button onClick={() => { setShowMenu(false); setShowEdit(true) }} style={anchoredMenuItemStyle}>
+                      <Pencil size={15} /> Bearbeiten
                     </button>
-                  ))}
-                  <button onClick={() => { setShowMenu(false); onAddToList?.(prayer) }} style={extraMenuItems.length > 0 ? { ...menuItem, borderTop: '1px solid var(--color-border)' } : menuItem}>
-                    <BookmarkPlus size={15} /> Zur Gebetsliste hinzufügen
-                  </button>
-                  <button onClick={() => { setShowMenu(false); onLaterPray?.(prayer) }} style={{ ...menuItem, borderTop: '1px solid var(--color-border)' }}>
-                    ⏰ Später beten
-                  </button>
-                  <button onClick={() => { setShowMenu(false); onForward?.(prayer) }} style={{ ...menuItem, borderTop: '1px solid var(--color-border)' }}>
-                    <Forward size={15} /> Weiterleiten
-                  </button>
-                  {isOwner && (
-                    <>
-                      <button onClick={() => { setShowMenu(false); setShowEdit(true) }} style={{ ...menuItem, borderTop: '1px solid var(--color-border)' }}>
-                        <Pencil size={15} /> Bearbeiten
-                      </button>
-                      <button onClick={() => { setShowMenu(false); handleToggleAnswered() }} style={{ ...menuItem, borderTop: '1px solid var(--color-border)' }}>
-                        <Check size={15} /> {isAnswered ? 'Als offen markieren' : 'Als erhört markieren'}
-                      </button>
-                      {/* Community-Anliegen behalten ihre Community-Sichtbarkeit –
-                          ein Privat-Schalter würde sie aus der Community entfernen. */}
-                      {prayer.visibility !== 'community' && (
-                        <button
-                          onClick={() => { setShowMenu(false); onUpdate?.(prayer, prayer.kind === KIND_OIKOS ? { is_public: !prayer.isPublic } : { visibility: prayer.visibility === 'private' ? 'public' : 'private' }) }}
-                          style={{ ...menuItem, borderTop: '1px solid var(--color-border)' }}
-                        >
-                          {prayer.isPublic ? <><Lock size={15} /> Privat machen</> : <><Globe size={15} /> Öffentlich machen</>}
-                        </button>
-                      )}
-                      <button onClick={() => { setShowMenu(false); onDelete?.(prayer) }} style={{ ...menuItem, borderTop: '1px solid var(--color-border)', color: 'var(--color-error)' }}>
-                        <Trash2 size={15} /> Löschen
-                      </button>
-                    </>
-                  )}
-                  {!isOwner && prayer.ownerId && (
-                    <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...menuItem, borderTop: '1px solid var(--color-border)', color: 'var(--color-error)' }}>
-                      <Flag size={15} /> Melden / Blockieren
+                    <button onClick={() => { setShowMenu(false); handleToggleAnswered() }} style={anchoredMenuItemStyle}>
+                      <Check size={15} /> {isAnswered ? 'Als offen markieren' : 'Als erhört markieren'}
                     </button>
-                  )}
-                </div>
-              </>
+                    {/* Community-Anliegen behalten ihre Community-Sichtbarkeit –
+                        ein Privat-Schalter würde sie aus der Community entfernen. */}
+                    {prayer.visibility !== 'community' && (
+                      <button
+                        onClick={() => { setShowMenu(false); onUpdate?.(prayer, prayer.kind === KIND_OIKOS ? { is_public: !prayer.isPublic } : { visibility: prayer.visibility === 'private' ? 'public' : 'private' }) }}
+                        style={anchoredMenuItemStyle}
+                      >
+                        {prayer.isPublic ? <><Lock size={15} /> Privat machen</> : <><Globe size={15} /> Öffentlich machen</>}
+                      </button>
+                    )}
+                    <button onClick={() => { setShowMenu(false); onDelete?.(prayer) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
+                      <Trash2 size={15} /> Löschen
+                    </button>
+                  </>
+                )}
+                {!isOwner && prayer.ownerId && (
+                  <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
+                    <Flag size={15} /> Melden / Blockieren
+                  </button>
+                )}
+                {isAppAdmin && !isOwner && (
+                  <AdminContentMenuItems
+                    contentType={prayer.kind === KIND_OIKOS ? 'prayer_request' : 'personal_prayer_request'}
+                    contentId={prayer.id}
+                    hiddenAt={prayer.moderation_hidden_at || prayer.moderationHiddenAt}
+                    onClose={() => setShowMenu(false)}
+                  />
+                )}
+              </AnchoredMenu>
             )}
           </div>
         </div>

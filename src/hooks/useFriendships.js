@@ -77,10 +77,12 @@ export function useFriendships() {
 
   async function searchUsers(query) {
     if (!query || query.trim().length < 2) return []
+    // Komma, Klammern & Co. sind Steuerzeichen im PostgREST-or()-Filter
+    const safe = query.trim().replace(/[,()%*\\"]/g, ' ')
     const { data } = await supabase
       .from('profiles')
       .select('id, username, full_name, is_christian')
-      .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+      .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`)
       .neq('id', user.id)
       .limit(10)
     return data || []

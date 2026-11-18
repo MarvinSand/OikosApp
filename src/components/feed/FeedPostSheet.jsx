@@ -224,7 +224,7 @@ export default function FeedPostSheet({
             >
               <Image size={16} color="var(--color-text-secondary)" />
               <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                {photoFile ? photoFile.name : 'Bild oder Video hinzufügen'}
+                {photoFile ? photoFile.name : 'Bild hinzufügen'}
               </span>
             </button>
             <input ref={fileRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = '' }} style={{ display: 'none' }} />

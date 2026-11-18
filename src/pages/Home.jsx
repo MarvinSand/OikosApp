@@ -1,10 +1,8 @@
-import { useState, lazy, Suspense } from 'react'
+import { useState, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { MessageCircle, Bell } from 'lucide-react'
-import { useHasUnreadConversations } from '../hooks/useHasUnreadConversations'
-import { useNotifications } from '../hooks/useNotifications'
+import AppHeader from '../components/layout/AppHeader'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
-import { useSwipeTabs } from '../hooks/useSwipeTabs'
+import SwipePager from '../components/layout/SwipePager'
 import TopPrayerToday from '../components/home/TopPrayerToday'
 import WelcomeBanner from '../components/home/WelcomeBanner'
 import ProfileCompletionCard from '../components/home/ProfileCompletionCard'
@@ -69,8 +67,6 @@ const HOME_TABS = [
 
 export default function Home() {
   const navigate = useNavigate()
-  const hasUnread = useHasUnreadConversations()
-  const { unreadCount } = useNotifications()
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') === 'community' ? 'community' : 'aktuelles'
 
@@ -81,119 +77,48 @@ export default function Home() {
     setSearchParams(next, { replace: true })
   }
 
-  const { containerRef, onTouchStart, onTouchEnd } = useSwipeTabs({
-    onSwipeLeft: () => tab === 'aktuelles' && setTab('community'),
-    onSwipeRight: () => tab === 'community' && setTab('aktuelles'),
-  })
+  const rootRef = useRef(null)
+  const tabIndex = tab === 'community' ? 1 : 0
 
   return (
-    <div className="h-full w-full flex flex-col bg-bg">
-      {/* Sticky Header */}
-      <header
-        className="flex items-center justify-between px-4"
-        style={{
-          height: 52,
-          borderBottom: '1px solid var(--color-border)',
-          backgroundColor: 'var(--color-bg)',
-          flexShrink: 0,
-          position: 'sticky',
-          top: 0,
-          zIndex: 30,
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 20,
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            color: 'var(--color-text)',
-          }}
-        >
-          OIKOS
-        </h1>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => navigate('/chats')}
-            aria-label="Chats"
-            style={{
-              position: 'relative', width: 36, height: 36, borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--color-text)',
-            }}
-          >
-            <MessageCircle size={22} strokeWidth={2} />
-            {hasUnread && (
-              <span style={{
-                position: 'absolute', top: 6, right: 6,
-                width: 8, height: 8, borderRadius: '50%',
-                backgroundColor: 'var(--color-error)',
-                border: '1.5px solid var(--color-bg)',
-              }} />
-            )}
-          </button>
-
-          <button
-            onClick={() => navigate('/notifications')}
-            aria-label="Benachrichtigungen"
-            style={{
-              position: 'relative', width: 36, height: 36, borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--color-text)',
-            }}
-          >
-            <Bell size={22} strokeWidth={2} />
-            {unreadCount > 0 && (
-              <span style={{
-                position: 'absolute', top: 4, right: 4,
-                minWidth: 16, height: 16, borderRadius: 8, padding: '0 4px',
-                backgroundColor: 'var(--color-error)', color: 'white',
-                fontSize: 10, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: '1.5px solid var(--color-bg)',
-              }}>
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </header>
+    <div ref={rootRef} className="h-full w-full flex flex-col bg-bg">
+      <AppHeader />
 
       {/* Premium-Tabs */}
       <div style={{ padding: '12px 16px 0' }}>
-        <SegmentedTabs tabs={HOME_TABS} active={tab} onSelect={setTab} />
+        <SegmentedTabs tabs={HOME_TABS} active={tab} onSelect={setTab} synced />
       </div>
 
-      {/* Scrollbarer Inhalt */}
-      <div
-        ref={containerRef}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar mobile-nav-padding"
-      >
-        {tab === 'aktuelles' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
-            {/* Profil-Fortschritt (verschwindet, sobald das Profil vollständig ist) */}
-            <ProfileCompletionCard />
+      {/* Wisch-Pager: Seiten folgen dem Finger, der Tab-Indikator wandert mit */}
+      <div className="flex-1 min-h-0">
+        <SwipePager
+          count={2}
+          index={tabIndex}
+          onIndexChange={i => setTab(HOME_TABS[i].key)}
+          syncRef={rootRef}
+          paneClassName="mobile-nav-padding"
+          renderPane={i => i === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
+              {/* Profil-Fortschritt (verschwindet, sobald das Profil vollständig ist) */}
+              <ProfileCompletionCard />
 
-            {/* Willkommens- & Funktionsübersicht (dauerhaft) */}
-            <WelcomeBanner />
+              {/* Willkommens- & Funktionsübersicht (dauerhaft) */}
+              <WelcomeBanner />
 
-            {/* Gebet mit den meisten Interaktionen heute */}
-            <TopPrayerToday />
+              {/* Gebet mit den meisten Interaktionen heute */}
+              <TopPrayerToday />
 
-            {/* Gruppengebet mit meistem Engagement */}
-            <TopGroupGoal />
-          </div>
-        ) : (
-          <div style={{ padding: '20px 16px 0', minWidth: 0, overflowX: 'hidden' }}>
-            <Suspense fallback={<div style={{ height: 200, borderRadius: 18, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />}>
-              <HomeCommunityTab />
-            </Suspense>
-          </div>
-        )}
+              {/* Gruppengebet mit meistem Engagement */}
+              <TopGroupGoal />
+            </div>
+          ) : (
+            <div style={{ padding: '20px 16px 0', minWidth: 0, overflowX: 'hidden' }}>
+              <Suspense fallback={<div style={{ height: 200, borderRadius: 18, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />}>
+                <HomeCommunityTab />
+              </Suspense>
+            </div>
+          )}
+        />
       </div>
     </div>
   )

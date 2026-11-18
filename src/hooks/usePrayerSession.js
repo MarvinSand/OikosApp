@@ -123,7 +123,7 @@ export function usePrayerSession() {
       }
 
       try {
-        const { data: stats } = await supabase.from('user_prayer_stats').select('current_streak').eq('user_id', user.id).single()
+        const { data: stats } = await supabase.from('user_prayer_stats').select('current_streak').eq('user_id', user.id).maybeSingle()
         streak = stats?.current_streak || 0
       } catch { /* non-critical */ }
     } finally {

@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.app.oikos.mobile"],
+        "components": [
+          { "/": "/user/*" },
+          { "/": "/community/*" },
+          { "/": "/join/*" },
+          { "/": "/feed/*" }
+        ]
+      }
+    ]
+  }
+}

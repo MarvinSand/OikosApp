@@ -19,6 +19,8 @@ platform :ios do
     match(
       type: "appstore",
       readonly: false,
+      # true (Workflow-Input renew_profile): Profil neu erzeugen, z. B. nach neuer Capability
+      force: ENV["MATCH_FORCE"] == "true",
       api_key: api_key,
       git_url: ENV["MATCH_GIT_URL"],
       git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"],

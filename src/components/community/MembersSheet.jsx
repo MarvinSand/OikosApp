@@ -82,7 +82,7 @@ export default function MembersSheet({ members, currentUserId, onClose, onSelect
                   width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
                   backgroundColor: m.profile?.is_christian ? 'var(--color-accent)' : 'var(--color-warm-1)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700,
+                  color: m.profile?.is_christian ? '#fff' : 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700,
                 }}>
                   {getInitials(name)}
                 </div>

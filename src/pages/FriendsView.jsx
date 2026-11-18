@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
+import { useHideOnScroll } from '../hooks/useHideOnScroll'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark, ArrowLeft } from 'lucide-react'
+import { Search, Users, Plus, Hash, Check, X, MoreVertical, Copy, ChevronRight, MessageCircle, Bell, Globe, BookOpen, HandHeart, HelpCircle, Image, MessageSquare, MoreHorizontal, Newspaper, Send, Trash2, UserCheck, Loader2, SlidersHorizontal, Bookmark, ArrowLeft } from 'lucide-react'
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
@@ -19,15 +20,21 @@ import { useToast } from '../context/ToastContext'
 import { useFeed } from '../hooks/useFeed'
 import { supabase } from '../lib/supabase'
 import { readCache, writeCache } from '../lib/swrCache'
-import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
+import AppHeader from '../components/layout/AppHeader'
+import SegmentedTabs from '../components/layout/SegmentedTabs'
+import SwipePager from '../components/layout/SwipePager'
+import { isPrayerFeedRoute } from '../lib/prayerFeedRoute'
 import DateFilterControl from '../components/ui/DateFilterControl'
 import ExpandableSearch from '../components/common/ExpandableSearch'
 import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
-import { CreateCommunitySheet, JoinCommunityModal } from '../components/community/CommunitySheets'
+import { CreateCommunitySheet, JoinCommunityModal, RequestJoinSheet } from '../components/community/CommunitySheets'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import { verseAttachmentFromRow } from '../lib/bibleLink'
 import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 import ModerationSheet from '../components/common/ModerationSheet'
+import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
+import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import { useBlocks } from '../hooks/useBlocks'
 import { profilePreviewState } from '../lib/profilePreview'
 
@@ -157,6 +164,7 @@ function FriendsTab() {
   const [searching, setSearching] = useState(false)
   const [sending, setSending] = useState(null)
   const [openMenu, setOpenMenu] = useState(null)
+  const friendMenuBtnRefs = useRef({})
   const timerRef = useRef(null)
 
   // Filter state
@@ -516,18 +524,23 @@ function FriendsTab() {
               >
                 <MessageCircle size={18} />
               </button>
-              <button onClick={() => setOpenMenu(openMenu === f.id ? null : f.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-text-light)' }}>
+              <button
+                ref={el => { friendMenuBtnRefs.current[f.id] = el }}
+                onClick={() => setOpenMenu(openMenu === f.id ? null : f.id)}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-text-light)' }}
+              >
                 <MoreVertical size={16} />
               </button>
               {openMenu === f.id && (
-                <>
-                  <div onClick={() => setOpenMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 180 }}>
-                    <button onClick={() => handleRemove(f.id)} style={{ display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer', textAlign: 'left' }}>
-                      Verbindung entfernen
-                    </button>
-                  </div>
-                </>
+                <AnchoredMenu
+                  anchorRef={{ current: friendMenuBtnRefs.current[f.id] }}
+                  onClose={() => setOpenMenu(null)}
+                  minWidth={180}
+                >
+                  <button onClick={() => { setOpenMenu(null); handleRemove(f.id) }} style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}>
+                    Verbindung entfernen
+                  </button>
+                </AnchoredMenu>
               )}
             </div>
           )
@@ -582,6 +595,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
   const [loadingPublic, setLoadingPublic] = useState(() => readCache(user?.id, 'publicCommunitiesFull') === undefined)
   const [requestedIds, setRequestedIds] = useState(new Set())
   const [joiningId, setJoiningId] = useState(null)
+  const [requestTarget, setRequestTarget] = useState(null)
   const myIdSet = new Set(myCommunities.map(c => c.id))
   const publicCommunities = allPublic.filter(c => !myIdSet.has(c.id))
   const previews = useCommunityMembersPreview([...myCommunities.map(c => c.id), ...publicCommunities.map(c => c.id)])
@@ -618,12 +632,8 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
     setJoiningId(community.id)
     try {
       if (community.join_mode === 'request') {
-        const { error } = await supabase
-          .from('community_join_requests')
-          .insert({ community_id: community.id, user_id: user.id })
-        if (error) throw error
-        setRequestedIds(prev => new Set(prev).add(community.id))
-        showToast('Beitrittsanfrage gesendet ✓')
+        // Anfrage mit optionalem Text → Chat der Community (RPC im Sheet)
+        setRequestTarget(community)
         return
       }
       const { error } = await supabase
@@ -700,6 +710,13 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
           </div>
         )}
       </div>
+      {requestTarget && (
+        <RequestJoinSheet
+          community={requestTarget}
+          onClose={() => setRequestTarget(null)}
+          onSent={id => setRequestedIds(prev => new Set(prev).add(id))}
+        />
+      )}
     </div>
   )
 }
@@ -1011,6 +1028,8 @@ function FeedAvatar({ profile, size = 36 }) {
 export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare, threadLineAfter }) {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
+  const postMenuBtnRef = useRef(null)
+  const { isAppAdmin } = useIsAppAdmin()
   const [showModeration, setShowModeration] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const { isBlocked } = useBlocks()
@@ -1067,9 +1086,27 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
             </span>
           )}
           {!isOwn && (
-            <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
-              <MoreHorizontal size={16} />
-            </button>
+            <>
+              <button ref={postMenuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label="Optionen" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+                <MoreHorizontal size={16} />
+              </button>
+              {showMenu && (
+                <AnchoredMenu anchorRef={postMenuBtnRef} onClose={() => setShowMenu(false)} minWidth={220}>
+                  <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
+                    Melden / Blockieren
+                  </button>
+                  {isAppAdmin && (
+                    <AdminContentMenuItems
+                      contentType="feed_post"
+                      contentId={post.id}
+                      hiddenAt={post.moderation_hidden_at}
+                      onClose={() => setShowMenu(false)}
+                      onDone={() => { /* parent may refetch */ }}
+                    />
+                  )}
+                </AnchoredMenu>
+              )}
+            </>
           )}
           {showModeration && (
             <ModerationSheet
@@ -1081,24 +1118,21 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
             />
           )}
           {isOwn && (
-            <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+            <>
+              <button ref={postMenuBtnRef} onClick={() => setShowMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
                 <MoreHorizontal size={16} />
               </button>
               {showMenu && (
-                <>
-                  <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.12)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 130 }}>
-                    <button
-                      onClick={() => { setShowMenu(false); onDelete?.(post.id) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={14} /> Löschen
-                    </button>
-                  </div>
-                </>
+                <AnchoredMenu anchorRef={postMenuBtnRef} onClose={() => setShowMenu(false)} minWidth={130}>
+                  <button
+                    onClick={() => { setShowMenu(false); onDelete?.(post.id) }}
+                    style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                  >
+                    <Trash2 size={14} /> Löschen
+                  </button>
+                </AnchoredMenu>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -1110,7 +1144,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         )}
 
         {post.bible_reference && (
-          <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" />
+          <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" openAsSheet />
         )}
 
         {post.type === 'photo' && post.photo_url && (
@@ -1177,69 +1211,7 @@ function FeedTab() {
 
   // Kollabierender Header beim Scrollen (rAF + Sperre gegen Flackern)
   const rootRef = useRef(null)
-  const [collapsed, setCollapsed] = useState(false)
-  const collapsedRef = useRef(false)
-  const lockUntilRef = useRef(0)
-  const tickingRef = useRef(false)
-
-  function setCollapsedSafe(v) {
-    if (collapsedRef.current === v) return
-    collapsedRef.current = v
-    setCollapsed(v)
-    lockUntilRef.current = Date.now() + 360   // kurz sperren, damit das Layout-Springen keine Rückkopplung auslöst
-  }
-
-  useEffect(() => {
-    const scroller = rootRef.current?.closest('.overflow-y-auto')
-    if (!scroller) return
-    let lastY = scroller.scrollTop
-    function update() {
-      tickingRef.current = false
-      const st = scroller.scrollTop
-      const dy = st - lastY
-      lastY = st
-      if (Date.now() < lockUntilRef.current) return
-      if (st <= 8) { setCollapsedSafe(false); return }       // ganz oben → Bar offen
-      if (dy > 8 && st > 90) setCollapsedSafe(true)           // deutlich runter → einklappen
-      else if (dy < -8) setCollapsedSafe(false)              // hoch → ausklappen
-    }
-    function onScroll() {
-      if (!tickingRef.current) { tickingRef.current = true; requestAnimationFrame(update) }
-    }
-    let touchStartX = 0
-    let touchStartY = 0
-    let swipeBlocked = false
-    function onTouchStart(e) {
-      touchStartX = e.touches[0].clientX
-      touchStartY = e.touches[0].clientY
-      // Geste über einem horizontal scrollbaren Bereich (Karussells, Chips)
-      // soll dort scrollen dürfen statt zu den Gebeten zu navigieren.
-      let node = e.target
-      swipeBlocked = false
-      while (node && node !== scroller && node !== document.body) {
-        if (node.scrollWidth > node.clientWidth + 2) {
-          const overflowX = window.getComputedStyle(node).overflowX
-          if (overflowX === 'auto' || overflowX === 'scroll') { swipeBlocked = true; break }
-        }
-        node = node.parentElement
-      }
-    }
-    function onTouchEnd(e) {
-      if (swipeBlocked) return
-      const t = e.changedTouches[0]
-      const dx = t.clientX - touchStartX
-      const dy = t.clientY - touchStartY
-      if (dx > 60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigate('/prayers')
-    }
-    scroller.addEventListener('scroll', onScroll, { passive: true })
-    scroller.addEventListener('touchstart', onTouchStart, { passive: true })
-    scroller.addEventListener('touchend', onTouchEnd, { passive: true })
-    return () => {
-      scroller.removeEventListener('scroll', onScroll)
-      scroller.removeEventListener('touchstart', onTouchStart)
-      scroller.removeEventListener('touchend', onTouchEnd)
-    }
-  }, [navigate])
+  const fabHidden = useHideOnScroll(rootRef)
 
   // Direkt den Composer öffnen, wenn man vom Profil "+ Beitrag" kommt
   useEffect(() => {
@@ -1413,27 +1385,6 @@ function FeedTab() {
         )}
       </div>
 
-        {/* Feed/Gebete-Switcher – darunter; kollabiert beim Runterscrollen */}
-        {collapsed && (
-          <div
-            onClick={() => setCollapsedSafe(false)}
-            style={{
-              height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', backgroundColor: 'var(--color-bg)',
-              borderBottom: '1px solid var(--color-border)',
-            }}
-          >
-            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-border)' }} />
-          </div>
-        )}
-        <div style={{
-          maxHeight: collapsed ? 0 : 64,
-          opacity: collapsed ? 0 : 1,
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease, opacity 0.25s ease',
-        }}>
-          <PrayerFeedSwitcher active="feed" />
-        </div>
       </div>{/* /Sticky-Header */}
 
       <div style={{ padding: '14px 0 0' }}>
@@ -1500,9 +1451,13 @@ function FeedTab() {
         style={{
           position: 'fixed',
           bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)',
-          right: 20,
-          width: 52,
-          height: 52,
+          right: 16,
+          transform: fabHidden ? 'translateY(calc(100% + 24px))' : 'none',
+          opacity: fabHidden ? 0 : 1,
+          pointerEvents: fabHidden ? 'none' : 'auto',
+          transition: 'transform 0.22s ease, opacity 0.22s ease',
+          width: 48,
+          height: 48,
           borderRadius: '50%',
           backgroundColor: 'var(--color-accent)',
           color: '#fff',
@@ -1511,7 +1466,7 @@ function FeedTab() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 26,
+          fontSize: 24,
           lineHeight: 1,
           boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
           zIndex: 40,
@@ -1537,6 +1492,50 @@ function FeedTab() {
   )
 }
 
+// ─── Gebete ⇄ Feed (Wisch-Pager) ─────────────────────────────
+const PrayersPane = lazy(() => import('./Prayers'))
+const PRAYER_FEED_TABS = [
+  { key: 'prayers', label: 'Gebete', icon: HandHeart, target: '/prayers' },
+  { key: 'feed',    label: 'Feed',   icon: Newspaper, target: '/friends?tab=feed' },
+]
+
+function PrayerFeedPager() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const rootRef = useRef(null)
+  const index = location.pathname === '/prayers' ? 0 : 1
+
+  function go(i) {
+    if (i !== index) navigate(PRAYER_FEED_TABS[i].target, { replace: true })
+  }
+
+  return (
+    <div ref={rootRef} className="h-full flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full">
+      <AppHeader />
+      <div style={{ flexShrink: 0, padding: '10px 16px', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+        <SegmentedTabs
+          tabs={PRAYER_FEED_TABS}
+          active={PRAYER_FEED_TABS[index].key}
+          onSelect={key => go(PRAYER_FEED_TABS.findIndex(t => t.key === key))}
+          synced
+        />
+      </div>
+      <div className="flex-1 min-h-0">
+        <SwipePager
+          count={2}
+          index={index}
+          onIndexChange={go}
+          syncRef={rootRef}
+          paneClassName="mobile-nav-padding"
+          renderPane={i => i === 0
+            ? <Suspense fallback={null}><PrayersPane /></Suspense>
+            : <FeedTab />}
+        />
+      </div>
+    </div>
+  )
+}
+
 // ─── FriendsView (Main) ──────────────────────────────────────
 export default function FriendsView() {
   const navigate = useNavigate()
@@ -1548,6 +1547,8 @@ export default function FriendsView() {
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+
+  if (isPrayerFeedRoute(location.pathname, location.search)) return <PrayerFeedPager />
 
   const headerTitle = activeTab === 'chats' ? 'Chats' : activeTab === 'communities' ? 'Communities' : 'Geschwister'
 

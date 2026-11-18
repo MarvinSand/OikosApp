@@ -29,7 +29,7 @@ export default function ShareSheet({ post, comment, onClose }) {
 
   async function handleSystemShare() {
     try {
-      await navigator.share({ title: 'OIKOS', text: item.title || item.body || 'Beitrag', url: postUrl })
+      await navigator.share({ title: 'Oikos Connect', text: item.title || item.body || 'Beitrag', url: postUrl })
       onClose()
     } catch {
       // Nutzer hat den Share-Dialog abgebrochen – nichts tun

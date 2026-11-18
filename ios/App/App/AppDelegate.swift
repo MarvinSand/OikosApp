@@ -57,6 +57,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
     }
 
+    // Push: iOS meldet das APNs-Geräte-Token ausschließlich an den
+    // AppDelegate. Ohne diese Weiterleitung erfährt das Capacitor-Plugin
+    // nie davon – `PushNotifications.register()` löst dann weder
+    // 'registration' noch 'registrationError' aus, es wird kein Token in
+    // device_tokens gespeichert und es kommt nie eine Push-Nachricht an.
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+    }
+
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+    }
+
     func application(_ application: UIApplication,
                      configurationForConnecting connectingSceneSession: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {

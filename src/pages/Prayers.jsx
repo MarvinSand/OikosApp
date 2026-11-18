@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useHideOnScroll } from '../hooks/useHideOnScroll'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { Globe, UserCheck, Home as HomeIcon, Users, X, ChevronDown, SlidersHorizontal, Play } from 'lucide-react'
-import PrayerFeedSwitcher from '../components/layout/PrayerFeedSwitcher'
 import { usePrayerFeed, PRAYER_SOURCES } from '../hooks/usePrayerFeed'
 import { usePersonalPrayer } from '../hooks/usePersonalPrayer'
 import { usePrayerGoals } from '../hooks/usePrayerGoals'
@@ -21,6 +21,7 @@ import { useOikosFilterSource } from '../hooks/useOikosFilterSource'
 import { KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import VersePickerSheet from '../components/bible/VersePickerSheet'
+import BodyPortal from '../components/common/BodyPortal'
 
 // ─── Konstanten ───────────────────────────────────────────────
 
@@ -410,6 +411,7 @@ export default function Prayers() {
   const { createRequest } = usePersonalPrayer()
   const { createGoal, publicGoals, myGoals, communityGoals, sharedGoals } = usePrayerGoals()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [showCreate, setShowCreate] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -419,71 +421,8 @@ export default function Prayers() {
   const focusId = searchParams.get('focus')
   const [highlightId, setHighlightId] = useState(null)
 
-  // Kollabierender Header (wie im Feed-Tab)
   const rootRef = useRef(null)
-  const [collapsed, setCollapsed] = useState(false)
-  const collapsedRef = useRef(false)
-  const lockUntilRef = useRef(0)
-  const tickingRef = useRef(false)
-
-  function setCollapsedSafe(v) {
-    if (collapsedRef.current === v) return
-    collapsedRef.current = v
-    setCollapsed(v)
-    lockUntilRef.current = Date.now() + 360
-  }
-
-  useEffect(() => {
-    const scroller = rootRef.current?.closest('.overflow-y-auto')
-    if (!scroller) return
-    let lastY = scroller.scrollTop
-    function update() {
-      tickingRef.current = false
-      const st = scroller.scrollTop
-      const dy = st - lastY
-      lastY = st
-      if (Date.now() < lockUntilRef.current) return
-      if (st <= 8) { setCollapsedSafe(false); return }
-      if (dy > 8 && st > 90) setCollapsedSafe(true)
-      else if (dy < -8) setCollapsedSafe(false)
-    }
-    function onScroll() {
-      if (!tickingRef.current) { tickingRef.current = true; requestAnimationFrame(update) }
-    }
-    let touchStartX = 0
-    let touchStartY = 0
-    let swipeBlocked = false
-    function onTouchStart(e) {
-      touchStartX = e.touches[0].clientX
-      touchStartY = e.touches[0].clientY
-      // Geste über einem horizontal scrollbaren Bereich (Quellen-Chips, Karussells)
-      // soll dort scrollen dürfen statt zum Feed zu navigieren.
-      let node = e.target
-      swipeBlocked = false
-      while (node && node !== scroller && node !== document.body) {
-        if (node.scrollWidth > node.clientWidth + 2) {
-          const overflowX = window.getComputedStyle(node).overflowX
-          if (overflowX === 'auto' || overflowX === 'scroll') { swipeBlocked = true; break }
-        }
-        node = node.parentElement
-      }
-    }
-    function onTouchEnd(e) {
-      if (swipeBlocked) return
-      const t = e.changedTouches[0]
-      const dx = t.clientX - touchStartX
-      const dy = t.clientY - touchStartY
-      if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigate('/friends?tab=feed')
-    }
-    scroller.addEventListener('scroll', onScroll, { passive: true })
-    scroller.addEventListener('touchstart', onTouchStart, { passive: true })
-    scroller.addEventListener('touchend', onTouchEnd, { passive: true })
-    return () => {
-      scroller.removeEventListener('scroll', onScroll)
-      scroller.removeEventListener('touchstart', onTouchStart)
-      scroller.removeEventListener('touchend', onTouchEnd)
-    }
-  }, [navigate])
+  const fabHidden = useHideOnScroll(rootRef)
 
   // Gebetsmodus / Bookmark / Weiterleiten / Gebetsziel
   const [showPrayerModeSetup, setShowPrayerModeSetup] = useState(false)
@@ -747,27 +686,6 @@ export default function Prayers() {
         )}
       </div>
 
-        {/* Feed/Gebete-Switcher – darunter; kollabiert beim Runterscrollen */}
-        {collapsed && (
-          <div
-            onClick={() => setCollapsedSafe(false)}
-            style={{
-              height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', backgroundColor: 'var(--color-bg)',
-              borderBottom: '1px solid var(--color-border)',
-            }}
-          >
-            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-border)' }} />
-          </div>
-        )}
-        <div style={{
-          maxHeight: collapsed ? 0 : 64,
-          opacity: collapsed ? 0 : 1,
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease, opacity 0.25s ease',
-        }}>
-          <PrayerFeedSwitcher active="prayers" />
-        </div>
       </div>{/* /Sticky-Header */}
 
       {/* Quellen-Auswahl: welche Gebete sollen im Feed erscheinen */}
@@ -888,34 +806,42 @@ export default function Prayers() {
 
       </div>
 
-      {/* FAB */}
-      <button
+      {/* FAB – per Portal an body (sonst im transformierten SwipePager-Track verschoben),
+          nur sichtbar, solange der Gebete-Tab aktiv ist (Pane bleibt beim Wischen zum Feed gemountet) */}
+      {pathname === '/prayers' && (
+      <BodyPortal><button
         onClick={() => setShowCreate(true)}
         aria-label="Gebet teilen"
         style={{
-          position: 'fixed', bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)', right: 20,
-          width: 52, height: 52, borderRadius: '50%',
+          position: 'fixed', bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)', right: 16,
+          width: 48, height: 48, borderRadius: '50%',
           backgroundColor: 'var(--color-accent)', color: '#fff',
           border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 26, lineHeight: 1,
+          fontSize: 24, lineHeight: 1,
           boxShadow: '0 4px 16px rgba(0,0,0,0.18)', zIndex: 40,
+          // Beim Runterscrollen ausblenden, damit er keine Karten-Buttons verdeckt
+          transform: fabHidden ? 'translateY(calc(100% + 24px))' : 'none',
+          opacity: fabHidden ? 0 : 1,
+          pointerEvents: fabHidden ? 'none' : 'auto',
+          transition: 'transform 0.22s ease, opacity 0.22s ease',
         }}
       >
         +
-      </button>
+      </button></BodyPortal>
+      )}
 
       {showOikosFilterSheet && (
         <OikosFilterSheet source={oikosFilter} onClose={() => setShowOikosFilterSheet(false)} />
       )}
 
       {showCreate && (
-        <CreatePrayerSheet
+        <BodyPortal><CreatePrayerSheet
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
           onCreateGoal={handleCreateGoal}
           onDone={() => { setShowCreate(false); showToast('Gebet erstellt 🙏') }}
-        />
+        /></BodyPortal>
       )}
 
       {/* Gebetsmodus-Setup */}

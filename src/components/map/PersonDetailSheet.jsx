@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react'
-import { X, Pencil, Trash2, Palette } from 'lucide-react'
+import { X, Pencil, Trash2, Palette, Wand2 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useFriendships } from '../../hooks/useFriendships'
 import { useNavigate } from 'react-router-dom'
@@ -718,10 +718,12 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
     setSearchQuery(query)
     if (!query.trim()) { setSearchResults([]); return }
     setSearching(true)
+    // Komma, Klammern & Co. sind Steuerzeichen im PostgREST-or()-Filter
+    const safe = query.trim().replace(/[,()%*\\"]/g, ' ')
     const { data } = await supabase
       .from('profiles')
       .select('id, full_name, username, avatar_url')
-      .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+      .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`)
       .limit(8)
     setSearchResults(data || [])
     setSearching(false)
@@ -782,7 +784,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
     return (
       <div style={{ marginBottom: 8 }}>
         <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          OIKOS App Account
+          Oikos Connect Account
         </h4>
 
         {/* Profile row */}
@@ -822,7 +824,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
         <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: overlayEnabled ? 10 : 0 }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-              OIKOS einblenden
+              Oikos Connect einblenden
             </span>
             <button onClick={() => handleToggleOverlay(!overlayEnabled)} style={toggleTrack(overlayEnabled)}>
               <div style={toggleThumb(overlayEnabled)} />
@@ -951,10 +953,10 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
   return (
     <div style={{ marginBottom: 8 }}>
       <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        OIKOS App Account
+        Oikos Connect Account
       </h4>
       <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 10 }}>
-        Hat {person.name} einen OIKOS-Account?
+        Hat {person.name} einen Oikos-Connect-Account?
       </p>
       {!showSearch ? (
         <button
@@ -1043,6 +1045,7 @@ export default function PersonDetailSheet({
   placeConnections = [],
   places = [],
   onDisconnectFromPlace,
+  onCleanup,
 }) {
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -1052,8 +1055,21 @@ export default function PersonDetailSheet({
   const [circleColorDraft, setCircleColorDraft] = useState(initialPerson.circle_color || '#E8E4DC')
   const [nameColorDraft, setNameColorDraft] = useState(initialPerson.name_color || '#3A2E24')
   const [colorSaving, setColorSaving] = useState(false)
+  const [cleaningUp, setCleaningUp] = useState(false)
+
+  async function handleCleanup() {
+    if (cleaningUp) return
+    setCleaningUp(true)
+    try {
+      await onCleanup?.(person.id)
+      showToast('Verbindungen im Kreis angeordnet')
+    } finally {
+      setCleaningUp(false)
+    }
+  }
 
   const isOwner = user?.id === person.user_id
+  const connectedCount = connections.filter(c => c.source_person_id === person.id || c.target_person_id === person.id).length
   const relBadge = BADGE_COLORS[person.relationship_type] || null
   const currentStageNum = person.impact_stage || 1
   const stageName = ['Freisetzung', 'Meine Rolle', 'Empathie', 'Perspektive', 'Wortkraft', 'Kontinuität'][currentStageNum - 1]
@@ -1143,6 +1159,11 @@ export default function PersonDetailSheet({
             {isOwner && !editMode && (
               <button onClick={() => setEditMode(true)} style={iconBtn} title="Bearbeiten">
                 <Pencil size={16} color="var(--color-text-muted)" />
+              </button>
+            )}
+            {isOwner && !editMode && connectedCount > 1 && (
+              <button onClick={handleCleanup} disabled={cleaningUp} style={{ ...iconBtn, opacity: cleaningUp ? 0.6 : 1 }} title="Verbundene Personen im Kreis anordnen">
+                <Wand2 size={16} color="var(--color-text-muted)" />
               </button>
             )}
             <button onClick={onClose} style={iconBtn}>

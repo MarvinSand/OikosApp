@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { scrollContainerToBottom, scrollContainerToElement } from '../lib/scroll'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye, Flag } from 'lucide-react'
 import ModerationSheet from '../components/common/ModerationSheet'
@@ -1078,7 +1079,7 @@ function ForwardSheet({ onClose, onSubmit, currentConversationId }) {
             style={{
               flex: 2, padding: '10px 0', borderRadius: 10, border: 'none',
               backgroundColor: selected.length > 0 ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
-              color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600,
+              color: selected.length > 0 ? 'var(--color-bg)' : 'var(--color-text-secondary)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600,
               cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
             }}
           >
@@ -1301,7 +1302,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
       {/* Emoji picker */}
       {showEmoji && <EmojiPicker onSelect={insertEmoji} />}
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px', paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px' }}>
         {/* Plus button */}
         <button
           onClick={() => { setShowAttach(v => !v); setShowEmoji(false) }}
@@ -1474,7 +1475,9 @@ export default function ConversationView() {
 
       if (!conv) { setInfoLoading(false); return }
 
-      if (conv.type === 'community') {
+      if (conv.type === 'moderation') {
+        setConvInfo({ type: 'moderation', name: 'Moderation (Admins)' })
+      } else if (conv.type === 'community') {
         const { data: community } = await supabase
           .from('communities')
           .select('id, name')
@@ -1535,14 +1538,14 @@ export default function ConversationView() {
   useEffect(() => {
     if (loading) return
     if (isAtBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }
   }, [messages.length, loading])
 
   // Scroll to bottom on mount
   useEffect(() => {
     if (!loading && messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      scrollContainerToBottom(messagesContainerRef.current, 'auto')
     }
   }, [loading])
 
@@ -1567,7 +1570,7 @@ export default function ConversationView() {
     setReplyTo(null)
     await sendMessage(text, opts)
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }, 50)
   }
 
@@ -1576,7 +1579,7 @@ export default function ConversationView() {
     isAtBottomRef.current = true
     await sendPrayerRequest(item.id, item.title, item.description, true)
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }, 50)
   }
 
@@ -1584,7 +1587,7 @@ export default function ConversationView() {
     isAtBottomRef.current = true
     await sendBibleVerse(reference, verseText)
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }, 50)
   }
 
@@ -1606,7 +1609,7 @@ export default function ConversationView() {
       showToast('Nachricht nicht geladen', 'info')
       return
     }
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    scrollContainerToElement(messagesContainerRef.current, el)
     setHighlightedId(id)
     setTimeout(() => setHighlightedId(curr => curr === id ? null : curr), 1800)
   }
@@ -1690,7 +1693,7 @@ export default function ConversationView() {
       {/* Header */}
       <div className="bg-gradient-to-br from-[var(--color-header-wash)] to-[var(--color-bg)] px-3 pt-3 pb-3 shrink-0 relative overflow-hidden border-b border-warm-3">
         {/* Deko circles */}
-        <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full bg-warm-3/35 pointer-events-none blur-xl" />
+        <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full bg-warm-3 pointer-events-none blur-xl" />
 
         <div className="flex items-center gap-2 relative z-10">
           <button
@@ -1702,8 +1705,8 @@ export default function ConversationView() {
 
           {infoLoading ? (
             <div className="flex items-center gap-3 flex-1">
-              <div className="w-10 h-10 rounded-full bg-warm-3/50 animate-pulse" />
-              <div className="w-24 h-4 rounded bg-warm-3/50 animate-pulse" />
+              <div className="w-10 h-10 rounded-full bg-warm-3 animate-pulse" />
+              <div className="w-24 h-4 rounded bg-warm-3 animate-pulse" />
             </div>
           ) : (
             <div

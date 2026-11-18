@@ -1,13 +1,17 @@
 import { useState, lazy, Suspense, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { scrollContainerToBottom } from '../lib/scroll'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Settings, Copy, LogOut, SendHorizontal,
   MoreVertical, Shield, Plus, Trash2, MapPin, Clock, Pin, Globe, Lock, Users,
   ShieldOff, UserMinus, User, MessageSquare, RefreshCw, Pencil, X, Check, ChevronRight,
-  MessageCircle, CalendarDays, HandHeart, HelpCircle
+  MessageCircle, CalendarDays, HandHeart, HelpCircle, QrCode
 } from 'lucide-react'
+import QrShareSheet from '../components/common/QrShareSheet'
+import { communityLink } from '../lib/qrLinks'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
 import MemberAvatarStack from '../components/community/MemberAvatarStack'
+import { useSheetDismiss } from '../hooks/useSheetDismiss'
 import MembersSheet from '../components/community/MembersSheet'
 import { communityCover, getInitials as getCommunityInitials } from '../lib/communityTheme'
 import { useAuth } from '../hooks/useAuth'
@@ -19,6 +23,10 @@ import PrayerCardList from '../components/prayer/PrayerCardList'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/image'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
+import ModerationSheet from '../components/common/ModerationSheet'
+import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
+import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
 
 // ─── Shared header styles ─────────────────────────────────────
@@ -231,9 +239,95 @@ function InputBar({ onSend }) {
 }
 
 // ─── Post Card (Redesigned) ───────────────────────────────────
+
+function CommunityReportsTab({ communityId }) {
+  const { showToast } = useToast()
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function load() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('content_reports')
+      .select('id, content_type, content_id, reason, status, target_author_id, created_at, action_taken')
+      .eq('community_id', communityId)
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error) showToast('Meldungen laden fehlgeschlagen', 'error')
+    setRows(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [communityId])
+
+  async function act(row, kind) {
+    setBusy(true)
+    try {
+      if (kind === 'hide') {
+        const { error } = await supabase.rpc('moderation_hide_content', {
+          p_content_type: row.content_type, p_content_id: row.content_id, p_note: note || null,
+        })
+        if (error) throw error
+      }
+      if (kind === 'delete') {
+        const { error } = await supabase.rpc('moderation_soft_delete_content', {
+          p_content_type: row.content_type, p_content_id: row.content_id, p_note: note || null,
+        })
+        if (error) throw error
+      }
+      const { error } = await supabase.rpc('moderation_resolve_report', {
+        p_report_id: row.id,
+        p_status: kind === 'dismiss' ? 'dismissed' : 'resolved',
+        p_action_taken: kind,
+        p_note: note || null,
+      })
+      if (error) throw error
+      showToast('Erledigt')
+      setNote('')
+      await load()
+    } catch (e) {
+      showToast(e.message || 'Fehler', 'error')
+    }
+    setBusy(false)
+  }
+
+  if (loading) return <p style={{ padding: 16, color: 'var(--color-text-secondary)' }}>Laden…</p>
+  if (rows.length === 0) return (
+    // Gleiches Muster wie die leeren Zustände der anderen Tabs
+    <div style={{ textAlign: 'center', padding: '30px 16px' }}>
+      <p style={{ fontSize: 32, margin: '0 0 8px' }}>🛡️</p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Keine offenen Meldungen in dieser Community.</p>
+    </div>
+  )
+
+  return (
+    <div style={{ padding: 12 }}>
+      <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Notiz (optional)…" rows={2}
+        style={{ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', marginBottom: 12, fontSize: 13 }} />
+      {rows.map(r => (
+        <div key={r.id} style={{ background: 'var(--color-white)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 12, marginBottom: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 13 }}>{r.content_type}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '4px 0 8px' }}>{r.reason}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <button disabled={busy} onClick={() => act(r, 'dismiss')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer' }}>Verwerfen</button>
+            <button disabled={busy} onClick={() => act(r, 'hide')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer' }}>Verstecken</button>
+            <button disabled={busy} onClick={() => act(r, 'delete')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: '#C0392B', cursor: 'pointer' }}>Löschen</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
   const [showFull, setShowFull] = useState(false)
   const [openMenu, setOpenMenu] = useState(false)
+  const [showModeration, setShowModeration] = useState(false)
+  const menuBtnRef = useRef(null)
+  const { isAppAdmin } = useIsAppAdmin()
   const name = post.profiles?.full_name || post.profiles?.username || 'Unbekannt'
   const isPinned = post.is_pinned
   const isOwn = post.author_id === currentUserId
@@ -265,36 +359,56 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
           <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: 0 }}>{timeAgo(post.created_at)}</p>
         </div>
 
-        {(isAdmin || isOwn) && (
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setOpenMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)' }}>
-              <MoreVertical size={15} />
-            </button>
-            {openMenu && (
-              <>
-                <div onClick={() => setOpenMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                <div style={{ position: 'absolute', right: 0, top: '100%', backgroundColor: 'var(--color-white)', borderRadius: 10, boxShadow: '0 4px 16px rgba(58,46,36,0.14)', border: '1px solid var(--color-warm-3)', zIndex: 20, minWidth: 160 }}>
-                  {isAdmin && (
-                    <button
-                      onClick={() => { setOpenMenu(false); onTogglePin(post.id, !isPinned) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--color-warm-3)' }}
-                    >
-                      <Pin size={13} /> {isPinned ? 'Loslösen' : 'Anpinnen'}
-                    </button>
-                  )}
-                  {(isAdmin || isOwn) && (
-                    <button
-                      onClick={() => { setOpenMenu(false); onDelete(post.id) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 14px', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: '#C0392B', cursor: 'pointer', textAlign: 'left' }}
-                    >
-                      <Trash2 size={13} /> Löschen
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+        <div style={{ flexShrink: 0 }}>
+          <button ref={menuBtnRef} onClick={() => setOpenMenu(v => !v)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)' }}>
+            <MoreVertical size={15} />
+          </button>
+          {openMenu && (
+            <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setOpenMenu(false)} minWidth={200}>
+              {isAdmin && (
+                <button
+                  onClick={() => { setOpenMenu(false); onTogglePin(post.id, !isPinned) }}
+                  style={anchoredMenuItemStyle}
+                >
+                  <Pin size={13} /> {isPinned ? 'Loslösen' : 'Anpinnen'}
+                </button>
+              )}
+              {(isAdmin || isOwn) && (
+                <button
+                  onClick={() => { setOpenMenu(false); onDelete(post.id) }}
+                  style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                >
+                  <Trash2 size={13} /> Löschen
+                </button>
+              )}
+              {!isOwn && (
+                <button
+                  onClick={() => { setOpenMenu(false); setShowModeration(true) }}
+                  style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
+                >
+                  Melden
+                </button>
+              )}
+              {(isAppAdmin || isAdmin) && !isOwn && (
+                <AdminContentMenuItems
+                  contentType="community_post"
+                  contentId={post.id}
+                  hiddenAt={post.moderation_hidden_at}
+                  onClose={() => setOpenMenu(false)}
+                />
+              )}
+            </AnchoredMenu>
+          )}
+          {showModeration && (
+            <ModerationSheet
+              contentType="community_post"
+              contentId={post.id}
+              authorId={post.author_id}
+              authorName={name}
+              onClose={() => setShowModeration(false)}
+            />
+          )}
+        </div>
       </div>
 
       {post.title && (
@@ -378,12 +492,14 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
 
 // ─── Event Card (Redesigned) ──────────────────────────────────
 function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }) {
+  const [showModeration, setShowModeration] = useState(false)
   const date = new Date(event.starts_at)
   const dayNum = date.getDate()
   const monthStr = date.toLocaleDateString('de-DE', { month: 'short' })
   const weekdayStr = date.toLocaleDateString('de-DE', { weekday: 'long' })
   const timeStr = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
   const isPast = date < new Date()
+  const isOwn = event.created_by === currentUserId
 
   const rsvpOptions = [
     { status: 'going', label: '✓ Dabei', activeColor: 'var(--color-accent)' },
@@ -417,10 +533,26 @@ function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }
           )}
         </div>
 
-        {(event.created_by === currentUserId || isAdmin) && (
-          <button onClick={() => onDelete(event.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', flexShrink: 0, alignSelf: 'flex-start' }}>
-            <Trash2 size={14} />
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0, alignSelf: 'flex-start' }}>
+          {(isOwn || isAdmin) && (
+            <button onClick={() => onDelete(event.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)' }}>
+              <Trash2 size={14} />
+            </button>
+          )}
+          {!isOwn && (
+            <button onClick={() => setShowModeration(true)} aria-label="Melden" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', fontSize: 11, fontFamily: 'Lora, serif' }}>
+              Melden
+            </button>
+          )}
+        </div>
+        {showModeration && (
+          <ModerationSheet
+            contentType="community_event"
+            contentId={event.id}
+            authorId={event.created_by}
+            authorName="Event"
+            onClose={() => setShowModeration(false)}
+          />
         )}
       </div>
 
@@ -529,6 +661,79 @@ function AddPrayerSheet({ onClose, onSubmit }) {
 }
 
 // ─── Fragen an die Gemeinde ────────────────────────────────────
+// ─── Beitrittsanfrage im Chat ─────────────────────────────────
+// Admins nehmen an oder lehnen ab (Ablehnung optional mit Text); alle
+// Mitglieder sehen den Stand. Status kommt live aus community_join_requests.
+function JoinRequestCard({ msg, isAdmin, onDecide }) {
+  const [req, setReq] = useState(null)
+  const [declining, setDeclining] = useState(false)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const name = msg.profiles?.full_name || msg.profiles?.username || 'Jemand'
+
+  useEffect(() => {
+    if (!msg.join_request_id) return
+    let active = true
+    supabase
+      .from('community_join_requests')
+      .select('id, status, message, decision_note')
+      .eq('id', msg.join_request_id)
+      .maybeSingle()
+      .then(({ data }) => { if (active) setReq(data) })
+    return () => { active = false }
+  }, [msg.join_request_id])
+
+  async function decide(approve) {
+    setBusy(true)
+    const ok = await onDecide(msg.join_request_id, approve, approve ? null : note.trim() || null)
+    setBusy(false)
+    if (ok) {
+      setReq(r => ({ ...(r || {}), status: approve ? 'approved' : 'declined', decision_note: approve ? null : note.trim() || null }))
+      setDeclining(false)
+    }
+  }
+
+  const status = req?.status || 'pending'
+  const text = req?.message ?? msg.text
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 10px' }}>
+      <div style={{ width: '88%', backgroundColor: 'var(--color-white)', border: '1.5px solid var(--color-warm-3)', borderRadius: 16, padding: '12px 14px' }}>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-accent)', margin: '0 0 4px' }}>🙋 Beitrittsanfrage</p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{name} möchte beitreten</p>
+        {text && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', margin: '6px 0 0', lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</p>}
+
+        {status === 'pending' && isAdmin && !declining && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button disabled={busy} onClick={() => setDeclining(true)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Ablehnen</button>
+            <button disabled={busy} onClick={() => decide(true)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{busy ? '…' : 'Annehmen'}</button>
+          </div>
+        )}
+        {status === 'pending' && isAdmin && declining && (
+          <div style={{ marginTop: 10 }}>
+            <textarea autoFocus value={note} onChange={e => setNote(e.target.value.slice(0, 500))} rows={2} placeholder="Begründung (optional)" style={{ ...inp, resize: 'none' }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button disabled={busy} onClick={() => setDeclining(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Zurück</button>
+              <button disabled={busy} onClick={() => decide(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', backgroundColor: '#C0392B', color: '#fff', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{busy ? '…' : 'Ablehnen'}</button>
+            </div>
+          </div>
+        )}
+        {status === 'pending' && !isAdmin && (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-muted)', margin: '8px 0 0' }}>Wartet auf Entscheidung der Admins</p>
+        )}
+        {status === 'approved' && (
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', margin: '8px 0 0' }}>✓ Angenommen</p>
+        )}
+        {status === 'declined' && (
+          <div style={{ margin: '8px 0 0' }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: '#C0392B', margin: 0 }}>✕ Abgelehnt</p>
+            {req?.decision_note && <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', margin: '3px 0 0', fontStyle: 'italic' }}>„{req.decision_note}“</p>}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function QuestionCard({ q, currentUserId, onAnswer }) {
   const [answering, setAnswering] = useState(false)
   const [text, setText] = useState('')
@@ -579,11 +784,14 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
   const profile = member.profile || {}
   const name = profile.full_name || profile.username || 'Unbekannt'
   const isLastAdmin = adminCount <= 1 && member.role === 'admin'
+  const sheetRef = useSheetDismiss(onClose, 'translateX(-50%)')
 
+  // z-Index über der Mitgliederliste (MembersSheet: 60/61), sonst öffnet sich
+  // das Profil dahinter.
   return (
     <>
-      <div onClick={onClose} className="fixed inset-0 bg-dark/20 backdrop-blur-[1px] z-50 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[28px] z-50 p-6 pb-12 shadow-[0_-8px_30px_rgba(44,36,22,0.15)] animate-[sheetSlideUp_0.25s_ease-out]">
+      <div onClick={onClose} className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[70] transition-opacity" />
+      <div ref={sheetRef} className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[28px] z-[71] p-6 pb-12 shadow-[0_-8px_30px_rgba(44,36,22,0.15)] animate-[sheetSlideUp_0.25s_ease-out]">
         <div className="w-10 h-1.5 bg-warm-3 rounded-full mx-auto mb-6" />
         
         <div className="flex items-center gap-4 mb-5">
@@ -608,7 +816,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
           {!isSelf && (
             <button
               onClick={() => { onClose(); navigate(`/user/${member.user_id}`) }}
-              className="w-full py-3.5 flex items-center justify-center gap-2 rounded-xl bg-warm-1 text-white font-serif font-bold text-[15px] shadow-sm hover:bg-warm-2 transition-colors"
+              className="w-full py-3.5 flex items-center justify-center gap-2 rounded-xl bg-warm-1 text-bg font-serif font-bold text-[15px] shadow-sm hover:bg-warm-2 transition-colors"
             >
               <MessageSquare size={18} /> Nachricht senden
             </button>
@@ -621,7 +829,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
               {!isLastAdmin && (
                 <button
                   onClick={() => { onClose(); onRoleChange(member.user_id, member.role === 'admin' ? 'member' : 'admin') }}
-                  className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border-1.5 border-warm-3 text-dark font-serif font-bold text-[14px] hover:bg-warm-4 transition-colors"
+                  className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-warm-3 text-dark font-serif font-bold text-[14px] hover:bg-warm-4 transition-colors"
                 >
                   {member.role === 'admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
                   {member.role === 'admin' ? 'Admin-Rechte entziehen' : 'Zum Admin machen'}
@@ -630,7 +838,8 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
               
               <button
                 onClick={() => { onClose(); onRemove(member.user_id) }}
-                className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 text-red-600 font-serif font-bold text-[14px] hover:bg-red-100 transition-colors"
+                style={{ backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.35)', color: 'var(--color-error)' }}
+                className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border font-serif font-bold text-[14px] transition-colors"
               >
                 <UserMinus size={16} /> Mitglied entfernen
               </button>
@@ -668,6 +877,7 @@ function SettingsSheet({
   const [location, setLocation] = useState(community.address ? { address: community.address, lat: community.latitude, lng: community.longitude, shortName: community.address } : null)
   const [meetingInfo, setMeetingInfo] = useState(community.meeting_info || '')
   const [saving, setSaving] = useState(false)
+  const [showQr, setShowQr] = useState(false)
   const [bannerBusy, setBannerBusy] = useState(false)
   const [avatarBusy, setAvatarBusy] = useState(false)
   const bannerInputRef = useRef(null)
@@ -806,10 +1016,15 @@ function SettingsSheet({
     }
   }
 
+  const sheetRef = useSheetDismiss(onClose, 'translateX(-50%)')
+
   return (
     <>
-      <div onClick={onClose} className="fixed inset-0 bg-dark/40 backdrop-blur-[2px] z-50 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface/95 backdrop-blur-xl rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
+      {showQr && (
+        <QrShareSheet title={community.name} subtitle={community.is_public ? 'Öffentliche Community' : 'Einladung per QR-Code'} url={communityLink(community)} onClose={() => setShowQr(false)} />
+      )}
+      <div onClick={onClose} className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 transition-opacity" />
+      <div ref={sheetRef} className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
         <div className="w-9 h-1 bg-warm-3 rounded-full mx-auto mb-5" />
         
         <div className="flex items-center justify-between mb-6">
@@ -820,12 +1035,12 @@ function SettingsSheet({
           <div className="flex flex-col gap-4">
             <div>
               <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Name</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
+              <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
             </div>
             
             <div>
               <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Beschreibung</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] resize-none focus:outline-none focus:border-warm-1" />
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] resize-none focus:outline-none focus:border-warm-1" />
             </div>
 
             {isGemeinde && (
@@ -838,7 +1053,7 @@ function SettingsSheet({
                 </div>
                 <div>
                   <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Treffzeit</label>
-                  <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder="z.B. Wöchentlich, Mittwoch 19 Uhr" className="w-full bg-bg border-1.5 border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
+                  <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder="z.B. Wöchentlich, Mittwoch 19 Uhr" className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
                 </div>
               </>
             )}
@@ -907,42 +1122,41 @@ function SettingsSheet({
               </div>
             </div>
 
-            <div className="flex items-center justify-between bg-warm-4 border border-warm-3 rounded-xl p-4">
-              <div>
-                <p className="font-serif text-[14px] font-bold text-dark m-0">Öffentliche Community</p>
-                <p className="font-serif text-[12px] text-dark-muted m-0 leading-tight mt-0.5">
-                  {isGemeinde ? 'Gemeinden sind immer öffentlich, damit sie auf der Karte gefunden werden.' : 'Jeder kann beitreten und mitlesen.'}
-                </p>
+            {/* Zugang: Öffentlich / Mit Anfrage / Privat */}
+            <div className="bg-warm-4 border border-warm-3 rounded-xl p-3">
+              <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-2 px-1">Zugang</p>
+              <div className="flex flex-col gap-2">
+                {[
+                  { key: 'open', label: 'Öffentlich', hint: 'Jeder kann direkt beitreten und mitlesen.', Icon: Globe },
+                  { key: 'request', label: 'Mit Anfrage', hint: 'Sichtbar bei „Entdecken“, Beitritt braucht deine Freigabe.', Icon: HandHeart },
+                  ...(isGemeinde ? [] : [{ key: 'private', label: 'Privat', hint: 'Nur per Einladungscode oder QR-Code.', Icon: Lock }]),
+                ].map(opt => {
+                  const current = !isPublic ? 'private' : joinMode
+                  const active = current === opt.key
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => {
+                        if (opt.key === 'private') { setIsPublic(false); setJoinMode('open') }
+                        else { setIsPublic(true); setJoinMode(opt.key) }
+                      }}
+                      className={`flex items-center gap-3 text-left rounded-xl p-3 border-[1.5px] ${active ? 'border-accent bg-accent-light' : 'border-warm-3 bg-surface'}`}
+                    >
+                      <opt.Icon size={18} color={active ? 'var(--color-accent)' : 'var(--color-text-muted)'} />
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-serif text-[14px] font-bold text-dark">{opt.label}</span>
+                        <span className="block font-serif text-[12px] text-dark-muted leading-tight">{opt.hint}</span>
+                      </span>
+                      {active && <Check size={16} color="var(--color-accent)" />}
+                    </button>
+                  )
+                })}
               </div>
-              <button
-                onClick={() => !isGemeinde && setIsPublic(v => !v)}
-                disabled={isGemeinde}
-                className={`relative w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-warm-1' : 'bg-warm-3'} ${isGemeinde ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${isPublic ? 'left-[22px]' : 'left-0.5'}`} />
-              </button>
             </div>
-
-            {isPublic && (
-              <div className="flex items-center justify-between bg-warm-4 border border-warm-3 rounded-xl p-4">
-                <div>
-                  <p className="font-serif text-[14px] font-bold text-dark m-0">Beitritt nur mit Anfrage</p>
-                  <p className="font-serif text-[12px] text-dark-muted m-0 leading-tight mt-0.5">
-                    Community wird bei „Entdecken" angezeigt, ein Beitritt braucht aber deine Freigabe.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setJoinMode(m => m === 'request' ? 'open' : 'request')}
-                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${joinMode === 'request' ? 'bg-warm-1' : 'bg-warm-3'}`}
-                >
-                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${joinMode === 'request' ? 'left-[22px]' : 'left-0.5'}`} />
-                </button>
-              </div>
-            )}
 
             {/* Offene Beitrittsanfragen */}
             {joinRequests.length > 0 && (
-              <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4">
+              <div className="bg-surface border-[1.5px] border-warm-3 rounded-xl p-4">
                 <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3">
                   Beitrittsanfragen ({joinRequests.length})
                 </p>
@@ -961,7 +1175,7 @@ function SettingsSheet({
                         </button>
                         <button
                           onClick={() => onRespondJoinRequest(r.id, true)}
-                          className="px-3 py-2 rounded-lg bg-warm-1 text-white font-serif text-[13px] font-semibold"
+                          className="px-3 py-2 rounded-lg bg-warm-1 text-bg font-serif text-[13px] font-semibold"
                         >
                           Annehmen
                         </button>
@@ -972,8 +1186,15 @@ function SettingsSheet({
               </div>
             )}
 
+            <button
+              onClick={() => setShowQr(true)}
+              className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border border-warm-3 text-dark font-serif font-bold text-[14px] mt-2"
+            >
+              <QrCode size={16} /> QR-Code teilen
+            </button>
+
             {!isPublic && community.invite_code && (
-              <div className="bg-surface border-1.5 border-warm-3 rounded-xl p-4 mt-2">
+              <div className="bg-surface border-[1.5px] border-warm-3 rounded-xl p-4 mt-2">
                 <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
                   <Shield size={12} /> Einladungscode
                 </p>
@@ -983,7 +1204,7 @@ function SettingsSheet({
                     <button onClick={generateNewCode} className="p-2 border border-warm-3 rounded-lg text-dark-muted hover:bg-black/5" title="Code erneuern">
                       <RefreshCw size={16} />
                     </button>
-                    <button onClick={copyCode} className="flex items-center gap-1.5 px-3 py-2 border-1.5 border-warm-1 rounded-lg text-warm-1 font-semibold text-sm hover:bg-warm-1 hover:text-white transition-colors">
+                    <button onClick={copyCode} className="flex items-center gap-1.5 px-3 py-2 border-[1.5px] border-warm-1 rounded-lg text-warm-1 font-semibold text-sm hover:bg-warm-1 hover:text-bg transition-colors">
                       <Copy size={14} /> Kopieren
                     </button>
                   </div>
@@ -991,7 +1212,7 @@ function SettingsSheet({
               </div>
             )}
 
-            <button onClick={handleSave} disabled={!isChanged || saving} className={`w-full py-3.5 rounded-xl font-serif text-[15px] font-bold mt-2 transition-all ${isChanged ? 'bg-warm-1 text-white shadow-md' : 'bg-warm-3/50 text-dark-muted'}`}>
+            <button onClick={handleSave} disabled={!isChanged || saving} className={`w-full py-3.5 rounded-xl font-serif text-[15px] font-bold mt-2 transition-all ${isChanged ? 'bg-warm-1 text-bg shadow-md' : 'bg-warm-3 text-dark-muted'}`}>
               {saving ? 'Speichere...' : 'Änderungen speichern'}
             </button>
           </div>
@@ -1003,7 +1224,7 @@ function SettingsSheet({
 
         <div className="mt-8 pt-6 border-t border-warm-3">
           {!showLeaveConfirm ? (
-            <button onClick={() => setShowLeaveConfirm(true)} className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-1.5 border-red-200 text-red-600 font-serif text-[15px] font-bold hover:bg-red-50 transition-colors">
+            <button onClick={() => setShowLeaveConfirm(true)} className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-[1.5px] border-red-200 text-red-600 font-serif text-[15px] font-bold hover:bg-red-50 transition-colors">
               <LogOut size={18} /> Community verlassen
             </button>
           ) : (
@@ -1023,7 +1244,7 @@ function SettingsSheet({
             {!showDeleteConfirm ? (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-1.5 border-red-300 bg-red-50 text-red-700 font-serif text-[15px] font-bold hover:bg-red-100 transition-colors"
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-[1.5px] border-red-300 bg-red-50 text-red-700 font-serif text-[15px] font-bold hover:bg-red-100 transition-colors"
               >
                 <Trash2 size={18} /> Community löschen
               </button>
@@ -1038,7 +1259,7 @@ function SettingsSheet({
                 <input
                   type="text" value={deleteTyped} onChange={e => setDeleteTyped(e.target.value)}
                   placeholder={community.name}
-                  className="w-full bg-surface border-1.5 border-red-300 rounded-xl px-4 py-2.5 font-serif text-[15px] mb-3 focus:outline-none"
+                  className="w-full bg-surface border-[1.5px] border-red-300 rounded-xl px-4 py-2.5 font-serif text-[15px] mb-3 focus:outline-none"
                 />
                 <div className="flex gap-3">
                   <button
@@ -1088,7 +1309,12 @@ export default function CommunityDetail() {
   const { messages, loading: chatLoading, sendMessage, deleteMessage, updateMessage } = useChat(conversationId)
   const { prayers, loading: prayersLoading, createPrayer, reload: reloadPrayers } = useCommunityPrayers(id, conversationId)
 
-  const [activeTab, setActiveTab] = useState('chat')
+  // Deep-Link aus Benachrichtigungen: /community/:id?tab=questions|events
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get('tab')
+    return ['chat', 'board', 'events', 'prayers', 'questions', 'reports'].includes(t) ? t : 'chat'
+  })
   const [showSettings, setShowSettings] = useState(false)
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [showCreatePost, setShowCreatePost] = useState(false)
@@ -1107,13 +1333,13 @@ export default function CommunityDetail() {
   useEffect(() => {
     if (activeTab !== 'chat') return
     if (!chatLoading && isAtBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }
   }, [messages.length, chatLoading, activeTab])
 
   useEffect(() => {
     if (activeTab !== 'chat' || chatLoading) return
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+    scrollContainerToBottom(messagesContainerRef.current, 'auto')
   }, [chatLoading, activeTab])
 
   function handleScroll() {
@@ -1125,12 +1351,16 @@ export default function CommunityDetail() {
   async function handleSend(text) {
     isAtBottomRef.current = true
     await sendMessage(text)
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    setTimeout(() => scrollContainerToBottom(messagesContainerRef.current, 'smooth'), 50)
   }
 
   async function handleRoleChange(userId, role) {
-    await changeRole(userId, role)
-    showToast(role === 'admin' ? 'Admin-Rechte vergeben ✓' : 'Admin-Rechte entzogen')
+    try {
+      await changeRole(userId, role)
+      showToast(role === 'admin' ? 'Admin-Rechte vergeben ✓' : 'Admin-Rechte entzogen')
+    } catch {
+      showToast('Rolle konnte nicht geändert werden', 'error')
+    }
   }
 
   async function handleRemove(userId) {
@@ -1140,11 +1370,19 @@ export default function CommunityDetail() {
   }
 
   async function handleLeave() {
-    if (isAdmin && adminCount <= 1) {
-      showToast('Als einziger Admin kannst du nicht austreten.', 'error')
-      return
-    }
     try {
+      // Letzter Admin: dienstältestes anderes Mitglied wird automatisch Admin,
+      // damit die Community nicht ohne Verwaltung zurückbleibt.
+      if (isAdmin && adminCount <= 1) {
+        const successor = members
+          .filter(m => m.user_id !== user?.id)
+          .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))[0]
+        if (!successor) {
+          showToast('Du bist das einzige Mitglied – lösche die Community stattdessen.', 'error')
+          return
+        }
+        await changeRole(successor.user_id, 'admin')
+      }
       await leaveCommunity(id)
       showToast('Community verlassen')
       navigate('/friends', { replace: true })
@@ -1170,12 +1408,14 @@ export default function CommunityDetail() {
     }
   }
 
-  async function handleRespondJoinRequest(requestId, approve) {
+  async function handleRespondJoinRequest(requestId, approve, note = null) {
     try {
-      await respondToJoinRequest(requestId, approve)
-      showToast(approve ? 'Beigetreten ✓' : 'Anfrage abgelehnt')
+      await respondToJoinRequest(requestId, approve, note)
+      showToast(approve ? 'Anfrage angenommen ✓' : 'Anfrage abgelehnt')
+      return true
     } catch {
       showToast('Fehler beim Bearbeiten', 'error')
+      return false
     }
   }
 
@@ -1209,6 +1449,7 @@ export default function CommunityDetail() {
     { key: 'events', label: 'Events', icon: CalendarDays },
     { key: 'prayers', label: 'Gebete', icon: HandHeart },
     ...(isGemeinde ? [{ key: 'questions', label: 'Fragen', icon: HelpCircle }] : []),
+    ...(isAdmin ? [{ key: 'reports', label: 'Meldungen', icon: Shield }] : []),
   ]
 
   async function handleAnswerQuestion(questionId, answer) {
@@ -1260,7 +1501,6 @@ export default function CommunityDetail() {
         <div style={{
           position: 'relative',
           height: hasBanner ? 132 : 56,
-          paddingTop: 'env(safe-area-inset-top, 0px)',
           backgroundColor: hasBanner ? 'transparent' : 'var(--color-header-wash)',
           backgroundImage: hasBanner ? `url(${community.banner_url})` : 'none',
           backgroundSize: 'cover',
@@ -1338,7 +1578,7 @@ export default function CommunityDetail() {
 
         {/* Tab-Navigation (Premium-Segmented) */}
         <div style={{ padding: '14px 16px 12px' }}>
-          <SegmentedTabs tabs={tabs} active={activeTab} onSelect={setActiveTab} />
+          <SegmentedTabs tabs={tabs} active={activeTab} onSelect={setActiveTab} stacked />
         </div>
       </div>
 
@@ -1375,7 +1615,9 @@ export default function CommunityDetail() {
                   return (
                     <div key={msg.id || `opt-${i}`}>
                       {showDay && <DaySeparator label={formatDaySeparator(msg.created_at)} />}
-                      <MessageBubble msg={msg} isOwn={isOwn} />
+                      {msg.type === 'join_request'
+                        ? <JoinRequestCard msg={msg} isAdmin={isAdmin} onDecide={handleRespondJoinRequest} />
+                        : <MessageBubble msg={msg} isOwn={isOwn} />}
                     </div>
                   )
                 })}
@@ -1451,6 +1693,11 @@ export default function CommunityDetail() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* MELDUNGEN tab (community admins) */}
+          {activeTab === 'reports' && isAdmin && (
+            <CommunityReportsTab communityId={community.id} />
           )}
 
           {/* GEBETE tab */}
@@ -1530,7 +1777,7 @@ export default function CommunityDetail() {
           isAdmin={isAdmin}
           adminCount={adminCount}
           onClose={() => setSelectedMember(null)}
-          onRoleChange={changeRole}
+          onRoleChange={handleRoleChange}
           onRemove={removeMember}
         />
       )}

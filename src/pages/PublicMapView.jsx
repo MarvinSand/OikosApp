@@ -7,7 +7,9 @@ import { useSiblingsCommunities } from '../hooks/useSiblingsCommunities'
 import SiblingsToggles, { loadSiblingsView, saveSiblingsView, siblingsMapTitle } from '../components/map/SiblingsToggles'
 import MapCanvas from '../components/map/MapCanvas'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
+import OverlayMapPeopleSheet from '../components/map/OverlayMapPeopleSheet'
 import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
+import MapPreviewSheet from '../components/map/MapPreviewSheet'
 const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 
 // ─── PublicMapView (Main) ─────────────────────────────────────
@@ -18,6 +20,9 @@ export default function PublicMapView() {
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
   const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
+  const [previewTarget, setPreviewTarget] = useState(null) // { userId, initialMapId }
+  const [expandedOverlayBoxKeys, setExpandedOverlayBoxKeys] = useState([])
+  const [selectedOverlayBoxOd, setSelectedOverlayBoxOd] = useState(null)
   // Systemkarte „Meine Geschwister in Christus": Auto-Kanten + Freunde von Freunden
   const [siblingsDepth, setSiblingsDepth] = useState(() => loadSiblingsView().depth)
   const isSiblingsMap = map?.kind === 'siblings'
@@ -98,6 +103,12 @@ export default function PublicMapView() {
           onOverlayPlaceClick={setSelectedOverlayPlace}
           readOnly
           ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
+          onPreviewPersonMap={userId => setPreviewTarget({ userId, initialMapId: null })}
+          expandedOverlayBoxKeys={expandedOverlayBoxKeys}
+          onToggleOverlayBoxExpanded={key => setExpandedOverlayBoxKeys(prev => (
+            prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+          ))}
+          onOverlayBoxClick={setSelectedOverlayBoxOd}
         />
         {isSiblingsMap && (
           <SiblingsToggles
@@ -128,15 +139,35 @@ export default function PublicMapView() {
           onOverlayPreview={togglePersonMapOverlay}
         /></Suspense>
       )}
-      {selectedOverlayPerson && (
-        <OverlayPersonSheet
-          person={selectedOverlayPerson}
-          onClose={() => setSelectedOverlayPerson(null)}
-          hostConnections={connections}
-          hostPeople={people}
-          hostOverlayData={overlayData}
-        />
-      )}
+      {selectedOverlayPerson && (() => {
+        const od = overlayData.find(od => (od.persons || []).some(p => p.id === selectedOverlayPerson.id))
+        return (
+          <OverlayPersonSheet
+            person={selectedOverlayPerson}
+            onClose={() => setSelectedOverlayPerson(null)}
+            hostConnections={connections}
+            hostPeople={people}
+            hostOverlayData={overlayData}
+            mapName={od?.mapName}
+          />
+        )
+      })()}
+      {selectedOverlayBoxOd && (() => {
+        const key = selectedOverlayBoxOd.overlayMapId
+          ? `${selectedOverlayBoxOd.parentPersonId}::${selectedOverlayBoxOd.overlayMapId}`
+          : selectedOverlayBoxOd.parentPersonId
+        return (
+          <OverlayMapPeopleSheet
+            od={selectedOverlayBoxOd}
+            isExpanded={expandedOverlayBoxKeys.includes(key)}
+            onToggleExpanded={() => setExpandedOverlayBoxKeys(prev => (
+              prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+            ))}
+            onClose={() => setSelectedOverlayBoxOd(null)}
+            onSelectPerson={person => { setSelectedOverlayBoxOd(null); setSelectedOverlayPerson(person) }}
+          />
+        )
+      })()}
       {selectedOverlayPlace && (() => {
         const od = overlayData.find(od => (od.places || []).some(pl => pl.id === selectedOverlayPlace.id))
         const connectedPersonNames = (od?.placeConnections || [])
@@ -148,9 +179,13 @@ export default function PublicMapView() {
             place={selectedOverlayPlace}
             onClose={() => setSelectedOverlayPlace(null)}
             connectedPersonNames={connectedPersonNames}
+            mapName={od?.mapName}
           />
         )
       })()}
+      {previewTarget && (
+        <MapPreviewSheet userId={previewTarget.userId} initialMapId={previewTarget.initialMapId} onClose={() => setPreviewTarget(null)} />
+      )}
     </div>
   )
 }

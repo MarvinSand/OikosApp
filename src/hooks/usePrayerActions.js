@@ -39,7 +39,10 @@ export async function updatePrayerStats(userId) {
         longest_streak: Math.max(stats?.longest_streak || 0, nextStreak),
         total_prayers: (stats?.total_prayers || 0) + 1,
         updated_at: new Date().toISOString(),
-      })
+      // Ohne onConflict löst PostgREST den Konflikt über den Primärschlüssel
+      // (id) auf – existiert die Zeile schon, scheiterte der Upsert an der
+      // Unique-Constraint auf user_id (409) und der Streak blieb stehen.
+      }, { onConflict: 'user_id' })
     } else {
       await supabase.from('user_prayer_stats')
         .update({ total_prayers: (stats?.total_prayers || 0) + 1, updated_at: new Date().toISOString() })

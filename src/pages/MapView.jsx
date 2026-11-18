@@ -1,5 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
-import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { useState, useEffect, lazy, Suspense, useRef } from 'react'
+import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin, Wand2 } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePlaces } from '../hooks/usePlaces'
@@ -16,9 +16,13 @@ import AddPersonModal from '../components/map/AddPersonModal'
 const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
+import OverlayMapPeopleSheet from '../components/map/OverlayMapPeopleSheet'
+import MapPreviewSheet from '../components/map/MapPreviewSheet'
 import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
 import PlaceDetailSheet, { AddPlaceSheet } from '../components/map/PlaceDetailSheet'
 import WorldMapView from '../components/worldmap/WorldMapView'
+import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
+import { fanOutSecondary } from '../components/map/mapLayout'
 
 // ─── Farb-Filter Panel ───────────────────────────────────────
 const EMPTY_LIST = []
@@ -297,6 +301,140 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const places = placesMapId === activeMapId ? rawPlaces : EMPTY_LIST
   const placeConnections = placesMapId === activeMapId ? rawPlaceConnections : EMPTY_LIST
 
+  // Muss exakt der Formel entsprechen, mit der MapCanvas den eigenen Avatar
+  // zeichnet (siehe handleCleanup) — sonst würde "um den Ort herum" relativ
+  // zu einer anderen Mitte berechnet als der Avatar tatsächlich sitzt.
+  function mapCenter() {
+    const n = people.length
+    const r = n === 0 ? 150 : Math.max(150, n * 18)
+    return { x: r + 70, y: r + 70 }
+  }
+
+  // Neu mit einem Ort verbundene Personen sollen sofort sichtbar um ihn
+  // herum stehen, statt irgendwo anders (z. B. im Haupt-Ring) hängen zu
+  // bleiben — gleiches Fächer-Muster wie bei sekundären Personen um ihren
+  // Elternknoten (fanOutSecondary), fächert links/rechts der Richtung vom
+  // Ort weg vom Kartenzentrum auf. Mehrere Personen werden nacheinander
+  // (nicht parallel) verbunden, damit jede den jeweils aktuellen Index
+  // bekommt statt alle denselben (stale) Stand zu sehen.
+  async function connectPeopleToPlace(placeId, personIds, context = null) {
+    const place = places.find(pl => pl.id === placeId)
+    const { x: cx, y: cy } = mapCenter()
+    let idx = placeConnections.filter(c => c.place_id === placeId).length
+    for (const personId of personIds) {
+      await connectPlacePerson(placeId, personId, context)
+      if (place) {
+        const pos = fanOutSecondary({ x: place.pos_x, y: place.pos_y }, cx, cy, idx, 90)
+        await movePersonPosition(personId, pos.x, pos.y)
+      }
+      idx++
+    }
+  }
+
+  // "Aufräumen" für einen einzelnen Ort — alle verbundenen Personen
+  // gleichmäßig im Kreis um ihn herum anordnen (der Ort selbst bleibt stehen).
+  async function cleanupPlacePeople(placeId) {
+    const place = places.find(pl => pl.id === placeId)
+    if (!place) return
+    const memberIds = placeConnections.filter(c => c.place_id === placeId).map(c => c.person_id)
+    if (memberIds.length === 0) return
+    const clusterRadius = memberIds.length <= 1 ? 0 : Math.max(60, memberIds.length * 16)
+    await Promise.all(memberIds.map((personId, j) => {
+      const angle = memberIds.length <= 1 ? -Math.PI / 2 : (j * 2 * Math.PI / memberIds.length) - Math.PI / 2
+      const pos = memberIds.length <= 1
+        ? { x: place.pos_x, y: place.pos_y - 90 }
+        : { x: place.pos_x + clusterRadius * Math.cos(angle), y: place.pos_y + clusterRadius * Math.sin(angle) }
+      return movePersonPosition(personId, pos.x, pos.y)
+    }))
+  }
+
+  // "Aufräumen" für eine einzelne Person — alle direkt mit ihr verbundenen
+  // Personen gleichmäßig im Kreis um sie herum anordnen.
+  async function cleanupPersonConnections(personId) {
+    const person = people.find(p => p.id === personId)
+    if (!person) return
+    const fallback = mapCenter()
+    const basePos = { x: person.pos_x ?? fallback.x, y: person.pos_y ?? fallback.y }
+    const memberIds = connections
+      .filter(c => c.source_person_id === personId || c.target_person_id === personId)
+      .map(c => c.source_person_id === personId ? c.target_person_id : c.source_person_id)
+    if (memberIds.length === 0) return
+    const clusterRadius = memberIds.length <= 1 ? 0 : Math.max(60, memberIds.length * 16)
+    await Promise.all(memberIds.map((id, j) => {
+      const angle = memberIds.length <= 1 ? -Math.PI / 2 : (j * 2 * Math.PI / memberIds.length) - Math.PI / 2
+      const pos = memberIds.length <= 1
+        ? { x: basePos.x, y: basePos.y - 90 }
+        : { x: basePos.x + clusterRadius * Math.cos(angle), y: basePos.y + clusterRadius * Math.sin(angle) }
+      return movePersonPosition(id, pos.x, pos.y)
+    }))
+  }
+
+  // "Karte aufräumen": Orte wandern auf einen äußeren Ring, ihre verbundenen
+  // Personen kreisen eng um ihren Ort statt lose im Haupt-Ring zu hängen;
+  // unverbundene Personen bilden wie bisher den inneren Ring um die Mitte.
+  async function handleCleanup() {
+    const primary = people.filter(p => !p.is_secondary)
+    const secondary = people.filter(p => p.is_secondary)
+
+    const connectedIdsByPlace = {}
+    placeConnections.forEach(c => {
+      if (!primary.find(p => p.id === c.person_id)) return
+      ;(connectedIdsByPlace[c.place_id] ||= []).push(c.person_id)
+    })
+    const placeConnectedIds = new Set(Object.values(connectedIdsByPlace).flat())
+    const freePeople = primary.filter(p => !placeConnectedIds.has(p.id))
+    const realPlaces = places.filter(pl => !pl.is_virtual)
+
+    const { x: cx, y: cy } = mapCenter()
+
+    const n = freePeople.length
+    const innerRingRadius = n === 0 ? 150 : Math.max(150, n * 18)
+
+    const posById = {}
+    const personUpdates = []
+    freePeople.forEach((p, i) => {
+      const angle = (i * 2 * Math.PI / Math.max(n, 1)) - Math.PI / 2
+      const pos = { x: cx + innerRingRadius * Math.cos(angle), y: cy + innerRingRadius * Math.sin(angle) }
+      posById[p.id] = pos
+      personUpdates.push({ id: p.id, ...pos })
+    })
+
+    const placeRingRadius = Math.max(innerRingRadius + 150, 300)
+    const placeUpdates = realPlaces.map((pl, i) => {
+      const angle = (i * 2 * Math.PI / Math.max(realPlaces.length, 1)) - Math.PI / 2
+      return { id: pl.id, x: cx + placeRingRadius * Math.cos(angle), y: cy + placeRingRadius * Math.sin(angle), angle }
+    })
+    placeUpdates.forEach(({ id: placeId, x: px, y: py, angle }) => {
+      const memberIds = connectedIdsByPlace[placeId] || []
+      const clusterRadius = memberIds.length <= 1 ? 0 : Math.max(60, memberIds.length * 16)
+      memberIds.forEach((personId, j) => {
+        const memberAngle = memberIds.length <= 1 ? angle : (j * 2 * Math.PI / memberIds.length) - Math.PI / 2
+        const pos = memberIds.length <= 1
+          ? { x: px + 90 * Math.cos(angle), y: py + 90 * Math.sin(angle) }
+          : { x: px + clusterRadius * Math.cos(memberAngle), y: py + clusterRadius * Math.sin(memberAngle) }
+        posById[personId] = pos
+        personUpdates.push({ id: personId, ...pos })
+      })
+    })
+
+    const childCounts = {}
+    secondary.forEach(p => {
+      const conn = connections.find(c => c.source_person_id === p.id || c.target_person_id === p.id)
+      const parentId = conn ? (conn.source_person_id === p.id ? conn.target_person_id : conn.source_person_id) : null
+      const parentPos = parentId ? posById[parentId] : null
+      if (!parentPos) return
+      const idx = childCounts[parentId] ?? 0
+      childCounts[parentId] = idx + 1
+      const pos = fanOutSecondary(parentPos, cx, cy, idx)
+      personUpdates.push({ id: p.id, ...pos })
+    })
+
+    await Promise.all([
+      ...personUpdates.map(u => movePersonPosition(u.id, u.x, u.y)),
+      ...placeUpdates.map(u => movePlacePosition(u.id, u.x, u.y)),
+    ])
+  }
+
   // Systemkarte: virtuelle Kanten, Gen-2/3-Overlay und Community-Knoten einmischen
   const canvasConnections = isSiblingsMap ? [...connections, ...siblingsGraph.connections] : connections
   const canvasOverlayData = isSiblingsMap ? [...siblingsGraph.overlayData, ...siblingsCommunities.overlayData] : overlayData
@@ -306,15 +444,23 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [showMapMenu, setShowMapMenu] = useState(false)
   const [showNewMap, setShowNewMap] = useState(false)
   const [showAddPerson, setShowAddPerson] = useState(false)
+  const addMenuBtnRef = useRef(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showAddPlace, setShowAddPlace] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showGenerationen, setShowGenerationen] = useState(false)
   const [showColorFilter, setShowColorFilter] = useState(false)
+  const cleanupBtnRef = useRef(null)
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false)
+  const [cleaningUp, setCleaningUp] = useState(false)
+  const [resetOverlaySignal, setResetOverlaySignal] = useState(0)
   const [hiddenColors, setHiddenColors] = useState(new Set())
   const [connectionMode, setConnectionMode] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [selectedOverlayPerson, setSelectedOverlayPerson] = useState(null)
+  const [previewTarget, setPreviewTarget] = useState(null) // { userId, initialMapId }
+  const [expandedOverlayBoxKeys, setExpandedOverlayBoxKeys] = useState([])
+  const [selectedOverlayBoxOd, setSelectedOverlayBoxOd] = useState(null)
   const [selectedOverlayPlace, setSelectedOverlayPlace] = useState(null)
   const [selectedPlace, setSelectedPlace] = useState(null)
   // linkedProfile cache: { [userId]: profile }
@@ -444,10 +590,10 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       )}
 
       {/* Header Island (OIKOS mode only) */}
-      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-paper/90 backdrop-blur-md border border-warm-3 px-4 py-2.5 flex items-center justify-between z-30 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
+      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-surface border border-warm-3 px-4 py-2.5 flex items-center justify-between z-30 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
-          className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg max-w-[65%] hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg min-w-0 flex-1 mr-2 text-left hover:opacity-80 transition-opacity"
         >
           <span className="overflow-hidden text-ellipsis whitespace-nowrap">
             {siblingsMapTitle(activeMap)}
@@ -456,65 +602,105 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         </button>
 
         {activeMap && isSiblingsMap && (
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-1 items-center shrink-0">
             <button
               onClick={() => setShowColorFilter(v => !v)}
               title="Nach Farbe filtern"
-              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Filter size={18} />
             </button>
           </div>
         )}
         {activeMap && !isSiblingsMap && (
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-1 items-center shrink-0">
             <button
               onClick={() => setConnectionMode(v => !v)}
               title="Verbindungsmodus"
-              className={`p-1 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Link size={18} />
             </button>
             <button
               onClick={() => setShowColorFilter(v => !v)}
               title="Nach Farbe filtern"
-              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Filter size={18} />
             </button>
             <button
               onClick={() => setShowGenerationen(v => !v)}
               title="Generationen-Ansicht"
-              className={`p-1 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-warm-1/10' : 'text-dark-muted hover:bg-black/5'}`}
+              className={`p-1 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Layers size={18} />
             </button>
-            <div className="relative">
-              <button
-                onClick={() => setShowAddMenu(v => !v)}
-                className="flex items-center gap-1 bg-warm-1 hover:bg-warm-1/90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
-              >
-                <Plus size={15} /> Hinzufügen
-              </button>
-              {showAddMenu && (
-                <>
-                  <div onClick={() => setShowAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
-                  <div className="absolute right-0 top-full mt-1 bg-paper rounded-xl shadow-glass border border-warm-3 overflow-hidden z-40 min-w-[160px]">
+            <button
+              ref={cleanupBtnRef}
+              onClick={() => setShowCleanupConfirm(v => !v)}
+              title="Karte aufräumen"
+              className="p-1 rounded-full transition-colors flex items-center text-dark-muted hover:bg-black/5"
+            >
+              <Wand2 size={18} />
+            </button>
+            {showCleanupConfirm && (
+              <AnchoredMenu anchorRef={cleanupBtnRef} onClose={() => setShowCleanupConfirm(false)} minWidth={240}>
+                <div style={{ padding: '12px 14px 10px' }}>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', lineHeight: 1.5, margin: '0 0 10px' }}>
+                    Alle Personen wieder sauber im Kreis anordnen? Manuell verschobene Positionen gehen dabei verloren.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button
-                      onClick={() => { setShowAddMenu(false); setShowAddPerson(true) }}
-                      className="flex items-center gap-2.5 w-full px-4 py-3 border-none bg-transparent hover:bg-warm-4 font-serif text-[13px] text-dark font-medium cursor-pointer text-left transition-colors"
+                      onClick={() => setShowCleanupConfirm(false)}
+                      style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}
                     >
-                      <User size={14} className="text-warm-1" /> Person hinzufügen
+                      Abbrechen
                     </button>
-                    <div className="h-px bg-warm-3" />
                     <button
-                      onClick={() => { setShowAddMenu(false); setShowAddPlace(true) }}
-                      className="flex items-center gap-2.5 w-full px-4 py-3 border-none bg-transparent hover:bg-warm-4 font-serif text-[13px] text-dark font-medium cursor-pointer text-left transition-colors"
+                      disabled={cleaningUp}
+                      onClick={async () => {
+                        setCleaningUp(true)
+                        await handleCleanup()
+                        setCleaningUp(false)
+                        setShowCleanupConfirm(false)
+                        setResetOverlaySignal(s => s + 1)
+                        setExpandedOverlayBoxKeys([])
+                        setSelectedOverlayBoxOd(null)
+                      }}
+                      style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-bg)', cursor: cleaningUp ? 'default' : 'pointer', opacity: cleaningUp ? 0.7 : 1 }}
                     >
-                      <MapPin size={14} className="text-warm-1" /> Ort hinzufügen
+                      {cleaningUp ? 'Räume auf…' : 'Ja, aufräumen'}
                     </button>
                   </div>
-                </>
+                </div>
+              </AnchoredMenu>
+            )}
+            <div>
+              <button
+                ref={addMenuBtnRef}
+                onClick={() => setShowAddMenu(v => !v)}
+                aria-label="Hinzufügen"
+                className="flex items-center gap-1 bg-warm-1 hover:opacity-90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
+              >
+                {/* Text erst ab ~420px: auf iPhone-Breite (390–402px) schob er
+                    die Leiste sonst über den rechten Bildschirmrand hinaus. */}
+                <Plus size={15} /> <span className="hidden min-[420px]:inline">Hinzufügen</span>
+              </button>
+              {showAddMenu && (
+                <AnchoredMenu anchorRef={addMenuBtnRef} onClose={() => setShowAddMenu(false)} minWidth={160}>
+                  <button
+                    onClick={() => { setShowAddMenu(false); setShowAddPerson(true) }}
+                    style={anchoredMenuItemStyle}
+                  >
+                    <User size={14} className="text-warm-1" /> Person hinzufügen
+                  </button>
+                  <button
+                    onClick={() => { setShowAddMenu(false); setShowAddPlace(true) }}
+                    style={anchoredMenuItemStyle}
+                  >
+                    <MapPin size={14} className="text-warm-1" /> Ort hinzufügen
+                  </button>
+                </AnchoredMenu>
               )}
             </div>
           </div>
@@ -522,12 +708,13 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       </div>
 
       {/* Gebetsmodus-Button (babyblau, unter der Menübar) */}
-      {activeTab === 'oikos' && activeMap && (
+      {/* Im Verbindungsmodus ausgeblendet – er lag sonst über dem „Aktiv"-Hinweis */}
+      {activeTab === 'oikos' && activeMap && !connectionMode && (
         <button
           onClick={startMapPrayerMode}
           disabled={loadingPrayerMode}
           aria-label="Gebetsmodus starten"
-          className="absolute top-[104px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border-none px-4 py-2 font-serif text-[13px] font-semibold text-white cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-60"
+          className="absolute top-[114px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border-none px-4 py-2 font-serif text-[13px] font-semibold text-white cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-60"
           style={{ backgroundColor: '#5AC8FA' }}
         >
           <HandHeart size={16} /> {loadingPrayerMode ? 'Lädt…' : 'Gebetsmodus'}
@@ -650,10 +837,17 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               onCenterLineColorChange={(personId, color) => updatePerson(personId, { center_line_color: color })}
               onPlaceClick={(pl) => (pl.is_virtual ? navigate(`/community/${pl.community_id}`) : setSelectedPlace(pl))}
               onPlaceMoved={movePlacePosition}
-              onConnectPlacePerson={connectPlacePerson}
+              onConnectPlacePerson={(placeId, personId) => connectPeopleToPlace(placeId, [personId])}
               onDisconnectPlacePerson={disconnectPlacePerson}
               hiddenColors={hiddenColors}
               ownerDisconnectedIds={new Set(people.filter(p => p.owner_disconnected).map(p => p.id))}
+              resetOverlaySignal={resetOverlaySignal}
+              onPreviewPersonMap={userId => setPreviewTarget({ userId, initialMapId: null })}
+              expandedOverlayBoxKeys={expandedOverlayBoxKeys}
+              onToggleOverlayBoxExpanded={key => setExpandedOverlayBoxKeys(prev => (
+                prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+              ))}
+              onOverlayBoxClick={setSelectedOverlayBoxOd}
             />
             {showColorFilter && (
               <ColorFilterPanel
@@ -695,21 +889,41 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           onAdd={async (name, target) => {
             if (!target || target.type === 'me') return addPerson(name)
             const p = await addPerson(name, true, { owner_disconnected: true })
-            if (target.type === 'place') await connectPlacePerson(target.id, p.id)
+            if (target.type === 'place') await connectPeopleToPlace(target.id, [p.id])
             if (target.type === 'person') await createConnection(p.id, target.id)
             return p
           }}
         />
       )}
-      {selectedOverlayPerson && (
-        <OverlayPersonSheet
-          person={selectedOverlayPerson}
-          onClose={() => setSelectedOverlayPerson(null)}
-          hostConnections={connections}
-          hostPeople={people}
-          hostOverlayData={overlayData}
-        />
-      )}
+      {selectedOverlayPerson && (() => {
+        const od = overlayData.find(od => (od.persons || []).some(p => p.id === selectedOverlayPerson.id))
+        return (
+          <OverlayPersonSheet
+            person={selectedOverlayPerson}
+            onClose={() => setSelectedOverlayPerson(null)}
+            hostConnections={connections}
+            hostPeople={people}
+            hostOverlayData={overlayData}
+            mapName={od?.mapName}
+          />
+        )
+      })()}
+      {selectedOverlayBoxOd && (() => {
+        const key = selectedOverlayBoxOd.overlayMapId
+          ? `${selectedOverlayBoxOd.parentPersonId}::${selectedOverlayBoxOd.overlayMapId}`
+          : selectedOverlayBoxOd.parentPersonId
+        return (
+          <OverlayMapPeopleSheet
+            od={selectedOverlayBoxOd}
+            isExpanded={expandedOverlayBoxKeys.includes(key)}
+            onToggleExpanded={() => setExpandedOverlayBoxKeys(prev => (
+              prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+            ))}
+            onClose={() => setSelectedOverlayBoxOd(null)}
+            onSelectPerson={person => { setSelectedOverlayBoxOd(null); setSelectedOverlayPerson(person) }}
+          />
+        )
+      })()}
       {selectedOverlayPlace && (() => {
         const od = overlayData.find(od => (od.places || []).some(pl => pl.id === selectedOverlayPlace.id))
         const connectedPersonNames = (od?.placeConnections || [])
@@ -721,6 +935,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             place={selectedOverlayPlace}
             onClose={() => setSelectedOverlayPlace(null)}
             connectedPersonNames={connectedPersonNames}
+            mapName={od?.mapName}
           />
         )
       })()}
@@ -762,6 +977,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           placeConnections={placeConnections}
           places={places}
           onDisconnectFromPlace={disconnectPlacePerson}
+          onCleanup={cleanupPersonConnections}
         /></Suspense>
       )}
       {selectedPlace && (
@@ -772,13 +988,14 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           onClose={() => setSelectedPlace(null)}
           onUpdate={updatePlace}
           onDelete={(id) => { deletePlace(id); setSelectedPlace(null) }}
-          onConnectPerson={connectPlacePerson}
+          onConnectPeople={connectPeopleToPlace}
           onDisconnectPerson={disconnectPlacePerson}
           onAddPersonToPlace={async (placeId, name) => {
             const p = await addPerson(name, true, { owner_disconnected: true })
-            await connectPlacePerson(placeId, p.id)
+            await connectPeopleToPlace(placeId, [p.id])
             return p
           }}
+          onCleanup={cleanupPlacePeople}
         />
       )}
       {showAddPlace && (
@@ -789,6 +1006,9 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             if (pl) setSelectedPlace(pl)
           }}
         />
+      )}
+      {previewTarget && (
+        <MapPreviewSheet userId={previewTarget.userId} initialMapId={previewTarget.initialMapId} onClose={() => setPreviewTarget(null)} />
       )}
 
       {/* Gebetsmodus für die Personen dieser Map */}

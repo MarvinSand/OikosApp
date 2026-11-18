@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Trash2, Search, Plus, MapPin } from 'lucide-react'
+import { X, Trash2, Search, Plus, MapPin, Check, Wand2 } from 'lucide-react'
 
 const PLACE_TYPES = [
   { type: 'sport',  emoji: '🏋️', label: 'Sport' },
@@ -24,7 +24,7 @@ function debounce(fn, ms) {
   let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) }
 }
 
-export default function PlaceDetailSheet({ place, people, placeConnections, onClose, onUpdate, onDelete, onConnectPerson, onDisconnectPerson, onAddPersonToPlace }) {
+export default function PlaceDetailSheet({ place, people, placeConnections, onClose, onUpdate, onDelete, onConnectPeople, onDisconnectPerson, onAddPersonToPlace, onCleanup }) {
   const [editing, setEditing]         = useState(false)
   const [name, setName]               = useState(place.name)
   const [type, setType]               = useState(place.type || 'place')
@@ -37,11 +37,32 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
   const [personSearch, setPersonSearch] = useState('')
   const [showConnectPanel, setShowConnectPanel] = useState(false)
   const [connectContext, setConnectContext] = useState('')
-  const [connectTarget, setConnectTarget] = useState(null)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [connecting, setConnecting] = useState(false)
   const [showNewPerson, setShowNewPerson] = useState(false)
   const [newPersonName, setNewPersonName] = useState('')
   const [addingNewPerson, setAddingNewPerson] = useState(false)
+  const [cleaningUp, setCleaningUp] = useState(false)
   const saveDebounced = useRef(null)
+
+  async function handleCleanup() {
+    if (cleaningUp) return
+    setCleaningUp(true)
+    try {
+      await onCleanup?.(place.id)
+    } finally {
+      setCleaningUp(false)
+    }
+  }
+
+  function toggleSelected(personId) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(personId)) next.delete(personId)
+      else next.add(personId)
+      return next
+    })
+  }
 
   async function handleAddNewPerson() {
     if (!newPersonName.trim() || addingNewPerson) return
@@ -89,12 +110,17 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
   }
 
   async function handleConnect() {
-    if (!connectTarget) return
-    await onConnectPerson(place.id, connectTarget.id, connectContext.trim() || null)
-    setConnectTarget(null)
-    setConnectContext('')
-    setShowConnectPanel(false)
-    setPersonSearch('')
+    if (selectedIds.size === 0 || connecting) return
+    setConnecting(true)
+    try {
+      await onConnectPeople(place.id, [...selectedIds], connectContext.trim() || null)
+      setSelectedIds(new Set())
+      setConnectContext('')
+      setShowConnectPanel(false)
+      setPersonSearch('')
+    } finally {
+      setConnecting(false)
+    }
   }
 
   return (
@@ -123,6 +149,16 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
             </span>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            {connectedPersonIds.length > 1 && (
+              <button
+                onClick={handleCleanup}
+                disabled={cleaningUp}
+                title="Personen im Kreis anordnen"
+                style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--color-warm-3)', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: cleaningUp ? 'default' : 'pointer', opacity: cleaningUp ? 0.6 : 1 }}
+              >
+                <Wand2 size={15} color="var(--color-text-muted)" />
+              </button>
+            )}
             <button
               onClick={() => setEditing(v => !v)}
               style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--color-warm-3)', backgroundColor: editing ? 'var(--color-warm-1)' : 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
@@ -250,17 +286,48 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
                   </div>
                 )}
 
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 8px' }}>Person suchen</p>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 8px' }}>
+                  Personen auswählen{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+                </p>
                 <div style={{ position: 'relative', marginBottom: 8 }}>
                   <Search size={13} color="var(--color-text-light)" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
                   <input value={personSearch} onChange={e => setPersonSearch(e.target.value)} placeholder="Name suchen…" style={{ ...inp, paddingLeft: 30, fontSize: 13 }} />
                 </div>
-                {connectTarget ? (
+
+                {/* Mehrfachauswahl per Checkbox — mehrere Personen auf einmal verbinden */}
+                <div style={{ maxHeight: 180, overflowY: 'auto', marginBottom: 8 }}>
+                  {filteredPeople.length === 0 && (
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
+                      {personSearch ? 'Keine Personen gefunden.' : 'Alle Personen bereits verbunden.'}
+                    </p>
+                  )}
+                  {filteredPeople.map(p => {
+                    const checked = selectedIds.has(p.id)
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => toggleSelected(p.id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left' }}
+                      >
+                        <div style={{
+                          width: 20, height: 20, borderRadius: 6, flexShrink: 0,
+                          border: `1.5px solid ${checked ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`,
+                          backgroundColor: checked ? 'var(--color-warm-1)' : 'var(--color-bg)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {checked && <Check size={13} color="var(--color-bg)" strokeWidth={3} />}
+                        </div>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                          {(p.name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)' }}>{p.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {selectedIds.size > 0 && (
                   <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, backgroundColor: 'rgba(74,103,65,0.1)', border: '1.5px solid var(--color-warm-1)', marginBottom: 8 }}>
-                      <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-warm-1)', flex: 1 }}>{connectTarget.name}</span>
-                      <button onClick={() => setConnectTarget(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', color: 'var(--color-text-muted)' }}><X size={13} /></button>
-                    </div>
                     <input
                       value={connectContext}
                       onChange={e => setConnectContext(e.target.value)}
@@ -268,26 +335,16 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
                       style={{ ...inp, fontSize: 13, marginBottom: 8 }}
                     />
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => { setConnectTarget(null); setPersonSearch('') }} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
-                      <button onClick={handleConnect} style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Verbinden</button>
+                      <button onClick={() => setSelectedIds(new Set())} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
+                      <button
+                        onClick={handleConnect}
+                        disabled={connecting}
+                        style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: connecting ? 'default' : 'pointer', opacity: connecting ? 0.7 : 1 }}
+                      >
+                        {connecting ? 'Verbinde…' : `Verbinden (${selectedIds.size})`}
+                      </button>
                     </div>
                   </>
-                ) : (
-                  <div style={{ maxHeight: 180, overflowY: 'auto' }}>
-                    {filteredPeople.length === 0 && (
-                      <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
-                        {personSearch ? 'Keine Personen gefunden.' : 'Alle Personen bereits verbunden.'}
-                      </p>
-                    )}
-                    {filteredPeople.map(p => (
-                      <button key={p.id} onClick={() => setConnectTarget(p)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 0', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-warm-3)', textAlign: 'left' }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                          {(p.name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)' }}>{p.name}</span>
-                      </button>
-                    ))}
-                  </div>
                 )}
               </div>
             )}
@@ -322,7 +379,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
               <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>Für die Gemeinde sichtbar</span>
               <button
                 onClick={() => setPrayerPub(v => !v)}
-                style={{ width: 42, height: 24, borderRadius: 12, border: 'none', backgroundColor: prayerPublic ? 'var(--color-warm-1)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s' }}
+                style={{ width: 42, height: 24, borderRadius: 12, border: 'none', backgroundColor: prayerPublic ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s' }}
               >
                 <div style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: prayerPublic ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
               </button>
@@ -337,7 +394,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
             </div>
             <button
               onClick={() => setIsPublic(v => !v)}
-              style={{ width: 42, height: 24, borderRadius: 12, border: 'none', backgroundColor: isPublic ? 'var(--color-warm-1)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0, marginLeft: 12 }}
+              style={{ width: 42, height: 24, borderRadius: 12, border: 'none', backgroundColor: isPublic ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0, marginLeft: 12 }}
             >
               <div style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: isPublic ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
             </button>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import PageHeader from '../components/layout/PageHeader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, MailWarning, User, ShieldCheck, ChevronRight,
+  ArrowLeft, MailWarning, User, ShieldCheck, Shield, ChevronRight,
   Moon, Globe, KeyRound, Camera, BookMarked, Ban, FileText, Lock, Mail,
 } from 'lucide-react'
 import { LEGAL, TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
@@ -14,6 +15,8 @@ import { useTheme } from '../context/ThemeContext'
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp, publicOrigin } from '../lib/platform'
 import { Avatar } from '../components/profile/ProfileTabs'
+import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
+import ChurchPicker from '../components/common/ChurchPicker'
 
 // Lazy: AddressAutocomplete zieht den Google-Maps-Loader (~161 kB) mit und
 // wird erst im Unterbereich „Profil bearbeiten" gebraucht.
@@ -392,9 +395,10 @@ function ChangeEmailModal({ currentEmail, onClose }) {
 }
 
 export default function SettingsView() {
+  const { isAppAdmin } = useIsAppAdmin()
   const navigate = useNavigate()
   const { profile, updateProfile, uploadAvatar, deleteAccount, loading: profileLoading } = useProfile({ useCache: true, withStats: false })
-  const { user, resendVerificationEmail } = useAuth()
+  const { user, resendVerificationEmail, logout } = useAuth()
   const { showToast } = useToast()
   const { theme, toggleTheme } = useTheme()
   const fileInputRef = useRef(null)
@@ -573,22 +577,7 @@ export default function SettingsView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
-      <header
-        className="flex items-center gap-3 px-2"
-        style={{
-          height: 52, borderBottom: '1px solid var(--color-border)',
-          backgroundColor: 'var(--color-bg)', position: 'sticky', top: 0, zIndex: 10,
-        }}
-      >
-        <button
-          onClick={handleBack}
-          aria-label="Zurück"
-          style={{ width: 40, height: 40, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ArrowLeft size={22} />
-        </button>
-        <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>{title}</h2>
-      </header>
+<PageHeader title={title} onBack={handleBack} />
 
       {/* ─── HUB ─── */}
       {section === 'hub' && (
@@ -621,6 +610,14 @@ export default function SettingsView() {
               title="Ansicht & Datenschutz"
               onClick={() => setSection('privacy')}
             />
+            {isAppAdmin && (
+              <MenuRow
+                icon={Shield}
+                title="Moderation"
+                desc="Meldungen, Admin-Chat, Rechte"
+                onClick={() => navigate('/settings/moderation')}
+              />
+            )}
             {/* Verbinden läuft über einen OAuth-Redirect, der in der iOS-App
                 nicht zurückfindet – dort nur eine bestehende Verbindung
                 anzeigen/trennen. */}
@@ -668,7 +665,7 @@ export default function SettingsView() {
                 onClick={() => { window.location.href = `mailto:${LEGAL.contactEmail}` }}
               />
             )}
-            <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
+            <button onClick={() => logout().catch(() => supabase.auth.signOut({ scope: 'local' }))} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
               Ausloggen
             </button>
             <button onClick={() => setShowDelete(true)} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: 'none', fontSize: 14, color: 'var(--color-error)', cursor: 'pointer' }}>
@@ -803,7 +800,7 @@ export default function SettingsView() {
           </AnchorSection>
 
           <FieldRow label="Gemeinde">
-            <input type="text" value={form.church_name} onChange={e => setField('church_name', e.target.value)} placeholder="z. B. Gemeinde Köln" style={inputStyle} />
+            <ChurchPicker value={form.church_name} onChange={v => setField('church_name', v)} inputStyle={inputStyle} />
             <ToggleRow label="Öffentlich anzeigen" checked={form.show_church} onChange={() => setField('show_church', !form.show_church)} />
           </FieldRow>
 

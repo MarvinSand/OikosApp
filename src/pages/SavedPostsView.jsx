@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import PageHeader from '../components/layout/PageHeader'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bookmark } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -27,22 +28,9 @@ export default function SavedPostsView() {
 
   return (
     <div className="min-h-screen bg-bg pb-24">
-      <div style={{ padding: '48px 16px 12px', backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-warm-3)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-warm-1)', fontWeight: 600, padding: 0, marginBottom: 10 }}
-        >
-          <ArrowLeft size={18} /> Zurück
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Bookmark size={19} color="var(--color-text)" />
-          <h1 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            Gespeicherte Beiträge
-          </h1>
-        </div>
-
+      <PageHeader title="Gespeicherte Beiträge">
         {collections.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginTop: 12, paddingBottom: 2 }} className="hide-scrollbar">
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '2px 16px 10px' }} className="hide-scrollbar">
             {chips.map(c => {
               const active = activeCollection === c.key
               return (
@@ -64,7 +52,7 @@ export default function SavedPostsView() {
             })}
           </div>
         )}
-      </div>
+      </PageHeader>
 
       <div style={{ padding: '16px 0 0' }}>
         {loading && (

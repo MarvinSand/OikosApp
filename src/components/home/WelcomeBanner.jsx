@@ -40,7 +40,7 @@ export default function WelcomeBanner() {
       }}
     >
       <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 800, color: 'var(--color-text)', margin: '0 0 4px' }}>
-        Willkommen bei OIKOS! 🌱
+        Willkommen bei Oikos Connect! 🌱
       </p>
       <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '0 0 14px' }}>
         Schön, dass du da bist. Das kannst du hier entdecken:

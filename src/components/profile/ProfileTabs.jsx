@@ -7,6 +7,7 @@ import { PostCard } from '../../pages/FriendsView'
 import PrayerCardList from '../prayer/PrayerCardList'
 import { normalizePrayer, KIND_OIKOS, KIND_PERSONAL } from '../../lib/prayerModel'
 import ShareSheet from '../feed/ShareSheet'
+import { useAuth } from '../../hooks/useAuth'
 
 // ─── Helpers ──────────────────────────────────────────────────
 export function getInitials(name) {
@@ -291,6 +292,8 @@ export function RepostsTab({ reposts, currentUserId, onReact, onDelete, onRepost
 
 // ─── Prayers tab ──────────────────────────────────────────────
 export function PrayersTab({ prayers, profile, onChanged, onCreatePrayer }) {
+  const { user } = useAuth()
+  const currentUserId = user?.id
   if (prayers.length === 0) {
     return onCreatePrayer ? (
       <TabEmptyState
@@ -309,10 +312,24 @@ export function PrayersTab({ prayers, profile, onChanged, onCreatePrayer }) {
 
   // useProfileTabs liefert `source: 'personal' | 'person'` – daraus die
   // gemeinsame Gebets-Form bauen.
-  const normalized = prayers.map(p => normalizePrayer(
-    { ...p, owner_id: profile?.id, profiles: profile },
-    { kind: p.source === 'person' ? KIND_OIKOS : KIND_PERSONAL },
-  ))
+  const normalized = prayers.map(p => {
+    const n = normalizePrayer(
+      { ...p, owner_id: profile?.id, profiles: profile },
+      { kind: p.source === 'person' ? KIND_OIKOS : KIND_PERSONAL },
+    )
+    if (p.source !== 'person') return n
+    // Oikos-Gebet: Herkunftszeile „Für <Person> · <Map>“ mit Link zur Map.
+    const isOwnMap = profile?.id === currentUserId
+    return {
+      ...n,
+      personName: p.person_name || null,
+      mapId: p.map_id || null,
+      mapName: p.map_name || null,
+      mapOwnerId: profile?.id || null,
+      mapOwnerName: isOwnMap ? null : (profile?.full_name || profile?.username || null),
+      isOwnMap,
+    }
+  })
 
   return (
     <div className="flex flex-col px-3 py-3">

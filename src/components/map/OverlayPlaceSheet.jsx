@@ -12,7 +12,7 @@ const TYPE_INFO = {
 // Rein lesende Ansicht eines Ortes aus der eingeblendeten Map einer
 // verlinkten Person — spiegelt OverlayPersonSheet, nur für Orte statt
 // Personen (kein Editieren/Löschen/Verbinden, das bleibt der Besitzer-Map).
-export default function OverlayPlaceSheet({ place, onClose, connectedPersonNames = [] }) {
+export default function OverlayPlaceSheet({ place, onClose, connectedPersonNames = [], mapName }) {
   if (!place) return null
   const info = TYPE_INFO[place.type] || TYPE_INFO.place
   const notesVisible = place.is_public !== false && place.notes
@@ -55,9 +55,14 @@ export default function OverlayPlaceSheet({ place, onClose, connectedPersonNames
                 {info.emoji}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4, lineHeight: 1.2 }}>
+                <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 2, lineHeight: 1.2 }}>
                   {place.name}
                 </h3>
+                {mapName && (
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 4 }}>
+                    aus Karte „{mapName}"
+                  </p>
+                )}
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-4)', color: 'var(--color-text-muted)' }}>
                   {info.label}
                 </span>

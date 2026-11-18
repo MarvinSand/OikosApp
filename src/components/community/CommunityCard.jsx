@@ -38,7 +38,7 @@ export default function CommunityCard({
           backgroundColor: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(4px)',
           color: '#fff', fontFamily: 'Lora, serif', fontSize: 10.5, fontWeight: 600,
         }}>
-          {community.is_public ? <><Globe size={11} /> Öffentlich</> : <><Lock size={11} /> Privat</>}
+          {!community.is_public ? <><Lock size={11} /> Privat</> : needsRequest ? <><Globe size={11} /> Mit Anfrage</> : <><Globe size={11} /> Öffentlich</>}
         </span>
         {community.role === 'admin' && (
           <span style={{

@@ -57,7 +57,7 @@ export default function AuthCallback() {
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/5 pointer-events-none blur-3xl" />
 
       <div className="text-center mb-8 relative z-10">
-        <h1 className="font-serif text-5xl font-bold text-warm-1 tracking-tight leading-none mb-2">OIKOS</h1>
+        <h1 className="font-serif text-4xl font-bold text-warm-1 tracking-tight leading-none mb-2">Oikos Connect</h1>
         <div className="flex justify-center mb-2">
           <Cross size={22} className="text-warm-2" strokeWidth={2.5} />
         </div>
