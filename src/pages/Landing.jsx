@@ -59,17 +59,15 @@ const heroCards = (i) => {
 }
 
 const MARQUEE = [
-  ['🌍', 'Weltweit connecten'], ['📍', 'Die Weltkarte'], ['📖', 'Bibelstudium'], ['🏠', 'Hausgemeinde'],
-  ['🤝', 'Outreach'], ['📢', 'Evangelisation'], ['🎵', 'Lobpreis'], ['🙏', 'Gebetskreise'],
+  ['📍', 'Die Weltkarte'], ['📖', 'Bibelstudium'], ['🏠', 'Hausgemeinde'],
+  ['🤝', 'Outreach & Evangelisation'], ['🎵', 'Lobpreis'], ['🙏', 'Gebetskreise'],
 ]
 
 const TOPICS = [
-  { img: 'earth', emoji: '🌍', title: 'Weltweit connecten', text: 'Vernetze dich mit Christen auf allen Kontinenten, bete füreinander und erlebe, wie Gott weltweit am Werk ist.', alt: 'Die Erde bei Sonnenaufgang mit leuchtenden Verbindungen zwischen den Kontinenten' },
   { img: 'weltkarte', emoji: '📍', title: 'Die Weltkarte', text: 'Finde Geschwister, Hausgemeinden und Events in deiner Nähe. Deinen Standort steuerst du selbst.', alt: 'Eine Hand hält ein Smartphone mit der Weltkarte der App, goldene Lichtlinien führen über eine Stadt bei Nacht' },
   { img: 'bibel', emoji: '📖', title: 'Bibelstudium', kind: 'event', text: 'Lest gemeinsam, markiert Verse, tauscht Gedanken aus und startet Bibelstudien mit Freunden.', alt: 'Fünf Freunde im Bibelkreis, eine Person zeigt die Bibel-Ansicht der App auf dem Smartphone' },
   { img: 'haus', emoji: '🏠', title: 'Hausgemeinde', kind: 'gemeinde', text: 'Gründe oder finde Hauskreise: mit eigenem Chat, gemeinsamen Anliegen und Mitgliederübersicht.', alt: 'Hausgemeinde im Wohnzimmer, ein Mann zeigt die Community-Liste der App' },
-  { img: 'outreach', emoji: '🤝', title: 'Outreach', kind: 'event', text: 'Plant Einsätze in eurer Stadt, ladet Geschwister ein und erreicht Menschen dort, wo sie leben.', alt: 'Freiwillige sprechen in einer Fußgängerzone mit Passanten, eine Person zeigt die Karten-Ansicht der App' },
-  { img: 'evangelisation', emoji: '📢', title: 'Evangelisation', kind: 'sibling', text: 'Teile deinen Glauben ganz natürlich: Zeugnisse, Bibelverse, Gespräche. Begleite Menschen Schritt für Schritt.', alt: 'Zwei Kolleginnen im Gespräch auf einer Parkbank, eine zeigt einen Bibelvers in der App' },
+  { img: 'outreach', emoji: '🤝', title: 'Outreach & Evangelisation', kind: 'event', text: 'Plant Einsätze in eurer Stadt und teilt euren Glauben ganz natürlich: Zeugnisse, Bibelverse, Gespräche. So erreicht ihr Menschen dort, wo sie leben.', alt: 'Freiwillige sprechen in einer Fußgängerzone mit Passanten, eine Person zeigt die Karten-Ansicht der App' },
   { img: 'lobpreis', emoji: '🎵', title: 'Lobpreis & Events', kind: 'event', text: 'Lobpreisabende, Gebetsabende, Sport und mehr: Erstelle Events und lade andere ein.', alt: 'Lobpreisabend im Freien unter Lichterketten, eine Person hält die App hoch' },
   { img: 'gebet', emoji: '🙏', title: 'Gebet & Gebetskreise', kind: 'sibling', text: 'Teile Anliegen, bete mit, setzt euch Gebetsziele. Erhörte Gebete bleiben als Zeugnis erhalten.', alt: 'Eine Frau betet im Morgenlicht mit dem Smartphone an der Brust' },
 ]
@@ -480,7 +478,7 @@ export default function Landing() {
               <Reveal className="max-w-3xl">
                 <p className="lp-eyebrow">Alles, was Reich Gottes bewegt</p>
                 <h2 id="discover-title" className="lp-h2 mt-5">
-                  Entdecke, wer in deiner Nähe glaubt. <span className="lp-gold">Acht Wege, Menschen zu verbinden.</span>
+                  Entdecke, wer in deiner Nähe glaubt. <span className="lp-gold">Sechs Wege, Menschen zu verbinden.</span>
                 </h2>
                 <p className="lp-lead mt-6">
                   Auf der Weltkarte findest du Geschwister, Hausgemeinden und Events. Wie genau dein eigener
@@ -514,7 +512,7 @@ export default function Landing() {
                   </p>
                 </Reveal>
 
-                <div className="lp-topics" role="list" aria-label="Acht Wege, Menschen zu verbinden">
+                <div className="lp-topics" role="list" aria-label="Sechs Wege, Menschen zu verbinden">
                   {TOPICS.map((t) => (
                     <Tilt
                       as="article"
