@@ -10,10 +10,9 @@ import { isNativeApp } from '../lib/platform'
 import { TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
 
 export default function Auth() {
-  const hasSeenWelcome = typeof window !== 'undefined' && localStorage.getItem('oikos_welcome_seen')
   // ?mode=register (Landingpage-CTA) öffnet direkt die Registrierung
   const wantsRegister = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'register'
-  const [view, setView] = useState(wantsRegister ? 'register' : hasSeenWelcome ? 'login' : 'welcome')
+  const [view, setView] = useState(wantsRegister ? 'register' : 'login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -35,8 +34,6 @@ export default function Auth() {
 
   function goToReset() { setError(''); resetFlow.reset(); setView('reset') }
   function goToLogin() { setError(''); setView('login') }
-  function goToRegister() { localStorage.setItem('oikos_welcome_seen', 'true'); setError(''); setView('register') }
-  function goFromWelcomeToLogin() { localStorage.setItem('oikos_welcome_seen', 'true'); setError(''); setView('login') }
 
   async function handleLoginOrRegister(e) {
     e.preventDefault()
@@ -144,13 +141,13 @@ export default function Auth() {
   }
 
   return (
-    <div className={`bg-bg flex flex-col items-center relative ${view === 'welcome' ? 'h-full overflow-hidden justify-center px-5 py-4' : 'h-full justify-start p-6 pt-10 pb-10 overflow-y-auto overflow-x-hidden'}`}>
+    <div className="bg-bg flex flex-col items-center relative h-full justify-start p-6 pt-10 pb-10 overflow-y-auto overflow-x-hidden">
       {/* Decorative circles */}
       <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-accent/10 pointer-events-none blur-2xl" />
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/5 pointer-events-none blur-3xl animate-pulse" />
 
       {/* Logo Section */}
-      <div className={`text-center relative z-10 animate-fade-in ${view === 'welcome' ? 'mb-4' : 'mb-10'}`}>
+      <div className="text-center relative z-10 animate-fade-in mb-10">
         <h1 className="font-serif text-5xl font-bold text-warm-1 tracking-tight leading-none mb-2 drop-shadow-sm">
           OIKOS
         </h1>
@@ -163,41 +160,7 @@ export default function Auth() {
       </div>
 
       {/* Main Card */}
-      <div className={`w-full max-w-sm glass-panel rounded-3xl relative z-10 animate-slide-up ${view === 'welcome' ? 'p-5' : 'p-7'}`}>
-
-        {/* Welcome Screen */}
-        {view === 'welcome' && (
-          <div className="animate-fade-in flex flex-col gap-3">
-            <div>
-              <h2 className="font-serif text-lg font-bold text-warm-1 mb-0.5">Willkommen bei OIKOS 🌱</h2>
-              <p className="font-serif text-xs font-semibold text-dark">Schön, dass du hier bist!</p>
-            </div>
-            <div className="flex flex-col gap-2 text-xs text-dark-muted leading-relaxed font-serif">
-              <p>
-                OIKOS hilft dir, dein Umfeld mit neuen Augen zu sehen. Die Menschen, die Gott dir anvertraut hat, bewusster wahrzunehmen und sie im Gebet vor ihn zu bringen.
-              </p>
-              <p>
-                Schritt für Schritt begleitet dich die App dabei, Personen in deinem Leben, die Jesus noch nicht kennen, näher zu ihm zu führen. Ganz natürlich, in deinem Alltag.
-              </p>
-              <p>
-                Gleichzeitig verbindet OIKOS dich mit deinen Glaubensgeschwistern. Auch über Entfernungen hinweg. Du siehst, wie und wo Gott in ihrem Umfeld wirkt, kennst ihre Gebetsanliegen und kannst sie geistlich mittragen.
-              </p>
-              <p className="text-dark font-medium">Lass uns gemeinsam erleben, was Gott tut. 🙏</p>
-            </div>
-            <button
-              onClick={goToRegister}
-              className="w-full py-3 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 transition-all duration-300"
-            >
-              Jetzt starten →
-            </button>
-            <button
-              onClick={goFromWelcomeToLogin}
-              className="w-full py-2 rounded-xl text-sm font-medium text-dark-muted hover:text-accent transition-colors"
-            >
-              Bereits registriert? Anmelden
-            </button>
-          </div>
-        )}
+      <div className="w-full max-w-sm glass-panel rounded-3xl relative z-10 animate-slide-up p-7">
 
         {/* Login & Register Logic */}
         {(view === 'login' || view === 'register') && (
