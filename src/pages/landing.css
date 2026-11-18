@@ -650,3 +650,13 @@
 .lp .lp-prayer-stats .is-gold { border-color: rgba(246, 193, 119, 0.55); background: linear-gradient(180deg, rgba(246, 193, 119, 0.22), rgba(8, 14, 32, 0.72)); color: #ffe9bf; }
 .lp .lp-prayer-stats .is-gold b { color: var(--gold); }
 .lp .lp-prayer-hint { margin-top: 12px; text-align: center; font-size: 13px; color: var(--muted); }
+
+/* Oikos + Gebet: Karten und Verse über dem hellen Hintergrund immer lesbar */
+.lp .lp-prayer .lp-pillar {
+  background: linear-gradient(180deg, rgba(8, 14, 34, 0.82), rgba(5, 10, 24, 0.74)); border-color: rgba(246, 193, 119, 0.22);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8);
+}
+.lp .lp-prayer .lp-pillar p { color: #d6dfef; }
+.lp .lp-prayer .lp-verse blockquote { text-shadow: 0 2px 22px rgba(0, 0, 0, 0.85); }
+.lp .lp-prayer .lp-verse figcaption { color: #cfd9ec; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.8); }
+.lp .lp-prayer .lp-photo-card { box-shadow: 0 50px 90px -35px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(246, 193, 119, 0.22); }

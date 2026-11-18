@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { HandHeart, RotateCcw } from 'lucide-react'
+import { HandHeart } from 'lucide-react'
 
 // Oikos-Motion-Graphic „Gebet vermehrt sich“: Dein Umfeld als Kreis (wie die
 // Oikos Map der App). Wer für jemanden betet, schickt einen Lichtstrahl nach
@@ -48,7 +48,6 @@ export default function PrayerField({ className = '' }) {
   const [stats, setStats] = useState({ prayers: 0, saved: 0, reached: 0, gen: 1 })
 
   const pray = useCallback(() => apiRef.current.pray(), [])
-  const reset = useCallback(() => apiRef.current.reset(), [])
 
   useEffect(() => {
     const wrap = wrapRef.current
@@ -60,7 +59,7 @@ export default function PrayerField({ className = '' }) {
     let w = 0, h = 0, dpr = 1, raf = 0, running = false, visible = false, last = 0, t = 0
     let nodes = []
     let beams = [], particles = [], ripples = [], pending = [], chips = []
-    let prayers = 0, light = 0, nextAuto = 1.4, quietUntil = 0, doneAt = -1, hover = null
+    let prayers = 0, light = 0, nextAuto = 0.5, quietUntil = 0, doneAt = -1, hover = null
     let nameIdx = 0
     let fade = 1, resetting = false
     let idc = 0
@@ -73,7 +72,7 @@ export default function PrayerField({ className = '' }) {
     }
     function init() {
       nodes = []; beams = []; particles = []; ripples = []; pending = []; chips = []
-      prayers = 0; light = 0; doneAt = -1; nameIdx = Math.floor(Math.random() * NEW_NAMES.length)
+      prayers = 0; light = 0; doneAt = -1; nextAuto = t + 0.5; nameIdx = Math.floor(Math.random() * NEW_NAMES.length)
       idc = 0
       const root = makeNode({ name: 'Du', c: '#fff', gen: 0, fixed: true, born: -9 })
       root.state = 'saved'
@@ -134,7 +133,10 @@ export default function PrayerField({ className = '' }) {
       prayers += 1
       if (n.state === 'open') {
         pushChip(n, `Gebet für ${n.name}`, 'pray')
-        if (n.prayers >= NEED[Math.min(n.gen, NEED.length - 1)]) {
+        const savedSoFar = nodes.filter(x => x.gen > 0 && (x.state === 'saved' || x.willSave)).length
+        // die ersten beiden kommen schon nach einem Gebet zum Glauben: das Wachstum startet sofort
+        const need = savedSoFar < 2 ? 1 : NEED[Math.min(n.gen, NEED.length - 1)]
+        if (n.prayers >= need) {
           n.willSave = true
           n.saveAt = t + BEAM_S + 0.1
         }
@@ -503,7 +505,7 @@ export default function PrayerField({ className = '' }) {
         if (n) {
           prayFor(n)
           const big = nodes.length > 22
-          nextAuto = t + (big ? rand(0.7, 1.3) : rand(1.5, 2.5))
+          nextAuto = t + (big ? rand(0.7, 1.2) : rand(1.1, 1.9))
         } else nextAuto = t + 1
       }
       // Ende: alle erreicht → kurz stehen lassen, dann von vorn
@@ -533,7 +535,7 @@ export default function PrayerField({ className = '' }) {
 
     init()
     const ro = new ResizeObserver(resize); ro.observe(wrap)
-    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible ? start() : stop() }, { rootMargin: '100px' })
+    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible ? start() : stop() }, { rootMargin: '500px' })
     io.observe(wrap)
     const onVis = () => (document.hidden ? stop() : start())
     document.addEventListener('visibilitychange', onVis)
@@ -571,9 +573,6 @@ export default function PrayerField({ className = '' }) {
       <div className="lp-prayer-bar">
         <button type="button" className="lp-btn lp-btn-primary lp-btn-sm" onClick={pray}>
           <HandHeart size={18} aria-hidden="true" /> Für jemanden beten
-        </button>
-        <button type="button" className="lp-btn lp-btn-glass lp-btn-sm" onClick={reset}>
-          <RotateCcw size={16} aria-hidden="true" /> Von vorn
         </button>
       </div>
       <ul className="lp-prayer-stats" aria-live="polite">

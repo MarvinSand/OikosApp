@@ -390,19 +390,31 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ── Was ist Oikos? ────────────────────────────────── */}
-        <section id="oikos" className="lp-section lp-oikos scroll-mt-16" aria-labelledby="oikos-title">
+        {/* ── Was ist Oikos? + Gebet vermehrt sich (direkt unter „Unsere Hoffnung“) ── */}
+        <section id="oikos" className="lp-section lp-prayer scroll-mt-16" aria-labelledby="oikos-title" style={{ paddingTop: 24 }}>
+          <picture className="lp-prayer-media" aria-hidden="true">
+            <img src={`${IMG}beams-1400.webp`} srcSet={`${IMG}beams-1400.webp 1400w, ${IMG}beams-2400.webp 2400w`} sizes="100vw" alt="" loading="lazy" decoding="async" />
+          </picture>
+          <BgVideo name="beams" className="lp-prayer-video" />
           <div className="lp-bigword" aria-hidden="true" style={{ transform: 'translate3d(calc(var(--sy, 0) * -0.12px), 0, 0)' }}>OIKOS · οἶκος · OIKOS</div>
           <div className="lp-wrap relative">
-            <Reveal className="max-w-3xl">
-              <p className="lp-eyebrow">Was ist Oikos?</p>
+            <Reveal className="lp-prayer-head">
+              <p className="lp-eyebrow center">Was ist Oikos?</p>
               <h2 id="oikos-title" className="lp-h2 mt-5">
                 Dein Umfeld. <span className="lp-gold">Dein Gebet.</span> Echte Wirkung.
               </h2>
               <p className="lp-lead mt-6">
                 „Oikos“ ist das griechische Wort für „Haus“: die Menschen, die zu deinem Leben gehören.
                 Familie, Freunde, Kollegen, Nachbarn. Menschen, die Gott dir ganz bewusst anvertraut hat.
+                Tippe auf eine Person und sieh, was geschieht: Wer zu Jesus findet, hat selbst ein Umfeld,
+                für das er betet. So wird aus einem Gebet eine Bewegung.
               </p>
+            </Reveal>
+
+            <Reveal delay={100} className="mt-10">
+              <Suspense fallback={<div className="lp-prayer-stage" />}>
+                <PrayerField className="lp-prayer-field" />
+              </Suspense>
             </Reveal>
 
             <div className="lp-oikos-grid">
@@ -425,31 +437,8 @@ export default function Landing() {
                 ))}
               </ol>
             </div>
-          </div>
-        </section>
 
-        {/* ── Gebet bewegt: interaktive Animation ───────────── */}
-        <section className="lp-section lp-prayer" aria-labelledby="prayer-title">
-          <picture className="lp-prayer-media" aria-hidden="true">
-            <img src={`${IMG}beams-1400.webp`} srcSet={`${IMG}beams-1400.webp 1400w, ${IMG}beams-2400.webp 2400w`} sizes="100vw" alt="" loading="lazy" decoding="async" />
-          </picture>
-          <BgVideo name="beams" className="lp-prayer-video" />
-          <div className="lp-wrap relative">
-            <Reveal className="lp-prayer-head">
-              <p className="lp-eyebrow center">Wenn du betest, passiert etwas</p>
-              <h2 id="prayer-title" className="lp-h2 mt-5">Aus einem Gebet wird eine <span className="lp-gold">Bewegung.</span></h2>
-              <p className="lp-lead mt-6">
-                Tippe auf eine Person und sieh, was geschieht: ein Lichtstrahl, ein Himmel, der aufreißt.
-                Kommt ein Mensch zu Jesus, hat er selbst ein Umfeld, für das er betet. So wächst es von
-                Generation zu Generation.
-              </p>
-            </Reveal>
-            <Reveal delay={120} className="mt-10">
-              <Suspense fallback={<div className="lp-prayer-stage" />}>
-                <PrayerField className="lp-prayer-field" />
-              </Suspense>
-            </Reveal>
-            <Reveal delay={160}>
+            <Reveal delay={60}>
               <div className="lp-verses">
                 <figure className="lp-verse">
                   <blockquote>„Des Gerechten Gebet vermag viel, wenn es ernstlich ist.“</blockquote>
