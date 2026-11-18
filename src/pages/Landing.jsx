@@ -437,10 +437,11 @@ export default function Landing() {
           <div className="lp-wrap relative">
             <Reveal className="lp-prayer-head">
               <p className="lp-eyebrow center">Wenn du betest, passiert etwas</p>
-              <h2 id="prayer-title" className="lp-h2 mt-5">Jedes Gebet <span className="lp-gold">steigt auf.</span></h2>
+              <h2 id="prayer-title" className="lp-h2 mt-5">Aus einem Gebet wird eine <span className="lp-gold">Bewegung.</span></h2>
               <p className="lp-lead mt-6">
                 Tippe auf eine Person und sieh, was geschieht: ein Lichtstrahl, ein Himmel, der aufreißt.
-                Ein Bild dafür, was im Verborgenen passiert, wenn du für jemanden einstehst.
+                Kommt ein Mensch zu Jesus, hat er selbst ein Umfeld, für das er betet. So wächst es von
+                Generation zu Generation.
               </p>
             </Reveal>
             <Reveal delay={120} className="mt-10">
@@ -449,10 +450,16 @@ export default function Landing() {
               </Suspense>
             </Reveal>
             <Reveal delay={160}>
-              <figure className="lp-verse">
-                <blockquote>„Des Gerechten Gebet vermag viel, wenn es ernstlich ist.“</blockquote>
-                <figcaption>Jakobus 5,16 (Lutherbibel)</figcaption>
-              </figure>
+              <div className="lp-verses">
+                <figure className="lp-verse">
+                  <blockquote>„Des Gerechten Gebet vermag viel, wenn es ernstlich ist.“</blockquote>
+                  <figcaption>Jakobus 5,16 (Lutherbibel)</figcaption>
+                </figure>
+                <figure className="lp-verse">
+                  <blockquote>„Und was du von mir gehört hast, das befiehl treuen Menschen an, die tüchtig sind, auch andere zu lehren.“</blockquote>
+                  <figcaption>2. Timotheus 2,2 (Lutherbibel)</figcaption>
+                </figure>
+              </div>
             </Reveal>
           </div>
         </section>
