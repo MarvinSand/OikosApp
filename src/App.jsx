@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom'
 import { useEffect, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
-import { useAuth } from './hooks/useAuth'
+import { useAuth, getCurrentUser } from './hooks/useAuth'
 import { isPrayerFeedRoute } from './lib/prayerFeedRoute'
 import { pathFromScan } from './lib/qrLinks'
 import { ToastProvider, useToast } from './context/ToastContext'
@@ -44,6 +44,10 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const NotificationSettingsView = lazy(() => import('./pages/NotificationSettingsView'))
 const ModerationView = lazy(() => import('./pages/ModerationView'))
 const BibleView = lazy(() => import('./pages/BibleView'))
+// Öffentliche Startseite (nur Web, ausgeloggt) – eigener Chunk, damit die App
+// selbst nichts davon mitlädt
+const loadLanding = () => import('./pages/Landing')
+const Landing = lazy(loadLanding)
 
 // Der Start lief bisher streng seriell: Entry-Bundle → Session prüfen →
 // *dann erst* den Chunk der Landing-Route holen → dann die Daten laden.
@@ -52,6 +56,7 @@ const BibleView = lazy(() => import('./pages/BibleView'))
 // Session-Prüfung; `lazy` greift danach auf den Modul-Cache zu) und die
 // übrigen Haupt-Tabs nachziehen, sobald der Browser Leerlauf hat.
 import('./pages/Home')
+if (typeof window !== 'undefined' && !isNativeApp && window.location.pathname === '/' && !getCurrentUser()) loadLanding()
 
 const idle = typeof requestIdleCallback === 'function'
   ? requestIdleCallback
@@ -278,6 +283,24 @@ async function checkBirthdays(userId) {
   }
 }
 
+// Die Landingpage braucht die volle Breite und scrollt selbst; der übrige
+// App-Rahmen ist eine max-w-md-Spalte ohne Dokument-Scroll.
+function AppFrame({ children }) {
+  const { pathname } = useLocation()
+  const { user } = useAuth()
+  const wide = showsLanding(pathname, user)
+  return (
+    <div className="min-h-screen bg-bg w-full flex justify-center md:block">
+      <div
+        className={`w-full ${wide ? '' : 'max-w-md md:max-w-none'} h-[100dvh] relative overflow-clip bg-bg`}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 // Öffnet jemand per QR-Code /join/… oder /user/… ohne Login, wird der Pfad
 // vorgemerkt und nach der Anmeldung geöffnet.
 const RETURN_KEY = 'oikos_return_to'
@@ -295,6 +318,22 @@ function takeReturnTo() {
   return '/'
 }
 
+// Domain öffnen → Landingpage. `/welcome` zeigt sie auch eingeloggten Nutzern.
+// In der nativen App (Capacitor) entfällt sie: dort geht es direkt zum Login.
+function showsLanding(pathname, user) {
+  if (pathname === '/welcome') return true
+  return pathname === '/' && !user && !isNativeApp
+}
+
+function RootGate() {
+  const { pathname } = useLocation()
+  const { user } = useAuth()
+  if (showsLanding(pathname, user)) {
+    return <Suspense fallback={<LoadingSpinner />}><Landing /></Suspense>
+  }
+  return user ? <AppShell /> : <RedirectToAuth />
+}
+
 export default function App() {
   const { user, loading } = useAuth()
 
@@ -303,38 +342,31 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <div className="min-h-screen bg-bg w-full flex justify-center md:block">
-          <div
-            className="w-full max-w-md md:max-w-none h-[100dvh] relative overflow-clip bg-bg"
-            style={{ paddingTop: 'env(safe-area-inset-top)' }}
-          >
-            <BrowserRouter>
-              <Routes>
-                <Route
-                  path="/auth"
-                  element={user ? <Navigate to={takeReturnTo()} replace /> : <Auth />}
-                />
-                {/* Öffentlich (auch ohne Login), damit dieselben URLs in App
-                    Store Connect als Datenschutz-/Nutzungsbedingungen-Link
-                    hinterlegt werden können */}
-                <Route path="/terms" element={<LegalPage kind="terms" />} />
-                <Route path="/privacy" element={<LegalPage kind="privacy" />} />
-                <Route path="/support" element={<LegalPage kind="support" />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                {/* Beide möglichen YouVersion-Callback-Pfade (je nach Domain,
-                    siehe resolveYouVersionRedirectUri) müssen öffentlich sein:
-                    beim Sign-in/up-Flow ist beim Zurückkommen noch niemand bei
-                    Oikos eingeloggt. */}
-                <Route path="/auth/youversion/callback" element={<YouVersionCallback />} />
-                <Route path="/bible/youversion/callback" element={<YouVersionCallback />} />
-                <Route
-                  path="/*"
-                  element={user ? <AppShell /> : <RedirectToAuth />}
-                />
-              </Routes>
-            </BrowserRouter>
-          </div>
-        </div>
+        <BrowserRouter>
+          <AppFrame>
+            <Routes>
+              <Route
+                path="/auth"
+                element={user ? <Navigate to={takeReturnTo()} replace /> : <Auth />}
+              />
+              {/* Öffentlich (auch ohne Login), damit dieselben URLs in App
+                  Store Connect als Datenschutz-/Nutzungsbedingungen-Link
+                  hinterlegt werden können */}
+              <Route path="/terms" element={<LegalPage kind="terms" />} />
+              <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+              <Route path="/support" element={<LegalPage kind="support" />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              {/* Beide möglichen YouVersion-Callback-Pfade (je nach Domain,
+                  siehe resolveYouVersionRedirectUri) müssen öffentlich sein:
+                  beim Sign-in/up-Flow ist beim Zurückkommen noch niemand bei
+                  Oikos eingeloggt. */}
+              <Route path="/auth/youversion/callback" element={<YouVersionCallback />} />
+              <Route path="/bible/youversion/callback" element={<YouVersionCallback />} />
+              <Route path="/welcome" element={<RootGate />} />
+              <Route path="/*" element={<RootGate />} />
+            </Routes>
+          </AppFrame>
+        </BrowserRouter>
         {/* Vercel Analytics lädt /_vercel/insights/script.js von der eigenen
             Origin – in der iOS-App (capacitor://localhost) gibt es die nicht. */}
         {!isNativeApp && <Analytics />}
