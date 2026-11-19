@@ -15,12 +15,25 @@ export const PUBLIC_APP_URL = (import.meta.env.VITE_PUBLIC_APP_URL || 'https://o
 export function publicOrigin() {
   if (isNativeApp) return PUBLIC_APP_URL
   const h = window.location.hostname
-  return h === 'localhost' || h === '127.0.0.1' ? window.location.origin : PUBLIC_APP_URL
+  // Lokal und auf der App-Subdomain bleibt die aktuelle Origin: die Login-Session
+  // (localStorage) gilt pro Origin, ein Link auf eine andere Domain wäre ausgeloggt.
+  return h === 'localhost' || h === '127.0.0.1' || h.toLowerCase() === APP_HOST ? window.location.origin : PUBLIC_APP_URL
 }
 
-// Hauptdomain der App. Die Domain oikosconnect.site zeigt nur die Landingpage
-// (immer, auch eingeloggt); alle anderen Pfade (/auth, /privacy …) leitet
-// App.jsx auf die Hauptdomain weiter. Die alte Domain oikosapp.net läuft
-// unverändert weiter.
-export const MAIN_APP_URL = 'https://oikosconnect.net'
-export const isLandingOnlyHost = typeof window !== 'undefined' && /(^|\.)oikosconnect\.site$/i.test(window.location.hostname)
+// Domains (Stand Nov. 2026):
+//  · app.oikosconnect.net  → IMMER die App (nie die Landingpage; „/“ → Login bzw. Home)
+//  · oikosconnect.net, www. und oikosconnect.site → nur die Landingpage („/“) plus die
+//    Rechtstexte (Impressum, Datenschutz, Nutzungsbedingungen, Support); alles andere
+//    (/auth, /user/… …) leitet App.jsx auf die App-Subdomain weiter
+//  · oikosapp.net (alt) → unverändert: Landingpage nur ausgeloggt auf „/“, sonst App
+export const APP_HOST = 'app.oikosconnect.net'
+export const MAIN_APP_URL = `https://${APP_HOST}`
+const HOST = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : ''
+export const isAppHost = HOST === APP_HOST
+export const isLandingOnlyHost = /(^|\.)oikosconnect\.site$/.test(HOST) || /^(www\.)?oikosconnect\.net$/.test(HOST)
+// Pfade, die auf der reinen Landing-Domain selbst ausgeliefert werden
+export const LANDING_HOST_PATHS = ['/', '/impressum', '/imprint', '/privacy', '/terms', '/support']
+// Ziel für „Anmelden/Registrieren“: auf der Landing-Domain die App-Subdomain, sonst relativ
+export function appUrl(path) {
+  return isLandingOnlyHost ? MAIN_APP_URL + path : path
+}

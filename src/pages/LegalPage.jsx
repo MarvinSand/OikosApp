@@ -24,6 +24,76 @@ function ContactLine() {
     : <>über die Melden-Funktion in der App</>
 }
 
+function Imprint() {
+  const { operatorName, operatorAddress, contactEmail, phone, extra } = LEGAL
+  return (
+    <>
+      <h1>Impressum</h1>
+
+      <h2>Angaben gemäß § 5 DDG</h2>
+      <p>
+        {operatorName || 'Betreiber von Oikos Connect'}
+        {operatorAddress && <><br />{operatorAddress}</>}
+        {extra.map(line => <span key={line}><br />{line}</span>)}
+      </p>
+
+      <h2>Kontakt</h2>
+      <p>
+        {contactEmail ? <>E-Mail: <a href={`mailto:${contactEmail}`}>{contactEmail}</a></> : 'Kontakt über die Melden-Funktion in der App'}
+        {phone && <><br />Telefon: <a href={`tel:${phone.replace(/\s+/g, '')}`}>{phone}</a></>}
+      </p>
+
+      <h2>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
+      <p>
+        {operatorName || 'Betreiber von Oikos Connect'}
+        {operatorAddress && <><br />{operatorAddress}</>}
+      </p>
+
+      <h2>Streitbeilegung</h2>
+      <p>
+        Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer
+        Verbraucherschlichtungsstelle teilzunehmen.
+      </p>
+
+      <h2>Inhalte von Nutzerinnen und Nutzern</h2>
+      <p>
+        Beiträge, Gebetsanliegen, Kommentare, Nachrichten und Profile werden von Nutzern erstellt und
+        sind fremde Inhalte. Wir prüfen sie nicht vorab, entfernen rechtswidrige oder gegen unsere
+        Richtlinien verstoßende Inhalte aber nach Kenntnis unverzüglich. Inhalte kannst du in der App
+        über „Melden“ oder per E-Mail an uns melden.
+      </p>
+
+      <h2>Haftung für Inhalte</h2>
+      <p>
+        Als Diensteanbieter sind wir für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen
+        verantwortlich. Wir sind jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde
+        Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige
+        Tätigkeit hinweisen. Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen
+        nach den allgemeinen Gesetzen bleiben unberührt.
+      </p>
+
+      <h2>Haftung für Links</h2>
+      <p>
+        Unser Angebot enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss
+        haben. Für diese fremden Inhalte übernehmen wir keine Gewähr. Für die Inhalte der verlinkten
+        Seiten ist stets der jeweilige Anbieter verantwortlich.
+      </p>
+
+      <h2>Urheberrecht</h2>
+      <p>
+        Die durch uns erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen
+        Urheberrecht. Bilder auf der Startseite sind KI-generierte Illustrationen. Beiträge von
+        Nutzern bleiben deren Eigentum.
+      </p>
+
+      <h2>Rechtliches</h2>
+      <p>
+        <a href="/privacy">Datenschutzerklärung</a> · <a href="/terms">Nutzungsbedingungen</a> · <a href="/support">Support</a>
+      </p>
+    </>
+  )
+}
+
 function Terms() {
   return (
     <>
@@ -206,7 +276,7 @@ function Support() {
 
       <h2>Rechtliches</h2>
       <p>
-        <a href="/privacy">Datenschutzerklärung</a> · <a href="/terms">Nutzungsbedingungen</a>
+        <a href="/privacy">Datenschutzerklärung</a> · <a href="/terms">Nutzungsbedingungen</a> · <a href="/impressum">Impressum</a>
       </p>
     </>
   )
@@ -228,11 +298,11 @@ export default function LegalPage({ kind }) {
           <ArrowLeft size={20} />
         </button>
         <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>
-          {kind === 'privacy' ? 'Datenschutz' : kind === 'support' ? 'Support' : 'Nutzungsbedingungen'}
+          {kind === 'privacy' ? 'Datenschutz' : kind === 'support' ? 'Support' : kind === 'imprint' ? 'Impressum' : 'Nutzungsbedingungen'}
         </span>
       </header>
       <article className="legal-content" style={{ padding: '8px 20px', maxWidth: 680, margin: '0 auto' }}>
-        {kind === 'privacy' ? <Privacy /> : kind === 'support' ? <Support /> : <Terms />}
+        {kind === 'privacy' ? <Privacy /> : kind === 'support' ? <Support /> : kind === 'imprint' ? <Imprint /> : <Terms />}
       </article>
     </div>
   )

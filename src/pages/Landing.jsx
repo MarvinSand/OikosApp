@@ -1,11 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import {
   ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, Globe,
   HandHeart, HeartHandshake, Home, MessageCircle, Monitor, Network, Newspaper, Route,
   ScrollText, ShieldCheck, Smartphone, Sparkles, Users,
 } from 'lucide-react'
 import { PLAY_STORE_URL, APP_STORE_URL } from '../lib/stores'
+import { appUrl, isLandingOnlyHost } from '../lib/platform'
 import Phone3D from '../components/landing/Phone3D'
 import Tilt from '../components/landing/Tilt'
 import './landing.css'
@@ -15,6 +16,16 @@ import './landing.css'
 // gezielte Gebet bis zur weltweiten Familie. Bilder/Videos: mit Higgsfield
 // generiert (public/landing/img, /video), App-Screens: echte Screenshots
 // (public/landing/app). Keine Datenabfragen.
+
+// Auf der reinen Landing-Domain (oikosconnect.net) liegt die App auf app.oikosconnect.net:
+// Links zu Login/Registrierung werden dort zu echten Links auf die Subdomain.
+function Link({ to, ...props }) {
+  if (typeof to === 'string' && to.startsWith('/auth')) {
+    const href = appUrl(to)
+    if (href !== to) return <a href={href} {...props} />
+  }
+  return <RouterLink to={to === '/welcome' && isLandingOnlyHost ? '/' : to} {...props} />
+}
 
 // Schwere Teile (Weltkugel mit Länderdaten, Gebets-Animation) als eigene Chunks
 const NetworkGlobe = lazy(() => import('../components/landing/NetworkGlobe'))
@@ -701,6 +712,7 @@ export default function Landing() {
             <span className="text-sm" style={{ color: 'var(--muted)' }}>© {new Date().getFullYear()} Oikos Connect · Kostenlos &amp; werbefrei</span>
           </div>
           <nav aria-label="Rechtliches" className="flex flex-wrap justify-center gap-x-6">
+            <Link to="/impressum" className="lp-footlink">Impressum</Link>
             <Link to="/privacy" className="lp-footlink">Datenschutz</Link>
             <Link to="/terms" className="lp-footlink">Nutzungsbedingungen</Link>
             <Link to="/support" className="lp-footlink">Support</Link>

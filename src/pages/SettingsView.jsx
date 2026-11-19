@@ -5,7 +5,7 @@ import {
   ArrowLeft, MailWarning, User, ShieldCheck, Shield, ChevronRight,
   Moon, Globe, KeyRound, Camera, BookMarked, Ban, FileText, Lock, Mail,
 } from 'lucide-react'
-import { LEGAL, TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
+import { LEGAL, TERMS_PATH, PRIVACY_PATH, IMPRINT_PATH } from '../lib/legal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
@@ -657,6 +657,7 @@ export default function SettingsView() {
             />
             <MenuRow icon={FileText} title="Nutzungsbedingungen" onClick={() => navigate(TERMS_PATH)} />
             <MenuRow icon={Lock} title="Datenschutzerklärung" onClick={() => navigate(PRIVACY_PATH)} />
+            <MenuRow icon={FileText} title="Impressum" onClick={() => navigate(IMPRINT_PATH)} />
             {LEGAL.contactEmail && (
               <MenuRow
                 icon={Mail}

@@ -7,7 +7,7 @@ import { pathFromScan } from './lib/qrLinks'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { supabase } from './lib/supabase'
 import { registerForPush } from './lib/nativePush'
-import { isNativeApp, isLandingOnlyHost, MAIN_APP_URL } from './lib/platform'
+import { isNativeApp, isAppHost, isLandingOnlyHost, LANDING_HOST_PATHS, MAIN_APP_URL } from './lib/platform'
 // Public pages stay eager so the login screen renders without a second fetch
 import Auth from './pages/Auth'
 import AuthCallback from './pages/AuthCallback'
@@ -56,7 +56,7 @@ const Landing = lazy(loadLanding)
 // Session-Prüfung; `lazy` greift danach auf den Modul-Cache zu) und die
 // übrigen Haupt-Tabs nachziehen, sobald der Browser Leerlauf hat.
 import('./pages/Home')
-if (typeof window !== 'undefined' && !isNativeApp && window.location.pathname === '/' && (isLandingOnlyHost || !getCurrentUser())) loadLanding()
+if (typeof window !== 'undefined' && !isNativeApp && window.location.pathname === '/' && !isAppHost && (isLandingOnlyHost || !getCurrentUser())) loadLanding()
 
 const idle = typeof requestIdleCallback === 'function'
   ? requestIdleCallback
@@ -321,7 +321,8 @@ function takeReturnTo() {
 // Domain öffnen → Landingpage. `/welcome` zeigt sie auch eingeloggten Nutzern.
 // In der nativen App (Capacitor) entfällt sie: dort geht es direkt zum Login.
 function showsLanding(pathname, user) {
-  if (pathname === '/welcome') return true
+  if (isAppHost) return false
+  if (pathname === '/welcome') return !isLandingOnlyHost
   if (isLandingOnlyHost) return pathname === '/'
   return pathname === '/' && !user && !isNativeApp
 }
@@ -338,9 +339,9 @@ function RootGate() {
 export default function App() {
   const { user, loading } = useAuth()
 
-  // oikosconnect.site: nur die Landingpage; alles andere (Login, Rechtstexte …)
-  // läuft auf der Hauptdomain.
-  if (isLandingOnlyHost && window.location.pathname !== '/') {
+  // oikosconnect.net/.site: nur Landingpage + Rechtstexte; alles andere (Login,
+  // Profile, QR-Links …) läuft auf der App-Subdomain app.oikosconnect.net.
+  if (isLandingOnlyHost && !LANDING_HOST_PATHS.includes(window.location.pathname)) {
     window.location.replace(MAIN_APP_URL + window.location.pathname + window.location.search + window.location.hash)
     return <LoadingSpinner />
   }
@@ -363,6 +364,8 @@ export default function App() {
               <Route path="/terms" element={<LegalPage kind="terms" />} />
               <Route path="/privacy" element={<LegalPage kind="privacy" />} />
               <Route path="/support" element={<LegalPage kind="support" />} />
+              <Route path="/impressum" element={<LegalPage kind="imprint" />} />
+              <Route path="/imprint" element={<LegalPage kind="imprint" />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               {/* Beide möglichen YouVersion-Callback-Pfade (je nach Domain,
                   siehe resolveYouVersionRedirectUri) müssen öffentlich sein:
