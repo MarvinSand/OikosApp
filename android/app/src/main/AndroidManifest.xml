@@ -22,16 +22,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- App Links: oikosapp.net-Links (QR-Codes, geteilte Beiträge) öffnen die App.
-                 Braucht /.well-known/assetlinks.json auf oikosapp.net -->
+            <!-- App Links: oikosconnect.net-Links (QR-Codes, geteilte Beiträge) öffnen die App.
+                 Braucht /.well-known/assetlinks.json auf JEDEM Host ohne Redirect (200 direkt).
+                 Nicht mit aufnehmen: oikosapp.net (308 → www) und www.oikosconnect.net (308) –
+                 ein fehlgeschlagener Host kann auf Android ≤ 11 die Verifizierung aller Hosts kippen. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="oikosapp.net" android:pathPrefix="/user" />
-                <data android:scheme="https" android:host="oikosapp.net" android:pathPrefix="/community" />
-                <data android:scheme="https" android:host="oikosapp.net" android:pathPrefix="/join" />
-                <data android:scheme="https" android:host="oikosapp.net" android:pathPrefix="/feed" />
+                <data android:scheme="https" android:host="app.oikosconnect.net" android:pathPrefix="/user" />
+                <data android:scheme="https" android:host="app.oikosconnect.net" android:pathPrefix="/community" />
+                <data android:scheme="https" android:host="app.oikosconnect.net" android:pathPrefix="/join" />
+                <data android:scheme="https" android:host="app.oikosconnect.net" android:pathPrefix="/feed" />
+                <data android:scheme="https" android:host="oikosconnect.net" android:pathPrefix="/user" />
+                <data android:scheme="https" android:host="oikosconnect.net" android:pathPrefix="/community" />
+                <data android:scheme="https" android:host="oikosconnect.net" android:pathPrefix="/join" />
+                <data android:scheme="https" android:host="oikosconnect.net" android:pathPrefix="/feed" />
             </intent-filter>
 
         </activity>
