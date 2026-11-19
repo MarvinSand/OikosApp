@@ -71,6 +71,17 @@ async function fetchForYou(statusFilter, limit) {
   return data.map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'personal' }))
 }
 
+// Eigene Anliegen – unabhängig von der Sichtbarkeit (privat, Geschwister,
+// bestimmte Personen, Community, öffentlich). fetchForYou liefert nur
+// öffentliche, sodass nicht-öffentliche eigene Anliegen im Feed fehlten.
+async function fetchOwnPersonal(userId, statusFilter, limit) {
+  const data = rowsOrThrow(await applyStatus(
+    supabase.from('personal_prayer_requests').select(`*, ${PROFILE_SELECT}`),
+    statusFilter,
+  ).eq('owner_id', userId).order('created_at', { ascending: false }).limit(limit))
+  return data.map(r => normalizePrayer(r, { kind: KIND_PERSONAL, source: 'personal' }))
+}
+
 // Öffentliche Oikos-Anliegen verbundener Geschwister.
 async function fetchSiblingOikos(siblingIds, statusFilter, limit, source) {
   if (siblingIds.length === 0) return []
@@ -223,7 +234,12 @@ export async function fetchPrayersBySource(source, userId, statusFilter = 'open'
   const finish = async prayers =>
     sortByCreatedDesc(await attachPrayerContext(dedupePrayers(prayers), userId))
 
-  if (source === 'foryou') return finish(await fetchForYou(statusFilter, limit))
+  if (source === 'foryou') {
+    const [pub, own] = await Promise.all([
+      fetchForYou(statusFilter, limit), fetchOwnPersonal(userId, statusFilter, limit),
+    ])
+    return finish([...pub, ...own])
+  }
   if (source === 'siblings') return finish(await fetchSiblings(userId, statusFilter, limit))
   if (source === 'oikos') return finish(await fetchOikos(userId, statusFilter, limit))
   if (source === 'communities') return finish(await fetchCommunities(userId, statusFilter, limit))
@@ -233,6 +249,7 @@ export async function fetchPrayersBySource(source, userId, statusFilter = 'open'
   // sichtbar sein (z.B. Community-Anliegen, das jemand im Chat geteilt hat).
   const groups = await Promise.all([
     fetchForYou(statusFilter, limit),
+    fetchOwnPersonal(userId, statusFilter, limit),
     fetchSiblings(userId, statusFilter, limit),
     fetchOikos(userId, statusFilter, limit),
     fetchCommunities(userId, statusFilter, limit),
