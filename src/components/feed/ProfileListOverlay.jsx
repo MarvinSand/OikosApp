@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeft, Search } from 'lucide-react'
+import { useT, tr } from '../../i18n'
 
 function getInitials(name) {
   if (!name) return '?'
@@ -41,7 +42,8 @@ function ItemAvatar({ avatarUrl, name, size = 44 }) {
  *
  * `items` shape: { id, title, subtitle?, avatarUrl?, badge? }
  */
-export default function ProfileListOverlay({ title, items, onClose, onSelect, emptyText = 'Keine Einträge' }) {
+export default function ProfileListOverlay({ title, items, onClose, onSelect, emptyText = tr('Keine Einträge') }) {
+  const { t } = useT()
   const [query, setQuery] = useState('')
 
   const filtered = useMemo(() => {
@@ -82,7 +84,7 @@ export default function ProfileListOverlay({ title, items, onClose, onSelect, em
       >
         <button
           onClick={onClose}
-          aria-label="Zurück"
+          aria-label={t('Zurück')}
           style={{
             width: 40, height: 40,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -121,7 +123,7 @@ export default function ProfileListOverlay({ title, items, onClose, onSelect, em
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Suchen…"
+            placeholder={t('Suchen…')}
             style={{
               flex: 1, border: 'none', outline: 'none', background: 'transparent',
               fontSize: 14, color: 'var(--color-text)',
@@ -131,7 +133,7 @@ export default function ProfileListOverlay({ title, items, onClose, onSelect, em
 
         {filtered.length === 0 && (
           <p style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
-            {query ? 'Keine Treffer' : emptyText}
+            {query ? t('Keine Treffer') : emptyText}
           </p>
         )}
 
@@ -166,12 +168,7 @@ export default function ProfileListOverlay({ title, items, onClose, onSelect, em
         ))}
       </div>
 
-      <style>{`
-        @keyframes overlaySlideIn {
-          from { transform: translateX(8px); opacity: 0; }
-          to   { transform: translateX(0);   opacity: 1; }
-        }
-      `}</style>
+      <style>{'\n        @keyframes overlaySlideIn {\n          from { transform: translateX(8px); opacity: 0; }\n          to   { transform: translateX(0);   opacity: 1; }\n        }\n      '}</style>
     </div>
   )
 }

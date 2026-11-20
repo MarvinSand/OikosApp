@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { forwardMessageFields } from '../../lib/prayerModel'
 import { supabase } from '../../lib/supabase'
+import { useT, tr } from '../../i18n'
 
 // ════════════════════════════════════════════════════════════════════════
 // Liste von Gebets-Karten mit allen Aktionen
@@ -35,6 +36,7 @@ export default function PrayerCardList({
   onPrayed,
   renderBetween,
 }) {
+  const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
@@ -66,12 +68,12 @@ export default function PrayerCardList({
   }
 
   async function handleDeleteComment(prayer, note) {
-    if (!window.confirm('Diesen Kommentar wirklich löschen?')) return
+    if (!window.confirm(t('Diesen Kommentar wirklich löschen?'))) return
     try {
       await actions.deleteComment(note.id)
       removeNote(prayer.key, note.id)
     } catch {
-      showToast('Fehler beim Löschen', 'error')
+      showToast(t('Fehler beim Löschen'), 'error')
     }
   }
 
@@ -82,10 +84,10 @@ export default function PrayerCardList({
     try {
       const { data: convId, error } = await supabase.rpc('start_direct_chat', { other_user_id: note.author_id })
       if (error) throw error
-      const quoteText = `Zu deinem Kommentar „${note.text}": `
+      const quoteText = tr('Zu deinem Kommentar „{text}": ', { text: note.text })
       navigate(`/chat/${convId}`, { state: { quoteText } })
     } catch {
-      showToast('Chat konnte nicht geöffnet werden', 'error')
+      showToast(t('Chat konnte nicht geöffnet werden'), 'error')
     }
   }
 
@@ -94,7 +96,7 @@ export default function PrayerCardList({
       await actions.updatePrayer(prayer, updates)
       onChanged?.()
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     }
   }
 
@@ -103,18 +105,18 @@ export default function PrayerCardList({
       await actions.toggleAnswered(prayer)
       onChanged?.()
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     }
   }
 
   async function handleDelete(prayer) {
-    if (!window.confirm('Dieses Gebet wirklich löschen?')) return
+    if (!window.confirm(t('Dieses Gebet wirklich löschen?'))) return
     try {
       await actions.remove(prayer)
-      showToast('Gebet gelöscht')
+      showToast(t('Gebet gelöscht'))
       onChanged?.()
     } catch {
-      showToast('Fehler beim Löschen', 'error')
+      showToast(t('Fehler beim Löschen'), 'error')
     }
   }
 
@@ -122,7 +124,7 @@ export default function PrayerCardList({
     try {
       await actions.laterPray(prayer)
     } catch {
-      showToast('Fehler beim Hinzufügen', 'error')
+      showToast(t('Fehler beim Hinzufügen'), 'error')
     }
   }
 

@@ -3,10 +3,12 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { readCache, writeCache } from '../../lib/swrCache'
 import GuidedPrayerMode from '../prayer/GuidedPrayerMode'
+import { useT, tr } from '../../i18n'
 
 // Öffentliches Gebetsanliegen mit den meisten Interaktionen HEUTE
 // (🙏-Gebete + Kommentare von heute) – prominent auf der Home-Seite.
 export default function TopPrayerToday() {
+  const { t } = useT()
   const { user } = useAuth()
   // Auch ein Stand vom Vortag wird sofort gezeigt (statt ~160px grauem
   // Platzhalter, der nach Leerlauf mehrere Sekunden stand) – nur die
@@ -46,7 +48,7 @@ export default function TopPrayerToday() {
   }
   if (!request) return null
 
-  const ownerName = request.profiles?.full_name || request.profiles?.username || 'Unbekannt'
+  const ownerName = request.profiles?.full_name || request.profiles?.username || tr('Unbekannt')
   const prayItems = [{ type: 'personal', request, ampel: null }]
 
   return (
@@ -59,9 +61,7 @@ export default function TopPrayerToday() {
         <div style={{ position: 'absolute', top: '-30%', right: '-10%', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(212,168,83,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: '#D4A853', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 10px' }}>
-            🔥 Meistbewegtes Gebet heute
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: '#D4A853', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 10px' }}>{t('🔥 Meistbewegtes Gebet heute')}</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
             <span style={{ fontSize: 34, lineHeight: 1 }}>{request.icon || '🙏'}</span>
             <h2 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: '#F0EDE6', margin: 0, lineHeight: 1.25 }}>
@@ -76,8 +76,7 @@ export default function TopPrayerToday() {
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'rgba(240,237,230,0.6)' }}>
-              von {ownerName}{fresh && <> · 🙏 {interactions} {interactions === 1 ? 'Interaktion' : 'Interaktionen'} heute</>}
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'rgba(240,237,230,0.6)' }}>{t('von {ownerName}', { ownerName })}{fresh && <> · 🙏 {interactions} {interactions === 1 ? t('Interaktion') : t('Interaktionen')}{' '}{t('heute')}</>}
             </span>
             <button
               onClick={() => setShowPrayer(true)}
@@ -86,9 +85,7 @@ export default function TopPrayerToday() {
                 backgroundColor: '#D4A853', color: '#1A1208',
                 fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, cursor: 'pointer',
               }}
-            >
-              🙏 Mitbeten
-            </button>
+            >{t('🙏 Mitbeten')}</button>
           </div>
         </div>
       </div>

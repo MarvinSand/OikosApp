@@ -8,6 +8,7 @@ import PrayerCardList from '../prayer/PrayerCardList'
 import { normalizePrayer, KIND_OIKOS, KIND_PERSONAL } from '../../lib/prayerModel'
 import ShareSheet from '../feed/ShareSheet'
 import { useAuth } from '../../hooks/useAuth'
+import { useT } from '../../i18n'
 
 // ─── Helpers ──────────────────────────────────────────────────
 export function getInitials(name) {
@@ -106,18 +107,19 @@ function TabEmptyState({ emoji, title, subtitle, buttonLabel, onClick }) {
 }
 
 export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
+  const { t } = useT()
   if (maps.length === 0) {
     return onCreateMap ? (
       <TabEmptyState
         emoji="🗺"
-        title="Noch keine Oikos Map"
-        subtitle="Erstelle deine erste Oikos Map und halte fest, für wen du betest."
-        buttonLabel="+ Oikos Map erstellen"
+        title={t('Noch keine Oikos Map')}
+        subtitle={t('Erstelle deine erste Oikos Map und halte fest, für wen du betest.')}
+        buttonLabel={t('+ Oikos Map erstellen')}
         onClick={onCreateMap}
       />
     ) : (
       <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
-        Keine sichtbaren Maps
+        {t('Keine sichtbaren Maps')}
       </p>
     )
   }
@@ -155,18 +157,18 @@ export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
                 {m.name}
               </p>
               <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                {m.personCount || 0} {m.personCount === 1 ? 'Person' : 'Personen'}
+                {m.personCount === 1 ? t('1 Person') : t('{n} Personen', { n: m.personCount || 0 })}
               </p>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
                 <VisibilityIcon visibility={m.visibility} />
-                {VISIBILITY_LABEL[m.visibility] || 'Privat'}
+                {t(VISIBILITY_LABEL[m.visibility] || 'Privat')}
               </span>
             </button>
 
             {onSettings && m.kind !== 'siblings' && (
               <button
                 onClick={() => onSettings(m)}
-                aria-label="Map-Einstellungen"
+                aria-label={t('Map-Einstellungen')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -205,7 +207,7 @@ export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
           >
             <span style={{ fontSize: 24, color: 'var(--color-accent)' }}>+</span>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-accent)' }}>
-              Neue Map
+              {t('Neue Map')}
             </p>
           </button>
         )}
@@ -216,20 +218,21 @@ export function MapsTab({ maps, onOpen, onSettings, onCreateMap }) {
 
 // ─── Posts tab ────────────────────────────────────────────────
 export function PostsTab({ posts, currentUserId, onReact, onDelete, onRepost, onBookmark, onBookmarkSaved, onCreatePost }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const [sharePost, setSharePost] = useState(null)
   if (posts.length === 0) {
     return onCreatePost ? (
       <TabEmptyState
         emoji="📝"
-        title="Noch keine Posts"
-        subtitle="Teile deinen ersten Beitrag mit der Community."
-        buttonLabel="+ Beitrag erstellen"
+        title={t('Noch keine Posts')}
+        subtitle={t('Teile deinen ersten Beitrag mit der Community.')}
+        buttonLabel={t('+ Beitrag erstellen')}
         onClick={onCreatePost}
       />
     ) : (
       <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
-        Noch keine Posts
+        {t('Noch keine Posts')}
       </p>
     )
   }
@@ -258,12 +261,13 @@ export function PostsTab({ posts, currentUserId, onReact, onDelete, onRepost, on
 
 // ─── Reposts tab ──────────────────────────────────────────────
 export function RepostsTab({ reposts, currentUserId, onReact, onDelete, onRepost, onBookmark, onBookmarkSaved }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const [sharePost, setSharePost] = useState(null)
   if (reposts.length === 0) {
     return (
       <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
-        Noch keine Reposts
+        {t('Noch keine Reposts')}
       </p>
     )
   }
@@ -292,20 +296,21 @@ export function RepostsTab({ reposts, currentUserId, onReact, onDelete, onRepost
 
 // ─── Prayers tab ──────────────────────────────────────────────
 export function PrayersTab({ prayers, profile, onChanged, onCreatePrayer }) {
+  const { t } = useT()
   const { user } = useAuth()
   const currentUserId = user?.id
   if (prayers.length === 0) {
     return onCreatePrayer ? (
       <TabEmptyState
         emoji="🙏"
-        title="Noch keine Gebetsanliegen"
-        subtitle="Teile dein erstes Gebetsanliegen mit deinen Geschwistern."
-        buttonLabel="+ Gebetsanliegen erstellen"
+        title={t('Noch keine Gebetsanliegen')}
+        subtitle={t('Teile dein erstes Gebetsanliegen mit deinen Geschwistern.')}
+        buttonLabel={t('+ Gebetsanliegen erstellen')}
         onClick={onCreatePrayer}
       />
     ) : (
       <p style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
-        Noch keine Gebetsanliegen geteilt
+        {t('Noch keine Gebetsanliegen geteilt')}
       </p>
     )
   }

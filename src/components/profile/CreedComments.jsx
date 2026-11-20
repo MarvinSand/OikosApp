@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Send, Trash2, MoreHorizontal, Heart, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useT } from '../../i18n'
 import { timeAgo } from '../../lib/prayerModel'
 import ModerationSheet from '../common/ModerationSheet'
 
@@ -24,6 +25,7 @@ function Avatar({ profile }) {
 // Kommentare unter einem Bekenntnis (wie die Antworten im Feed). Lädt erst,
 // wenn der Bereich aufgeklappt wird; onCountChange hält den Zähler der Zeile aktuell.
 export default function CreedComments({ creedId, onCountChange }) {
+  const { t } = useT()
   const { user } = useAuth()
   const [comments, setComments] = useState(null)
   const [likes, setLikes] = useState([])
@@ -96,7 +98,7 @@ export default function CreedComments({ creedId, onCountChange }) {
   }
 
   function renderComment(c, isReply, isLast) {
-    const name = c.profiles?.full_name || c.profiles?.username || 'Geschwister'
+    const name = c.profiles?.full_name || c.profiles?.username || t('Geschwister')
     const own = c.author_id === user?.id
     const likeCount = likes.filter(l => l.comment_id === c.id).length
     const liked = likes.some(l => l.comment_id === c.id && l.user_id === user?.id)
@@ -118,11 +120,11 @@ export default function CreedComments({ creedId, onCountChange }) {
             <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{timeAgo(c.created_at)}</span>
             <span className="flex-1" />
             {own ? (
-              <button onClick={() => remove(c.id)} aria-label="Kommentar löschen" className="p-1" style={{ color: 'var(--color-text-tertiary)' }}>
+              <button onClick={() => remove(c.id)} aria-label={t('Kommentar löschen')} className="p-1" style={{ color: 'var(--color-text-tertiary)' }}>
                 <Trash2 size={13} />
               </button>
             ) : (
-              <button onClick={() => setModeration(c)} aria-label="Melden oder blockieren" className="p-1" style={{ color: 'var(--color-text-tertiary)' }}>
+              <button onClick={() => setModeration(c)} aria-label={t('Melden oder blockieren')} className="p-1" style={{ color: 'var(--color-text-tertiary)' }}>
                 <MoreHorizontal size={14} />
               </button>
             )}
@@ -133,7 +135,7 @@ export default function CreedComments({ creedId, onCountChange }) {
               <Heart size={13} fill={liked ? '#E0245E' : 'none'} /> {likeCount > 0 && likeCount}
             </button>
             <button onClick={() => setReplyTo({ rootId: c.parent_id || c.id, name })} style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--color-text-tertiary)' }}>
-              Antworten
+              {t('Antworten')}
             </button>
           </div>
         </div>
@@ -145,9 +147,9 @@ export default function CreedComments({ creedId, onCountChange }) {
 
   return (
     <div className="px-4 pb-4" style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10 }}>
-      {!comments && <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
+      {!comments && <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)' }}>{t('Lädt…')}</p>}
       {comments?.length === 0 && (
-        <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Noch keine Kommentare.</p>
+        <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', marginBottom: 8 }}>{t('Noch keine Kommentare.')}</p>
       )}
       {top.map(c => {
         const replies = comments.filter(r => r.parent_id === c.id)
@@ -166,7 +168,7 @@ export default function CreedComments({ creedId, onCountChange }) {
                   className="mb-3"
                   style={{ marginLeft: 36, marginTop: -6, fontSize: 12, fontWeight: 600, color: 'var(--color-accent)' }}
                 >
-                  {open ? 'Antworten ausblenden' : `${replies.length} ${replies.length === 1 ? 'Antwort' : 'Antworten'} anzeigen`}
+                  {open ? t('Antworten ausblenden') : (replies.length === 1 ? t('1 Antwort anzeigen') : t('{n} Antworten anzeigen', { n: replies.length }))}
                 </button>
               )}
             </div>
@@ -181,8 +183,8 @@ export default function CreedComments({ creedId, onCountChange }) {
 
       {replyTo && (
         <div className="flex items-center gap-1.5 mb-1.5" style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-          Antwort an {replyTo.name}
-          <button onClick={() => setReplyTo(null)} aria-label="Antwort abbrechen"><X size={13} /></button>
+          {t('Antwort an {name}', { name: replyTo.name })}
+          <button onClick={() => setReplyTo(null)} aria-label={t('Antwort abbrechen')}><X size={13} /></button>
         </div>
       )}
       <div className="flex items-end gap-2">
@@ -190,7 +192,7 @@ export default function CreedComments({ creedId, onCountChange }) {
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          placeholder={replyTo ? 'Antwort schreiben…' : 'Kommentar schreiben…'}
+          placeholder={replyTo ? t('Antwort schreiben…') : t('Kommentar schreiben…')}
           rows={1}
           maxLength={2000}
           className="flex-1 outline-none"
@@ -202,7 +204,7 @@ export default function CreedComments({ creedId, onCountChange }) {
         <button
           onClick={send}
           disabled={!draft.trim() || sending}
-          aria-label="Senden"
+          aria-label={t('Senden')}
           className="flex items-center justify-center flex-shrink-0"
           style={{
             width: 36, height: 36, borderRadius: '50%', border: 'none', color: '#fff',

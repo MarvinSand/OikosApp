@@ -4,14 +4,16 @@
 //
 // VerseAttachment = { bibleId, book, chapter, verseStart, verseEnd, referenceLabel, verseText }
 
-import { findBook } from './bibleBooks'
+import { findBook, bookName } from './bibleBooks'
+import { getLang } from '../i18n'
 import { DEFAULT_BIBLE_ID } from '../hooks/useBible'
 
 export function formatReferenceLabel({ book, chapter, verseStart, verseEnd }) {
-  const name = findBook(book)?.name || book
+  const name = bookName(book)
+  const sep = getLang() === 'en' ? ':' : ','
   if (verseStart == null) return `${name} ${chapter}`
-  if (verseEnd && verseEnd !== verseStart) return `${name} ${chapter},${verseStart}-${verseEnd}`
-  return `${name} ${chapter},${verseStart}`
+  if (verseEnd && verseEnd !== verseStart) return `${name} ${chapter}${sep}${verseStart}-${verseEnd}`
+  return `${name} ${chapter}${sep}${verseStart}`
 }
 
 export function buildBibleLink({ bibleId, book, chapter, verseStart, verseEnd }) {

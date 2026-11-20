@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
+import { useT } from '../../i18n'
 
 /**
  * Cleane, ausklappbare Suche: zeigt standardmäßig nur eine Lupe.
@@ -9,7 +10,8 @@ import { Search, X } from 'lucide-react'
  * Im Flex-Container nimmt die Komponente im eingeklappten Zustand 40px,
  * ausgeklappt den restlichen Platz ein.
  */
-export default function ExpandableSearch({ value, onChange, placeholder = 'Suchen…' }) {
+export default function ExpandableSearch({ value, onChange, placeholder }) {
+  const { t } = useT()
   const [expanded, setExpanded] = useState(!!value)
   const inputRef = useRef(null)
 
@@ -28,7 +30,7 @@ export default function ExpandableSearch({ value, onChange, placeholder = 'Suche
 
   if (!expanded) {
     return (
-      <button onClick={open} aria-label="Suchen" style={iconBtnStyle}>
+      <button onClick={open} aria-label={t('Suchen')} style={iconBtnStyle}>
         <Search size={18} />
       </button>
     )
@@ -47,7 +49,7 @@ export default function ExpandableSearch({ value, onChange, placeholder = 'Suche
         value={value}
         onChange={e => onChange(e.target.value)}
         onBlur={() => { if (!value.trim()) setExpanded(false) }}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t('Suchen…')}
         style={{
           width: '100%', padding: '9px 36px 9px 34px', borderRadius: 12,
           border: '1.5px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)',
@@ -56,7 +58,7 @@ export default function ExpandableSearch({ value, onChange, placeholder = 'Suche
       />
       <button
         onClick={clearAndClose}
-        aria-label="Suche schließen"
+        aria-label={t('Suche schließen')}
         style={{
           position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
           width: 22, height: 22, borderRadius: '50%', border: 'none',

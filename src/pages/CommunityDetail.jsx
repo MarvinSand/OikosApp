@@ -27,6 +27,7 @@ import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/Anchor
 import ModerationSheet from '../components/common/ModerationSheet'
 import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
+import { useT, tr, getLang } from '../i18n'
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
 
 // ─── Shared header styles ─────────────────────────────────────
@@ -51,7 +52,7 @@ const metaChip = {
 // ─── Helpers ──────────────────────────────────────────────────
 function formatTime(iso) {
   if (!iso) return ''
-  return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString((getLang() === 'en' ? 'en-US' : 'de-DE'), { hour: '2-digit', minute: '2-digit' })
 }
 
 function timeAgo(iso) {
@@ -60,11 +61,11 @@ function timeAgo(iso) {
   const now = new Date()
   const diffMs = now - d
   const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return 'gerade'
-  if (diffMin < 60) return `vor ${diffMin} Min.`
+  if (diffMin < 1) return tr('gerade')
+  if (diffMin < 60) return tr('vor {n} Min.', { n: diffMin })
   const diffH = Math.floor(diffMin / 60)
-  if (diffH < 24) return `vor ${diffH} Std.`
-  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+  if (diffH < 24) return tr('vor {n} Std.', { n: diffH })
+  return d.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'short' })
 }
 
 function formatDaySeparator(iso) {
@@ -73,9 +74,9 @@ function formatDaySeparator(iso) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - 86400000)
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  if (d.getTime() === today.getTime()) return 'Heute'
-  if (d.getTime() === yesterday.getTime()) return 'Gestern'
-  return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })
+  if (d.getTime() === today.getTime()) return tr('Heute')
+  if (d.getTime() === yesterday.getTime()) return tr('Gestern')
+  return date.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function sameDay(a, b) {
@@ -118,13 +119,12 @@ function DaySeparator({ label }) {
 
 // ─── Message Bubble ───────────────────────────────────────────
 function MessageBubble({ msg, isOwn }) {
+  const { t } = useT()
   const navigate = useNavigate()
   if (msg.is_deleted) {
     return (
       <div style={{ display: 'flex', justifyContent: isOwn ? 'flex-end' : 'flex-start', marginBottom: 4 }}>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-light)', margin: 0 }}>
-          Nachricht gelöscht
-        </p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-light)', margin: 0 }}>{t('Nachricht gelöscht')}</p>
       </div>
     )
   }
@@ -145,7 +145,7 @@ function MessageBubble({ msg, isOwn }) {
       }}>
         {msg.type === 'prayer_request' ? (
           <div>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px', color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-warm-1)', margin: '0 0 4px' }}>🙏 Gebetsanliegen</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px', color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-warm-1)', margin: '0 0 4px' }}>{t('🙏 Gebetsanliegen')}</p>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)', margin: 0 }}>{msg.text}</p>
             {msg.bible_verse_text && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.4 }}>{msg.bible_verse_text}</p>
@@ -161,9 +161,7 @@ function MessageBubble({ msg, isOwn }) {
                   color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text-secondary)',
                   fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer',
                 }}
-              >
-                Öffnen
-              </button>
+              >{t('Öffnen')}</button>
             )}
           </div>
         ) : msg.type === 'bible_verse' ? (
@@ -186,6 +184,7 @@ function MessageBubble({ msg, isOwn }) {
 
 // ─── Input Bar ────────────────────────────────────────────────
 function InputBar({ onSend }) {
+  const { t } = useT()
   const [text, setText] = useState('')
   const textareaRef = useRef(null)
 
@@ -223,7 +222,7 @@ function InputBar({ onSend }) {
         value={text}
         onChange={e => { setText(e.target.value); autoResize() }}
         onKeyDown={handleKeyDown}
-        placeholder="Nachricht schreiben…"
+        placeholder={t('Nachricht schreiben…')}
         rows={1}
         style={{ flex: 1, resize: 'none', border: '1.5px solid var(--color-warm-3)', borderRadius: 20, padding: '8px 14px', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', backgroundColor: 'var(--color-bg)', outline: 'none', lineHeight: 1.5, overflow: 'hidden' }}
       />
@@ -241,6 +240,7 @@ function InputBar({ onSend }) {
 // ─── Post Card (Redesigned) ───────────────────────────────────
 
 function CommunityReportsTab({ communityId }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -256,7 +256,7 @@ function CommunityReportsTab({ communityId }) {
       .eq('status', 'open')
       .order('created_at', { ascending: false })
       .limit(100)
-    if (error) showToast('Meldungen laden fehlgeschlagen', 'error')
+    if (error) showToast(t('Meldungen laden fehlgeschlagen'), 'error')
     setRows(data || [])
     setLoading(false)
   }
@@ -285,36 +285,36 @@ function CommunityReportsTab({ communityId }) {
         p_note: note || null,
       })
       if (error) throw error
-      showToast('Erledigt')
+      showToast(t('Erledigt'))
       setNote('')
       await load()
     } catch (e) {
-      showToast(e.message || 'Fehler', 'error')
+      showToast(e.message || t('Fehler'), 'error')
     }
     setBusy(false)
   }
 
-  if (loading) return <p style={{ padding: 16, color: 'var(--color-text-secondary)' }}>Laden…</p>
+  if (loading) return <p style={{ padding: 16, color: 'var(--color-text-secondary)' }}>{t('Laden…')}</p>
   if (rows.length === 0) return (
     // Gleiches Muster wie die leeren Zustände der anderen Tabs
     <div style={{ textAlign: 'center', padding: '30px 16px' }}>
       <p style={{ fontSize: 32, margin: '0 0 8px' }}>🛡️</p>
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Keine offenen Meldungen in dieser Community.</p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>{t('Keine offenen Meldungen in dieser Community.')}</p>
     </div>
   )
 
   return (
     <div style={{ padding: 12 }}>
-      <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Notiz (optional)…" rows={2}
+      <textarea value={note} onChange={e => setNote(e.target.value)} placeholder={t('Notiz (optional)…')} rows={2}
         style={{ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', marginBottom: 12, fontSize: 13 }} />
       {rows.map(r => (
         <div key={r.id} style={{ background: 'var(--color-white)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 12, marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 13 }}>{r.content_type}</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '4px 0 8px' }}>{r.reason}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            <button disabled={busy} onClick={() => act(r, 'dismiss')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer' }}>Verwerfen</button>
-            <button disabled={busy} onClick={() => act(r, 'hide')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer' }}>Verstecken</button>
-            <button disabled={busy} onClick={() => act(r, 'delete')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: '#C0392B', cursor: 'pointer' }}>Löschen</button>
+            <button disabled={busy} onClick={() => act(r, 'dismiss')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer' }}>{t('Verwerfen')}</button>
+            <button disabled={busy} onClick={() => act(r, 'hide')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer' }}>{t('Verstecken')}</button>
+            <button disabled={busy} onClick={() => act(r, 'delete')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: '#C0392B', cursor: 'pointer' }}>{t('Löschen')}</button>
           </div>
         </div>
       ))}
@@ -323,12 +323,13 @@ function CommunityReportsTab({ communityId }) {
 }
 
 function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
+  const { t } = useT()
   const [showFull, setShowFull] = useState(false)
   const [openMenu, setOpenMenu] = useState(false)
   const [showModeration, setShowModeration] = useState(false)
   const menuBtnRef = useRef(null)
   const { isAppAdmin } = useIsAppAdmin()
-  const name = post.profiles?.full_name || post.profiles?.username || 'Unbekannt'
+  const name = post.profiles?.full_name || post.profiles?.username || tr('Unbekannt')
   const isPinned = post.is_pinned
   const isOwn = post.author_id === currentUserId
   const longContent = post.content && post.content.length > 200
@@ -346,9 +347,7 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
     }}>
       {isPinned && (
         <div style={{ position: 'absolute', top: 10, right: 44, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, color: 'var(--color-gold-text)', backgroundColor: 'rgba(201,168,76,0.15)', padding: '2px 7px', borderRadius: 20 }}>
-            📌 Angepinnt
-          </span>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, color: 'var(--color-gold-text)', backgroundColor: 'rgba(201,168,76,0.15)', padding: '2px 7px', borderRadius: 20 }}>{t('📌 Angepinnt')}</span>
         </div>
       )}
 
@@ -370,7 +369,7 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
                   onClick={() => { setOpenMenu(false); onTogglePin(post.id, !isPinned) }}
                   style={anchoredMenuItemStyle}
                 >
-                  <Pin size={13} /> {isPinned ? 'Loslösen' : 'Anpinnen'}
+                  <Pin size={13} /> {isPinned ? t('Loslösen') : t('Anpinnen')}
                 </button>
               )}
               {(isAdmin || isOwn) && (
@@ -378,16 +377,13 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
                   onClick={() => { setOpenMenu(false); onDelete(post.id) }}
                   style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
                 >
-                  <Trash2 size={13} /> Löschen
-                </button>
+                  <Trash2 size={13} />{' '}{t('Löschen')}</button>
               )}
               {!isOwn && (
                 <button
                   onClick={() => { setOpenMenu(false); setShowModeration(true) }}
                   style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
-                >
-                  Melden
-                </button>
+                >{t('Melden')}</button>
               )}
               {(isAppAdmin || isAdmin) && !isOwn && (
                 <AdminContentMenuItems
@@ -421,9 +417,7 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
         {post.content}
       </p>
       {longContent && !showFull && (
-        <button onClick={() => setShowFull(true)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', padding: '4px 0 0', fontStyle: 'italic' }}>
-          Mehr anzeigen…
-        </button>
+        <button onClick={() => setShowFull(true)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', padding: '4px 0 0', fontStyle: 'italic' }}>{t('Mehr anzeigen…')}</button>
       )}
     </div>
   )
@@ -431,6 +425,7 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
 
 // ─── Create Announcement Sheet (Admin) ───────────────────────
 function CreateAnnouncementSheet({ onClose, onSubmit }) {
+  const { t } = useT()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [isPinned, setIsPinned] = useState(false)
@@ -449,17 +444,17 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }} />
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 70, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.25s ease-out', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 18px' }} />
-        <h3 style={sheetTitle}>Ankündigung schreiben</h3>
+        <h3 style={sheetTitle}>{t('Ankündigung schreiben')}</h3>
 
-        <label style={lbl}>Titel (optional)</label>
-        <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. Wichtige Info" style={inp} />
+        <label style={lbl}>{t('Titel (optional)')}</label>
+        <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t('z.B. Wichtige Info')} style={inp} />
 
-        <label style={{ ...lbl, marginTop: 12 }}>Inhalt *</label>
+        <label style={{ ...lbl, marginTop: 12 }}>{t('Inhalt *')}</label>
         <textarea
           autoFocus
           value={content}
           onChange={e => setContent(e.target.value.slice(0, 1000))}
-          placeholder="Was möchtest du mitteilen?"
+          placeholder={t('Was möchtest du mitteilen?')}
           rows={5}
           style={{ ...inp, resize: 'vertical' }}
         />
@@ -467,8 +462,8 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, padding: '10px 12px', borderRadius: 12, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
           <div>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 1px' }}>📌 Anpinnen</p>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>Immer oben anzeigen</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 1px' }}>{t('📌 Anpinnen')}</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>{t('Immer oben anzeigen')}</p>
           </div>
           <button
             onClick={() => setIsPinned(v => !v)}
@@ -483,7 +478,7 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
           disabled={!content.trim() || saving}
           style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 18, backgroundColor: content.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: content.trim() ? 'pointer' : 'not-allowed' }}
         >
-          {saving ? 'Veröffentliche…' : 'Veröffentlichen'}
+          {saving ? t('Veröffentliche…') : t('Veröffentlichen')}
         </button>
       </div>
     </>
@@ -492,19 +487,20 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
 
 // ─── Event Card (Redesigned) ──────────────────────────────────
 function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }) {
+  const { t } = useT()
   const [showModeration, setShowModeration] = useState(false)
   const date = new Date(event.starts_at)
   const dayNum = date.getDate()
-  const monthStr = date.toLocaleDateString('de-DE', { month: 'short' })
-  const weekdayStr = date.toLocaleDateString('de-DE', { weekday: 'long' })
-  const timeStr = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  const monthStr = date.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { month: 'short' })
+  const weekdayStr = date.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { weekday: 'long' })
+  const timeStr = date.toLocaleTimeString((getLang() === 'en' ? 'en-US' : 'de-DE'), { hour: '2-digit', minute: '2-digit' })
   const isPast = date < new Date()
   const isOwn = event.created_by === currentUserId
 
   const rsvpOptions = [
-    { status: 'going', label: '✓ Dabei', activeColor: 'var(--color-accent)' },
-    { status: 'maybe', label: '? Vielleicht', activeColor: 'var(--color-accent)' },
-    { status: 'not_going', label: '✗ Absagen', activeColor: '#C0392B' },
+    { status: 'going', label: t('✓ Dabei'), activeColor: 'var(--color-accent)' },
+    { status: 'maybe', label: t('? Vielleicht'), activeColor: 'var(--color-accent)' },
+    { status: 'not_going', label: t('✗ Absagen'), activeColor: '#C0392B' },
   ]
 
   return (
@@ -521,8 +517,7 @@ function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.title}</p>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 3px', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <Clock size={11} /> {weekdayStr}, {timeStr} Uhr
-          </p>
+            <Clock size={11} />{' '}{t('{weekdayStr}, {timeStr} Uhr', { weekdayStr, timeStr })}</p>
           {event.location && (
             <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 3px', display: 'flex', alignItems: 'center', gap: 5 }}>
               <MapPin size={11} /> {event.location}
@@ -540,9 +535,7 @@ function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }
             </button>
           )}
           {!isOwn && (
-            <button onClick={() => setShowModeration(true)} aria-label="Melden" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', fontSize: 11, fontFamily: 'Lora, serif' }}>
-              Melden
-            </button>
+            <button onClick={() => setShowModeration(true)} aria-label={t('Melden')} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', fontSize: 11, fontFamily: 'Lora, serif' }}>{t('Melden')}</button>
           )}
         </div>
         {showModeration && (
@@ -550,7 +543,7 @@ function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }
             contentType="community_event"
             contentId={event.id}
             authorId={event.created_by}
-            authorName="Event"
+            authorName={t('Event')}
             onClose={() => setShowModeration(false)}
           />
         )}
@@ -584,6 +577,7 @@ function EventCard({ event, myStatus, onRsvp, currentUserId, isAdmin, onDelete }
 
 // ─── Create Event Form ────────────────────────────────────────
 function CreateEventForm({ onClose, onSubmit }) {
+  const { t } = useT()
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
@@ -597,8 +591,8 @@ function CreateEventForm({ onClose, onSubmit }) {
     setSaving(true)
     const starts_at = new Date(`${date}T${time}`).toISOString()
     const { error } = await onSubmit({ title: title.trim(), starts_at, location: location.trim() || null, description: description.trim() || null })
-    if (!error) { showToast('Termin erstellt ✓'); onClose() }
-    else showToast('Fehler beim Erstellen', 'error')
+    if (!error) { showToast(t('Termin erstellt ✓')); onClose() }
+    else showToast(t('Fehler beim Erstellen'), 'error')
     setSaving(false)
   }
 
@@ -608,19 +602,19 @@ function CreateEventForm({ onClose, onSubmit }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }} />
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 70, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.25s ease-out' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 18px' }} />
-        <h3 style={sheetTitle}>Termin erstellen</h3>
-        <label style={lbl}>Titel *</label>
-        <input autoFocus type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. Hauskreis" style={inp} />
+        <h3 style={sheetTitle}>{t('Termin erstellen')}</h3>
+        <label style={lbl}>{t('Titel *')}</label>
+        <input autoFocus type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t('z.B. Hauskreis')} style={inp} />
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-          <div style={{ flex: 1 }}><label style={lbl}>Datum *</label><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} /></div>
-          <div style={{ flex: 1 }}><label style={lbl}>Uhrzeit *</label><input type="time" value={time} onChange={e => setTime(e.target.value)} style={inp} /></div>
+          <div style={{ flex: 1 }}><label style={lbl}>{t('Datum *')}</label><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} /></div>
+          <div style={{ flex: 1 }}><label style={lbl}>{t('Uhrzeit *')}</label><input type="time" value={time} onChange={e => setTime(e.target.value)} style={inp} /></div>
         </div>
-        <label style={{ ...lbl, marginTop: 12 }}>Ort</label>
-        <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="z.B. Gemeindehaus" style={inp} />
-        <label style={{ ...lbl, marginTop: 12 }}>Beschreibung</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Was erwartet euch?" rows={2} style={{ ...inp, resize: 'none' }} />
+        <label style={{ ...lbl, marginTop: 12 }}>{t('Ort')}</label>
+        <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder={t('z.B. Gemeindehaus')} style={inp} />
+        <label style={{ ...lbl, marginTop: 12 }}>{t('Beschreibung')}</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('Was erwartet euch?')} rows={2} style={{ ...inp, resize: 'none' }} />
         <button onClick={handleSubmit} disabled={!canSubmit || saving} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 18, backgroundColor: canSubmit ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
-          {saving ? 'Erstelle…' : 'Termin erstellen'}
+          {saving ? t('Erstelle…') : t('Termin erstellen')}
         </button>
       </div>
     </>
@@ -630,6 +624,7 @@ function CreateEventForm({ onClose, onSubmit }) {
 
 // ─── Add Prayer Sheet ─────────────────────────────────────────
 function AddPrayerSheet({ onClose, onSubmit }) {
+  const { t } = useT()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
@@ -647,13 +642,13 @@ function AddPrayerSheet({ onClose, onSubmit }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 60 }} />
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 70, padding: '16px 20px 48px', animation: 'sheetSlideUp 0.25s ease-out' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 18px' }} />
-        <h3 style={sheetTitle}>🙏 Gebet teilen</h3>
-        <label style={lbl}>Worum geht es? *</label>
-        <input autoFocus type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. Heilung für meine Mutter" style={inp} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit()} />
-        <label style={{ ...lbl, marginTop: 12 }}>Beschreibung (optional)</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} placeholder="Mehr Details…" rows={3} style={{ ...inp, resize: 'none' }} />
+        <h3 style={sheetTitle}>{t('🙏 Gebet teilen')}</h3>
+        <label style={lbl}>{t('Worum geht es? *')}</label>
+        <input autoFocus type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t('z.B. Heilung für meine Mutter')} style={inp} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit()} />
+        <label style={{ ...lbl, marginTop: 12 }}>{t('Beschreibung (optional)')}</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} placeholder={t('Mehr Details…')} rows={3} style={{ ...inp, resize: 'none' }} />
         <button onClick={handleSubmit} disabled={!title.trim() || saving} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 18, backgroundColor: title.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed' }}>
-          {saving ? 'Teile…' : 'Gebet teilen 🙏'}
+          {saving ? t('Teile…') : t('Gebet teilen 🙏')}
         </button>
       </div>
     </>
@@ -665,11 +660,12 @@ function AddPrayerSheet({ onClose, onSubmit }) {
 // Admins nehmen an oder lehnen ab (Ablehnung optional mit Text); alle
 // Mitglieder sehen den Stand. Status kommt live aus community_join_requests.
 function JoinRequestCard({ msg, isAdmin, onDecide }) {
+  const { t } = useT()
   const [req, setReq] = useState(null)
   const [declining, setDeclining] = useState(false)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
-  const name = msg.profiles?.full_name || msg.profiles?.username || 'Jemand'
+  const name = msg.profiles?.full_name || msg.profiles?.username || tr('Jemand')
 
   useEffect(() => {
     if (!msg.join_request_id) return
@@ -698,34 +694,34 @@ function JoinRequestCard({ msg, isAdmin, onDecide }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 10px' }}>
       <div style={{ width: '88%', backgroundColor: 'var(--color-white)', border: '1.5px solid var(--color-warm-3)', borderRadius: 16, padding: '12px 14px' }}>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-accent)', margin: '0 0 4px' }}>🙋 Beitrittsanfrage</p>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{name} möchte beitreten</p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-accent)', margin: '0 0 4px' }}>{t('🙋 Beitrittsanfrage')}</p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('{name} möchte beitreten', { name })}</p>
         {text && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', margin: '6px 0 0', lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</p>}
 
         {status === 'pending' && isAdmin && !declining && (
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <button disabled={busy} onClick={() => setDeclining(true)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Ablehnen</button>
-            <button disabled={busy} onClick={() => decide(true)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{busy ? '…' : 'Annehmen'}</button>
+            <button disabled={busy} onClick={() => setDeclining(true)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', cursor: 'pointer' }}>{t('Ablehnen')}</button>
+            <button disabled={busy} onClick={() => decide(true)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{busy ? '…' : t('Annehmen')}</button>
           </div>
         )}
         {status === 'pending' && isAdmin && declining && (
           <div style={{ marginTop: 10 }}>
-            <textarea autoFocus value={note} onChange={e => setNote(e.target.value.slice(0, 500))} rows={2} placeholder="Begründung (optional)" style={{ ...inp, resize: 'none' }} />
+            <textarea autoFocus value={note} onChange={e => setNote(e.target.value.slice(0, 500))} rows={2} placeholder={t('Begründung (optional)')} style={{ ...inp, resize: 'none' }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button disabled={busy} onClick={() => setDeclining(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Zurück</button>
-              <button disabled={busy} onClick={() => decide(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', backgroundColor: '#C0392B', color: '#fff', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{busy ? '…' : 'Ablehnen'}</button>
+              <button disabled={busy} onClick={() => setDeclining(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>{t('Zurück')}</button>
+              <button disabled={busy} onClick={() => decide(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', backgroundColor: '#C0392B', color: '#fff', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{busy ? '…' : t('Ablehnen')}</button>
             </div>
           </div>
         )}
         {status === 'pending' && !isAdmin && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-muted)', margin: '8px 0 0' }}>Wartet auf Entscheidung der Admins</p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-muted)', margin: '8px 0 0' }}>{t('Wartet auf Entscheidung der Admins')}</p>
         )}
         {status === 'approved' && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', margin: '8px 0 0' }}>✓ Angenommen</p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', margin: '8px 0 0' }}>{t('✓ Angenommen')}</p>
         )}
         {status === 'declined' && (
           <div style={{ margin: '8px 0 0' }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: '#C0392B', margin: 0 }}>✕ Abgelehnt</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: '#C0392B', margin: 0 }}>{t('✕ Abgelehnt')}</p>
             {req?.decision_note && <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', margin: '3px 0 0', fontStyle: 'italic' }}>„{req.decision_note}“</p>}
           </div>
         )}
@@ -735,10 +731,11 @@ function JoinRequestCard({ msg, isAdmin, onDecide }) {
 }
 
 function QuestionCard({ q, currentUserId, onAnswer }) {
+  const { t } = useT()
   const [answering, setAnswering] = useState(false)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
-  const askerName = q.asker?.full_name || q.asker?.username || (q.asked_by === currentUserId ? 'Du' : 'Jemand')
+  const askerName = q.asker?.full_name || q.asker?.username || (q.asked_by === currentUserId ? tr('Du') : tr('Jemand'))
 
   async function handleSubmit() {
     if (!text.trim()) return
@@ -756,23 +753,21 @@ function QuestionCard({ q, currentUserId, onAnswer }) {
 
       {q.status === 'answered' ? (
         <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-accent)', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Antwort</p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-accent)', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{t('Antwort')}</p>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{q.answer}</p>
         </div>
       ) : answering ? (
         <div>
-          <textarea autoFocus value={text} onChange={e => setText(e.target.value.slice(0, 500))} placeholder="Antwort schreiben…" rows={3} style={{ ...inp, resize: 'none' }} />
+          <textarea autoFocus value={text} onChange={e => setText(e.target.value.slice(0, 500))} placeholder={t('Antwort schreiben…')} rows={3} style={{ ...inp, resize: 'none' }} />
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button onClick={() => setAnswering(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
+            <button onClick={() => setAnswering(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>{t('Abbrechen')}</button>
             <button onClick={handleSubmit} disabled={!text.trim() || saving} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}>
-              {saving ? 'Sende…' : 'Antworten'}
+              {saving ? t('Sende…') : t('Antworten')}
             </button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setAnswering(true)} style={{ padding: '7px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 600, color: 'var(--color-warm-1)', cursor: 'pointer' }}>
-          Antworten
-        </button>
+        <button onClick={() => setAnswering(true)} style={{ padding: '7px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12.5, fontWeight: 600, color: 'var(--color-warm-1)', cursor: 'pointer' }}>{t('Antworten')}</button>
       )}
     </div>
   )
@@ -780,9 +775,10 @@ function QuestionCard({ q, currentUserId, onAnswer }) {
 
 // ─── Member Profile Sheet (Discord Style) ──────────────────────
 function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRoleChange, onRemove }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const profile = member.profile || {}
-  const name = profile.full_name || profile.username || 'Unbekannt'
+  const name = profile.full_name || profile.username || tr('Unbekannt')
   const isLastAdmin = adminCount <= 1 && member.role === 'admin'
   const sheetRef = useSheetDismiss(onClose, 'translateX(-50%)')
 
@@ -798,8 +794,8 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
           <Avatar name={name} size={64} isChristian={profile.is_christian} />
           <div>
             <h3 className="font-serif text-[20px] font-bold text-dark m-0 leading-tight flex items-center gap-2">
-              {name} {isSelf && <span className="text-xs text-dark-light font-normal">(Du)</span>}
-              {member.role === 'admin' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold-light text-yellow-900 border border-gold">ADMIN</span>}
+              {name} {isSelf && <span className="text-xs text-dark-light font-normal">{t('(Du)')}</span>}
+              {member.role === 'admin' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold-light text-yellow-900 border border-gold">{t('ADMIN')}</span>}
             </h3>
             <p className="font-serif text-[14px] text-dark-muted m-0">@{profile.username || '—'}</p>
           </div>
@@ -807,7 +803,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
 
         {profile.bio && (
           <div className="bg-bg border border-warm-3 rounded-xl p-4 mb-5">
-            <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-wider mb-1">Über mich</p>
+            <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-wider mb-1">{t('Über mich')}</p>
             <p className="font-serif text-[14px] text-dark leading-relaxed m-0 italic">"{profile.bio}"</p>
           </div>
         )}
@@ -818,13 +814,12 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
               onClick={() => { onClose(); navigate(`/user/${member.user_id}`) }}
               className="w-full py-3.5 flex items-center justify-center gap-2 rounded-xl bg-warm-1 text-bg font-serif font-bold text-[15px] shadow-sm hover:bg-warm-2 transition-colors"
             >
-              <MessageSquare size={18} /> Nachricht senden
-            </button>
+              <MessageSquare size={18} />{' '}{t('Nachricht senden')}</button>
           )}
 
           {isAdmin && !isSelf && (
             <div className="mt-4 pt-4 border-t border-warm-3 flex flex-col gap-2">
-              <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-wider mb-1">Admin-Aktionen</p>
+              <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-wider mb-1">{t('Admin-Aktionen')}</p>
               
               {!isLastAdmin && (
                 <button
@@ -832,7 +827,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
                   className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-warm-3 text-dark font-serif font-bold text-[14px] hover:bg-warm-4 transition-colors"
                 >
                   {member.role === 'admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
-                  {member.role === 'admin' ? 'Admin-Rechte entziehen' : 'Zum Admin machen'}
+                  {member.role === 'admin' ? t('Admin-Rechte entziehen') : t('Zum Admin machen')}
                 </button>
               )}
               
@@ -841,8 +836,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
                 style={{ backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.35)', color: 'var(--color-error)' }}
                 className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border font-serif font-bold text-[14px] transition-colors"
               >
-                <UserMinus size={16} /> Mitglied entfernen
-              </button>
+                <UserMinus size={16} />{' '}{t('Mitglied entfernen')}</button>
             </div>
           )}
           
@@ -851,8 +845,7 @@ function MemberProfileSheet({ member, isSelf, isAdmin, adminCount, onClose, onRo
               onClick={() => { onClose(); navigate(`/profile`) }}
               className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border border-warm-3 text-dark font-serif font-bold text-[14px]"
             >
-              <User size={16} /> Mein Profil bearbeiten
-            </button>
+              <User size={16} />{' '}{t('Mein Profil bearbeiten')}</button>
           )}
         </div>
       </div>
@@ -864,6 +857,7 @@ function SettingsSheet({
   community, isAdmin, isOwner, currentUserId, onClose, onLeave, onUpdate, onDelete,
   joinRequests, onRespondJoinRequest,
 }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -907,10 +901,10 @@ function SettingsSheet({
       if (upErr) throw upErr
       const { data } = supabase.storage.from('community-avatars').getPublicUrl(path)
       await onUpdate({ avatar_url: `${data.publicUrl}?t=${Date.now()}` })
-      showToast('Profilbild aktualisiert ✓')
+      showToast(t('Profilbild aktualisiert ✓'))
     } catch (err) {
       console.error('[CommunityDetail] Avatar-Upload fehlgeschlagen:', err)
-      showToast('Fehler beim Hochladen', 'error')
+      showToast(t('Fehler beim Hochladen'), 'error')
     } finally {
       setAvatarBusy(false)
     }
@@ -921,9 +915,9 @@ function SettingsSheet({
     try {
       await supabase.storage.from('community-avatars').remove([`${community.id}/avatar.jpg`, `${community.id}/avatar.webp`])
       await onUpdate({ avatar_url: null })
-      showToast('Profilbild entfernt')
+      showToast(t('Profilbild entfernt'))
     } catch {
-      showToast('Fehler beim Entfernen', 'error')
+      showToast(t('Fehler beim Entfernen'), 'error')
     } finally {
       setAvatarBusy(false)
     }
@@ -958,10 +952,10 @@ function SettingsSheet({
       const { data } = supabase.storage.from('community-banners').getPublicUrl(path)
       // Cache-Buster, damit das neue Bild sofort erscheint
       await onUpdate({ banner_url: `${data.publicUrl}?t=${Date.now()}` })
-      showToast('Banner aktualisiert ✓')
+      showToast(t('Banner aktualisiert ✓'))
     } catch (err) {
       console.error('[CommunityDetail] Banner-Upload fehlgeschlagen:', err)
-      showToast('Fehler beim Hochladen', 'error')
+      showToast(t('Fehler beim Hochladen'), 'error')
     } finally {
       setBannerBusy(false)
     }
@@ -972,9 +966,9 @@ function SettingsSheet({
     try {
       await supabase.storage.from('community-banners').remove([`${community.id}/banner.jpg`, `${community.id}/banner.webp`])
       await onUpdate({ banner_url: null })
-      showToast('Banner entfernt')
+      showToast(t('Banner entfernt'))
     } catch {
-      showToast('Fehler beim Entfernen', 'error')
+      showToast(t('Fehler beim Entfernen'), 'error')
     } finally {
       setBannerBusy(false)
     }
@@ -995,14 +989,14 @@ function SettingsSheet({
     }
     await onUpdate(updates)
     setSaving(false)
-    showToast('Community gespeichert ✓')
+    showToast(t('Community gespeichert ✓'))
     onClose()
   }
 
   async function generateNewCode() {
     const invite_code = Math.random().toString(36).substring(2, 8).toUpperCase()
     await onUpdate({ invite_code })
-    showToast('Code erneuert ✓')
+    showToast(t('Code erneuert ✓'))
   }
 
   async function copyCode() {
@@ -1010,9 +1004,9 @@ function SettingsSheet({
     // WebView ohne Nutzergeste) den Zugriff verweigert hat
     try {
       await navigator.clipboard.writeText(community.invite_code || '')
-      showToast('Code kopiert ✓')
+      showToast(t('Code kopiert ✓'))
     } catch {
-      showToast(`Code: ${community.invite_code || ''}`, 'info')
+      showToast(t('Code: {v1}', { v1: community.invite_code || '' }), 'info')
     }
   }
 
@@ -1021,52 +1015,52 @@ function SettingsSheet({
   return (
     <>
       {showQr && (
-        <QrShareSheet title={community.name} subtitle={community.is_public ? 'Öffentliche Community' : 'Einladung per QR-Code'} url={communityLink(community)} onClose={() => setShowQr(false)} />
+        <QrShareSheet title={community.name} subtitle={community.is_public ? t('Öffentliche Community') : t('Einladung per QR-Code')} url={communityLink(community)} onClose={() => setShowQr(false)} />
       )}
       <div onClick={onClose} className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 transition-opacity" />
       <div ref={sheetRef} className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 pb-12 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]">
         <div className="w-9 h-1 bg-warm-3 rounded-full mx-auto mb-5" />
         
         <div className="flex items-center justify-between mb-6">
-          <h3 className="font-serif text-[22px] font-bold text-dark m-0">Community Einstellungen</h3>
+          <h3 className="font-serif text-[22px] font-bold text-dark m-0">{t('Community Einstellungen')}</h3>
         </div>
 
         {isAdmin ? (
           <div className="flex flex-col gap-4">
             <div>
-              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Name</label>
+              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">{t('Name')}</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
             </div>
             
             <div>
-              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Beschreibung</label>
+              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">{t('Beschreibung')}</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] resize-none focus:outline-none focus:border-warm-1" />
             </div>
 
             {isGemeinde && (
               <>
                 <div>
-                  <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Standort</label>
+                  <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">{t('Standort')}</label>
                   <Suspense fallback={<div style={{ height: 44, borderRadius: 10, background: 'var(--color-bg-secondary)' }} />}>
-                    <AddressAutocomplete value={location} onChange={setLocation} placeholder="Adresse der Gemeinde…" showMapPreview />
+                    <AddressAutocomplete value={location} onChange={setLocation} placeholder={t('Adresse der Gemeinde…')} showMapPreview />
                   </Suspense>
                 </div>
                 <div>
-                  <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Treffzeit</label>
-                  <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder="z.B. Wöchentlich, Mittwoch 19 Uhr" className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
+                  <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">{t('Treffzeit')}</label>
+                  <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder={t('z.B. Wöchentlich, Mittwoch 19 Uhr')} className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
                 </div>
               </>
             )}
 
             {/* Profilbild */}
             <div>
-              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Profilbild</label>
+              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">{t('Profilbild')}</label>
               <div className="flex items-center gap-3">
                 <div
                   className="w-16 h-16 rounded-2xl border border-warm-3 bg-warm-4 overflow-hidden flex-shrink-0 flex items-center justify-center"
                   style={community.avatar_url ? { backgroundImage: `url(${community.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                 >
-                  {!community.avatar_url && <span className="text-[10px] text-dark-light italic px-1 text-center">Kein Bild</span>}
+                  {!community.avatar_url && <span className="text-[10px] text-dark-light italic px-1 text-center">{t('Kein Bild')}</span>}
                 </div>
                 <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarPick} className="hidden" />
                 <div className="flex gap-2 flex-1">
@@ -1075,16 +1069,14 @@ function SettingsSheet({
                     disabled={avatarBusy}
                     className="flex-1 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark disabled:opacity-50"
                   >
-                    {avatarBusy ? 'Lädt…' : community.avatar_url ? 'Ändern' : 'Hochladen'}
+                    {avatarBusy ? t('Lädt…') : community.avatar_url ? t('Ändern') : t('Hochladen')}
                   </button>
                   {community.avatar_url && (
                     <button
                       onClick={handleAvatarRemove}
                       disabled={avatarBusy}
                       className="px-4 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark-muted disabled:opacity-50"
-                    >
-                      Entfernen
-                    </button>
+                    >{t('Entfernen')}</button>
                   )}
                 </div>
               </div>
@@ -1092,13 +1084,13 @@ function SettingsSheet({
 
             {/* Banner */}
             <div>
-              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">Banner</label>
+              <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">{t('Banner')}</label>
               <div
                 className="w-full h-[104px] rounded-xl border border-warm-3 bg-warm-4 overflow-hidden flex items-center justify-center"
                 style={community.banner_url ? { backgroundImage: `url(${community.banner_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
               >
                 {!community.banner_url && (
-                  <p className="font-serif text-[13px] text-dark-light italic m-0">Kein Banner – der Kopf bleibt schlicht.</p>
+                  <p className="font-serif text-[13px] text-dark-light italic m-0">{t('Kein Banner – der Kopf bleibt schlicht.')}</p>
                 )}
               </div>
               <input ref={bannerInputRef} type="file" accept="image/*" onChange={handleBannerPick} className="hidden" />
@@ -1108,28 +1100,26 @@ function SettingsSheet({
                   disabled={bannerBusy}
                   className="flex-1 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark disabled:opacity-50"
                 >
-                  {bannerBusy ? 'Lädt…' : community.banner_url ? 'Banner ändern' : 'Banner hochladen'}
+                  {bannerBusy ? t('Lädt…') : community.banner_url ? t('Banner ändern') : t('Banner hochladen')}
                 </button>
                 {community.banner_url && (
                   <button
                     onClick={handleBannerRemove}
                     disabled={bannerBusy}
                     className="px-4 py-2.5 rounded-xl border border-warm-3 font-serif text-[14px] text-dark-muted disabled:opacity-50"
-                  >
-                    Entfernen
-                  </button>
+                  >{t('Entfernen')}</button>
                 )}
               </div>
             </div>
 
             {/* Zugang: Öffentlich / Mit Anfrage / Privat */}
             <div className="bg-warm-4 border border-warm-3 rounded-xl p-3">
-              <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-2 px-1">Zugang</p>
+              <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-2 px-1">{t('Zugang')}</p>
               <div className="flex flex-col gap-2">
                 {[
-                  { key: 'open', label: 'Öffentlich', hint: 'Jeder kann direkt beitreten und mitlesen.', Icon: Globe },
-                  { key: 'request', label: 'Mit Anfrage', hint: 'Sichtbar bei „Entdecken“, Beitritt braucht deine Freigabe.', Icon: HandHeart },
-                  ...(isGemeinde ? [] : [{ key: 'private', label: 'Privat', hint: 'Nur per Einladungscode oder QR-Code.', Icon: Lock }]),
+                  { key: 'open', label: t('Öffentlich'), hint: t('Jeder kann direkt beitreten und mitlesen.'), Icon: Globe },
+                  { key: 'request', label: t('Mit Anfrage'), hint: t('Sichtbar bei „Entdecken“, Beitritt braucht deine Freigabe.'), Icon: HandHeart },
+                  ...(isGemeinde ? [] : [{ key: 'private', label: t('Privat'), hint: t('Nur per Einladungscode oder QR-Code.'), Icon: Lock }]),
                 ].map(opt => {
                   const current = !isPublic ? 'private' : joinMode
                   const active = current === opt.key
@@ -1157,12 +1147,10 @@ function SettingsSheet({
             {/* Offene Beitrittsanfragen */}
             {joinRequests.length > 0 && (
               <div className="bg-surface border-[1.5px] border-warm-3 rounded-xl p-4">
-                <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3">
-                  Beitrittsanfragen ({joinRequests.length})
-                </p>
+                <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3">{t('Beitrittsanfragen ({length})', { length: joinRequests.length })}</p>
                 <div className="flex flex-col gap-3">
                   {joinRequests.map(r => {
-                    const reqName = r.profile?.full_name || r.profile?.username || 'Unbekannt'
+                    const reqName = r.profile?.full_name || r.profile?.username || tr('Unbekannt')
                     return (
                       <div key={r.id} className="flex items-center gap-3">
                         <Avatar name={reqName} size={36} isChristian={r.profile?.is_christian} avatarUrl={r.profile?.avatar_url} />
@@ -1170,15 +1158,11 @@ function SettingsSheet({
                         <button
                           onClick={() => onRespondJoinRequest(r.id, false)}
                           className="px-3 py-2 rounded-lg border border-warm-3 text-dark-muted font-serif text-[13px] font-semibold"
-                        >
-                          Ablehnen
-                        </button>
+                        >{t('Ablehnen')}</button>
                         <button
                           onClick={() => onRespondJoinRequest(r.id, true)}
                           className="px-3 py-2 rounded-lg bg-warm-1 text-bg font-serif text-[13px] font-semibold"
-                        >
-                          Annehmen
-                        </button>
+                        >{t('Annehmen')}</button>
                       </div>
                     )
                   })}
@@ -1190,49 +1174,45 @@ function SettingsSheet({
               onClick={() => setShowQr(true)}
               className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border border-warm-3 text-dark font-serif font-bold text-[14px] mt-2"
             >
-              <QrCode size={16} /> QR-Code teilen
-            </button>
+              <QrCode size={16} />{' '}{t('QR-Code teilen')}</button>
 
             {!isPublic && community.invite_code && (
               <div className="bg-surface border-[1.5px] border-warm-3 rounded-xl p-4 mt-2">
                 <p className="font-sans text-[11px] font-bold text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                  <Shield size={12} /> Einladungscode
-                </p>
+                  <Shield size={12} />{' '}{t('Einladungscode')}</p>
                 <div className="flex items-center justify-between">
                   <span className="font-serif text-[24px] font-bold text-dark tracking-[0.2em]">{community.invite_code}</span>
                   <div className="flex gap-2">
-                    <button onClick={generateNewCode} className="p-2 border border-warm-3 rounded-lg text-dark-muted hover:bg-black/5" title="Code erneuern">
+                    <button onClick={generateNewCode} className="p-2 border border-warm-3 rounded-lg text-dark-muted hover:bg-black/5" title={t('Code erneuern')}>
                       <RefreshCw size={16} />
                     </button>
                     <button onClick={copyCode} className="flex items-center gap-1.5 px-3 py-2 border-[1.5px] border-warm-1 rounded-lg text-warm-1 font-semibold text-sm hover:bg-warm-1 hover:text-bg transition-colors">
-                      <Copy size={14} /> Kopieren
-                    </button>
+                      <Copy size={14} />{' '}{t('Kopieren')}</button>
                   </div>
                 </div>
               </div>
             )}
 
             <button onClick={handleSave} disabled={!isChanged || saving} className={`w-full py-3.5 rounded-xl font-serif text-[15px] font-bold mt-2 transition-all ${isChanged ? 'bg-warm-1 text-bg shadow-md' : 'bg-warm-3 text-dark-muted'}`}>
-              {saving ? 'Speichere...' : 'Änderungen speichern'}
+              {saving ? t('Speichere...') : t('Änderungen speichern')}
             </button>
           </div>
         ) : (
           <div className="mb-6">
-            <p className="font-serif text-[15px] text-dark-muted italic">Nur Administratoren können die Einstellungen dieser Community bearbeiten.</p>
+            <p className="font-serif text-[15px] text-dark-muted italic">{t('Nur Administratoren können die Einstellungen dieser Community bearbeiten.')}</p>
           </div>
         )}
 
         <div className="mt-8 pt-6 border-t border-warm-3">
           {!showLeaveConfirm ? (
             <button onClick={() => setShowLeaveConfirm(true)} className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-[1.5px] border-red-200 text-red-600 font-serif text-[15px] font-bold hover:bg-red-50 transition-colors">
-              <LogOut size={18} /> Community verlassen
-            </button>
+              <LogOut size={18} />{' '}{t('Community verlassen')}</button>
           ) : (
             <div className="bg-red-50 rounded-xl p-5 border border-red-200">
-              <p className="font-serif text-[15px] text-red-900 text-center mb-4">Wirklich <strong>{community.name}</strong> verlassen?</p>
+              <p className="font-serif text-[15px] text-red-900 text-center mb-4">{t('Wirklich')}{' '}<strong>{community.name}</strong>{t(' verlassen?')}</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 py-3 rounded-xl bg-surface border border-red-200 text-dark-muted font-bold font-serif">Abbrechen</button>
-                <button onClick={onLeave} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold font-serif shadow-sm">Verlassen</button>
+                <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 py-3 rounded-xl bg-surface border border-red-200 text-dark-muted font-bold font-serif">{t('Abbrechen')}</button>
+                <button onClick={onLeave} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold font-serif shadow-sm">{t('Verlassen')}</button>
               </div>
             </div>
           )}
@@ -1246,16 +1226,11 @@ function SettingsSheet({
                 onClick={() => setShowDeleteConfirm(true)}
                 className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-[1.5px] border-red-300 bg-red-50 text-red-700 font-serif text-[15px] font-bold hover:bg-red-100 transition-colors"
               >
-                <Trash2 size={18} /> Community löschen
-              </button>
+                <Trash2 size={18} />{' '}{t('Community löschen')}</button>
             ) : (
               <div className="bg-red-50 rounded-xl p-5 border border-red-300">
-                <p className="font-serif text-[15px] text-red-900 mb-2">
-                  Löscht <strong>{community.name}</strong> endgültig – Chat, Beiträge, Events und Gebete aller Mitglieder gehen unwiderruflich verloren.
-                </p>
-                <p className="font-serif text-[13px] text-red-800 mb-3">
-                  Gib zum Bestätigen den Namen <strong>{community.name}</strong> ein:
-                </p>
+                <p className="font-serif text-[15px] text-red-900 mb-2">{t('Löscht')}{' '}<strong>{community.name}</strong>{t(' endgültig – Chat, Beiträge, Events und Gebete aller Mitglieder gehen unwiderruflich verloren.')}</p>
+                <p className="font-serif text-[13px] text-red-800 mb-3">{t('Gib zum Bestätigen den Namen')}{' '}<strong>{community.name}</strong>{t(' ein:')}</p>
                 <input
                   type="text" value={deleteTyped} onChange={e => setDeleteTyped(e.target.value)}
                   placeholder={community.name}
@@ -1265,15 +1240,13 @@ function SettingsSheet({
                   <button
                     onClick={() => { setShowDeleteConfirm(false); setDeleteTyped('') }}
                     className="flex-1 py-3 rounded-xl bg-surface border border-red-300 text-dark-muted font-bold font-serif"
-                  >
-                    Abbrechen
-                  </button>
+                  >{t('Abbrechen')}</button>
                   <button
                     onClick={handleDeleteCommunity}
                     disabled={deleteTyped !== community.name || deleting}
                     className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold font-serif shadow-sm disabled:opacity-40"
                   >
-                    {deleting ? 'Löscht…' : 'Endgültig löschen'}
+                    {deleting ? t('Löscht…') : t('Endgültig löschen')}
                   </button>
                 </div>
               </div>
@@ -1292,6 +1265,7 @@ const inp = { width: '100%', padding: '10px 13px', borderRadius: 12, border: '1.
 
 // ─── CommunityDetail (Main) ───────────────────────────────────
 export default function CommunityDetail() {
+  const { t } = useT()
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -1357,16 +1331,16 @@ export default function CommunityDetail() {
   async function handleRoleChange(userId, role) {
     try {
       await changeRole(userId, role)
-      showToast(role === 'admin' ? 'Admin-Rechte vergeben ✓' : 'Admin-Rechte entzogen')
+      showToast(role === 'admin' ? t('Admin-Rechte vergeben ✓') : t('Admin-Rechte entzogen'))
     } catch {
-      showToast('Rolle konnte nicht geändert werden', 'error')
+      showToast(t('Rolle konnte nicht geändert werden'), 'error')
     }
   }
 
   async function handleRemove(userId) {
-    if (!window.confirm('Mitglied wirklich entfernen?')) return
+    if (!window.confirm(t('Mitglied wirklich entfernen?'))) return
     await removeMember(userId)
-    showToast('Mitglied entfernt')
+    showToast(t('Mitglied entfernt'))
   }
 
   async function handleLeave() {
@@ -1378,16 +1352,16 @@ export default function CommunityDetail() {
           .filter(m => m.user_id !== user?.id)
           .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))[0]
         if (!successor) {
-          showToast('Du bist das einzige Mitglied – lösche die Community stattdessen.', 'error')
+          showToast(t('Du bist das einzige Mitglied – lösche die Community stattdessen.'), 'error')
           return
         }
         await changeRole(successor.user_id, 'admin')
       }
       await leaveCommunity(id)
-      showToast('Community verlassen')
+      showToast(t('Community verlassen'))
       navigate('/friends', { replace: true })
     } catch {
-      showToast('Fehler beim Austreten', 'error')
+      showToast(t('Fehler beim Austreten'), 'error')
     }
   }
 
@@ -1401,42 +1375,42 @@ export default function CommunityDetail() {
         supabase.storage.from('community-avatars').remove([`${id}/avatar.jpg`]),
       ])
       await deleteCommunity(id)
-      showToast('Community gelöscht')
+      showToast(t('Community gelöscht'))
       navigate('/friends', { replace: true })
     } catch {
-      showToast('Fehler beim Löschen', 'error')
+      showToast(t('Fehler beim Löschen'), 'error')
     }
   }
 
   async function handleRespondJoinRequest(requestId, approve, note = null) {
     try {
       await respondToJoinRequest(requestId, approve, note)
-      showToast(approve ? 'Anfrage angenommen ✓' : 'Anfrage abgelehnt')
+      showToast(approve ? t('Anfrage angenommen ✓') : t('Anfrage abgelehnt'))
       return true
     } catch {
-      showToast('Fehler beim Bearbeiten', 'error')
+      showToast(t('Fehler beim Bearbeiten'), 'error')
       return false
     }
   }
 
   async function handleDeletePost(postId) {
     await deletePost(postId)
-    showToast('Beitrag gelöscht')
+    showToast(t('Beitrag gelöscht'))
   }
 
   async function handleDeleteEvent(eventId) {
-    if (!window.confirm('Termin wirklich löschen?')) return
+    if (!window.confirm(t('Termin wirklich löschen?'))) return
     await deleteEvent(eventId)
-    showToast('Termin gelöscht')
+    showToast(t('Termin gelöscht'))
   }
 
   async function handleAddPrayer(title, description) {
     try {
       await createPrayer(title, description)
-      showToast('Gebetsanliegen geteilt 🙏')
+      showToast(t('Gebetsanliegen geteilt 🙏'))
     } catch (err) {
       console.error('[CommunityDetail] Gebet anlegen fehlgeschlagen:', err)
-      showToast('Fehler beim Teilen', 'error')
+      showToast(t('Fehler beim Teilen'), 'error')
     }
   }
 
@@ -1444,17 +1418,17 @@ export default function CommunityDetail() {
   const openQuestions = questions.filter(q => q.status === 'open').length
 
   const tabs = [
-    { key: 'chat', label: 'Chat', icon: MessageCircle },
-    { key: 'board', label: 'Pinnwand', icon: Pin },
-    { key: 'events', label: 'Events', icon: CalendarDays },
-    { key: 'prayers', label: 'Gebete', icon: HandHeart },
-    ...(isGemeinde ? [{ key: 'questions', label: 'Fragen', icon: HelpCircle }] : []),
-    ...(isAdmin ? [{ key: 'reports', label: 'Meldungen', icon: Shield }] : []),
+    { key: 'chat', label: t('Chat'), icon: MessageCircle },
+    { key: 'board', label: t('Pinnwand'), icon: Pin },
+    { key: 'events', label: t('Events'), icon: CalendarDays },
+    { key: 'prayers', label: t('Gebete'), icon: HandHeart },
+    ...(isGemeinde ? [{ key: 'questions', label: t('Fragen'), icon: HelpCircle }] : []),
+    ...(isAdmin ? [{ key: 'reports', label: t('Meldungen'), icon: Shield }] : []),
   ]
 
   async function handleAnswerQuestion(questionId, answer) {
     await answerQuestion(questionId, answer)
-    showToast('Antwort gesendet ✓')
+    showToast(t('Antwort gesendet ✓'))
   }
 
   // ── Loading ──────────────────────────────────────────────────
@@ -1468,7 +1442,7 @@ export default function CommunityDetail() {
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid var(--color-warm-3)', borderTopColor: 'var(--color-warm-1)', animation: 'spin 0.8s linear infinite' }} />
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }`}</style>
+        <style>{'@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }'}</style>
       </div>
     )
   }
@@ -1478,7 +1452,7 @@ export default function CommunityDetail() {
       <div style={{ backgroundColor: 'var(--color-bg)', height: '100%' }}>
         <div style={{ backgroundColor: 'var(--color-white)', borderBottom: '1px solid var(--color-warm-3)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4 }}><ArrowLeft size={20} /></button>
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>Nicht gefunden</span>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>{t('Nicht gefunden')}</span>
         </div>
       </div>
     )
@@ -1511,10 +1485,10 @@ export default function CommunityDetail() {
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.30), transparent 55%, rgba(0,0,0,0.22))', pointerEvents: 'none' }} />
           )}
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: hasBanner ? '12px 12px' : '9px 10px' }}>
-            <button onClick={() => navigate(-1)} aria-label="Zurück" style={hasBanner ? glassBtn : plainHeaderBtn}>
+            <button onClick={() => navigate(-1)} aria-label={t('Zurück')} style={hasBanner ? glassBtn : plainHeaderBtn}>
               <ArrowLeft size={20} color={hasBanner ? '#fff' : 'var(--color-text)'} />
             </button>
-            <button onClick={() => setShowSettings(true)} aria-label="Einstellungen" style={{ ...(hasBanner ? glassBtn : plainHeaderBtn), position: 'relative' }}>
+            <button onClick={() => setShowSettings(true)} aria-label={t('Einstellungen')} style={{ ...(hasBanner ? glassBtn : plainHeaderBtn), position: 'relative' }}>
               <Settings size={19} color={hasBanner ? '#fff' : 'var(--color-text)'} />
               {isAdmin && joinRequests.length > 0 && (
                 <span style={{
@@ -1558,20 +1532,17 @@ export default function CommunityDetail() {
             {/* Mitglieder-Pille: Label + Avatare + Anzahl, öffnet das Sheet */}
             <button
               onClick={() => setShowMembers(true)}
-              aria-label="Mitglieder anzeigen"
+              aria-label={t('Mitglieder anzeigen')}
               style={{ ...metaChip, gap: 7, cursor: 'pointer', borderColor: showMembers ? 'var(--color-accent)' : 'var(--color-border)' }}
-            >
-              Mitglieder
-              <MemberAvatarStack members={memberPreview} count={members.length} size={20} max={3} />
+            >{t('Mitglieder')}<MemberAvatarStack members={memberPreview} count={members.length} size={20} max={3} />
               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{members.length}</span>
             </button>
             <span style={metaChip}>
-              {community.is_public ? <><Globe size={12} /> Öffentlich</> : <><Lock size={12} /> Privat</>}
+              {community.is_public ? <><Globe size={12} />{' '}{t('Öffentlich')}</> : <><Lock size={12} />{' '}{t('Privat')}</>}
             </span>
             {isAdminRole && (
               <span style={{ ...metaChip, color: 'var(--color-gold-text)', backgroundColor: 'var(--color-gold-light)', borderColor: 'var(--color-accent)' }}>
-                <Shield size={12} /> Admin
-              </span>
+                <Shield size={12} />{' '}{t('Admin')}</span>
             )}
           </div>
         </div>
@@ -1604,8 +1575,8 @@ export default function CommunityDetail() {
                 {!chatLoading && messages.length === 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px 16px', textAlign: 'center' }}>
                     <p style={{ fontSize: 36, margin: '0 0 10px' }}>💬</p>
-                    <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 5px' }}>Noch keine Nachrichten</p>
-                    <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Schreib die erste Nachricht!</p>
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 5px' }}>{t('Noch keine Nachrichten')}</p>
+                    <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>{t('Schreib die erste Nachricht!')}</p>
                   </div>
                 )}
                 {messages.map((msg, i) => {
@@ -1635,8 +1606,7 @@ export default function CommunityDetail() {
                   onClick={() => setShowCreatePost(true)}
                   style={{ width: '100%', padding: '12px 0', borderRadius: 14, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 16, boxShadow: '0 2px 8px rgba(175,138,100,0.3)' }}
                 >
-                  <Plus size={15} /> Ankündigung schreiben
-                </button>
+                  <Plus size={15} />{' '}{t('Ankündigung schreiben')}</button>
               )}
 
               {/* Pinned posts */}
@@ -1648,7 +1618,7 @@ export default function CommunityDetail() {
               {posts.filter(p => !p.is_pinned).length === 0 && posts.filter(p => p.is_pinned).length === 0 && (
                 <div style={{ textAlign: 'center', padding: '30px 16px' }}>
                   <p style={{ fontSize: 32, margin: '0 0 8px' }}>📌</p>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Noch keine Beiträge.</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>{t('Noch keine Beiträge.')}</p>
                 </div>
               )}
               {posts.filter(p => !p.is_pinned).map(p => (
@@ -1665,14 +1635,13 @@ export default function CommunityDetail() {
                   onClick={() => setShowCreateEvent(true)}
                   style={{ width: '100%', padding: '11px 0', borderRadius: 12, border: '1.5px dashed var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}
                 >
-                  <Plus size={14} /> Termin erstellen
-                </button>
+                  <Plus size={14} />{' '}{t('Termin erstellen')}</button>
               )}
 
               {upcomingEvents.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '30px 16px' }}>
                   <p style={{ fontSize: 32, margin: '0 0 8px' }}>📅</p>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Keine anstehenden Termine.</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>{t('Keine anstehenden Termine.')}</p>
                 </div>
               )}
               {upcomingEvents.map(ev => (
@@ -1685,8 +1654,7 @@ export default function CommunityDetail() {
                     onClick={() => setShowPastEvents(v => !v)}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: '4px 0', marginBottom: 8 }}
                   >
-                    {showPastEvents ? '▲' : '▼'} Vergangene Termine ({pastEvents.length})
-                  </button>
+                    {showPastEvents ? '▲' : '▼'}{' '}{t('Vergangene Termine ({length})', { length: pastEvents.length })}</button>
                   {showPastEvents && pastEvents.map(ev => (
                     <EventCard key={ev.id} event={ev} myStatus={myRsvps[ev.id]} onRsvp={rsvpEvent} currentUserId={user.id} isAdmin={isAdmin} onDelete={handleDeleteEvent} />
                   ))}
@@ -1704,15 +1672,12 @@ export default function CommunityDetail() {
           {activeTab === 'prayers' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h4 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
-                  Gebetsanliegen
-                </h4>
+                <h4 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{t('Gebetsanliegen')}</h4>
                 <button
                   onClick={() => setShowAddPrayer(true)}
                   style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-accent)', color: '#fff', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                 >
-                  <Plus size={12} /> Gebet hinzufügen
-                </button>
+                  <Plus size={12} />{' '}{t('Gebet hinzufügen')}</button>
               </div>
 
               {prayersLoading ? (
@@ -1720,10 +1685,8 @@ export default function CommunityDetail() {
               ) : prayers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 16px' }}>
                   <p style={{ fontSize: 36, margin: '0 0 10px' }}>🙏</p>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>Noch keine Gebetsanliegen</p>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: 0 }}>
-                    Teile ein Anliegen mit der Community.
-                  </p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{t('Noch keine Gebetsanliegen')}</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: 0 }}>{t('Teile ein Anliegen mit der Community.')}</p>
                 </div>
               ) : (
                 <PrayerCardList prayers={prayers} onChanged={reloadPrayers} showContext={false} />
@@ -1737,10 +1700,8 @@ export default function CommunityDetail() {
               {questions.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 16px' }}>
                   <p style={{ fontSize: 36, margin: '0 0 10px' }}>❓</p>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>Noch keine Fragen</p>
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: 0 }}>
-                    Fragen von Besuchern der Karte erscheinen hier.
-                  </p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{t('Noch keine Fragen')}</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: 0 }}>{t('Fragen von Besuchern der Karte erscheinen hier.')}</p>
                 </div>
               ) : (
                 questions.map(q => (
@@ -1791,11 +1752,7 @@ export default function CommunityDetail() {
         <AddPrayerSheet onClose={() => setShowAddPrayer(false)} onSubmit={handleAddPrayer} />
       )}
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-        @keyframes sheetSlideUp { from{transform:translateX(-50%) translateY(100%)} to{transform:translateX(-50%) translateY(0)} }
-      `}</style>
+      <style>{'\n        @keyframes spin { to { transform: rotate(360deg); } }\n        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }\n        @keyframes sheetSlideUp { from{transform:translateX(-50%) translateY(100%)} to{transform:translateX(-50%) translateY(0)} }\n      '}</style>
     </div>
   )
 }

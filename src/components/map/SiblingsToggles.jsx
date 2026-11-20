@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ChevronDown, Check, SlidersHorizontal, X } from 'lucide-react'
+import { tr, useT, getLang } from '../../i18n'
 
 // Ansicht der Systemkarte „Meine Geschwister in Christus".
 // Unten angedockt, damit das Menü nicht mitten auf den Personen liegt.
@@ -32,30 +33,33 @@ export function saveSiblingsView(view) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(view)) } catch { /* privater Modus */ }
 }
 
-export function siblingsMapTitle(map, fallback = 'Meine Oikos Map') {
+export function siblingsMapTitle(map, fallback = tr('Meine Oikos Map')) {
   if (!map) return fallback
-  if (map.kind === 'siblings') return 'Meine Geschwister in Christus'
+  if (map.kind === 'siblings') return tr('Meine Geschwister in Christus')
   return map.name || fallback
 }
 
+// Im Englischen stehen die Zählwörter klein („3 friends"), im Deutschen bleiben sie groß.
+const lc = (w) => (getLang() === 'en' ? w.toLowerCase() : w)
+
 function nLabel(n, one, many) {
-  return `${n} ${n === 1 ? one : many}`
+  return `${n} ${lc(tr(n === 1 ? one : many))}`
 }
 
 export function siblingsViewSummary({
   depth, showEdges, showCommunities, friendCount = 0, furtherCount = 0, communityCount = null, loadingMore = false,
 }) {
-  if (!friendCount) return 'Noch keine Freunde mit Account'
+  if (!friendCount) return tr('Noch keine Freunde mit Account')
   let who = nLabel(friendCount, 'Freund', 'Freunde')
   if (depth > 1) {
-    if (loadingMore) who = `${who} · weitere laden`
+    if (loadingMore) who = `${who} · ${tr('weitere laden')}`
     else if (furtherCount > 0) who = `${who}, ${nLabel(furtherCount, 'weiterer', 'weitere')}`
   }
   const parts = [who]
-  if (!showEdges) parts.push('keine Linien untereinander')
+  if (!showEdges) parts.push(tr('keine Linien untereinander'))
   if (showCommunities) {
-    if (communityCount == null) parts.push('Gemeinden')
-    else if (communityCount === 0) parts.push('keine Gemeinden')
+    if (communityCount == null) parts.push(lc(tr('Gemeinden')))
+    else if (communityCount === 0) parts.push(tr('keine Gemeinden'))
     else parts.push(nLabel(communityCount, 'Gemeinde', 'Gemeinden'))
   }
   return parts.join(' · ')
@@ -91,6 +95,7 @@ export default function SiblingsToggles({
   friendCount = 0, furtherCount = 0, communityCount = null, loadingMore = false,
   liftAboveNav = true,
 }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [showHint, setShowHint] = useState(() => {
     try { return !localStorage.getItem(HINT_KEY) } catch { return false }
@@ -144,11 +149,11 @@ export default function SiblingsToggles({
             }}
           >
             <span style={{ flex: 1 }}>
-              Diese Karte zeigt nur Geschwister mit eigenem Account. Menschen ohne Account legst du auf einer eigenen Karte an.
+              {t('Diese Karte zeigt nur Geschwister mit eigenem Account. Menschen ohne Account legst du auf einer eigenen Karte an.')}
             </span>
             <button
               onClick={dismissHint}
-              aria-label="Hinweis schließen"
+              aria-label={t('Hinweis schließen')}
               style={{ border: 'none', background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}
             >
               <X size={16} />
@@ -159,7 +164,7 @@ export default function SiblingsToggles({
         {open ? (
           <div
             role="dialog"
-            aria-label="Ansicht"
+            aria-label={t('Ansicht')}
             style={{
               borderRadius: 18, overflow: 'hidden',
               border: '1px solid var(--color-border)', background: 'var(--color-paper)',
@@ -168,10 +173,10 @@ export default function SiblingsToggles({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px 4px' }}>
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>Ansicht</span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>{t('Ansicht')}</span>
               <button
                 onClick={() => setOpen(false)}
-                aria-label="Ansicht schließen"
+                aria-label={t('Ansicht schließen')}
                 style={{ border: 'none', background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer', padding: 4 }}
               >
                 <ChevronDown size={18} />
@@ -181,17 +186,17 @@ export default function SiblingsToggles({
             <div style={{ overflowY: 'auto', paddingBottom: 8 }}>
               {showHint && (
                 <p style={{ margin: '4px 14px 8px', fontFamily: 'Lora, serif', fontSize: 12.5, lineHeight: 1.45, color: 'var(--color-text-secondary)' }}>
-                  Nur Geschwister mit eigenem Account. Ohne Account gehören sie auf eine eigene Karte.
+                  {t('Nur Geschwister mit eigenem Account. Ohne Account gehören sie auf eine eigene Karte.')}
                   <button
                     onClick={dismissHint}
                     style={{ marginLeft: 6, border: 'none', background: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }}
                   >
-                    Verstanden
+                    {t('Verstanden')}
                   </button>
                 </p>
               )}
 
-              <div style={sectionStyle}>Wen zeigen?</div>
+              <div style={sectionStyle}>{t('Wen zeigen?')}</div>
               {DEPTHS.map((opt) => {
                 const selected = depth === opt.depth
                 return (
@@ -203,8 +208,8 @@ export default function SiblingsToggles({
                     style={{ ...rowBtn, background: selected ? 'var(--color-warm-4, rgba(255,255,255,0.04))' : 'transparent' }}
                   >
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14.5, fontWeight: selected ? 600 : 500 }}>{opt.title}</span>
-                      <span style={{ display: 'block', marginTop: 2, fontFamily: 'Lora, serif', fontSize: 12, lineHeight: 1.35, color: 'var(--color-text-secondary)' }}>{opt.text}</span>
+                      <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14.5, fontWeight: selected ? 600 : 500 }}>{t(opt.title)}</span>
+                      <span style={{ display: 'block', marginTop: 2, fontFamily: 'Lora, serif', fontSize: 12, lineHeight: 1.35, color: 'var(--color-text-secondary)' }}>{t(opt.text)}</span>
                     </span>
                     {selected && <Check size={16} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />}
                   </button>
@@ -212,13 +217,13 @@ export default function SiblingsToggles({
               })}
 
               <div style={{ height: 1, background: 'var(--color-border)', margin: '8px 14px' }} />
-              <div style={sectionStyle}>Was einzeichnen?</div>
+              <div style={sectionStyle}>{t('Was einzeichnen?')}</div>
 
               <button role="switch" aria-checked={showEdges} onClick={() => onShowEdges(!showEdges)} style={rowBtn}>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14.5, fontWeight: 500 }}>Wer sich untereinander kennt</span>
+                  <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14.5, fontWeight: 500 }}>{t('Wer sich untereinander kennt')}</span>
                   <span style={{ display: 'block', marginTop: 2, fontFamily: 'Lora, serif', fontSize: 12, lineHeight: 1.35, color: 'var(--color-text-secondary)' }}>
-                    Linien zwischen Freunden. Linien zur Mitte und zu Gemeinden bleiben.
+                    {t('Linien zwischen Freunden. Linien zur Mitte und zu Gemeinden bleiben.')}
                   </span>
                 </span>
                 <Switch on={showEdges} />
@@ -226,10 +231,10 @@ export default function SiblingsToggles({
 
               <button role="switch" aria-checked={showCommunities} onClick={() => onShowCommunities(!showCommunities)} style={rowBtn}>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14.5, fontWeight: 500 }}>Gemeinden</span>
+                  <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14.5, fontWeight: 500 }}>{t('Gemeinden')}</span>
                   <span style={{ display: 'block', marginTop: 2, fontFamily: 'Lora, serif', fontSize: 12, lineHeight: 1.35, color: 'var(--color-text-secondary)' }}>
-                    Grüne Karten für Communities, in denen ihr gemeinsam seid.
-                    {showCommunities && communityCount === 0 ? ' Du bist in keiner.' : ''}
+                    {t('Grüne Karten für Communities, in denen ihr gemeinsam seid.')}
+                    {showCommunities && communityCount === 0 ? ` ${t('Du bist in keiner.')}` : ''}
                   </span>
                 </span>
                 <Switch on={showCommunities} />

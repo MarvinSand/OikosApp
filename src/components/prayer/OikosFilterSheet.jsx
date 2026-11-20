@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Search } from 'lucide-react'
 import { hashString, getInitials } from '../../lib/communityTheme'
 import BodyPortal from '../common/BodyPortal'
+import { useT } from '../../i18n'
 
 // Deterministische Akzentfarbe je Besitzer-ID – gleiche Idee wie
 // communityCover(), nur als flache Farbe statt Verlauf (für kleine Badges).
@@ -11,6 +12,7 @@ function ownerColor(id) {
 }
 
 function OwnerBadge({ isOwn, ownerName, ownerId }) {
+  const { t } = useT()
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0,
@@ -26,17 +28,18 @@ function OwnerBadge({ isOwn, ownerName, ownerId }) {
         {isOwn ? '' : getInitials(ownerName)}
       </span>
       <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-        {isOwn ? 'Du' : ownerName}
+        {isOwn ? t('Du') : ownerName}
       </span>
     </span>
   )
 }
 
 function BulkButtons({ onAll, onNone }) {
+  const { t } = useT()
   return (
     <div style={{ display: 'flex', gap: 8 }}>
-      <button onClick={onAll} style={bulkBtn}>Alle ein</button>
-      <button onClick={onNone} style={{ ...bulkBtn, color: 'var(--color-text-secondary)' }}>Alle aus</button>
+      <button onClick={onAll} style={bulkBtn}>{t('Alle ein')}</button>
+      <button onClick={onNone} style={{ ...bulkBtn, color: 'var(--color-text-secondary)' }}>{t('Alle aus')}</button>
     </div>
   )
 }
@@ -62,6 +65,7 @@ function CheckRow({ checked, onToggle, children }) {
 // eigenen Auswahlzustand, Änderungen wirken sofort (der Hook ist bereits
 // die Quelle für den gefilterten Feed).
 export default function OikosFilterSheet({ source, onClose }) {
+  const { t } = useT()
   const [siblingQuery, setSiblingQuery] = useState('')
   const {
     loading, siblings, availableMaps, availablePeople,
@@ -87,38 +91,34 @@ export default function OikosFilterSheet({ source, onClose }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-border)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            Oikos-Gebete auswählen
-          </h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Oikos-Gebete auswählen')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
         {/* ── Von wem ─────────────────────────────────────────────── */}
-        <p style={sectionLabel}>Von wem</p>
+        <p style={sectionLabel}>{t('Von wem')}</p>
         <div style={{ border: '1px solid var(--color-border)', borderRadius: 14, padding: '4px 12px', marginBottom: 18 }}>
           <CheckRow checked={mineOn} onToggle={() => setMineOn(v => !v)}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>Meine Maps</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{t('Meine Maps')}</span>
           </CheckRow>
           <div style={{ borderTop: '1px solid var(--color-border)' }} />
           <CheckRow checked={siblingsOn} onToggle={() => setSiblingsOn(v => !v)}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>Von Geschwistern</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{t('Von Geschwistern')}</span>
           </CheckRow>
 
           {siblingsOn && (
             <div style={{ padding: '4px 4px 10px' }}>
               {siblings.length === 0 && !loading ? (
-                <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '4px 0 6px' }}>
-                  Du hast noch keine verbundenen Geschwister.
-                </p>
+                <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '4px 0 6px' }}>{t('Du hast noch keine verbundenen Geschwister.')}</p>
               ) : (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 10, marginBottom: 8, backgroundColor: 'var(--color-bg)' }}>
                     <Search size={13} color="var(--color-text-tertiary)" />
                     <input
                       value={siblingQuery} onChange={e => setSiblingQuery(e.target.value)}
-                      placeholder="Geschwister suchen…"
+                      placeholder={t('Geschwister suchen…')}
                       style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, backgroundColor: 'transparent', color: 'var(--color-text)' }}
                     />
                   </div>
@@ -149,21 +149,19 @@ export default function OikosFilterSheet({ source, onClose }) {
         {(mineOn || siblingsOn) && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <p style={{ ...sectionLabel, marginBottom: 0 }}>Maps</p>
+              <p style={{ ...sectionLabel, marginBottom: 0 }}>{t('Maps')}</p>
               <BulkButtons onAll={() => setAllMaps(true)} onNone={() => setAllMaps(false)} />
             </div>
             <div style={{ border: '1px solid var(--color-border)', borderRadius: 14, padding: '4px 12px', marginBottom: 18, maxHeight: 220, overflowY: 'auto' }}>
               {availableMaps.length === 0 ? (
-                <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '10px 0' }}>
-                  Keine Maps in dieser Auswahl.
-                </p>
+                <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '10px 0' }}>{t('Keine Maps in dieser Auswahl.')}</p>
               ) : (
                 availableMaps.map((m, i) => (
                   <div key={m.id}>
                     {i > 0 && <div style={{ borderTop: '1px solid var(--color-border)' }} />}
                     <CheckRow checked={checkedMapIds.has(m.id)} onToggle={() => toggleMap(m.id)}>
                       <OwnerBadge isOwn={m.isOwn} ownerName={m.ownerName} ownerId={m.ownerId} />
-                      <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text)' }}>{m.name || 'Unbenannte Map'}</span>
+                      <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text)' }}>{m.name || t('Unbenannte Map')}</span>
                     </CheckRow>
                   </div>
                 ))
@@ -176,14 +174,12 @@ export default function OikosFilterSheet({ source, onClose }) {
         {(mineOn || siblingsOn) && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <p style={{ ...sectionLabel, marginBottom: 0 }}>Personen</p>
+              <p style={{ ...sectionLabel, marginBottom: 0 }}>{t('Personen')}</p>
               <BulkButtons onAll={() => setAllPeople(true)} onNone={() => setAllPeople(false)} />
             </div>
             <div style={{ border: '1px solid var(--color-border)', borderRadius: 14, padding: '4px 12px', marginBottom: 8, maxHeight: 220, overflowY: 'auto' }}>
               {availablePeople.length === 0 ? (
-                <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '10px 0' }}>
-                  Keine Personen in den ausgewählten Maps.
-                </p>
+                <p style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '10px 0' }}>{t('Keine Personen in den ausgewählten Maps.')}</p>
               ) : (
                 availablePeople.map((p, i) => (
                   <div key={p.id}>
@@ -192,7 +188,7 @@ export default function OikosFilterSheet({ source, onClose }) {
                       <span style={{ fontSize: 13.5, color: 'var(--color-text)' }}>{p.name}</span>
                       {p.mapName && (
                         <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                          · {p.mapName} · {p.isOwn ? 'von dir' : (p.ownerName ? `von ${p.ownerName}` : 'von Geschwistern')}
+                          · {p.mapName} · {p.isOwn ? t('von dir') : (p.ownerName ? t('von {ownerName}', { ownerName: p.ownerName }) : t('von Geschwistern'))}
                         </span>
                       )}
                     </CheckRow>
@@ -210,9 +206,7 @@ export default function OikosFilterSheet({ source, onClose }) {
             backgroundColor: 'var(--color-accent)', color: '#fff',
             fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, cursor: 'pointer',
           }}
-        >
-          Fertig
-        </button>
+        >{t('Fertig')}</button>
       </div>
     </BodyPortal>
   )

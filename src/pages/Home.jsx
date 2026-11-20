@@ -9,6 +9,7 @@ import ProfileCompletionCard from '../components/home/ProfileCompletionCard'
 import GoalCard from '../components/prayer/GoalCard'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
 import SegmentedTabs from '../components/layout/SegmentedTabs'
+import { useT, tr } from '../i18n'
 
 // Lazy: zieht sonst PeopleYouMayKnow, CommunityCard, CreateCommunitySheet
 // (inkl. AddressAutocomplete/Google-Maps-Loader) in Homes kritischen
@@ -17,6 +18,7 @@ const HomeCommunityTab = lazy(() => import('../components/home/HomeCommunityTab'
 
 // ─── Gruppengebet mit meistem Engagement (Top-Goal) ───────────
 function TopGroupGoal() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { featuredGoals, loading, reload } = usePrayerGoals()
   const [prayGoal, setPrayGoal] = useState(null)
@@ -34,9 +36,7 @@ function TopGroupGoal() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
-          Gruppengebet
-        </p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>{t('Gruppengebet')}</p>
       </div>
 
       {loading ? (
@@ -61,8 +61,8 @@ function TopGroupGoal() {
 }
 
 const HOME_TABS = [
-  { key: 'aktuelles', label: 'Aktuelles' },
-  { key: 'community', label: 'Community' },
+  { key: 'aktuelles', get label() { return tr('Aktuelles') } },
+  { key: 'community', get label() { return tr('Community') } },
 ]
 
 export default function Home() {

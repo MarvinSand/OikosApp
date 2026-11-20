@@ -6,11 +6,13 @@ import { useAuth } from '../../hooks/useAuth'
 import { useViralPosts } from '../../hooks/useViralPosts'
 import { PostCard } from '../../pages/FriendsView'
 import ShareSheet from '../feed/ShareSheet'
+import { useT } from '../../i18n'
 
 const noop = () => {}
 
 // Swipe-Karussell der 3 viralsten Feedposts dieser Woche (eine Karte pro Breite).
 export default function ViralPostsCarousel() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { posts, loading } = useViralPosts(3)
@@ -40,9 +42,7 @@ export default function ViralPostsCarousel() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
         <Flame size={14} color="var(--color-accent)" />
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
-          Diese Woche im Feed
-        </p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>{t('Diese Woche im Feed')}</p>
       </div>
 
       <div
@@ -96,8 +96,7 @@ export default function ViralPostsCarousel() {
           cursor: 'pointer', color: 'var(--color-text-muted)', fontFamily: 'Lora, serif',
           fontSize: 12, fontWeight: 600,
         }}
-      >
-        Feed öffnen <ChevronRight size={13} />
+      >{t('Feed öffnen')}{' '}<ChevronRight size={13} />
       </button>
 
       {sharePost && (

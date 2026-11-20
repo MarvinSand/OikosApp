@@ -10,6 +10,7 @@ import { useQrScanner } from '../../hooks/useQrScanner'
 import { supabase } from '../../lib/supabase'
 import { profileLink } from '../../lib/qrLinks'
 import { getInitials } from '../../lib/communityTheme'
+import { useT } from '../../i18n'
 
 const TABS = [
   { key: 'code', label: 'Mein Code', icon: QrCode },
@@ -17,12 +18,13 @@ const TABS = [
 ]
 
 function MyCodePane({ user, profile }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const url = profileLink(user.id)
   const name = profile?.full_name || profile?.username || ''
 
   async function copy() {
-    try { await navigator.clipboard.writeText(url); showToast('Link kopiert ✓') }
+    try { await navigator.clipboard.writeText(url); showToast(t('Link kopiert ✓')) }
     catch { showToast(url, 'info') }
   }
   async function share() {
@@ -44,24 +46,25 @@ function MyCodePane({ user, profile }) {
         <QRCodeSVG value={url} size={230} level="M" bgColor="#ffffff" fgColor="#000000" />
       </div>
       <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 20px', maxWidth: 260 }}>
-        Zeig diesen Code, damit andere dich in Oikos Connect finden. Wische nach links zum Scannen.
+        {t('Zeig diesen Code, damit andere dich in Oikos Connect finden. Wische nach links zum Scannen.')}
       </p>
       <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 300 }}>
-        <button onClick={copy} style={btn}><Copy size={15} /> Link</button>
-        <button onClick={share} style={btn}><Share2 size={15} /> Teilen</button>
+        <button onClick={copy} style={btn}><Copy size={15} /> {t('Link')}</button>
+        <button onClick={share} style={btn}><Share2 size={15} /> {t('Teilen')}</button>
       </div>
     </div>
   )
 }
 
 function ScanPane({ active, onClose }) {
+  const { t } = useT()
   const videoRef = useRef(null)
   const error = useQrScanner(videoRef, active, onClose)
   return (
     <div style={{ position: 'relative', height: '100%', backgroundColor: '#000' }}>
       <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)', textAlign: 'center', color: '#fff', fontFamily: 'Lora, serif', fontSize: 14, padding: '0 24px' }}>
-        {error || 'QR-Code von Profil oder Community in den Rahmen halten'}
+        {error ? t(error) : t('QR-Code von Profil oder Community in den Rahmen halten')}
       </div>
     </div>
   )
@@ -69,6 +72,7 @@ function ScanPane({ active, onClose }) {
 
 // WhatsApp-Prinzip: erst der eigene Code, per Wischen (oder Tab) zur Kamera.
 export default function QrHubSheet({ onClose, initial = 0 }) {
+  const { t } = useT()
   const { user } = useAuth()
   const rootRef = useRef(null)
   const [index, setIndex] = useState(initial)
@@ -87,9 +91,9 @@ export default function QrHubSheet({ onClose, initial = 0 }) {
     <div ref={rootRef} style={{ position: 'fixed', inset: 0, zIndex: 90, backgroundColor: 'var(--color-bg)', display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
         <div style={{ flex: 1 }}>
-          <SegmentedTabs tabs={TABS} active={TABS[index].key} onSelect={k => setIndex(TABS.findIndex(t => t.key === k))} synced />
+          <SegmentedTabs tabs={TABS.map(x => ({ ...x, label: t(x.label) }))} active={TABS[index].key} onSelect={k => setIndex(TABS.findIndex(t => t.key === k))} synced />
         </div>
-        <button onClick={onClose} aria-label="Schließen" style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+        <button onClick={onClose} aria-label={t('Schließen')} style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
           <X size={20} />
         </button>
       </div>

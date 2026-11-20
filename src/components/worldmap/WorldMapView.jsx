@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useWorldMap, haversine } from '../../hooks/useWorldMap'
 import { useOikosWorldMapSource } from '../../hooks/useOikosWorldMapSource'
 import { useToast } from '../../context/ToastContext'
+import { useT } from '../../i18n'
 import { GOOGLE_MAPS_LOADER_OPTIONS, DEFAULT_MAP_ID } from '../../lib/googleMaps'
 import AdvancedMarker from './AdvancedMarker'
 import UserPinSheet from './UserPinSheet'
@@ -250,28 +251,29 @@ function buildClusterElement(count, kinds) {
 const PRIVACY_KEY = 'oikos_worldmap_privacy_seen'
 
 function PrivacyBanner({ onClose, hasLocation, onSetLocation }) {
+  const { t } = useT()
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}>
       <div style={{ width: '100%', background: C.bg, borderRadius: '20px 20px 0 0', paddingTop: 28, paddingLeft: 20, paddingRight: 20, paddingBottom: 'max(28px, calc(84px + env(safe-area-inset-bottom, 0px)))', boxShadow: '0 -4px 24px rgba(0,0,0,0.12)' }}>
         <div style={{ fontSize: 42, textAlign: 'center', marginBottom: 12 }}>🌍</div>
         <h3 style={{ fontSize: 18, fontWeight: 700, color: C.text, textAlign: 'center', marginBottom: 8 }}>
-          Willkommen auf der Weltkarte
+          {t('Willkommen auf der Weltkarte')}
         </h3>
         <p style={{ fontSize: 13, color: C.textSec, textAlign: 'center', lineHeight: 1.65, marginBottom: 22 }}>
-          Hier siehst du andere Christen und Events in deiner Nähe. Wie genau dein eigener Standort anderen angezeigt wird – von „nur Stadt" bis „genaue Adresse" – kannst du oben rechts über das Zahnrad individuell für alle Nutzer und für Freunde einstellen.
+          {t('Hier siehst du andere Christen und Events in deiner Nähe. Wie genau dein eigener Standort anderen angezeigt wird – von „nur Stadt" bis „genaue Adresse" – kannst du oben rechts über das Zahnrad individuell für alle Nutzer und für Freunde einstellen.')}
         </p>
         <button
           onClick={onClose}
           style={{ width: '100%', padding: '14px', border: 'none', borderRadius: 14, background: C.accent, color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
         >
-          Verstanden ✓
+          {t('Verstanden ✓')}
         </button>
         {!hasLocation && (
           <button
             onClick={onSetLocation}
             style={{ width: '100%', padding: '14px', border: `1.5px solid ${C.accent}`, borderRadius: 14, background: 'transparent', color: C.accent, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10 }}
           >
-            Standort jetzt festlegen
+            {t('Standort jetzt festlegen')}
           </button>
         )}
       </div>
@@ -414,6 +416,7 @@ function useSnapchatZoom({ map }) {
 
 // ─── Main Component ───────────────────────────────────────
 export default function WorldMapView({ onNavigateToProfile }) {
+  const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
   const {
@@ -645,7 +648,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
       focusOn(target.latitude, target.longitude)
       setSelectedUser(target)
     } else {
-      showToast('Diese Person ist auf der Weltkarte nicht sichtbar')
+      showToast(t('Diese Person ist auf der Weltkarte nicht sichtbar'))
     }
     setSearchParams(prev => { prev.delete('focus'); return prev }, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -661,7 +664,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
       focusOn(target.latitude, target.longitude)
       setSelectedGemeinde(target)
     } else {
-      showToast('Diese Gemeinde ist auf der Karte nicht sichtbar')
+      showToast(t('Diese Gemeinde ist auf der Karte nicht sichtbar'))
     }
     setSearchParams(prev => { prev.delete('gemeinde'); return prev }, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -689,13 +692,13 @@ export default function WorldMapView({ onNavigateToProfile }) {
   if (loadError) {
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 32, textAlign: 'center', background: C.bgSec }}>
-        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }}>Die Karte konnte nicht geladen werden.</p>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>Bitte prüfe deine Internetverbindung und versuche es erneut.</p>
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }}>{t('Die Karte konnte nicht geladen werden.')}</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>{t('Bitte prüfe deine Internetverbindung und versuche es erneut.')}</p>
         <button
           onClick={() => window.location.reload()}
           style={{ padding: '10px 20px', borderRadius: 24, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
         >
-          Erneut versuchen
+          {t('Erneut versuchen')}
         </button>
       </div>
     )
@@ -765,8 +768,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
         <button
           onClick={() => setShowLocationSettings(true)}
           style={{ ...mapBtnStyle, position: 'absolute', top: 12, right: 12, zIndex: 500 }}
-          title="Standort-Einstellungen"
-          aria-label="Standort-Einstellungen"
+          title={t('Standort-Einstellungen')}
+          aria-label={t('Standort-Einstellungen')}
         >
           <Settings size={18} />
         </button>
@@ -795,7 +798,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
                 cursor: 'pointer', color: C.accentDark, padding: 0,
                 backdropFilter: 'blur(6px)',
               }}
-              title="Zu meinem Standort"
+              title={t('Zu meinem Standort')}
             >
               <Navigation size={17} />
             </button>
@@ -810,7 +813,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 4px 16px rgba(90,200,250,0.5)', cursor: 'pointer',
             }}
-            title="Event hosten"
+            title={t('Event hosten')}
           >
             <Plus size={26} />
           </button>
@@ -827,14 +830,14 @@ export default function WorldMapView({ onNavigateToProfile }) {
             <span style={{ fontSize: 20 }}>📍</span>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: 0 }}>
-                Kein Standort gesetzt
+                {t('Kein Standort gesetzt')}
               </p>
               <p style={{ fontSize: 11, color: C.textTer, margin: '1px 0 0' }}>
-                Hinterlege deine Adresse in den Einstellungen.
+                {t('Hinterlege deine Adresse in den Einstellungen.')}
               </p>
             </div>
             <button onClick={() => setShowLocationSettings(true)} style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-              Standort
+              {t('Standort')}
             </button>
           </div>
         )}
@@ -901,9 +904,9 @@ export default function WorldMapView({ onNavigateToProfile }) {
           onDelete={(id) => { deleteActivity(id); setSelectedActivity(null) }}
           onEdit={async (id, updates) => {
             const { error } = await updateActivity(id, updates)
-            if (error) { showToast('Änderung fehlgeschlagen', 'error'); return false }
+            if (error) { showToast(t('Änderung fehlgeschlagen'), 'error'); return false }
             setSelectedActivity(prev => prev ? { ...prev, ...updates } : prev)
-            showToast('Event aktualisiert ✓')
+            showToast(t('Event aktualisiert ✓'))
             return true
           }}
         />
@@ -916,15 +919,15 @@ export default function WorldMapView({ onNavigateToProfile }) {
             const { error, chatError } = await createActivity(data)
             if (!error) {
               if (chatError) {
-                showToast('Event erstellt, Chat konnte nicht angelegt werden', 'error')
+                showToast(t('Event erstellt, Chat konnte nicht angelegt werden'), 'error')
               } else {
-                showToast('Event gehostet 📍')
+                showToast(t('Event gehostet 📍'))
               }
               setShowCreateSheet(false)
             } else {
               console.error('createActivity failed:', error)
-              const detail = error.message || error.details || error.hint || error.code || 'Unbekannter Fehler'
-              showToast(`Fehler beim Erstellen: ${detail}`, 'error')
+              const detail = error.message || error.details || error.hint || error.code || t('Unbekannter Fehler')
+              showToast(t('Fehler beim Erstellen: {detail}', { detail }), 'error')
             }
           }}
         />
@@ -949,6 +952,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
 
 // ─── Own Pin Content (React-rendered into AdvancedMarker) ─
 function OwnPinContent({ user }) {
+  const { t } = useT()
   // Gleiche Größe wie Geschwister-Pins; bewusst KEINE Zoom-Skalierung,
   // damit der eigene Pin beim Rauszoomen nicht größer wird.
   const size = 48
@@ -979,7 +983,7 @@ function OwnPinContent({ user }) {
           padding: '2px 6px', borderRadius: 999, border: '1.5px solid #fff',
           boxShadow: '0 1px 3px rgba(0,0,0,0.25)', whiteSpace: 'nowrap', pointerEvents: 'none',
         }}>
-          Du
+          {t('Du')}
         </div>
       </div>
     </div>

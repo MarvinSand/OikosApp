@@ -5,12 +5,14 @@ import { usePrayerGoal } from '../hooks/usePrayerGoal'
 import { useToast } from '../context/ToastContext'
 import ProgressBar from '../components/prayer/ProgressBar'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
+import { useT, tr } from '../i18n'
 
 function getInitials(name) {
   return (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
 export default function PrayerGoalDetail() {
+  const { t } = useT()
   const { id } = useParams()
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -29,10 +31,8 @@ export default function PrayerGoalDetail() {
   if (!goal) {
     return (
       <div className="bg-bg min-h-full flex flex-col items-center justify-center gap-4 px-8" style={{ color: 'var(--color-text-muted)' }}>
-        <p style={{ fontFamily: 'Lora, serif' }}>Dieses Gebetsziel wurde nicht gefunden.</p>
-        <button onClick={() => navigate('/')} style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontWeight: 600, cursor: 'pointer' }}>
-          Zur Startseite
-        </button>
+        <p style={{ fontFamily: 'Lora, serif' }}>{t('Dieses Gebetsziel wurde nicht gefunden.')}</p>
+        <button onClick={() => navigate('/')} style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontWeight: 600, cursor: 'pointer' }}>{t('Zur Startseite')}</button>
       </div>
     )
   }
@@ -45,9 +45,9 @@ export default function PrayerGoalDetail() {
     setJoining(true)
     try {
       await contribute(0)
-      showToast('Du betest mit 🙏')
+      showToast(t('Du betest mit 🙏'))
     } catch {
-      showToast('Fehler beim Mitbeten', 'error')
+      showToast(t('Fehler beim Mitbeten'), 'error')
     } finally {
       setJoining(false)
     }
@@ -70,9 +70,7 @@ export default function PrayerGoalDetail() {
           <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 6, flexShrink: 0 }}>
             <ArrowLeft size={22} />
           </button>
-          <h1 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            Gebetsziel
-          </h1>
+          <h1 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('Gebetsziel')}</h1>
         </div>
       </div>
 
@@ -91,7 +89,7 @@ export default function PrayerGoalDetail() {
           </h2>
           <p style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
             {isHours ? <Clock size={13} /> : <Users size={13} />}
-            {isHours ? 'Stunden-Ziel' : 'Personen-Ziel'}
+            {isHours ? t('Stunden-Ziel') : t('Personen-Ziel')}
           </p>
         </div>
 
@@ -99,8 +97,7 @@ export default function PrayerGoalDetail() {
         <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 16, padding: '20px 18px', border: '1px solid var(--color-warm-3)', boxShadow: '0 2px 12px rgba(58,46,36,0.08)', marginBottom: 20 }}>
           <ProgressBar value={Number(goal.current_value) || 0} target={Number(goal.target_value)} color={goal.color || 'var(--color-accent)'} height={14} unitLabel={unit} />
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: '14px 0 0', textAlign: 'center' }}>
-            🙏 {goal.participant_count || 0} {(goal.participant_count || 0) === 1 ? 'Person betet' : 'Personen beten'} mit
-          </p>
+            🙏 {goal.participant_count || 0} {(goal.participant_count || 0) === 1 ? t('Person betet') : t('Personen beten')}{' '}{t('mit')}</p>
         </div>
 
         {/* Beschreibung */}
@@ -112,9 +109,7 @@ export default function PrayerGoalDetail() {
 
         {/* Mitbeten-Button */}
         {isHours ? (
-          <button onClick={() => setShowPrayer(true)} style={primaryBtn}>
-            🙏 Jetzt mitbeten
-          </button>
+          <button onClick={() => setShowPrayer(true)} style={primaryBtn}>{t('🙏 Jetzt mitbeten')}</button>
         ) : (
           <button onClick={handleJoinPeople} disabled={hasJoined || joining} style={{
             ...primaryBtn,
@@ -122,19 +117,17 @@ export default function PrayerGoalDetail() {
             color: hasJoined ? 'var(--color-gold-text)' : 'var(--color-bg)',
             cursor: hasJoined ? 'default' : 'pointer',
           }}>
-            {hasJoined ? 'Du betest mit ✓' : '🙏 Ich bete mit'}
+            {hasJoined ? t('Du betest mit ✓') : t('🙏 Ich bete mit')}
           </button>
         )}
 
         {/* Teilnehmer */}
         {participants.length > 0 && (
           <div style={{ marginTop: 28 }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
-              Beter ({participants.length})
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>{t('Beter ({length})', { length: participants.length })}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {participants.slice(0, 30).map(p => {
-                const name = p.profiles?.full_name || p.profiles?.username || 'Unbekannt'
+                const name = p.profiles?.full_name || p.profiles?.username || tr('Unbekannt')
                 return (
                   <div key={p.user_id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{

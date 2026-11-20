@@ -7,28 +7,29 @@ import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import { fetchPrayerModeItems, sortItems } from '../../hooks/usePrayerModeSource'
 import BodyPortal from '../common/BodyPortal'
+import { useT, tr } from '../../i18n'
 
 const CATEGORIES = [
-  { key: 'heilung',    label: 'Heilung',    emoji: '🌿' },
-  { key: 'weisheit',   label: 'Weisheit',   emoji: '🕊️' },
-  { key: 'erweckung',  label: 'Erweckung',  emoji: '🔥' },
-  { key: 'wahrheit',   label: 'Wahrheit',   emoji: '📖' },
-  { key: 'liebe',      label: 'Liebe',      emoji: '❤️' },
-  { key: 'sonstiges',  label: 'Sonstiges',  emoji: '🙏' },
+  { key: 'heilung',    get label() { return tr('Heilung') },    emoji: '🌿' },
+  { key: 'weisheit',   get label() { return tr('Weisheit') },   emoji: '🕊️' },
+  { key: 'erweckung',  get label() { return tr('Erweckung') },  emoji: '🔥' },
+  { key: 'wahrheit',   get label() { return tr('Wahrheit') },   emoji: '📖' },
+  { key: 'liebe',      get label() { return tr('Liebe') },      emoji: '❤️' },
+  { key: 'sonstiges',  get label() { return tr('Sonstiges') },  emoji: '🙏' },
 ]
 
 const SOURCES = [
-  { key: 'list',      label: 'Liste',       icon: ListChecks },
-  { key: 'oikos',     label: 'Oikos Map',   icon: MapPin },
-  { key: 'all',       label: 'Alle Nutzer', icon: Globe },
-  { key: 'siblings',  label: 'Geschwister', icon: UserCheck },
-  { key: 'community', label: 'Community',   icon: HomeIcon },
+  { key: 'list',      get label() { return tr('Liste') },       icon: ListChecks },
+  { key: 'oikos',     get label() { return tr('Oikos Map') },   icon: MapPin },
+  { key: 'all',       get label() { return tr('Alle Nutzer') }, icon: Globe },
+  { key: 'siblings',  get label() { return tr('Geschwister') }, icon: UserCheck },
+  { key: 'community', get label() { return tr('Community') },   icon: HomeIcon },
 ]
 
 const SORTS = [
-  { key: 'random', label: 'Zufällig',  icon: Shuffle },
-  { key: 'newest', label: 'Neueste',   icon: ArrowDownNarrowWide },
-  { key: 'oldest', label: 'Älteste',   icon: ArrowUpNarrowWide },
+  { key: 'random', get label() { return tr('Zufällig') },  icon: Shuffle },
+  { key: 'newest', get label() { return tr('Neueste') },   icon: ArrowDownNarrowWide },
+  { key: 'oldest', get label() { return tr('Älteste') },   icon: ArrowUpNarrowWide },
 ]
 
 // Konfiguration vor dem Start des Gebetsmodus.
@@ -36,6 +37,7 @@ const SORTS = [
 // visibleItems: die im Feed gerade sichtbaren Gebete – damit man ohne Umweg
 //   aus der aktuellen Quellen-/Filterauswahl heraus beten kann.
 export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = null, visibleLabel = null }) {
+  const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
   const { lists } = usePrayerLists()
@@ -43,7 +45,7 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
 
   const hasVisible = Array.isArray(visibleItems) && visibleItems.length > 0
   const sourceOptions = hasVisible
-    ? [{ key: 'visible', label: visibleLabel ? `Auswahl: ${visibleLabel}` : 'Sichtbare Gebete', icon: Eye }, ...SOURCES]
+    ? [{ key: 'visible', label: visibleLabel ? t('Auswahl: {visibleLabel}', { visibleLabel }) : t('Sichtbare Gebete'), icon: Eye }, ...SOURCES]
     : SOURCES
   const [source, setSource] = useState(hasVisible ? 'visible' : 'all')
   const [listId, setListId] = useState('')
@@ -79,13 +81,13 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
         ? sortItems(visibleItems, sort).filter(i => categories.length === 0 || categories.includes(i.request?.category))
         : await fetchPrayerModeItems({ source, userId: user.id, listId, communityId, mapId: mapId === '__all__' ? null : mapId, categories, sort })
       if (!items.length) {
-        showToast('Keine passenden Gebete gefunden', 'error')
+        showToast(t('Keine passenden Gebete gefunden'), 'error')
         setLoading(false)
         return
       }
       onStart(items)
     } catch {
-      showToast('Fehler beim Laden', 'error')
+      showToast(t('Fehler beim Laden'), 'error')
       setLoading(false)
     }
   }
@@ -102,14 +104,14 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Gebetsmodus</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Gebetsmodus')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
         {/* Quelle */}
-        <label style={lbl}>Woraus möchtest du beten?</label>
+        <label style={lbl}>{t('Woraus möchtest du beten?')}</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
           {sourceOptions.map(s => {
             const Icon = s.icon
@@ -135,12 +137,10 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
         {/* Liste wählen */}
         {source === 'list' && (
           lists.length === 0 ? (
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 16 }}>
-              Du hast noch keine Gebetsliste.
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 16 }}>{t('Du hast noch keine Gebetsliste.')}</p>
           ) : (
             <select value={listId} onChange={e => setListId(e.target.value)} style={{ ...inp, appearance: 'none', marginBottom: 16 }}>
-              <option value="">— Liste auswählen —</option>
+              <option value="">{t('— Liste auswählen —')}</option>
               {lists.map(l => <option key={l.id} value={l.id}>{l.icon} {l.name}</option>)}
             </select>
           )
@@ -149,13 +149,11 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
         {/* Oikos Map wählen */}
         {source === 'oikos' && (
           maps.length === 0 ? (
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 16 }}>
-              Du hast noch keine Oikos Map.
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 16 }}>{t('Du hast noch keine Oikos Map.')}</p>
           ) : (
             <select value={mapId} onChange={e => setMapId(e.target.value)} style={{ ...inp, appearance: 'none', marginBottom: 16 }}>
-              <option value="">— Map auswählen —</option>
-              {maps.length > 1 && <option value="__all__">Alle Maps</option>}
+              <option value="">{t('— Map auswählen —')}</option>
+              {maps.length > 1 && <option value="__all__">{t('Alle Maps')}</option>}
               {maps.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           )
@@ -164,19 +162,17 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
         {/* Community wählen */}
         {source === 'community' && (
           myCommunities.length === 0 ? (
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 16 }}>
-              Du bist noch in keiner Community.
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 16 }}>{t('Du bist noch in keiner Community.')}</p>
           ) : (
             <select value={communityId} onChange={e => setCommunityId(e.target.value)} style={{ ...inp, appearance: 'none', marginBottom: 16 }}>
-              <option value="">— Community auswählen —</option>
+              <option value="">{t('— Community auswählen —')}</option>
               {myCommunities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )
         )}
 
         {/* Kategorien */}
-        <label style={lbl}>Kategorien (optional)</label>
+        <label style={lbl}>{t('Kategorien (optional)')}</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
           {CATEGORIES.map(c => {
             const active = categories.includes(c.key)
@@ -201,7 +197,7 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
         </div>
 
         {/* Sortierung */}
-        <label style={lbl}>Reihenfolge</label>
+        <label style={lbl}>{t('Reihenfolge')}</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {SORTS.map(s => {
             const Icon = s.icon
@@ -235,7 +231,7 @@ export default function PrayerModeSetupSheet({ onClose, onStart, visibleItems = 
             cursor: canStart ? 'pointer' : 'not-allowed',
           }}
         >
-          {loading ? 'Lädt…' : '🙏 Gebetsmodus starten'}
+          {loading ? t('Lädt…') : t('🙏 Gebetsmodus starten')}
         </button>
       </div>
     </BodyPortal>

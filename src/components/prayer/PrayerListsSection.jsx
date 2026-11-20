@@ -6,12 +6,14 @@ import { useToast } from '../../context/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import BodyPortal from '../common/BodyPortal'
+import { useT } from '../../i18n'
 
 const LIST_COLORS = ['#7A9E7E', '#D4A853', '#C0392B', '#2980B9', '#8E44AD', '#E67E22', '#5A6B7A', '#16A085']
 const LIST_EMOJIS = ['🙏', '👨‍👩‍👧', '🌍', '🏥', '💼', '🛡️', '💔', '➕', '🌅', '⭐', '🕊️', '🔥', '💡', '🌿', '🎯', '❤️', '🌸', '📖', '🌟', '🤲']
 
 // ─── CreateListSheet ──────────────────────────────────────────
 function CreateListSheet({ onClose, onCreate }) {
+  const { t } = useT()
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('🙏')
   const [color, setColor] = useState('#7A9E7E')
@@ -24,10 +26,10 @@ function CreateListSheet({ onClose, onCreate }) {
     setSaving(true)
     try {
       await onCreate({ name: name.trim(), icon, color, description: description.trim() || null })
-      showToast('Liste erstellt ✓')
+      showToast(t('Liste erstellt ✓'))
       onClose()
     } catch {
-      showToast('Fehler beim Erstellen', 'error')
+      showToast(t('Fehler beim Erstellen'), 'error')
     } finally {
       setSaving(false)
     }
@@ -45,13 +47,13 @@ function CreateListSheet({ onClose, onCreate }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Neue Gebetsliste</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Neue Gebetsliste')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
-        <label style={lbl}>Emoji wählen</label>
+        <label style={lbl}>{t('Emoji wählen')}</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
           {LIST_EMOJIS.map(e => (
             <button
@@ -68,24 +70,24 @@ function CreateListSheet({ onClose, onCreate }) {
           ))}
         </div>
 
-        <label style={lbl}>Name der Liste *</label>
+        <label style={lbl}>{t('Name der Liste *')}</label>
         <input
           autoFocus
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="z.B. Familie, Mission, Täglich …"
+          placeholder={t('z.B. Familie, Mission, Täglich …')}
           style={inp}
         />
 
-        <label style={{ ...lbl, marginTop: 14 }}>Beschreibung (optional)</label>
+        <label style={{ ...lbl, marginTop: 14 }}>{t('Beschreibung (optional)')}</label>
         <input
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder="Kurze Beschreibung…"
+          placeholder={t('Kurze Beschreibung…')}
           style={inp}
         />
 
-        <label style={{ ...lbl, marginTop: 14 }}>Farbe</label>
+        <label style={{ ...lbl, marginTop: 14 }}>{t('Farbe')}</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {LIST_COLORS.map(c => (
             <button
@@ -110,7 +112,7 @@ function CreateListSheet({ onClose, onCreate }) {
             cursor: name.trim() ? 'pointer' : 'not-allowed',
           }}
         >
-          {saving ? 'Erstelle…' : 'Liste erstellen'}
+          {saving ? t('Erstelle…') : t('Liste erstellen')}
         </button>
       </div>
     </BodyPortal>
@@ -121,6 +123,7 @@ function CreateListSheet({ onClose, onCreate }) {
 // Karten im Theme des Feeds: dunkle/helle Oberfläche + Rahmen statt grelle
 // Vollfarben; die Listenfarbe dient nur noch als dezenter Akzent am Icon.
 function ListTile({ list, onClick }) {
+  const { t } = useT()
   return (
     <button
       onClick={onClick}
@@ -149,7 +152,7 @@ function ListTile({ list, onClick }) {
         {list.name}
       </p>
       <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-tertiary)', margin: 0 }}>
-        {list.itemCount} {list.itemCount === 1 ? 'Anliegen' : 'Anliegen'}
+        {list.itemCount} {list.itemCount === 1 ? t('Anliegen') : t('Anliegen')}
       </p>
     </button>
   )
@@ -164,6 +167,7 @@ function ListSkeleton() {
 
 // ─── PrayerListsSection ───────────────────────────────────────
 export default function PrayerListsSection({ variant = 'full', expandSignal = 0 }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { lists, loading, createList } = usePrayerLists()
@@ -196,9 +200,7 @@ export default function PrayerListsSection({ variant = 'full', expandSignal = 0 
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Meine Listen
-          </span>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Meine Listen')}</span>
           {!loading && lists.length > 0 && (
             <span style={{
               fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-tertiary)',
@@ -220,8 +222,7 @@ export default function PrayerListsSection({ variant = 'full', expandSignal = 0 
               onClick={() => setShowCreate(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-accent)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, padding: '4px 0' }}
             >
-              <Plus size={14} /> Neue Liste
-            </button>
+              <Plus size={14} />{' '}{t('Neue Liste')}</button>
           </div>
 
           {/* Horizontal-Scroll-Reihe */}
@@ -239,9 +240,7 @@ export default function PrayerListsSection({ variant = 'full', expandSignal = 0 
                 }}
               >
                 <Plus size={20} color="var(--color-accent)" />
-                <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-accent)', fontWeight: 600 }}>
-                  Liste erstellen
-                </span>
+                <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-accent)', fontWeight: 600 }}>{t('Liste erstellen')}</span>
               </button>
             )}
 
@@ -268,9 +267,7 @@ export default function PrayerListsSection({ variant = 'full', expandSignal = 0 
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>🎉</span>
-                  <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: '#1E8449' }}>
-                    Erhörte Gebete
-                  </span>
+                  <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: '#1E8449' }}>{t('Erhörte Gebete')}</span>
                 </div>
                 <span style={{
                   fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700,

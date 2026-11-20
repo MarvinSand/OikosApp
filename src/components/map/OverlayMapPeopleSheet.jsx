@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useT } from '../../i18n'
 
 const BADGE_COLORS = {
   'Freund/in':    { bg: '#E8F4E8', color: 'var(--color-warm-1)' },
@@ -40,6 +41,7 @@ function Switch({ on }) {
 // das Einblenden auf der Karte separat steuert (siehe MapCanvas.jsx:
 // expandedOverlayBoxKeys/onToggleOverlayBoxExpanded).
 export default function OverlayMapPeopleSheet({ od, isExpanded, onToggleExpanded, onClose, onSelectPerson }) {
+  const { t } = useT()
   const [profiles, setProfiles] = useState({}) // { [linked_user_id]: { full_name, username, avatar_url } }
 
   useEffect(() => {
@@ -103,10 +105,10 @@ export default function OverlayMapPeopleSheet({ od, isExpanded, onToggleExpanded
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '4px 20px 12px', flexShrink: 0 }}>
           <div>
             <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 2 }}>
-              {od.mapName || 'Map'}
+              {od.mapName || t('Map')}
             </h3>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>
-              {persons.length} {persons.length === 1 ? 'Person' : 'Personen'}
+              {persons.length === 1 ? t('1 Person') : t('{n} Personen', { n: persons.length })}
             </p>
           </div>
           <button
@@ -131,10 +133,10 @@ export default function OverlayMapPeopleSheet({ od, isExpanded, onToggleExpanded
         >
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14.5, fontWeight: 700, color: 'var(--color-text)' }}>
-              Auf der Karte anzeigen
+              {t('Auf der Karte anzeigen')}
             </span>
             <span style={{ display: 'block', marginTop: 2, fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>
-              Personen dieser Map um das Kästchen herum einblenden
+              {t('Personen dieser Map um das Kästchen herum einblenden')}
             </span>
           </span>
           <Switch on={isExpanded} />
@@ -144,7 +146,7 @@ export default function OverlayMapPeopleSheet({ od, isExpanded, onToggleExpanded
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px calc(24px + env(safe-area-inset-bottom, 0px))' }}>
           {persons.length === 0 && (
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', padding: '8px 8px 16px' }}>
-              Keine Personen in dieser Map.
+              {t('Keine Personen in dieser Map.')}
             </p>
           )}
           {persons.map(person => {
@@ -176,7 +178,7 @@ export default function OverlayMapPeopleSheet({ od, isExpanded, onToggleExpanded
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 3 }}>
                     {person.relationship_type && (
                       <span style={{ fontFamily: 'Lora, serif', fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 20, backgroundColor: relBadge?.bg || 'var(--color-warm-4)', color: relBadge?.color || 'var(--color-text-muted)' }}>
-                        {person.relationship_type}
+                        {t(person.relationship_type)}
                       </span>
                     )}
                     {names.length > 0 && (
@@ -191,7 +193,7 @@ export default function OverlayMapPeopleSheet({ od, isExpanded, onToggleExpanded
                     flexShrink: 0, fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700,
                     padding: '4px 9px', borderRadius: 20, backgroundColor: 'var(--color-accent-light)', color: 'var(--color-accent-dark)',
                   }}>
-                    Account ✓
+                    {t('Account ✓')}
                   </span>
                 )}
               </div>

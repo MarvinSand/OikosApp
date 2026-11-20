@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import BodyPortal from '../common/BodyPortal'
+import { useT } from '../../i18n'
 
 function Avatar({ profile, size = 36 }) {
   const name = profile?.full_name || profile?.username || '?'
@@ -26,6 +27,7 @@ function Avatar({ profile, size = 36 }) {
 // buildMessage(): liefert die Nachrichten-Felder (ohne conversation_id/sender_id),
 //                 z.B. { type, text, bible_verse_text, prayer_request_id }.
 export default function ForwardSheet({ previewTitle, buildMessage, onClose }) {
+  const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
   const [friends, setFriends] = useState([])
@@ -79,10 +81,10 @@ export default function ForwardSheet({ previewTitle, buildMessage, onClose }) {
         if (!msgErr) ok++
       }
       if (ok > 0) {
-        showToast(ok === 1 ? 'Weitergeleitet ✓' : `An ${ok} Geschwister weitergeleitet ✓`)
+        showToast(ok === 1 ? t('Weitergeleitet ✓') : t('An {ok} Geschwister weitergeleitet ✓', { ok }))
         onClose()
       } else {
-        showToast('Fehler beim Weiterleiten', 'error')
+        showToast(t('Fehler beim Weiterleiten'), 'error')
       }
     } finally {
       setSending(false)
@@ -101,7 +103,7 @@ export default function ForwardSheet({ previewTitle, buildMessage, onClose }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Weiterleiten</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Weiterleiten')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>
@@ -118,7 +120,7 @@ export default function ForwardSheet({ previewTitle, buildMessage, onClose }) {
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Geschwister suchen…"
+            placeholder={t('Geschwister suchen…')}
             style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, backgroundColor: 'transparent', color: 'var(--color-text)' }}
           />
         </div>
@@ -126,9 +128,7 @@ export default function ForwardSheet({ previewTitle, buildMessage, onClose }) {
         {loading && <div style={{ height: 56, borderRadius: 12, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />}
 
         {!loading && friends.length === 0 && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
-            Du hast noch keine verbundenen Geschwister.
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '16px 0', margin: 0 }}>{t('Du hast noch keine verbundenen Geschwister.')}</p>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '42vh', overflowY: 'auto' }}>
@@ -173,7 +173,7 @@ export default function ForwardSheet({ previewTitle, buildMessage, onClose }) {
           }}
         >
           <Send size={16} />
-          {sending ? 'Sende…' : selected.length > 0 ? `Senden (${selected.length})` : 'Senden'}
+          {sending ? t('Sende…') : selected.length > 0 ? t('Senden ({length})', { length: selected.length }) : t('Senden')}
         </button>
       </div>
     </BodyPortal>

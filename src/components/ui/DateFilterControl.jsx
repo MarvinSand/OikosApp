@@ -1,9 +1,11 @@
 import { DATE_PRESETS } from '../../lib/dateFilter'
 import MiniCalendar from './MiniCalendar'
+import { useT } from '../../i18n'
 
 // Reusable date-range filter: preset chips + a mini calendar for custom ranges.
 // value: { preset, from, to }   onChange(nextValue)
 export default function DateFilterControl({ value, onChange }) {
+  const { t } = useT()
   const preset = value?.preset || 'all'
 
   function pick(key) {
@@ -17,7 +19,7 @@ export default function DateFilterControl({ value, onChange }) {
   return (
     <div>
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>
-        Zeitraum
+        {t('Zeitraum')}
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {DATE_PRESETS.map(p => {
@@ -34,7 +36,7 @@ export default function DateFilterControl({ value, onChange }) {
                 fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
             >
-              {p.label}
+              {t(p.label)}
             </button>
           )
         })}

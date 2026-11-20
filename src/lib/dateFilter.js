@@ -1,12 +1,14 @@
+import { tr } from '../i18n'
+
 // Shared date-range filtering for Feed & Gebet (Paul)
 // Presets plus a custom range. All comparisons are inclusive.
 
 export const DATE_PRESETS = [
-  { key: 'all',   label: 'Alle' },
-  { key: 'today', label: 'Heute' },
-  { key: 'week',  label: 'Diese Woche' },
-  { key: 'month', label: 'Diesen Monat' },
-  { key: 'custom', label: '📅 Zeitraum' },
+  { key: 'all',   get label() { return tr('Alle') } },
+  { key: 'today', get label() { return tr('Heute') } },
+  { key: 'week',  get label() { return tr('Diese Woche') } },
+  { key: 'month', get label() { return tr('Diesen Monat') } },
+  { key: 'custom', get label() { return tr('📅 Zeitraum') } },
 ]
 
 function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }

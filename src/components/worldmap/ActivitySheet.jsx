@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X, Calendar, Clock, MapPin, Users, Trash2, Pencil, MessageCircle, ChevronRight, Check, Repeat } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
+import { useT, getLang } from '../../i18n'
+
+const locale = () => (getLang() === 'en' ? 'en-US' : 'de-DE')
 import { nextOccurrence, formatRecurrenceLabel, isRecurring, RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
 
 const C = {
@@ -26,7 +29,7 @@ const VIS_LABEL = {
 
 function formatDateTime(dateStr) {
   if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('de-DE', {
+  return new Date(dateStr).toLocaleDateString(locale(), {
     weekday: 'short', day: 'numeric', month: 'short',
     hour: '2-digit', minute: '2-digit',
   })
@@ -34,7 +37,7 @@ function formatDateTime(dateStr) {
 
 function formatTime(dateStr) {
   if (!dateStr) return null
-  return new Date(dateStr).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  return new Date(dateStr).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
 }
 
 // Zeitraum "von – bis" hübsch darstellen
@@ -71,6 +74,7 @@ function ParticipantAvatar({ profile, size = 32 }) {
 }
 
 function ParticipantsListSheet({ participants, onClose }) {
+  const { t } = useT()
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 10001 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} />
@@ -83,7 +87,7 @@ function ParticipantsListSheet({ participants, onClose }) {
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0 }}>
-            Beigetreten ({participants.length})
+            {t('Beigetreten ({n})', { n: participants.length })}
           </h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.textTer, padding: 4, display: 'flex' }}>
             <X size={20} />
@@ -91,12 +95,12 @@ function ParticipantsListSheet({ participants, onClose }) {
         </div>
         {participants.length === 0 && (
           <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', padding: '20px 0' }}>
-            Noch keine Geschwister beigetreten
+            {t('Noch keine Geschwister beigetreten')}
           </p>
         )}
         {participants.map((p, i) => {
           const profile = p.profile || {}
-          const name = profile.full_name || profile.username || 'Unbekannt'
+          const name = profile.full_name || profile.username || t('Unbekannt')
           return (
             <div key={p.user_id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < participants.length - 1 ? `1px solid ${C.bgSec}` : 'none' }}>
               <ParticipantAvatar profile={profile} size={40} />
@@ -116,6 +120,7 @@ function ParticipantsListSheet({ participants, onClose }) {
 }
 
 export default function ActivitySheet({ activity, currentUserId, onClose, onJoin, onJoinChat, onLeave, onDelete, onEdit }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [joining, setJoining] = useState(false)
@@ -169,7 +174,7 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
       const result = await onJoinChat(activity.id)
       if (result?.error) {
         console.error('joinActivityChat error:', result.error)
-        showToast('Chat konnte nicht geöffnet werden', 'error')
+        showToast(t('Chat konnte nicht geöffnet werden'), 'error')
         return
       }
       if (result?.convId) {
@@ -177,7 +182,7 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
         onClose()
         navigate(`/chat/${result.convId}`)
       } else {
-        showToast('Chat konnte nicht erstellt werden', 'error')
+        showToast(t('Chat konnte nicht erstellt werden'), 'error')
       }
     } finally {
       setChatLoading(false)
@@ -185,7 +190,7 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
   }
 
   function handleDelete() {
-    if (window.confirm('Event wirklich löschen?')) {
+    if (window.confirm(t('Event wirklich löschen?'))) {
       onDelete(activity.id)
     }
   }
@@ -219,12 +224,12 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
                 {activity.title}
               </p>
               <p style={{ fontSize: 12, color: C.accentDark, margin: '3px 0 0', fontWeight: 600 }}>
-                {VIS_LABEL[activity.visibility_mode] || '🌐 Öffentlich'}
+                {t(VIS_LABEL[activity.visibility_mode] || '🌐 Öffentlich')}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
               {isOwner && onEdit && (
-                <button onClick={() => setEditing(true)} aria-label="Event bearbeiten" style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.accentDark, padding: 6, display: 'flex', borderRadius: 8 }}>
+                <button onClick={() => setEditing(true)} aria-label={t('Event bearbeiten')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.accentDark, padding: 6, display: 'flex', borderRadius: 8 }}>
                   <Pencil size={18} />
                 </button>
               )}
@@ -266,9 +271,9 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <Repeat size={15} color={C.accentDark} style={{ flexShrink: 0 }} />
                 <p style={{ fontSize: 13, color: C.text, margin: 0 }}>
-                  {seriesEnded ? 'Serie beendet' : recurrenceLabel}
+                  {seriesEnded ? t('Serie beendet') : recurrenceLabel}
                   {!seriesEnded && activity.recurrence_end_date && (
-                    <span style={{ color: C.textTer }}> · bis {new Date(activity.recurrence_end_date).toLocaleDateString('de-DE')}</span>
+                    <span style={{ color: C.textTer }}> · {t('bis {date}', { date: new Date(activity.recurrence_end_date).toLocaleDateString(locale()) })}</span>
                   )}
                 </p>
               </div>
@@ -285,7 +290,7 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <span style={{ fontSize: 14, flexShrink: 0 }}>👤</span>
                 <p style={{ fontSize: 13, color: C.textSec, margin: 0 }}>
-                  Erstellt von {activity.author.full_name || activity.author.username}
+                  {t('Erstellt von {name}', { name: activity.author.full_name || activity.author.username })}
                 </p>
               </div>
             )}
@@ -312,8 +317,8 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
               </div>
             )}
             <p style={{ fontSize: 13, color: C.text, margin: 0, flex: 1, fontWeight: 600 }}>
-              {participants.length}{activity.max_participants ? ` / ${activity.max_participants}` : ''} beigetreten
-              {isFull && !isJoined && <span style={{ color: C.error, fontWeight: 600 }}> · Voll</span>}
+              {participants.length}{activity.max_participants ? ` / ${activity.max_participants}` : ''} {t('beigetreten')}
+              {isFull && !isJoined && <span style={{ color: C.error, fontWeight: 600 }}> · {t('Voll')}</span>}
             </p>
             <ChevronRight size={15} color={C.textTer} />
           </button>
@@ -335,7 +340,7 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
               }}
             >
               {!joining && isJoined && <Check size={17} />}
-              {joining ? '…' : isFull && !isJoined ? 'Event ist voll' : isJoined ? 'Beigetreten – Austreten' : 'Beitreten'}
+              {joining ? '…' : isFull && !isJoined ? t('Event ist voll') : isJoined ? t('Beigetreten – Austreten') : t('Beitreten')}
             </button>
           )}
 
@@ -356,7 +361,7 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
             }}
           >
             <MessageCircle size={16} />
-            {chatLoading ? 'Öffne Chat…' : 'Chat öffnen'}
+            {chatLoading ? t('Öffne Chat…') : t('Chat öffnen')}
           </button>
         </div>
       </div>
@@ -396,6 +401,7 @@ function lastGrapheme(str) {
 }
 
 function EditActivityPanel({ activity, onSave, onCancel }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const [title, setTitle] = useState(activity.title || '')
   const [emoji, setEmoji] = useState(activity.activity_emoji || '📍')
@@ -424,9 +430,9 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
   }
 
   async function handleSave() {
-    if (!title.trim()) { showToast('Bitte eine Überschrift angeben', 'error'); return }
+    if (!title.trim()) { showToast(t('Bitte eine Überschrift angeben'), 'error'); return }
     if (endsAt && startsAt && new Date(endsAt) <= new Date(startsAt)) {
-      showToast('Ende muss nach dem Start liegen', 'error'); return
+      showToast(t('Ende muss nach dem Start liegen'), 'error'); return
     }
     setSaving(true)
     const ok = await onSave({
@@ -473,39 +479,39 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
         maxHeight: '88%', overflowY: 'auto', animation: 'worldSheetUp 0.25s ease-out',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 16px' }} />
-        <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: '0 0 16px' }}>Event bearbeiten</p>
+        <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: '0 0 16px' }}>{t('Event bearbeiten')}</p>
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
           <div style={{ flexShrink: 0 }}>
-            <label style={lblS}>Symbol</label>
+            <label style={lblS}>{t('Symbol')}</label>
             <input
               value={emoji}
               onChange={e => setEmoji(lastGrapheme(e.target.value))}
-              aria-label="Emoji"
+              aria-label={t('Emoji')}
               style={{ ...inpS, width: 60, textAlign: 'center', fontSize: 24, padding: '8px 0' }}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={lblS}>Überschrift</label>
+            <label style={lblS}>{t('Überschrift')}</label>
             <input value={title} onChange={e => setTitle(e.target.value)} maxLength={60} style={inpS} />
           </div>
         </div>
 
-        <label style={lblS}>Infos</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Was sollten andere wissen?" style={{ ...inpS, resize: 'vertical', marginBottom: 14 }} />
+        <label style={lblS}>{t('Infos')}</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder={t('Was sollten andere wissen?')} style={{ ...inpS, resize: 'vertical', marginBottom: 14 }} />
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
           <div style={{ flex: 1 }}>
-            <label style={lblS}>Beginn</label>
+            <label style={lblS}>{t('Beginn')}</label>
             <input type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)} style={inpS} />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={lblS}>Ende</label>
+            <label style={lblS}>{t('Ende')}</label>
             <input type="datetime-local" value={endsAt} onChange={e => setEndsAt(e.target.value)} style={inpS} />
           </div>
         </div>
 
-        <label style={lblS}>Wiederholung</label>
+        <label style={lblS}>{t('Wiederholung')}</label>
         <div className="hide-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: recurrenceFreq ? 10 : 20 }}>
           {RECURRENCE_FREQ_OPTIONS.map(opt => {
             const active = recurrenceFreq === opt.key
@@ -521,7 +527,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
                   fontSize: 13, fontWeight: active ? 700 : 500,
                 }}
               >
-                {opt.label}
+                {t(opt.label)}
               </button>
             )
           })}
@@ -530,7 +536,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
         {recurrenceFreq && (
           <div style={{ marginBottom: 20, padding: 12, borderRadius: 12, background: C.bgSec, border: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 13, color: C.text }}>Alle</span>
+              <span style={{ fontSize: 13, color: C.text }}>{t('Alle ')}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <button onClick={() => setRecurrenceInterval(v => Math.max(1, (Number(v) || 1) - 1))} style={stepBtnS}>−</button>
                 <span style={{ fontSize: 14, fontWeight: 700, color: C.text, minWidth: 18, textAlign: 'center' }}>
@@ -538,7 +544,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
                 </span>
                 <button onClick={() => setRecurrenceInterval(v => Math.min(30, (Number(v) || 1) + 1))} style={stepBtnS}>+</button>
               </div>
-              <span style={{ fontSize: 13, color: C.text }}>{intervalUnitLabel(recurrenceFreq, recurrenceInterval)}</span>
+              <span style={{ fontSize: 13, color: C.text }}>{t(intervalUnitLabel(recurrenceFreq, recurrenceInterval))}</span>
             </div>
 
             {recurrenceFreq === 'weekly' && (
@@ -556,7 +562,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
                         color: sel ? '#fff' : C.textSec,
                       }}
                     >
-                      {w.label}
+                      {t(w.label)}
                     </button>
                   )
                 })}
@@ -564,14 +570,14 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
             )}
 
             <div style={{ marginTop: 12 }}>
-              <span style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Endet</span>
+              <span style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>{t('Endet')}</span>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => setRecurrenceEndDate('')} style={smallToggleS(!recurrenceEndDate)}>Nie</button>
+                <button onClick={() => setRecurrenceEndDate('')} style={smallToggleS(!recurrenceEndDate)}>{t('Nie')}</button>
                 <button
                   onClick={() => setRecurrenceEndDate(recurrenceEndDate || (startsAt ? startsAt.slice(0, 10) : ''))}
                   style={smallToggleS(!!recurrenceEndDate)}
                 >
-                  An einem Datum
+                  {t('An einem Datum')}
                 </button>
               </div>
               {recurrenceEndDate && (
@@ -589,10 +595,10 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
 
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onCancel} disabled={saving} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${C.border}`, background: 'none', color: C.textSec, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-            Abbrechen
+            {t('Abbrechen')}
           </button>
           <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: C.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-            {saving ? 'Speichern…' : 'Speichern'}
+            {saving ? t('Speichern…') : t('Speichern')}
           </button>
         </div>
       </div>

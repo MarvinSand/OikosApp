@@ -1,3 +1,6 @@
+
+import { getLang, tr } from '../../i18n'
+
 // ─── ProgressBar ──────────────────────────────────────────────
 // Wiederverwendbarer Fortschrittsbalken für Gebetsziele u.a.
 // Stunden-Ziele speichern current_value als Bruchteil einer Stunde
@@ -5,9 +8,9 @@
 // vollen Stunde liest sich "0,1 Std" wie ein kaputter Wert (Dezimalstunden
 // sind hierzulande unüblich) - darunter zeigen wir stattdessen die Minuten.
 function formatAmount(n, unitLabel) {
-  if (unitLabel === 'Std' && n > 0 && n < 1) return `${Math.round(n * 60)} Min`
+  if (unitLabel === 'Std' && n > 0 && n < 1) return tr('{n} Min', { n: Math.round(n * 60) })
   const rounded = Number.isInteger(n) ? n : Math.round(n * 10) / 10
-  return `${rounded.toLocaleString('de-DE')}${unitLabel ? ` ${unitLabel}` : ''}`
+  return `${rounded.toLocaleString((getLang() === 'en' ? 'en-US' : 'de-DE'))}${unitLabel ? ` ${tr(unitLabel)}` : ''}`
 }
 
 export default function ProgressBar({ value = 0, target = 1, color = 'var(--color-accent)', height = 10, showLabel = true, unitLabel = '' }) {

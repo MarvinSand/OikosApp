@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import BodyPortal from '../common/BodyPortal'
+import { useT } from '../../i18n'
 
 function FreezeConfirmSheet({ streak, freezeDaysRemaining, onConfirm, onClose }) {
+  const { t } = useT()
   const [loading, setLoading] = useState(false)
 
   async function handleConfirm() {
@@ -24,25 +26,18 @@ function FreezeConfirmSheet({ streak, freezeDaysRemaining, onConfirm, onClose })
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            ❄️ Freeze Day
-          </h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('❄️ Freeze Day')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.65, marginBottom: 20 }}>
-          Du hast heute noch nicht gebetet.<br />
-          Möchtest du deinen Freeze Day nutzen, um deinen Streak zu schützen?
-        </p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.65, marginBottom: 20 }}>{t('Du hast heute noch nicht gebetet.')}<br />{t('Möchtest du deinen Freeze Day nutzen, um deinen Streak zu schützen?')}</p>
 
         <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', margin: '0 0 6px' }}>
-            🔥 Dein Streak: <strong>{streak} Tage</strong>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', margin: '0 0 6px' }}>{t('🔥 Dein Streak:')}{' '}<strong>{t('{streak} Tage', { streak })}</strong>
           </p>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', margin: 0 }}>
-            ❄️ Freeze Days übrig: <strong>{freezeDaysRemaining}</strong>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', margin: 0 }}>{t('❄️ Freeze Days übrig:')}{' '}<strong>{freezeDaysRemaining}</strong>
           </p>
         </div>
 
@@ -56,7 +51,7 @@ function FreezeConfirmSheet({ streak, freezeDaysRemaining, onConfirm, onClose })
             marginBottom: 10,
           }}
         >
-          {loading ? '…' : '❄️ Freeze Day nutzen'}
+          {loading ? '…' : t('❄️ Freeze Day nutzen')}
         </button>
         <button
           onClick={onClose}
@@ -66,15 +61,14 @@ function FreezeConfirmSheet({ streak, freezeDaysRemaining, onConfirm, onClose })
             fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-warm-1)', cursor: 'pointer',
             fontWeight: 500,
           }}
-        >
-          Lieber heute noch beten
-        </button>
+        >{t('Lieber heute noch beten')}</button>
       </div>
     </BodyPortal>
   )
 }
 
 export default function StreakBanner({ stats, streakStatus, onFreezeDay, onStatsClick }) {
+  const { t } = useT()
   const [showFreeze, setShowFreeze] = useState(false)
 
   if (!stats) return null
@@ -98,12 +92,8 @@ export default function StreakBanner({ stats, streakStatus, onFreezeDay, onStats
         backgroundColor: 'var(--color-warm-4)',
         border: '1px solid var(--color-warm-3)',
       }}>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 4px' }}>
-          🕊 Starte heute deine Gebetsserie
-        </p>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
-          Bete für mindestens ein Anliegen
-        </p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 4px' }}>{t('🕊 Starte heute deine Gebetsserie')}</p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>{t('Bete für mindestens ein Anliegen')}</p>
       </div>
     )
   }
@@ -135,13 +125,11 @@ export default function StreakBanner({ stats, streakStatus, onFreezeDay, onStats
                     fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700,
                     backgroundColor: '#FEF3C7', color: '#92400E',
                     padding: '2px 7px', borderRadius: 20, marginLeft: 4,
-                  }}>
-                    🏆 Neuer Rekord!
-                  </span>
+                  }}>{t('🏆 Neuer Rekord!')}</span>
                 )}
               </div>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>
-                {streak === 1 ? 'Tag – ein guter Start!' : 'Tage in Folge gebetet'}
+                {streak === 1 ? t('Tag – ein guter Start!') : t('Tage in Folge gebetet')}
               </p>
             </div>
           </div>
@@ -155,9 +143,7 @@ export default function StreakBanner({ stats, streakStatus, onFreezeDay, onStats
                 color: 'var(--color-warm-1)', cursor: 'pointer',
                 fontWeight: 500, padding: '4px 0',
               }}
-            >
-              📊 Statistiken →
-            </button>
+            >{t('📊 Statistiken →')}</button>
           )}
         </div>
 
@@ -177,9 +163,7 @@ export default function StreakBanner({ stats, streakStatus, onFreezeDay, onStats
               }} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)' }}>
-                Längste: {longest} Tage
-              </span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)' }}>{t('Längste: {longest} Tage', { longest })}</span>
             </div>
           </div>
         )}
@@ -197,15 +181,11 @@ export default function StreakBanner({ stats, streakStatus, onFreezeDay, onStats
               color: '#2B6CB0', cursor: 'pointer', fontWeight: 500,
               marginTop: 4,
             }}
-          >
-            ❄️ Freeze Day nutzen · {freezeRemaining} übrig
-          </button>
+          >{t('❄️ Freeze Day nutzen · {freezeRemaining} übrig', { freezeRemaining })}</button>
         )}
 
         {streak === 1 && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', fontStyle: 'italic' }}>
-            Bete auch morgen um den Streak zu halten.
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', fontStyle: 'italic' }}>{t('Bete auch morgen um den Streak zu halten.')}</p>
         )}
       </div>
 

@@ -1,8 +1,10 @@
 import { getInitials } from '../../lib/prayerModel'
 import BodyPortal from '../common/BodyPortal'
+import { useT, tr } from '../../i18n'
 
 // „Haben gebetet"-Sheet: alle Beter eines Anliegens mit ihrer Anzahl.
 export default function PrayedBySheet({ prayersByUser, totalCount, currentUserId, onClose }) {
+  const { t } = useT()
   return (
     <BodyPortal>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 40 }} />
@@ -14,16 +16,13 @@ export default function PrayedBySheet({ prayersByUser, totalCount, currentUserId
         maxHeight: '65vh', overflowY: 'auto', animation: 'sheetSlideUp 0.25s ease-out',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-border)', margin: '0 auto 16px' }} />
-        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', marginBottom: 2 }}>
-          🙏 Haben gebetet ({prayersByUser.length})
-        </h3>
+        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', marginBottom: 2 }}>{t('🙏 Haben gebetet ({length})', { length: prayersByUser.length })}</h3>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 12.5, color: 'var(--color-text-secondary)', marginBottom: 14 }}>
-          {totalCount} {totalCount === 1 ? 'Gebet' : 'Gebete'} insgesamt
-        </p>
+          {totalCount} {totalCount === 1 ? t('Gebet') : t('Gebete')}{' '}{t('insgesamt')}</p>
         {prayersByUser.map(({ userId, profile, count }) => {
           const name = userId === currentUserId
-            ? 'Du'
-            : (profile?.full_name || profile?.username || 'Unbekannt')
+            ? tr('Du')
+            : (profile?.full_name || profile?.username || tr('Unbekannt'))
           return (
             <div key={userId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
               {profile?.avatar_url ? (
@@ -41,8 +40,7 @@ export default function PrayedBySheet({ prayersByUser, totalCount, currentUserId
               )}
               <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: 0, flex: 1 }}>{name}</p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12.5, color: 'var(--color-text-secondary)', margin: 0, flexShrink: 0 }}>
-                {count}× gebetet
-              </p>
+                {t('{count}× gebetet', { count })}</p>
             </div>
           )
         })}

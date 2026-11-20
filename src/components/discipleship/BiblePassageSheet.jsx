@@ -1,12 +1,14 @@
 import { X, RotateCw, BookOpen } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useStationPassage } from '../../hooks/useStationPassage'
+import { useT } from '../../i18n'
 
 // Bottom-Sheet für eine einzelne Bibelstelle, angetippt aus einer Zeile
 // (Bekenntnis, Bibliothek). Nutzt denselben Cache-Hook wie die
 // Stationsdetailseite - book/chapter/verse sind hier nur nicht aus einer
 // festen Spalte, sondern aus lib/bibleBooks.js#parseGermanReference geparst.
 export default function BiblePassageSheet({ label, parsed, onClose, bibleId }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const { html, loading, error, retry } = useStationPassage(parsed?.book, parsed?.chapter, parsed?.verseStart, parsed?.verseEnd, bibleId || undefined)
 
@@ -30,14 +32,13 @@ export default function BiblePassageSheet({ label, parsed, onClose, bibleId }) {
           <button onClick={onClose}><X size={18} style={{ color: 'var(--color-text-tertiary)' }} /></button>
         </div>
 
-        {!parsed && <p style={{ color: 'var(--color-text-tertiary)' }}>Stelle konnte nicht erkannt werden.</p>}
-        {parsed && loading && <p style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
+        {!parsed && <p style={{ color: 'var(--color-text-tertiary)' }}>{t('Stelle konnte nicht erkannt werden.')}</p>}
+        {parsed && loading && <p style={{ color: 'var(--color-text-tertiary)' }}>{t('Lädt…')}</p>}
         {parsed && error && (
           <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
-            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Text konnte nicht geladen werden.</span>
+            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{t('Text konnte nicht geladen werden.')}</span>
             <button onClick={retry} className="flex items-center gap-1 text-sm font-medium flex-shrink-0" style={{ color: 'var(--color-accent)' }}>
-              <RotateCw size={14} /> Erneut
-            </button>
+              <RotateCw size={14} />{' '}{t('Erneut')}</button>
           </div>
         )}
         {parsed && !loading && !error && html && (
@@ -50,8 +51,7 @@ export default function BiblePassageSheet({ label, parsed, onClose, bibleId }) {
             className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl font-medium mt-4"
             style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-accent)' }}
           >
-            <BookOpen size={15} /> Kontext ansehen
-          </button>
+            <BookOpen size={15} />{' '}{t('Kontext ansehen')}</button>
         )}
       </div>
     </>

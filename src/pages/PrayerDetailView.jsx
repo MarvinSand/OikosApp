@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PrayerCardList from '../components/prayer/PrayerCardList'
 import { normalizePrayer, KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
+import { useT } from '../i18n'
 
 const PROFILE_SELECT = 'profiles!owner_id(id, username, full_name, gender, is_christian, avatar_url)'
 
@@ -11,6 +12,7 @@ const PROFILE_SELECT = 'profiles!owner_id(id, username, full_name, gender, is_ch
 // direkt per ID und zeigt es mit der gemeinsamen Gebets-Karte, also denselben
 // Aktionen wie überall sonst (beten, kommentieren, Liste, weiterleiten).
 export default function PrayerDetailView() {
+  const { t } = useT()
   const { id } = useParams()
   const navigate = useNavigate()
 
@@ -61,15 +63,15 @@ export default function PrayerDetailView() {
         borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0,
         backgroundColor: 'var(--color-bg)', zIndex: 10,
       }}>
-        <button onClick={() => navigate(-1)} aria-label="Zurück" style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex' }}>
+        <button onClick={() => navigate(-1)} aria-label={t('Zurück')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex' }}>
           <ArrowLeft size={22} />
         </button>
-        <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>Gebet</span>
+        <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>{t('Gebet')}</span>
       </div>
 
       <div style={{ padding: '14px 16px 90px', maxWidth: 640, margin: '0 auto' }}>
-        {loading && <p style={{ color: 'var(--color-text-tertiary)', textAlign: 'center', padding: 40 }}>Lädt…</p>}
-        {!loading && notFound && <p style={{ color: 'var(--color-text-tertiary)', textAlign: 'center', padding: 40 }}>Gebet nicht gefunden.</p>}
+        {loading && <p style={{ color: 'var(--color-text-tertiary)', textAlign: 'center', padding: 40 }}>{t('Lädt…')}</p>}
+        {!loading && notFound && <p style={{ color: 'var(--color-text-tertiary)', textAlign: 'center', padding: 40 }}>{t('Gebet nicht gefunden.')}</p>}
         {!loading && prayer && (
           <PrayerCardList prayers={[prayer]} onChanged={() => navigate(-1)} />
         )}

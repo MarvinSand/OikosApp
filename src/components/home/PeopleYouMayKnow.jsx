@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { readCache, writeCache } from '../../lib/swrCache'
 import ProfileListOverlay from '../feed/ProfileListOverlay'
 import { profilePreviewState } from '../../lib/profilePreview'
+import { useT, tr } from '../../i18n'
 
 function Avatar({ name, size, avatarUrl, isChristian }) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -38,6 +39,7 @@ function Avatar({ name, size, avatarUrl, isChristian }) {
 // Freunden (mit Anzeige der gemeinsamen Kontakte), füllt sonst mit weiteren
 // Nicht-Verbundenen auf.
 export default function PeopleYouMayKnow() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { getFriendshipStatus, sendRequest } = useFriendships()
@@ -89,9 +91,7 @@ export default function PeopleYouMayKnow() {
 
   return (
     <div>
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', margin: '0 0 12px' }}>
-        Neue Geschwister, die du kennen könntest
-      </p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', margin: '0 0 12px' }}>{t('Neue Geschwister, die du kennen könntest')}</p>
 
       {loading && (
         <div style={{ display: 'flex', gap: 12, overflow: 'hidden' }}>
@@ -104,7 +104,7 @@ export default function PeopleYouMayKnow() {
       {!loading && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
           {visible.map(p => {
-            const name = p.full_name || p.username || 'Unbekannt'
+            const name = p.full_name || p.username || tr('Unbekannt')
             const sent = sentIds.has(p.id)
             return (
               <div
@@ -120,7 +120,7 @@ export default function PeopleYouMayKnow() {
               >
                 <button
                   onClick={() => setDismissed(prev => new Set(prev).add(p.id))}
-                  aria-label="Vorschlag entfernen"
+                  aria-label={t('Vorschlag entfernen')}
                   style={{
                     position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: '50%',
                     border: 'none', backgroundColor: 'var(--color-bg)', color: 'var(--color-text-muted)',
@@ -146,11 +146,11 @@ export default function PeopleYouMayKnow() {
                     onClick={() => setMutualSheetFor(p)}
                     style={{ background: 'none', border: 'none', padding: 0, margin: '2px 0 0', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-accent)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}
                   >
-                    {p.mutualCount} gemeinsame{p.mutualCount === 1 ? 'r' : ''} Freund{p.mutualCount === 1 ? '' : 'e'}
+                    {p.mutualCount === 1 ? t('1 gemeinsamer Freund') : t('{mutualCount} gemeinsame Freunde', { mutualCount: p.mutualCount })}
                   </button>
                 ) : (
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                    {p.city || 'Neu hier'}
+                    {p.city || t('Neu hier')}
                   </p>
                 )}
 
@@ -167,7 +167,7 @@ export default function PeopleYouMayKnow() {
                     border: sent ? '1px solid var(--color-border)' : 'none',
                   }}
                 >
-                  {sent ? <><Check size={13} /> Angefragt</> : sendingId === p.id ? '…' : <><UserPlus size={13} /> Hinzufügen</>}
+                  {sent ? <><Check size={13} />{' '}{t('Angefragt')}</> : sendingId === p.id ? '…' : <><UserPlus size={13} />{' '}{t('Hinzufügen')}</>}
                 </button>
               </div>
             )
@@ -177,7 +177,7 @@ export default function PeopleYouMayKnow() {
 
       {mutualSheetFor && (
         <ProfileListOverlay
-          title={`Gemeinsame Freunde mit ${mutualSheetFor.full_name || mutualSheetFor.username}`}
+          title={t('Gemeinsame Freunde mit {v1}', { v1: mutualSheetFor.full_name || mutualSheetFor.username })}
           items={mutualSheetFor.mutualPeople.map(p => ({
             id: p.id,
             title: p.full_name || p.username,

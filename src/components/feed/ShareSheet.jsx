@@ -4,11 +4,13 @@ import ForwardSheet from '../prayer/ForwardSheet'
 import { useToast } from '../../context/ToastContext'
 import { verseAttachmentFromRow, buildBibleLink } from '../../lib/bibleLink'
 import { publicOrigin } from '../../lib/platform'
+import { useT, tr } from '../../i18n'
 
 // Sheet zum Teilen eines Feed-Posts oder Kommentars: entweder app-intern an
 // Geschwister (ForwardSheet) oder als öffentlicher Link zum Kopieren/Teilen
 // außerhalb der App.
 export default function ShareSheet({ post, comment, onClose }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const [showForward, setShowForward] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -20,16 +22,16 @@ export default function ShareSheet({ post, comment, onClose }) {
     try {
       await navigator.clipboard.writeText(postUrl)
       setCopied(true)
-      showToast('Link kopiert ✓')
+      showToast(t('Link kopiert ✓'))
       setTimeout(onClose, 700)
     } catch {
-      showToast('Link konnte nicht kopiert werden', 'error')
+      showToast(t('Link konnte nicht kopiert werden'), 'error')
     }
   }
 
   async function handleSystemShare() {
     try {
-      await navigator.share({ title: 'Oikos Connect', text: item.title || item.body || 'Beitrag', url: postUrl })
+      await navigator.share({ title: t('Oikos Connect'), text: item.title || item.body || t('Beitrag'), url: postUrl })
       onClose()
     } catch {
       // Nutzer hat den Share-Dialog abgebrochen – nichts tun
@@ -53,7 +55,7 @@ export default function ShareSheet({ post, comment, onClose }) {
   if (showForward) {
     return (
       <ForwardSheet
-        previewTitle={item.title || item.body || 'Beitrag'}
+        previewTitle={item.title || item.body || tr('Beitrag')}
         buildMessage={buildMessage}
         onClose={onClose}
       />
@@ -72,7 +74,7 @@ export default function ShareSheet({ post, comment, onClose }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{comment ? 'Kommentar teilen' : 'Beitrag teilen'}</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{comment ? t('Kommentar teilen') : t('Beitrag teilen')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>
@@ -87,8 +89,8 @@ export default function ShareSheet({ post, comment, onClose }) {
               <Send size={16} color="var(--color-accent-dark)" />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>In der App teilen</p>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>An Geschwister im Chat senden</p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('In der App teilen')}</p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{t('An Geschwister im Chat senden')}</p>
             </div>
           </button>
 
@@ -101,8 +103,8 @@ export default function ShareSheet({ post, comment, onClose }) {
                 <Link2 size={16} color="var(--color-warm-1)" />
               </div>
               <div style={{ flex: 1 }}>
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Außerhalb teilen</p>
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>Mit anderen Apps teilen</p>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Außerhalb teilen')}</p>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{t('Mit anderen Apps teilen')}</p>
               </div>
             </button>
           )}
@@ -115,7 +117,7 @@ export default function ShareSheet({ post, comment, onClose }) {
               {copied ? <Check size={16} color="var(--color-warm-1)" /> : <Link2 size={16} color="var(--color-warm-1)" />}
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Link kopieren</p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Link kopieren')}</p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{postUrl}</p>
             </div>
           </button>

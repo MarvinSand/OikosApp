@@ -2,6 +2,7 @@ import { EyeOff, Eye } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 import { anchoredMenuItemStyle } from '../common/AnchoredMenu'
+import { useT } from '../../i18n'
 
 /**
  * Extra ⋯ menu rows for app admins: soft-hide / restore on others' content.
@@ -14,6 +15,7 @@ export default function AdminContentMenuItems({
   onDone,
   onClose,
 }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const hidden = !!hiddenAt
 
@@ -24,9 +26,9 @@ export default function AdminContentMenuItems({
       p_content_id: contentId,
       p_note: null,
     })
-    if (error) showToast('Verstecken fehlgeschlagen', 'error')
+    if (error) showToast(t('Verstecken fehlgeschlagen'), 'error')
     else {
-      showToast('Beitrag versteckt (Moderation)')
+      showToast(t('Beitrag versteckt (Moderation)'))
       onDone?.('hide')
     }
   }
@@ -38,9 +40,9 @@ export default function AdminContentMenuItems({
       p_content_id: contentId,
       p_note: null,
     })
-    if (error) showToast('Wiederherstellen fehlgeschlagen', 'error')
+    if (error) showToast(t('Wiederherstellen fehlgeschlagen'), 'error')
     else {
-      showToast('Beitrag wieder sichtbar')
+      showToast(t('Beitrag wieder sichtbar'))
       onDone?.('restore')
     }
   }
@@ -51,8 +53,8 @@ export default function AdminContentMenuItems({
       style={anchoredMenuItemStyle}
     >
       {hidden
-        ? <><Eye size={14} /> Beitrag wiederherstellen</>
-        : <><EyeOff size={14} /> Beitrag verstecken (Moderation)</>}
+        ? <><Eye size={14} />{' '}{t('Beitrag wiederherstellen')}</>
+        : <><EyeOff size={14} />{' '}{t('Beitrag verstecken (Moderation)')}</>}
     </button>
   )
 }

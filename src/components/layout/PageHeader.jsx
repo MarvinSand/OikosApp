@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { useT } from '../../i18n'
 
 // Einheitliche Kopfzeile für Unterseiten (Einstellungen, Benachrichtigungen,
 // Erhörte Gebete, Gebetsreise, Gespeicherte Beiträge …): Zurück-Pfeil links,
@@ -8,6 +9,7 @@ import { ArrowLeft } from 'lucide-react'
 // Liegt im App-Container → keine eigene Safe-Area nötig (siehe CLAUDE.md).
 export default function PageHeader({ title, subtitle, onBack, right = null, children = null }) {
   const navigate = useNavigate()
+  const { t } = useT()
   return (
     <header
       style={{
@@ -18,7 +20,7 @@ export default function PageHeader({ title, subtitle, onBack, right = null, chil
       <div className="flex items-center gap-3 px-2" style={{ minHeight: 52 }}>
         <button
           onClick={onBack || (() => navigate(-1))}
-          aria-label="Zurück"
+          aria-label={t('Zurück')}
           style={{ width: 40, height: 40, flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <ArrowLeft size={22} />

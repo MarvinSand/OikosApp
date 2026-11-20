@@ -12,6 +12,7 @@ import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
 import PrayerCardList from '../components/prayer/PrayerCardList'
 import { normalizePrayer, KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
 import Confetti from '../components/ui/Confetti'
+import { useT, tr, getLang } from '../i18n'
 
 // ─── Ampel ───────────────────────────────────────────────────
 function AmpelBar({ ampel }) {
@@ -32,6 +33,7 @@ function AmpelLabel({ ampel }) {
 
 // ─── Anliegen hinzufügen Sheet ────────────────────────────────
 function AddItemSheet({ listId, existingIds, onClose, onAdded }) {
+  const { t } = useT()
   const { user } = useAuth()
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
@@ -65,9 +67,9 @@ function AddItemSheet({ listId, existingIds, onClose, onAdded }) {
     setAdding(req.id)
     try {
       await onAdded(req.id, req._type)
-      showToast('Zur Liste hinzugefügt ✓')
+      showToast(t('Zur Liste hinzugefügt ✓'))
     } catch {
-      showToast('Fehler', 'error')
+      showToast(t('Fehler'), 'error')
     } finally {
       setAdding(null)
     }
@@ -79,31 +81,31 @@ function AddItemSheet({ listId, existingIds, onClose, onAdded }) {
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', maxHeight: '80vh', overflowY: 'auto', animation: 'sheetSlideUp 0.3s ease-out' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Anliegen hinzufügen</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Anliegen hinzufügen')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><X size={18} /></button>
         </div>
         <input
           autoFocus type="text" value={search} onChange={e => doSearch(e.target.value)}
-          placeholder="Anliegen suchen..."
+          placeholder={t('Anliegen suchen...')}
           style={{ width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block', marginBottom: 12 }}
         />
-        {loading && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>Suche…</p>}
+        {loading && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>{t('Suche…')}</p>}
         {!loading && search && results.length === 0 && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', fontStyle: 'italic' }}>Keine Ergebnisse</p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', fontStyle: 'italic' }}>{t('Keine Ergebnisse')}</p>
         )}
         {results.map(req => (
           <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--color-warm-3)' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{req.title}</p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>
-                {req.profiles?.full_name || req.profiles?.username || 'Unbekannt'} · {req._type === 'personal' ? 'Persönlich' : 'Oikos'}
+                {req.profiles?.full_name || req.profiles?.username || t('Unbekannt')} · {req._type === 'personal' ? t('Persönlich') : t('Oikos')}
               </p>
             </div>
             <button
               onClick={() => handleAdd(req)} disabled={adding === req.id}
               style={{ padding: '6px 14px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
             >
-              {adding === req.id ? '…' : '+ Hinzufügen'}
+              {adding === req.id ? '…' : t('+ Hinzufügen')}
             </button>
           </div>
         ))}
@@ -117,6 +119,7 @@ const LIST_COLORS = ['#7A9E7E', '#D4A853', '#C0392B', '#2980B9', '#8E44AD', '#2C
 const LIST_EMOJIS = ['🙏', '👨‍👩‍👧', '🌍', '🏥', '💼', '🛡️', '💔', '➕', '🌅', '⭐', '🕊️', '🔥', '💡', '🌿', '🎯', '❤️', '🌸', '📖', '🌟', '🤲']
 
 function EditListSheet({ list, onClose, onSave, onDelete }) {
+  const { t } = useT()
   const [name, setName] = useState(list.name)
   const [icon, setIcon] = useState(list.icon)
   const [color, setColor] = useState(list.color)
@@ -130,9 +133,9 @@ function EditListSheet({ list, onClose, onSave, onDelete }) {
     setSaving(true)
     try {
       await onSave({ name: name.trim(), icon, color, description: description.trim() || null })
-      showToast('Liste aktualisiert ✓')
+      showToast(t('Liste aktualisiert ✓'))
       onClose()
-    } catch { showToast('Fehler', 'error') }
+    } catch { showToast(t('Fehler'), 'error') }
     finally { setSaving(false) }
   }
 
@@ -142,11 +145,11 @@ function EditListSheet({ list, onClose, onSave, onDelete }) {
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', maxHeight: '90vh', overflowY: 'auto', animation: 'sheetSlideUp 0.3s ease-out' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Liste bearbeiten</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Liste bearbeiten')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><X size={18} /></button>
         </div>
 
-        <label style={lbl}>Emoji</label>
+        <label style={lbl}>{t('Emoji')}</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
           {LIST_EMOJIS.map(e => (
             <button key={e} onClick={() => setIcon(e)}
@@ -156,11 +159,11 @@ function EditListSheet({ list, onClose, onSave, onDelete }) {
           ))}
         </div>
 
-        <label style={lbl}>Name *</label>
+        <label style={lbl}>{t('Name *')}</label>
         <input value={name} onChange={e => setName(e.target.value)} style={inp} />
-        <label style={{ ...lbl, marginTop: 14 }}>Beschreibung</label>
-        <input value={description} onChange={e => setDescription(e.target.value)} style={inp} placeholder="Optional" />
-        <label style={{ ...lbl, marginTop: 14 }}>Farbe</label>
+        <label style={{ ...lbl, marginTop: 14 }}>{t('Beschreibung')}</label>
+        <input value={description} onChange={e => setDescription(e.target.value)} style={inp} placeholder={t('Optional')} />
+        <label style={{ ...lbl, marginTop: 14 }}>{t('Farbe')}</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {LIST_COLORS.map(c => (
             <button key={c} onClick={() => setColor(c)}
@@ -170,18 +173,16 @@ function EditListSheet({ list, onClose, onSave, onDelete }) {
 
         <button onClick={handleSave} disabled={!name.trim() || saving}
           style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed', marginBottom: 10 }}>
-          {saving ? 'Speichere…' : 'Änderungen speichern'}
+          {saving ? t('Speichere…') : t('Änderungen speichern')}
         </button>
 
         {!confirmDelete ? (
           <button onClick={() => setConfirmDelete(true)}
-            style={{ width: '100%', padding: '12px 0', borderRadius: 12, border: '1.5px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer' }}>
-            Liste löschen
-          </button>
+            style={{ width: '100%', padding: '12px 0', borderRadius: 12, border: '1.5px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer' }}>{t('Liste löschen')}</button>
         ) : (
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Abbrechen</button>
-            <button onClick={onDelete} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Ja, löschen</button>
+            <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}>{t('Abbrechen')}</button>
+            <button onClick={onDelete} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('Ja, löschen')}</button>
           </div>
         )}
       </div>
@@ -191,6 +192,7 @@ function EditListSheet({ list, onClose, onSave, onDelete }) {
 
 // ─── Answered Sheet ───────────────────────────────────────────
 function AnsweredSheet({ item, onClose, onConfirm }) {
+  const { t } = useT()
   const [note, setNote] = useState('')
   const [share, setShare] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -210,18 +212,18 @@ function AnsweredSheet({ item, onClose, onConfirm }) {
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>🎉 Gebet erhört!</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('🎉 Gebet erhört!')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><X size={18} /></button>
         </div>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
           „{item.request?.title}"
         </p>
 
-        <label style={lbl}>Wie wurde es erhört? (optional, aber ermutigend!)</label>
+        <label style={lbl}>{t('Wie wurde es erhört? (optional, aber ermutigend!)')}</label>
         <div style={{ position: 'relative', marginBottom: 16 }}>
           <textarea
             autoFocus value={note} onChange={e => setNote(e.target.value.slice(0, 500))}
-            placeholder="Was hat Gott getan? ..."
+            placeholder={t('Was hat Gott getan? ...')}
             rows={3}
             style={{ ...inp, resize: 'none' }}
           />
@@ -230,7 +232,7 @@ function AnsweredSheet({ item, onClose, onConfirm }) {
           </span>
         </div>
 
-        <label style={lbl}>Als Zeugnis teilen?</label>
+        <label style={lbl}>{t('Als Zeugnis teilen?')}</label>
         <button
           onClick={() => setShare(v => !v)}
           style={{
@@ -249,12 +251,8 @@ function AnsweredSheet({ item, onClose, onConfirm }) {
             {share && <Check size={14} color="white" />}
           </div>
           <div>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: share ? '#1E8449' : 'var(--color-text)', margin: 0 }}>
-              Mit der Community teilen
-            </p>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
-              Erscheint im Feed als Lobpreis
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: share ? '#1E8449' : 'var(--color-text)', margin: 0 }}>{t('Mit der Community teilen')}</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>{t('Erscheint im Feed als Lobpreis')}</p>
           </div>
         </button>
 
@@ -270,7 +268,7 @@ function AnsweredSheet({ item, onClose, onConfirm }) {
           }}
         >
           <Check size={16} />
-          {saving ? 'Speichere…' : 'Erhört markieren'}
+          {saving ? t('Speichere…') : t('Erhört markieren')}
         </button>
       </div>
     </>
@@ -279,14 +277,15 @@ function AnsweredSheet({ item, onClose, onConfirm }) {
 
 // ─── Update Sheet ─────────────────────────────────────────────
 const UPDATE_TYPES = [
-  { key: 'update', emoji: '📝', label: 'Update' },
-  { key: 'answered', emoji: '🙌', label: 'Erhört!' },
-  { key: 'new_situation', emoji: '🔄', label: 'Neue Wendung' },
-  { key: 'encouragement', emoji: '💪', label: 'Ermutigung' },
-  { key: 'praise', emoji: '🎉', label: 'Lobpreis' },
+  { key: 'update', emoji: '📝', get label() { return tr('Update') } },
+  { key: 'answered', emoji: '🙌', get label() { return tr('Erhört!') } },
+  { key: 'new_situation', emoji: '🔄', get label() { return tr('Neue Wendung') } },
+  { key: 'encouragement', emoji: '💪', get label() { return tr('Ermutigung') } },
+  { key: 'praise', emoji: '🎉', get label() { return tr('Lobpreis') } },
 ]
 
 function UpdateSheet({ item, onClose, onSave }) {
+  const { t } = useT()
   const [content, setContent] = useState('')
   const [updateType, setUpdateType] = useState('update')
   const [isPublic, setIsPublic] = useState(true)
@@ -313,7 +312,7 @@ function UpdateSheet({ item, onClose, onSave }) {
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Update hinzufügen</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Update hinzufügen')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}><X size={18} /></button>
         </div>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
@@ -321,7 +320,7 @@ function UpdateSheet({ item, onClose, onSave }) {
         </p>
 
         {/* Update type selector */}
-        <label style={lbl}>Art des Updates</label>
+        <label style={lbl}>{t('Art des Updates')}</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
           {UPDATE_TYPES.map(t => (
             <button
@@ -341,11 +340,11 @@ function UpdateSheet({ item, onClose, onSave }) {
           ))}
         </div>
 
-        <label style={lbl}>Was ist passiert?</label>
+        <label style={lbl}>{t('Was ist passiert?')}</label>
         <div style={{ position: 'relative', marginBottom: 16 }}>
           <textarea
             autoFocus value={content} onChange={e => setContent(e.target.value.slice(0, 500))}
-            placeholder="Teile, was Gott tut…"
+            placeholder={t('Teile, was Gott tut…')}
             rows={3}
             style={{ ...inp, resize: 'none' }}
           />
@@ -354,11 +353,11 @@ function UpdateSheet({ item, onClose, onSave }) {
           </span>
         </div>
 
-        <label style={lbl}>Sichtbarkeit</label>
+        <label style={lbl}>{t('Sichtbarkeit')}</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {[
-            [true, '🌐', 'Öffentlich'],
-            [false, '🔒', 'Nur für mich'],
+            [true, '🌐', tr('Öffentlich')],
+            [false, '🔒', tr('Nur für mich')],
           ].map(([val, icon, label]) => (
             <button
               key={String(val)} onClick={() => setIsPublic(val)}
@@ -379,9 +378,7 @@ function UpdateSheet({ item, onClose, onSave }) {
         {/* Previous updates */}
         {!updatesLoading && updates.length > 0 && (
           <div style={{ marginBottom: 16, padding: '12px 0', borderTop: '1px solid var(--color-warm-3)' }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>
-              Bisheriger Verlauf ({updates.length})
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>{t('Bisheriger Verlauf ({length})', { length: updates.length })}</p>
             {updates.slice(0, 3).map(u => {
               const typeInfo = UPDATE_TYPES.find(t => t.key === u.update_type) || UPDATE_TYPES[0]
               return (
@@ -392,7 +389,7 @@ function UpdateSheet({ item, onClose, onSave }) {
                       {u.content}
                     </p>
                     <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: 0 }}>
-                      {new Date(u.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })}
+                      {new Date(u.created_at).toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'long' })}
                     </p>
                   </div>
                 </div>
@@ -411,7 +408,7 @@ function UpdateSheet({ item, onClose, onSave }) {
             cursor: content.trim() ? 'pointer' : 'not-allowed',
           }}
         >
-          {saving ? 'Speichere…' : 'Update speichern'}
+          {saving ? t('Speichere…') : t('Update speichern')}
         </button>
       </div>
     </>
@@ -420,6 +417,7 @@ function UpdateSheet({ item, onClose, onSave }) {
 
 // ─── Main ─────────────────────────────────────────────────────
 export default function PrayerListDetailView() {
+  const { t } = useT()
   const { listId } = useParams()
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -451,7 +449,7 @@ export default function PrayerListDetailView() {
 
   async function handleRemoveItem(itemId) {
     await removeItem(itemId)
-    showToast('Aus Liste entfernt')
+    showToast(t('Aus Liste entfernt'))
   }
 
   async function handleSaveList(updates) {
@@ -461,7 +459,7 @@ export default function PrayerListDetailView() {
 
   async function handleDeleteList() {
     await deleteList(listId)
-    showToast('Liste gelöscht')
+    showToast(t('Liste gelöscht'))
     navigate('/prayers')
   }
 
@@ -472,17 +470,17 @@ export default function PrayerListDetailView() {
       setAnsweredItem(null)
       setConfetti(true)
       setTimeout(() => setConfetti(false), 3200)
-      showToast('Gott ist treu! 🙏')
+      showToast(t('Gott ist treu! 🙏'))
     } catch {
-      showToast('Fehler', 'error')
+      showToast(t('Fehler'), 'error')
     }
   }
 
   async function handleUpdateSaved(updateType) {
     if (updateType === 'answered') {
-      showToast('Als erhört markiert 🎉')
+      showToast(t('Als erhört markiert 🎉'))
     } else {
-      showToast('Update gespeichert ✓')
+      showToast(t('Update gespeichert ✓'))
     }
     await reload()
   }
@@ -505,7 +503,7 @@ export default function PrayerListDetailView() {
   if (!list) {
     return (
       <div className="bg-bg min-h-full flex items-center justify-center">
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Liste nicht gefunden.</p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Liste nicht gefunden.')}</p>
       </div>
     )
   }
@@ -538,7 +536,7 @@ export default function PrayerListDetailView() {
           </button>
         </div>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '8px 0 0 44px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-          {items.length} {items.length === 1 ? 'Anliegen' : 'Anliegen'}
+          {items.length} {items.length === 1 ? t('Anliegen') : t('Anliegen')}
         </p>
       </div>
 
@@ -559,12 +557,9 @@ export default function PrayerListDetailView() {
             onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
           >
             <div style={{ textAlign: 'left' }}>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'white', margin: '0 0 2px' }}>
-                🕊 Gebetszeit starten
-              </p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'white', margin: '0 0 2px' }}>{t('🕊 Gebetszeit starten')}</p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'rgba(255,255,255,0.65)', margin: 0 }}>
-                {activeItems.length} Anliegen · ca. {activeItems.length} Minuten
-              </p>
+                {t('{length} Anliegen · ca. {length2} Minuten', { length: activeItems.length, length2: activeItems.length })}</p>
             </div>
             <div style={{
               width: 36, height: 36, borderRadius: '50%',
@@ -583,9 +578,7 @@ export default function PrayerListDetailView() {
         {items.length === 0 && (
           <div style={{ textAlign: 'center', padding: '48px 20px' }}>
             <span style={{ fontSize: 48, display: 'block', marginBottom: 16 }}>🔖</span>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.7 }}>
-              Diese Liste ist noch leer.{'\n'}Füge Anliegen hinzu indem du auf das +-Symbol tippst.
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.7 }}>{t('Diese Liste ist noch leer.')}{'\n'}{t('Füge Anliegen hinzu indem du auf das +-Symbol tippst.')}</p>
           </div>
         )}
 
@@ -603,9 +596,9 @@ export default function PrayerListDetailView() {
               const item = itemByKey.get(p.key)
               if (!item) return []
               return [
-                { label: '📝 Update hinzufügen', onClick: () => setUpdateItem(item) },
-                { label: '✓ Als erhört markieren', onClick: () => setAnsweredItem(item) },
-                { label: '🗑 Aus Liste entfernen', onClick: () => handleRemoveItem(item.itemId), danger: true },
+                { label: t('📝 Update hinzufügen'), onClick: () => setUpdateItem(item) },
+                { label: t('✓ Als erhört markieren'), onClick: () => setAnsweredItem(item) },
+                { label: t('🗑 Aus Liste entfernen'), onClick: () => handleRemoveItem(item.itemId), danger: true },
               ]
             }}
           />

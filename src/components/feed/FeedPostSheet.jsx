@@ -5,24 +5,26 @@ import { useCommunities } from '../../hooks/useCommunities'
 import { supabase } from '../../lib/supabase'
 import BibleReferenceChip from '../bible/BibleReferenceChip'
 import VersePickerSheet from '../bible/VersePickerSheet'
+import { useT, tr } from '../../i18n'
 
 export const FEED_CATEGORIES = [
-  { key: 'bibelstelle', label: 'Bibelstelle', emoji: '📖' },
-  { key: 'zeugnis',     label: 'Zeugnis',     emoji: '🙌' },
-  { key: 'frage',       label: 'Frage',       emoji: '❓' },
-  { key: 'meilenstein', label: 'Meilenstein', emoji: '🏔' },
-  { key: 'ermutigung',  label: 'Ermutigung',  emoji: '💛' },
-  { key: 'sonstiges',   label: 'Sonstiges',   emoji: '💬' },
+  { key: 'bibelstelle', get label() { return tr('Bibelstelle') }, emoji: '📖' },
+  { key: 'zeugnis',     get label() { return tr('Zeugnis') },     emoji: '🙌' },
+  { key: 'frage',       get label() { return tr('Frage') },       emoji: '❓' },
+  { key: 'meilenstein', get label() { return tr('Meilenstein') }, emoji: '🏔' },
+  { key: 'ermutigung',  get label() { return tr('Ermutigung') },  emoji: '💛' },
+  { key: 'sonstiges',   get label() { return tr('Sonstiges') },   emoji: '💬' },
 ]
 
 export const FEED_VISIBILITY = [
-  { key: 'public',           label: 'Öffentlich',              icon: Globe,      sub: null },
-  { key: 'communities',      label: 'Community',               icon: Users,      sub: 'community' },
-  { key: 'siblings',         label: 'Meine Geschwister',       icon: UserCheck,  sub: null },
-  { key: 'specific_include', label: 'Ausgewählte Geschwister', icon: Users,      sub: 'siblings' },
+  { key: 'public',           get label() { return tr('Öffentlich') },              icon: Globe,      sub: null },
+  { key: 'communities',      get label() { return tr('Community') },               icon: Users,      sub: 'community' },
+  { key: 'siblings',         get label() { return tr('Meine Geschwister') },       icon: UserCheck,  sub: null },
+  { key: 'specific_include', get label() { return tr('Ausgewählte Geschwister') }, icon: Users,      sub: 'siblings' },
 ]
 
 export function SiblingPickerFeed({ selected, onChange }) {
+  const { t } = useT()
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [siblings, setSiblings] = useState([])
@@ -54,10 +56,10 @@ export function SiblingPickerFeed({ selected, onChange }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 10, marginBottom: 10, backgroundColor: 'var(--color-bg)' }}>
         <Search size={14} color="var(--color-text-tertiary)" />
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Geschwister suchen…"
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('Geschwister suchen…')}
           style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, backgroundColor: 'transparent', color: 'var(--color-text)' }} />
       </div>
-      {loading && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '12px 0' }}>Lade…</p>}
+      {loading && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '12px 0' }}>{t('Lade…')}</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
         {filtered.map(s => {
           const checked = selected.includes(s.id)
@@ -78,7 +80,7 @@ export function SiblingPickerFeed({ selected, onChange }) {
             </button>
           )
         })}
-        {!loading && filtered.length === 0 && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '12px 0' }}>Keine gefunden</p>}
+        {!loading && filtered.length === 0 && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '12px 0' }}>{t('Keine gefunden')}</p>}
       </div>
     </div>
   )
@@ -125,6 +127,7 @@ export default function FeedPostSheet({
   onClose, onSubmit,
   initialBody = '', initialTitle = '', initialCategory = null, initialVerse = null,
 }) {
+  const { t } = useT()
   const { myCommunities } = useCommunities()
   const [phase, setPhase] = useState('form') // 'form' | 'review'
   const [visibility, setVisibility] = useState('public')
@@ -183,7 +186,7 @@ export default function FeedPostSheet({
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px', position: 'sticky', top: 0, backgroundColor: 'var(--color-bg)', zIndex: 1 }}>
           <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-text)' }}>
-            {phase === 'review' ? 'Übersicht' : 'Neuer Beitrag'}
+            {phase === 'review' ? t('Übersicht') : t('Neuer Beitrag')}
           </p>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>
             <X size={16} />
@@ -193,18 +196,18 @@ export default function FeedPostSheet({
         {phase === 'form' ? (
           <div style={{ padding: '0 16px 28px' }}>
             {/* 1) Dein Beitrag */}
-            <p style={fSecTitle}>1 · Dein Beitrag</p>
+            <p style={fSecTitle}>{t('1 · Dein Beitrag')}</p>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Überschrift (optional)"
+              placeholder={t('Überschrift (optional)')}
               style={{ ...fField, fontWeight: 600, marginBottom: 8 }}
             />
             <textarea
               value={body}
               onChange={e => setBody(e.target.value.slice(0, 1000))}
-              placeholder="Was möchtest du teilen?"
+              placeholder={t('Was möchtest du teilen?')}
               rows={4}
               style={{ ...fField, lineHeight: 1.6, resize: 'vertical' }}
             />
@@ -224,7 +227,7 @@ export default function FeedPostSheet({
             >
               <Image size={16} color="var(--color-text-secondary)" />
               <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                {photoFile ? photoFile.name : 'Bild hinzufügen'}
+                {photoFile ? photoFile.name : t('Bild hinzufügen')}
               </span>
             </button>
             <input ref={fileRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = '' }} style={{ display: 'none' }} />
@@ -234,21 +237,19 @@ export default function FeedPostSheet({
               <div style={{ marginTop: 10 }}>
                 <BibleReferenceChip attachment={verse} variant="block" showVerse={quoteVerse} onRemove={() => setVerse(null)} />
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                  <input type="checkbox" checked={quoteVerse} onChange={e => setQuoteVerse(e.target.checked)} style={{ accentColor: 'var(--color-accent)' }} />
-                  Vers im Beitrag zitieren
-                </label>
+                  <input type="checkbox" checked={quoteVerse} onChange={e => setQuoteVerse(e.target.checked)} style={{ accentColor: 'var(--color-accent)' }} />{t('Vers im Beitrag zitieren')}</label>
               </div>
             ) : (
               <button onClick={() => setShowVersePicker(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginTop: 10, width: '100%' }}
               >
                 <span style={{ fontSize: 16 }}>📖</span>
-                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Bibelstelle verknüpfen</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{t('Bibelstelle verknüpfen')}</span>
               </button>
             )}
 
             {/* 2) Kategorie */}
-            <p style={fSecTitle}>2 · Kategorie</p>
+            <p style={fSecTitle}>{t('2 · Kategorie')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
               {FEED_CATEGORIES.map(c => (
                 <button key={c.key} onClick={() => setCategory(category === c.key ? null : c.key)} style={fChip(category === c.key)}>
@@ -259,7 +260,7 @@ export default function FeedPostSheet({
             </div>
 
             {/* 3) Sichtbarkeit */}
-            <p style={fSecTitle}>3 · Wer soll es sehen?</p>
+            <p style={fSecTitle}>{t('3 · Wer soll es sehen?')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {FEED_VISIBILITY.map(o => {
                 const Icon = o.icon
@@ -276,7 +277,7 @@ export default function FeedPostSheet({
             {/* Community-Auswahl (inline) */}
             {visibility === 'communities' && (
               myCommunities.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '8px 0 0' }}>Du bist noch in keiner Community.</p>
+                <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '8px 0 0' }}>{t('Du bist noch in keiner Community.')}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                   {myCommunities.map(c => {
@@ -306,9 +307,7 @@ export default function FeedPostSheet({
               onClick={() => setPhase('review')}
               disabled={!formValid}
               style={{ ...fPrimaryBtn(formValid), marginTop: 22 }}
-            >
-              Weiter zur Übersicht
-            </button>
+            >{t('Weiter zur Übersicht')}</button>
           </div>
         ) : (
           <div style={{ padding: '0 16px 28px' }}>
@@ -318,23 +317,21 @@ export default function FeedPostSheet({
               <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{body.trim()}</p>
               {photoPreview && <img src={photoPreview} alt="" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 10, marginTop: 10, display: 'block' }} />}
             </div>
-            <FeedSummaryRow label="Kategorie" value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
-            <FeedSummaryRow label="Bibelstelle" value={verse ? verse.referenceLabel : '—'} />
-            <FeedSummaryRow label="Sichtbarkeit" value={
+            <FeedSummaryRow label={t('Kategorie')} value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
+            <FeedSummaryRow label={t('Bibelstelle')} value={verse ? verse.referenceLabel : '—'} />
+            <FeedSummaryRow label={t('Sichtbarkeit')} value={
               visibility === 'communities'
-                ? `${visObj?.label} · ${communityIds.length} ausgewählt`
+                ? t('{label} · {n} ausgewählt', { label: visObj?.label, n: communityIds.length })
                 : visibility === 'specific_include'
-                ? `${visObj?.label} · ${visibilityUserIds.length} ausgewählt`
+                ? t('{label} · {n} ausgewählt', { label: visObj?.label, n: visibilityUserIds.length })
                 : (visObj?.label || '')
             } />
 
             <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-              <button onClick={() => setPhase('form')} disabled={submitting} style={{ padding: '13px 18px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 600, cursor: submitting ? 'default' : 'pointer' }}>
-                ← Zurück
-              </button>
+              <button onClick={() => setPhase('form')} disabled={submitting} style={{ padding: '13px 18px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 600, cursor: submitting ? 'default' : 'pointer' }}>{t('← Zurück')}</button>
               <button onClick={handleSubmit} disabled={submitting} style={{ ...fPrimaryBtn(!submitting), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 {submitting && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
-                {submitting ? 'Wird geteilt…' : 'Beitrag teilen'}
+                {submitting ? t('Wird geteilt…') : t('Beitrag teilen')}
               </button>
             </div>
           </div>

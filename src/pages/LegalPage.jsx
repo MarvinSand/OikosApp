@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { LEGAL } from '../lib/legal'
+import { useT } from '../i18n'
 
 // Nutzungsbedingungen (inkl. Community-Richtlinien mit Null-Toleranz für
 // anstößige Inhalte – App-Store-Richtlinie 1.2) und Datenschutzerklärung
@@ -284,6 +285,7 @@ function Support() {
 
 export default function LegalPage({ kind }) {
   const navigate = useNavigate()
+  const { t } = useT()
   return (
     <div className="bg-bg min-h-full" style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' }}>
       <header
@@ -292,13 +294,13 @@ export default function LegalPage({ kind }) {
       >
         <button
           onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
-          aria-label="Zurück"
+          aria-label={t('Zurück')}
           style={{ width: 40, height: 40, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <ArrowLeft size={20} />
         </button>
         <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>
-          {kind === 'privacy' ? 'Datenschutz' : kind === 'support' ? 'Support' : kind === 'imprint' ? 'Impressum' : 'Nutzungsbedingungen'}
+          {kind === 'privacy' ? t('Datenschutz') : kind === 'support' ? t('Support') : kind === 'imprint' ? t('Impressum') : t('Nutzungsbedingungen')}
         </span>
       </header>
       <article className="legal-content" style={{ padding: '8px 20px', maxWidth: 680, margin: '0 auto' }}>

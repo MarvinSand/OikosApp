@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import { Copy, Flag, Lock, Globe, ChevronDown, Pencil, Check, MessageCircle, Trash2 } from 'lucide-react'
 import CreedComments from './CreedComments'
+import { useT, getLang } from '../../i18n'
+
+const loc = () => (getLang() === 'en' ? 'en-US' : 'de-DE')
 
 export function formatCreedDate(iso) {
   if (!iso) return ''
-  return new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString(loc(), { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export function formatConfessedAt(iso) {
   const d = new Date(iso)
-  return `${d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
+  return `${d.toLocaleDateString(loc(), { day: 'numeric', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString(loc(), { hour: '2-digit', minute: '2-digit' })}`
 }
 
 // Eine Zeile für "Meine Bekenntnisse" (Profil-Tab), "Öffentliche Bekenntnisse
@@ -24,6 +27,7 @@ export function CreedRow({
   commentCount, onCommentCountChange,
   onToggleExpand, onEdit, onAdopt, onReport, onConfess, onDeleteConfession, onToggleHistory, onOpenLine,
 }) {
+  const { t } = useT()
   const [commentsOpen, setCommentsOpen] = useState(false)
   return (
     <div className="rounded-2xl" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
@@ -37,7 +41,7 @@ export function CreedRow({
             </div>
             {!isOwn && (
               <p style={{ fontSize: 11.5, color: 'var(--color-text-tertiary)' }}>
-                {isOfficial ? 'Offiziell' : `von ${creed.profiles?.full_name || creed.profiles?.username || 'Jemandem'}`}
+                {isOfficial ? t('Offiziell') : t('von {name}', { name: creed.profiles?.full_name || creed.profiles?.username || t('Jemandem') })}
                 {creed.created_at && ` · ${formatCreedDate(creed.created_at)}`}
               </p>
             )}
@@ -52,7 +56,7 @@ export function CreedRow({
         )}
         {!isOwn && onAdopt && (
           <button onClick={onAdopt} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0" style={{ backgroundColor: 'var(--color-accent)', color: '#fff' }}>
-            <Copy size={12} /> Übernehmen
+            <Copy size={12} /> {t('Übernehmen')}
           </button>
         )}
 
@@ -60,7 +64,7 @@ export function CreedRow({
         <div className="flex items-center gap-1 flex-shrink-0 relative">
           <button
             onClick={onConfess}
-            title="Bekannt - abhaken"
+            title={t('Bekannt - abhaken')}
             className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: 'var(--color-bg)', border: '1.5px solid var(--color-accent)' }}
           >
@@ -71,7 +75,7 @@ export function CreedRow({
           </span>
           <button
             onClick={onToggleHistory}
-            title="Verlauf anzeigen"
+            title={t('Verlauf anzeigen')}
             className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: 'var(--color-bg)' }}
           >
@@ -87,14 +91,14 @@ export function CreedRow({
               }}
             >
               <p style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
-                {confessionCount}× bekannt
+                {t('{n}× bekannt', { n: confessionCount })}
               </p>
-              {!history && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
-              {history?.length === 0 && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Noch nicht abgehakt.</p>}
+              {!history && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Lädt…')}</p>}
+              {history?.length === 0 && <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Noch nicht abgehakt.')}</p>}
               {history?.map(h => (
                 <div key={h.id} className="flex items-center justify-between gap-2" style={{ padding: '3px 0' }}>
                   <p style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{formatConfessedAt(h.confessed_at)}</p>
-                  <button onClick={() => onDeleteConfession?.(h.id)} title="Eintrag entfernen" aria-label="Eintrag entfernen" className="p-1 flex-shrink-0" style={{ color: 'var(--color-text-tertiary)' }}>
+                  <button onClick={() => onDeleteConfession?.(h.id)} title={t('Eintrag entfernen')} aria-label={t('Eintrag entfernen')} className="p-1 flex-shrink-0" style={{ color: 'var(--color-text-tertiary)' }}>
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -107,7 +111,7 @@ export function CreedRow({
       {expanded && (
         <>
         <div className="px-4 pb-4">
-          {!lines && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
+          {!lines && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>{t('Lädt…')}</p>}
           {lines?.map(line => (
             line.bible_reference === null && line.body.startsWith('§ ') ? (
               <p key={line.id} className="mt-3 mb-1 first:mt-0" style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent)' }}>
@@ -129,7 +133,7 @@ export function CreedRow({
           style={{ fontSize: 12, fontWeight: 600, color: commentsOpen ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}
         >
           <MessageCircle size={14} />
-          {commentCount > 0 ? `${commentCount} ${commentCount === 1 ? 'Kommentar' : 'Kommentare'}` : 'Kommentieren'}
+          {commentCount > 0 ? (commentCount === 1 ? t('1 Kommentar') : t('{n} Kommentare', { n: commentCount })) : t('Kommentieren')}
         </button>
 
         {commentsOpen && <CreedComments creedId={creed.id} onCountChange={onCommentCountChange} />}

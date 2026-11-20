@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Search, SlidersHorizontal, Users, CalendarDays, X, MapPin, Repeat, Home, Plus } from 'lucide-react'
 import { nextOccurrence, formatRecurrenceLabel, isRecurring } from '../../lib/recurrence'
+import { useT, tr, getLang } from '../../i18n'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -56,9 +57,11 @@ function formatDistance(km) {
 function formatEventDate(startsAt) {
   if (!startsAt) return null
   const d = new Date(startsAt)
-  const date = d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })
-  const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-  return `${date}, ${time} Uhr`
+  const en = getLang() === 'en'
+  const loc = en ? 'en-US' : 'de-DE'
+  const date = d.toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short' })
+  const time = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
+  return en ? `${date}, ${time}` : `${date}, ${time} Uhr`
 }
 
 export default function MapDrawer({
@@ -68,6 +71,7 @@ export default function MapDrawer({
   onSelectUser, onSelectActivity, onSelectGemeinde, reopenListKey,
   onCreateEvent, onVisibleHeightChange,
 }) {
+  const { t } = useT()
   // 'closed' = nur Kopf sichtbar · 'half' = + Suchleiste (Tap auf Geschwister/
   // Events landet hier) · 'full' = komplettes Sheet mit Liste (Tap in die
   // Suche, Filter öffnen oder weiter hochziehen)
@@ -308,21 +312,21 @@ export default function MapDrawer({
             selected={tab === 'siblings'}
             onClick={() => onPillTap('siblings')}
             icon={<Users size={15} />}
-            label="Geschwister"
+            label={t('Geschwister')}
           />
           <LayerPill
             active={showEvents}
             selected={tab === 'events'}
             onClick={() => onPillTap('events')}
             icon={<CalendarDays size={15} />}
-            label="Events"
+            label={t('Events')}
           />
           <LayerPill
             active={showGemeinden}
             selected={tab === 'gemeinden'}
             onClick={() => onPillTap('gemeinden')}
             icon={<Home size={15} />}
-            label="Gemeinden"
+            label={t('Gemeinden')}
           />
         </div>
       </div>
@@ -349,7 +353,7 @@ export default function MapDrawer({
             value={search}
             onChange={e => setSearch(e.target.value)}
             onFocus={() => setLevel('full')}
-            placeholder={tab === 'siblings' ? 'Geschwister suchen…' : tab === 'gemeinden' ? 'Gemeinden suchen…' : 'Events suchen…'}
+            placeholder={tab === 'siblings' ? t('Geschwister suchen…') : tab === 'gemeinden' ? t('Gemeinden suchen…') : t('Events suchen…')}
             style={{
               flex: 1, border: 'none', outline: 'none', background: 'transparent',
               fontSize: 14, color: C.text, minWidth: 0,
@@ -370,7 +374,7 @@ export default function MapDrawer({
             color: showFilters ? '#fff' : C.textSec,
             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           }}
-          title="Filter & Umkreis"
+          title={t('Filter & Umkreis')}
         >
           <SlidersHorizontal size={17} />
           {filterActive && !showFilters && (
@@ -397,7 +401,7 @@ export default function MapDrawer({
                     fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer', flexShrink: 0,
                   }}
                 >
-                  {f.label}
+                  {t(f.label)}
                 </button>
               )
             })}
@@ -407,9 +411,9 @@ export default function MapDrawer({
             padding: '10px 14px',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec }}>Umkreis</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec }}>{t('Umkreis')}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: C.accentDark }}>
-                {radiusKm == null ? '🌍 Weltweit' : `${radiusKm} km`}
+                {radiusKm == null ? t('🌍 Weltweit') : `${radiusKm} km`}
               </span>
             </div>
             <input
@@ -424,7 +428,7 @@ export default function MapDrawer({
             />
             {!hasOwnLocation && (
               <p style={{ fontSize: 11, color: C.textTer, margin: '4px 0 0' }}>
-                Setze deinen Standort im Profil, um den Umkreis zu nutzen.
+                {t('Setze deinen Standort im Profil, um den Umkreis zu nutzen.')}
               </p>
             )}
           </div>
@@ -434,8 +438,8 @@ export default function MapDrawer({
       {/* Ergebnisliste */}
       <div ref={listRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 12px calc(24px + env(safe-area-inset-bottom, 0px))' }}>
         <p style={{ fontSize: 11, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, margin: '2px 6px 8px' }}>
-          {list.length} {tab === 'siblings' ? 'Geschwister' : tab === 'gemeinden' ? (list.length === 1 ? 'Gemeinde' : 'Gemeinden') : (list.length === 1 ? 'Event' : 'Events')}
-          {radiusKm != null && hasOwnLocation ? ` im Umkreis von ${radiusKm} km` : ''}
+          {list.length} {tab === 'siblings' ? t('Geschwister') : tab === 'gemeinden' ? (list.length === 1 ? t('Gemeinde') : t('Gemeinden')) : (list.length === 1 ? t('Event') : t('Events'))}
+          {radiusKm != null && hasOwnLocation ? ` ${t('im Umkreis von {n} km', { n: radiusKm })}` : ''}
         </p>
 
         {tab === 'events' && (
@@ -448,7 +452,7 @@ export default function MapDrawer({
               cursor: 'pointer', marginBottom: 10,
             }}
           >
-            <Plus size={16} /> Event erstellen
+            <Plus size={16} /> {t('Event erstellen')}
           </button>
         )}
 
@@ -457,12 +461,12 @@ export default function MapDrawer({
             <div style={{ fontSize: 34, marginBottom: 8 }}>{tab === 'siblings' ? '🧭' : tab === 'gemeinden' ? '🏠' : '📅'}</div>
             <p style={{ fontSize: 13, color: C.textSec, margin: 0, lineHeight: 1.6 }}>
               {search || filterActive
-                ? 'Keine Treffer – passe Suche, Filter oder Umkreis an.'
+                ? t('Keine Treffer – passe Suche, Filter oder Umkreis an.')
                 : tab === 'siblings'
-                  ? 'Noch keine Geschwister auf der Karte. Verbinde dich mit Freunden, um sie hier zu sehen.'
+                  ? t('Noch keine Geschwister auf der Karte. Verbinde dich mit Freunden, um sie hier zu sehen.')
                   : tab === 'gemeinden'
-                    ? 'Noch keine Gemeinden in der Nähe. Trage eure Hausgemeinde ein!'
-                    : 'Aktuell keine Events. Hoste doch selbst eins über den +‑Button!'}
+                    ? t('Noch keine Gemeinden in der Nähe. Trage eure Hausgemeinde ein!')
+                    : t('Aktuell keine Events. Hoste doch selbst eins über den +‑Button!')}
             </p>
           </div>
         )}
@@ -600,7 +604,7 @@ function GemeindeRow({ gemeinde, onClick }) {
 function EventRow({ activity, onClick }) {
   const recurring = isRecurring(activity)
   const nextDate = nextOccurrence(activity)
-  const when = nextDate ? formatEventDate(nextDate.toISOString()) : (recurring ? 'Serie beendet' : null)
+  const when = nextDate ? formatEventDate(nextDate.toISOString()) : (recurring ? tr('Serie beendet') : null)
   const participantCount = (activity.participants || []).length
   return (
     <button

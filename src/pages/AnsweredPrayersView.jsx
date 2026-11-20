@@ -4,10 +4,11 @@ import { ArrowLeft } from 'lucide-react'
 import { useAnsweredPrayers } from '../hooks/useAnsweredPrayers'
 import PrayerCardList from '../components/prayer/PrayerCardList'
 import { normalizePrayer, KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
+import { useT, getLang } from '../i18n'
 
 function formatAnsweredDate(dateStr) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })
+  return new Date(dateStr).toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────
@@ -23,6 +24,7 @@ function Skeleton() {
 
 // ─── Month Group ──────────────────────────────────────────────
 function MonthGroup({ monthLabel, requests, onChanged }) {
+  const { t } = useT()
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', marginBottom: 10 }}>
@@ -44,7 +46,7 @@ function MonthGroup({ monthLabel, requests, onChanged }) {
       <div style={{ padding: '0 16px' }}>
         <PrayerCardList
           prayers={requests.map(r => normalizePrayer(r, { kind: r._type === 'oikos' ? KIND_OIKOS : KIND_PERSONAL }))}
-          extraBadge={p => p.raw?.answered_at ? { label: `Erhört am ${formatAnsweredDate(p.raw.answered_at)}` } : null}
+          extraBadge={p => p.raw?.answered_at ? { label: t('Erhört am {v1}', { v1: formatAnsweredDate(p.raw.answered_at) }) } : null}
           onChanged={onChanged}
         />
       </div>
@@ -54,6 +56,7 @@ function MonthGroup({ monthLabel, requests, onChanged }) {
 
 // ─── Main ─────────────────────────────────────────────────────
 export default function AnsweredPrayersView() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { byMonth, totalCount, loading, reload } = useAnsweredPrayers()
 
@@ -63,7 +66,7 @@ export default function AnsweredPrayersView() {
     <div className="bg-bg min-h-full pb-24 md:max-w-2xl md:mx-auto">
       {/* Header */}
       <PageHeader
-        title="Erhörte Gebete"
+        title={t('Erhörte Gebete')}
         onBack={() => navigate('/prayers')}
         right={totalCount > 0 ? (
           <span style={{
@@ -87,9 +90,7 @@ export default function AnsweredPrayersView() {
           <p style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 700, color: '#1E8449', margin: '0 0 4px' }}>
             {totalCount}
           </p>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: '#2E7D50', margin: 0 }}>
-            erhörte Gebete insgesamt 🙏
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: '#2E7D50', margin: 0 }}>{t('erhörte Gebete insgesamt 🙏')}</p>
         </div>
       )}
 
@@ -103,9 +104,7 @@ export default function AnsweredPrayersView() {
           <p style={{
             fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text-muted)',
             fontStyle: 'italic', lineHeight: 1.7,
-          }}>
-            Noch keine erhörten Gebete.{'\n'}Wenn Gott antwortet, kannst du ein Anliegen als erhört markieren.
-          </p>
+          }}>{t('Noch keine erhörten Gebete.')}{'\n'}{t('Wenn Gott antwortet, kannst du ein Anliegen als erhört markieren.')}</p>
         </div>
       )}
 

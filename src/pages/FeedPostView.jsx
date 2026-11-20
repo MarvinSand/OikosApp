@@ -13,26 +13,27 @@ import { COMMENT_SELECT, attachCommentEngagement } from '../lib/commentEngagemen
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import { verseAttachmentFromRow } from '../lib/bibleLink'
 import { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
+import { useT, tr, getLang } from '../i18n'
 
 // ─── Helpers ─────────────────────────────────────────────────
 const TYPE_CONFIG = {
-  text:      { icon: MessageSquare, label: 'Gedanke',    color: 'var(--color-warm-1)' },
-  bible:     { icon: BookOpen,      label: 'Bibelstelle', color: 'var(--color-accent)' },
-  testimony: { icon: HandHeart,     label: 'Zeugnis',    color: 'var(--color-warm-1)' },
-  question:  { icon: HelpCircle,    label: 'Frage',      color: '#3B82F6' },
-  photo:     { icon: MessageSquare, label: 'Foto',       color: 'var(--color-warm-1)' },
+  text:      { icon: MessageSquare, get label() { return tr('Gedanke') },    color: 'var(--color-warm-1)' },
+  bible:     { icon: BookOpen,      get label() { return tr('Bibelstelle') }, color: 'var(--color-accent)' },
+  testimony: { icon: HandHeart,     get label() { return tr('Zeugnis') },    color: 'var(--color-warm-1)' },
+  question:  { icon: HelpCircle,    get label() { return tr('Frage') },      color: '#3B82F6' },
+  photo:     { icon: MessageSquare, get label() { return tr('Foto') },       color: 'var(--color-warm-1)' },
 }
 
 function timeAgo(iso) {
   const d = new Date(iso)
   const diff = Math.floor((new Date() - d) / 60000)
-  if (diff < 1) return 'Gerade eben'
-  if (diff < 60) return `vor ${diff} Min.`
+  if (diff < 1) return tr('Gerade eben')
+  if (diff < 60) return tr('vor {n} Min.', { n: diff })
   const h = Math.floor(diff / 60)
-  if (h < 24) return `vor ${h} Std.`
+  if (h < 24) return tr('vor {n} Std.', { n: h })
   const days = Math.floor(h / 24)
-  if (days === 1) return 'gestern'
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
+  if (days === 1) return tr('gestern')
+  return d.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
 function UserAvatar({ profile, size = 36 }) {
@@ -61,6 +62,7 @@ const POST_SELECT = `
 `
 
 export default function FeedPostView() {
+  const { t } = useT()
   const { id: postId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -210,7 +212,7 @@ export default function FeedPostView() {
   if (!post) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center">
-        <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Post nicht gefunden.</p>
+        <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Post nicht gefunden.')}</p>
       </div>
     )
   }
@@ -230,8 +232,7 @@ export default function FeedPostView() {
           onClick={() => navigate(-1)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-warm-1)', fontWeight: 600, padding: 0 }}
         >
-          <ArrowLeft size={18} /> Zurück
-        </button>
+          <ArrowLeft size={18} />{' '}{t('Zurück')}</button>
       </div>
 
       <div>
@@ -242,7 +243,7 @@ export default function FeedPostView() {
             <UserAvatar profile={post.profiles} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                {post.profiles?.full_name || post.profiles?.username || 'Geschwister'}
+                {post.profiles?.full_name || post.profiles?.username || t('Geschwister')}
               </p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', margin: 0 }}>{timeAgo(post.created_at)}</p>
             </div>
@@ -259,7 +260,7 @@ export default function FeedPostView() {
               )
             })()}
             {post.author_id !== user?.id && (
-              <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+              <button onClick={() => setShowModeration(true)} aria-label={t('Melden oder blockieren')} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
                 <MoreHorizontal size={18} />
               </button>
             )}
@@ -317,7 +318,7 @@ export default function FeedPostView() {
           borderBottom: '1px solid var(--color-warm-3)',
         }}>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: 0.2 }}>
-            {comments.length} {comments.length === 1 ? 'Antwort' : 'Antworten'}
+            {comments.length} {comments.length === 1 ? t('Antwort') : t('Antworten')}
           </span>
         </div>
 
@@ -327,9 +328,7 @@ export default function FeedPostView() {
             textAlign: 'center', padding: '24px 16px',
             borderBottom: '1px solid var(--color-warm-3)',
           }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', margin: 0 }}>
-              Noch keine Antworten. Sei die Erste!
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', margin: 0 }}>{t('Noch keine Antworten. Sei die Erste!')}</p>
           </div>
         )}
 
@@ -358,7 +357,7 @@ export default function FeedPostView() {
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendComment() } }}
-            placeholder="Schreib eine Antwort…"
+            placeholder={t('Schreib eine Antwort…')}
             rows={1}
             style={{ flex: 1, padding: '10px 14px', borderRadius: 20, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', resize: 'none', outline: 'none', lineHeight: 1.4 }}
           />

@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { MessageCircle, Bell, QrCode } from 'lucide-react'
 import { useHasUnreadConversations } from '../../hooks/useHasUnreadConversations'
 import { useNotifications } from '../../hooks/useNotifications'
+import { useT } from '../../i18n'
 
 const QrHubSheet = lazy(() => import('../common/QrHubSheet'))
 
 // Obere Leiste der Haupt-Tabs: App-Name, Chats, Benachrichtigungen.
 export default function AppHeader() {
+  const { t } = useT()
   const navigate = useNavigate()
   const [scanning, setScanning] = useState(false)
   const hasUnread = useHasUnreadConversations()
@@ -37,11 +39,11 @@ export default function AppHeader() {
       </h1>
 
       <div className="flex items-center gap-1">
-        <button onClick={() => setScanning(true)} aria-label="QR-Code" style={iconBtn}>
+        <button onClick={() => setScanning(true)} aria-label={t('QR-Code')} style={iconBtn}>
           <QrCode size={22} strokeWidth={2} />
         </button>
 
-        <button onClick={() => navigate('/chats')} aria-label="Chats" style={iconBtn}>
+        <button onClick={() => navigate('/chats')} aria-label={t('Chats')} style={iconBtn}>
           <MessageCircle size={22} strokeWidth={2} />
           {hasUnread && (
             <span style={{
@@ -53,7 +55,7 @@ export default function AppHeader() {
           )}
         </button>
 
-        <button onClick={() => navigate('/notifications')} aria-label="Benachrichtigungen" style={iconBtn}>
+        <button onClick={() => navigate('/notifications')} aria-label={t('Benachrichtigungen')} style={iconBtn}>
           <Bell size={22} strokeWidth={2} />
           {unreadCount > 0 && (
             <span style={{

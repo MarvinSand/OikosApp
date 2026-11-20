@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useT } from '../../i18n'
 import { relaxLayout, findFreeSpot, fanOutSecondary, overlayDiscRadius, buildRigidShape, placeRigidShape } from './mapLayout'
 
 const CONN_COLORS = [
@@ -63,6 +64,7 @@ export default function MapCanvas({
   expandedOverlayBoxKeys = EMPTY_ARR,
   onOverlayBoxClick,
 }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const n = people.length
   const ringRadius = n === 0 ? 150 : Math.max(150, n * 18)
@@ -1528,7 +1530,7 @@ export default function MapCanvas({
             transition: 'opacity 0.5s ease',
             pointerEvents: 'none',
           }}>
-            Verbindungsmodus ist Aktiv
+            {t('Verbindungsmodus ist Aktiv')}
           </span>
           {/* Ongoing hint */}
           <span style={{
@@ -1538,7 +1540,7 @@ export default function MapCanvas({
             boxShadow: '0 1px 6px rgba(58,46,36,0.10)',
             pointerEvents: 'none',
           }}>
-            {firstSelectedType === 'place' ? 'Wähle eine Person zum verbinden' : firstSelected ? 'Wähle eine zweite Person oder einen Ort' : 'Tippe Personen oder Orte an um sie zu verbinden'}
+            {firstSelectedType === 'place' ? t('Wähle eine Person zum verbinden') : firstSelected ? t('Wähle eine zweite Person oder einen Ort') : t('Tippe Personen oder Orte an um sie zu verbinden')}
           </span>
           {/* + Person button when a person is selected */}
           {firstSelected && firstSelectedType === 'person' && (
@@ -1648,7 +1650,7 @@ export default function MapCanvas({
             const ux = dx / dist, uy = dy / dist
             const x1 = parentPos.x + ux * personR
             const y1 = parentPos.y + uy * personR
-            const label = (od.mapName || 'Map')
+            const label = (od.mapName || t('Map'))
             const shortLabel = label.length > 14 ? label.slice(0, 13) + '…' : label
             const count = od.personCount ?? od.persons.length
             const isDraggingBox = dragging?.id === boxKey && dragging?.isOverlayBox && dragging?.moved
@@ -1697,7 +1699,7 @@ export default function MapCanvas({
                   fill="rgba(255,255,255,0.8)" fontSize={9} fontFamily="Lora, Georgia, serif"
                   style={{ pointerEvents: 'none' }}
                 >
-                  {count} {count === 1 ? 'Person' : 'Personen'}
+                  {count === 1 ? t('1 Person') : t('{n} Personen', { n: count })}
                 </text>
               </g>
             )
@@ -2312,7 +2314,7 @@ export default function MapCanvas({
             zIndex: 70, boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
           }}>
             <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
-              Verbindung hinzufügen
+              {t('Verbindung hinzufügen')}
             </h3>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
               {people.find(p => p.id === labelModal.sourceId)?.name} ↔ {people.find(p => p.id === labelModal.targetId)?.name}
@@ -2321,7 +2323,7 @@ export default function MapCanvas({
               type="text"
               value={labelInput}
               onChange={e => setLabelInput(e.target.value)}
-              placeholder="Wie sind sie verbunden? (optional)"
+              placeholder={t('Wie sind sie verbunden? (optional)')}
               autoFocus
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: 10,
@@ -2341,7 +2343,7 @@ export default function MapCanvas({
                   color: 'var(--color-text-muted)',
                 }}
               >
-                Überspringen
+                {t('Überspringen')}
               </button>
               <button
                 onClick={() => handleCreateConnectionWithLabel(labelInput.trim())}
@@ -2352,7 +2354,7 @@ export default function MapCanvas({
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                Verbinden
+                {t('Verbinden')}
               </button>
             </div>
           </div>
@@ -2374,7 +2376,7 @@ export default function MapCanvas({
             zIndex: 70, boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
           }}>
             <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
-              Person hinzufügen
+              {t('Person hinzufügen')}
             </h3>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
               Wird verbunden mit: <strong>{resolvePersonName(addPersonModal.connectedToId)}</strong>
@@ -2383,7 +2385,7 @@ export default function MapCanvas({
               type="text"
               value={addPersonName}
               onChange={e => setAddPersonName(e.target.value)}
-              placeholder="Name der Person…"
+              placeholder={t('Name der Person…')}
               autoFocus
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: 10,
@@ -2404,7 +2406,7 @@ export default function MapCanvas({
                   color: 'var(--color-text-muted)',
                 }}
               >
-                Abbrechen
+                {t('Abbrechen')}
               </button>
               <button
                 onClick={handleAddPersonFromMode}
@@ -2417,7 +2419,7 @@ export default function MapCanvas({
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                {addingPersonBusy ? 'Wird hinzugefügt…' : 'Hinzufügen'}
+                {addingPersonBusy ? t('Wird hinzugefügt…') : t('Hinzufügen')}
               </button>
             </div>
           </div>
@@ -2439,10 +2441,10 @@ export default function MapCanvas({
             zIndex: 70, boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
           }}>
             <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
-              Bereits verbunden
+              {t('Bereits verbunden')}
             </h3>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 18, lineHeight: 1.5 }}>
-              {removeModal.nameA} und {removeModal.nameB} sind bereits verbunden. Verbindung entfernen?
+              {t('{a} und {b} sind bereits verbunden. Verbindung entfernen?', { a: removeModal.nameA, b: removeModal.nameB })}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -2454,7 +2456,7 @@ export default function MapCanvas({
                   color: 'var(--color-text-muted)',
                 }}
               >
-                Nein
+                {t('Nein')}
               </button>
               <button
                 onClick={() => {
@@ -2468,7 +2470,7 @@ export default function MapCanvas({
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                Ja, entfernen
+                {t('Ja, entfernen')}
               </button>
             </div>
           </div>
@@ -2502,7 +2504,7 @@ export default function MapCanvas({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
-                  Verbindungsfarbe
+                  {t('Verbindungsfarbe')}
                 </span>
                 <button onClick={() => setConnColorPicker(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', padding: 2, color: 'var(--color-text-muted)' }}>
                   <X size={15} />
@@ -2512,7 +2514,7 @@ export default function MapCanvas({
                 {CONN_COLORS.map(c => (
                   <button
                     key={c.hex}
-                    title={c.label}
+                    title={t(c.label)}
                     onMouseDown={e => e.stopPropagation()}
                     onClick={() => {
                       setConnPickerDraft(c.hex)
@@ -2541,7 +2543,7 @@ export default function MapCanvas({
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                Speichern
+                {t('Speichern')}
               </button>
               <button
                 onMouseDown={e => e.stopPropagation()}
@@ -2557,7 +2559,7 @@ export default function MapCanvas({
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                Verbindung entfernen
+                {t('Verbindung entfernen')}
               </button>
             </div>
           </>
@@ -2588,7 +2590,7 @@ export default function MapCanvas({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
-                  Verbindungsfarbe
+                  {t('Verbindungsfarbe')}
                 </span>
                 <button onClick={() => setPlaceConnColorPicker(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', padding: 2, color: 'var(--color-text-muted)' }}>
                   <X size={15} />
@@ -2598,7 +2600,7 @@ export default function MapCanvas({
                 {CONN_COLORS.map(c => (
                   <button
                     key={c.hex}
-                    title={c.label}
+                    title={t(c.label)}
                     onMouseDown={e => e.stopPropagation()}
                     onClick={() => {
                       setPlaceConnPickerDraft(c.hex)
@@ -2624,7 +2626,7 @@ export default function MapCanvas({
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                Speichern
+                {t('Speichern')}
               </button>
               <button
                 onMouseDown={e => e.stopPropagation()}
@@ -2641,7 +2643,7 @@ export default function MapCanvas({
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                Verbindung entfernen
+                {t('Verbindung entfernen')}
               </button>
             </div>
           </>
@@ -2672,7 +2674,7 @@ export default function MapCanvas({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
-                  Linienfarbe
+                  {t('Linienfarbe')}
                 </span>
                 <button onClick={() => setCenterLinePicker(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', padding: 2, color: 'var(--color-text-muted)' }}>
                   <X size={15} />
@@ -2682,7 +2684,7 @@ export default function MapCanvas({
                 {CONN_COLORS.map(c => (
                   <button
                     key={c.hex}
-                    title={c.label}
+                    title={t(c.label)}
                     onMouseDown={e => e.stopPropagation()}
                     onClick={() => {
                       setCenterLinePickerDraft(c.hex)
@@ -2716,7 +2718,7 @@ export default function MapCanvas({
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                Speichern
+                {t('Speichern')}
               </button>
             </div>
           </>

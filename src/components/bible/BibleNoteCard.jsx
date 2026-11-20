@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { timeAgo } from '../../lib/prayerModel'
 import BibleReferenceChip from '../bible/BibleReferenceChip'
 import ModerationSheet from '../common/ModerationSheet'
+import { useT } from '../../i18n'
 
 const COMMENT_SELECT = 'id, note_id, author_id, body, created_at, profiles:author_id(id, full_name, username, avatar_url)'
 
@@ -25,6 +26,7 @@ function Avatar({ profile, size = 28 }) {
 
 // Bibel-Notiz als kleiner Feed-Beitrag: Autor + Zeit, Gefällt mir, Kommentare.
 export default function BibleNoteCard({ note, onRemove }) {
+  const { t } = useT()
   const { user } = useAuth()
   const [likes, setLikes] = useState([])
   const [comments, setComments] = useState([])
@@ -75,18 +77,18 @@ export default function BibleNoteCard({ note, onRemove }) {
   }
 
   const author = note.author
-  const name = note.isOwn ? 'Du' : (author?.full_name || author?.username || 'Jemand')
+  const name = note.isOwn ? t('Du') : (author?.full_name || author?.username || t('Jemand'))
 
   return (
     <div className="mb-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
       <div className="flex items-center gap-2 mb-1.5">
-        <Avatar profile={author || (note.isOwn ? { full_name: 'Du' } : null)} />
+        <Avatar profile={author || (note.isOwn ? { full_name: t('Du') } : null)} />
         <div className="flex-1 min-w-0 flex items-baseline gap-1.5">
           <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-text)' }}>{name}</span>
           <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{timeAgo(note.created_at)}</span>
         </div>
         {note.isOwn && onRemove && (
-          <button onClick={() => setConfirmDelete(true)} aria-label="Notiz löschen" className="p-1" style={{ color: 'var(--color-text-tertiary)' }}>
+          <button onClick={() => setConfirmDelete(true)} aria-label={t('Notiz löschen')} className="p-1" style={{ color: 'var(--color-text-tertiary)' }}>
             <Trash2 size={14} />
           </button>
         )}
@@ -110,7 +112,7 @@ export default function BibleNoteCard({ note, onRemove }) {
       {open && (
         <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
           {comments.map(c => {
-            const cname = c.profiles?.full_name || c.profiles?.username || 'Geschwister'
+            const cname = c.profiles?.full_name || c.profiles?.username || t('Geschwister')
             const own = c.author_id === user?.id
             return (
               <div key={c.id} className="flex gap-2 mb-2">
@@ -121,9 +123,9 @@ export default function BibleNoteCard({ note, onRemove }) {
                     <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{timeAgo(c.created_at)}</span>
                     <span className="flex-1" />
                     {own ? (
-                      <button onClick={() => removeComment(c.id)} aria-label="Kommentar löschen" className="p-1" style={{ color: 'var(--color-text-tertiary)' }}><Trash2 size={12} /></button>
+                      <button onClick={() => removeComment(c.id)} aria-label={t('Kommentar löschen')} className="p-1" style={{ color: 'var(--color-text-tertiary)' }}><Trash2 size={12} /></button>
                     ) : (
-                      <button onClick={() => setModeration(c)} aria-label="Melden oder blockieren" className="p-1" style={{ color: 'var(--color-text-tertiary)' }}><MoreHorizontal size={14} /></button>
+                      <button onClick={() => setModeration(c)} aria-label={t('Melden oder blockieren')} className="p-1" style={{ color: 'var(--color-text-tertiary)' }}><MoreHorizontal size={14} /></button>
                     )}
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--color-text)', lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.body}</p>
@@ -136,7 +138,7 @@ export default function BibleNoteCard({ note, onRemove }) {
               value={draft}
               onChange={e => setDraft(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); send() } }}
-              placeholder="Kommentar schreiben…"
+              placeholder={t('Kommentar schreiben…')}
               maxLength={2000}
               className="flex-1 outline-none"
               style={{ border: '1px solid var(--color-border)', borderRadius: 18, padding: '7px 12px', fontSize: 13, backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
@@ -144,7 +146,7 @@ export default function BibleNoteCard({ note, onRemove }) {
             <button
               onClick={send}
               disabled={!draft.trim() || sending}
-              aria-label="Senden"
+              aria-label={t('Senden')}
               className="flex items-center justify-center flex-shrink-0"
               style={{ width: 34, height: 34, borderRadius: '50%', color: '#fff', backgroundColor: draft.trim() ? 'var(--color-accent)' : 'var(--color-border)' }}
             >
@@ -166,7 +168,7 @@ export default function BibleNoteCard({ note, onRemove }) {
             onClick={e => e.stopPropagation()}
           >
             <p className="font-semibold text-center mb-4" style={{ color: 'var(--color-text)' }}>
-              Willst du die Notiz wirklich löschen?
+              {t('Willst du die Notiz wirklich löschen?')}
             </p>
             <div className="flex gap-2">
               <button
@@ -174,14 +176,14 @@ export default function BibleNoteCard({ note, onRemove }) {
                 className="flex-1 py-2.5 rounded-xl font-medium"
                 style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)' }}
               >
-                Nein
+                {t('Nein')}
               </button>
               <button
                 onClick={() => { setConfirmDelete(false); onRemove() }}
                 className="flex-1 py-2.5 rounded-xl font-medium"
                 style={{ backgroundColor: '#dc2626', color: '#fff' }}
               >
-                Ja
+                {t('Ja')}
               </button>
             </div>
           </div>

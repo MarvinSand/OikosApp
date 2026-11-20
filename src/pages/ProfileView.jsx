@@ -5,6 +5,7 @@ import {
   Loader2, Maximize2, X, Repeat2, ScrollText,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useT } from '../i18n'
 import { useProfile } from '../hooks/useProfile'
 import { useProfileTabs } from '../hooks/useProfileTabs'
 import { useOikosMaps } from '../hooks/useOikosMaps'
@@ -24,6 +25,7 @@ const CreedsTab = lazy(() => import('../components/profile/CreedsTab'))
 
 // ─── Inline map preview ───────────────────────────────────────
 function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
+  const { t } = useT()
   const { people, connections, ownerName, loading } = usePublicMap(ownerId, mapId)
 
   return (
@@ -55,7 +57,7 @@ function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
       {/* Close button (top-right) */}
       <button
         onClick={onClose}
-        aria-label="Schließen"
+        aria-label={t('Schließen')}
         style={{
           position: 'absolute',
           top: 8,
@@ -78,7 +80,7 @@ function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
       {/* Fullscreen button (bottom-right) */}
       <button
         onClick={onFullscreen}
-        aria-label="Vollbild"
+        aria-label={t('Vollbild')}
         style={{
           position: 'absolute',
           bottom: 8,
@@ -103,6 +105,7 @@ function InlineMapPreview({ ownerId, mapId, onClose, onFullscreen }) {
 
 // ─── Main ─────────────────────────────────────────────────────
 export default function ProfileView() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { profile, loading: profileLoading, error: profileError, reload: reloadProfile, uploadAvatar, tabSeed } = useProfile({ useCache: true })
@@ -126,9 +129,9 @@ export default function ProfileView() {
     setAvatarUploading(true)
     try {
       await uploadAvatar(file)
-      showToast('Profilbild aktualisiert ✓')
+      showToast(t('Profilbild aktualisiert ✓'))
     } catch {
-      showToast('Fehler beim Hochladen', 'error')
+      showToast(t('Fehler beim Hochladen'), 'error')
     } finally {
       setAvatarUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -136,9 +139,9 @@ export default function ProfileView() {
   }
 
   async function handleDeletePost(postId) {
-    if (!window.confirm('Post wirklich löschen?')) return
+    if (!window.confirm(t('Post wirklich löschen?'))) return
     await deletePost(postId)
-    showToast('Post gelöscht', 'info')
+    showToast(t('Post gelöscht'), 'info')
   }
 
   if (profileLoading) {
@@ -154,13 +157,13 @@ export default function ProfileView() {
   if (!profile && profileError) {
     return (
       <div className="bg-bg min-h-full flex flex-col items-center justify-center" style={{ padding: 32, gap: 12, textAlign: 'center' }}>
-        <p style={{ fontSize: 15, color: 'var(--color-text)' }}>Profil konnte gerade nicht geladen werden.</p>
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Bitte prüfe deine Verbindung und versuche es erneut.</p>
+        <p style={{ fontSize: 15, color: 'var(--color-text)' }}>{t('Profil konnte gerade nicht geladen werden.')}</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('Bitte prüfe deine Verbindung und versuche es erneut.')}</p>
         <button
           onClick={() => { reloadProfile(); reload?.() }}
           style={{ marginTop: 8, padding: '10px 20px', borderRadius: 999, border: 'none', backgroundColor: 'var(--color-text)', color: 'var(--color-bg)', fontWeight: 600, cursor: 'pointer' }}
         >
-          Erneut versuchen
+          {t('Erneut versuchen')}
         </button>
       </div>
     )
@@ -194,14 +197,14 @@ export default function ProfileView() {
         <div style={{ display: 'flex', alignItems: 'center' }}>
         <button
           onClick={() => setShowQr(true)}
-          aria-label="Mein QR-Code"
+          aria-label={t('Mein QR-Code')}
           style={{ width: 40, height: 40, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <QrCode size={22} />
         </button>
         <button
           onClick={() => navigate('/settings')}
-          aria-label="Einstellungen"
+          aria-label={t('Einstellungen')}
           style={{
             width: 40,
             height: 40,
@@ -233,7 +236,7 @@ export default function ProfileView() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={avatarUploading}
-              aria-label="Profilbild ändern"
+              aria-label={t('Profilbild ändern')}
               style={{
                 position: 'absolute',
                 right: -2,
@@ -272,7 +275,7 @@ export default function ProfileView() {
                 {connectionsCount}
               </span>
               <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                Geschwister
+                {t('Geschwister')}
               </span>
             </button>
 
@@ -285,7 +288,7 @@ export default function ProfileView() {
                 {publicCommunities.length}
               </span>
               <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                Communities
+                {t('Communities')}
               </span>
             </button>
           </div>
@@ -298,12 +301,12 @@ export default function ProfileView() {
           </span>
           {profile?.gender === 'brother' && (
             <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, backgroundColor: '#DBEAFE', color: '#1E40AF' }}>
-              🙋‍♂️ Bruder in Christus
+              {t('🙋‍♂️ Bruder in Christus')}
             </span>
           )}
           {profile?.gender === 'sister' && (
             <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, backgroundColor: '#FCE7F3', color: '#9D174D' }}>
-              🙋‍♀️ Schwester in Christus
+              {t('🙋‍♀️ Schwester in Christus')}
             </span>
           )}
         </div>
@@ -367,18 +370,18 @@ export default function ProfileView() {
         }}
       >
         {[
-          { key: 'maps',    icon: MapIcon,   label: 'OIKOS Map' },
-          { key: 'creeds',  icon: ScrollText, label: 'Bekenntnis' },
-          { key: 'posts',   icon: Newspaper, label: 'Posts' },
-          { key: 'prayers', icon: HandHeart, label: 'Gebete' },
-          { key: 'reposts', icon: Repeat2,   label: 'Reposts' },
-        ].map(t => {
-          const isActive = activeTab === t.key
-          const Icon = t.icon
+          { key: 'maps',    icon: MapIcon,   label: t('OIKOS Map') },
+          { key: 'creeds',  icon: ScrollText, label: t('Bekenntnis') },
+          { key: 'posts',   icon: Newspaper, label: t('Posts') },
+          { key: 'prayers', icon: HandHeart, label: t('Gebete') },
+          { key: 'reposts', icon: Repeat2,   label: t('Reposts') },
+        ].map(tab => {
+          const isActive = activeTab === tab.key
+          const Icon = tab.icon
           return (
             <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className="flex-1"
               style={{
                 padding: '10px 0 8px',
@@ -395,7 +398,7 @@ export default function ProfileView() {
               }}
             >
               <Icon size={20} strokeWidth={isActive ? 2.4 : 2} />
-              <span style={{ fontSize: 11, fontWeight: isActive ? 700 : 500 }}>{t.label}</span>
+              <span style={{ fontSize: 11, fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
             </button>
           )
         })}
@@ -404,7 +407,7 @@ export default function ProfileView() {
       {/* Tab content */}
       {tabsLoading ? (
         <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>
-          Lade…
+          {t('Lade…')}
         </p>
       ) : (
         <>
@@ -449,7 +452,7 @@ export default function ProfileView() {
           )}
           {activeTab === 'creeds' && (
             <Suspense fallback={
-              <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>Lade…</p>
+              <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>{t('Lade…')}</p>
             }>
               <CreedsTab />
             </Suspense>
@@ -482,13 +485,13 @@ export default function ProfileView() {
 
       {overlay === 'communities' && (
         <ProfileListOverlay
-          title={`Communities (${publicCommunities.length})`}
+          title={t('Communities ({n})', { n: publicCommunities.length })}
           items={publicCommunities.map(c => ({
             id: c.id,
             title: c.name,
-            subtitle: 'Öffentliche Community',
+            subtitle: t('Öffentliche Community'),
           }))}
-          emptyText="In keiner öffentlichen Community"
+          emptyText={t('In keiner öffentlichen Community')}
           onClose={() => setOverlay(null)}
           onSelect={(it) => {
             setOverlay(null)

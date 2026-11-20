@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, BookOpen, Globe, Book, User } from 'lucide-react'
+import { useT } from '../../i18n'
 
 const tabs = [
   { path: '/',                 icon: Home,       label: 'Home',         match: ['/']                   },
@@ -10,6 +11,7 @@ const tabs = [
 ]
 
 export default function SideNav() {
+  const { t } = useT()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -21,7 +23,7 @@ export default function SideNav() {
       {/* Brand */}
       <div className="px-6 pt-6 pb-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <h1 className="text-2xl font-bold leading-none mb-1" style={{ color: 'var(--color-text)' }}>Oikos Connect</h1>
-        <p className="text-[11px] tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Dein Umfeld. Dein Gebet.</p>
+        <p className="text-[11px] tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>{t('Dein Umfeld. Dein Gebet.')}</p>
       </div>
 
       {/* Nav Items */}
@@ -48,7 +50,7 @@ export default function SideNav() {
             >
               <Icon size={20} strokeWidth={isActive ? 2.4 : 2} />
               <span style={{ fontSize: 14, fontWeight: isActive ? 600 : 500 }}>
-                {label}
+                {t(label)}
               </span>
             </button>
           )

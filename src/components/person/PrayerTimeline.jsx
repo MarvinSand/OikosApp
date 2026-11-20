@@ -1,15 +1,18 @@
 import { usePersonPrayerTimeline } from '../../hooks/usePrayerLogs'
+import { useT, tr, getLang } from '../../i18n'
 
 function formatDayLabel(dateStr) {
   const today = new Date().toISOString().split('T')[0]
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-  if (dateStr === today) return 'Heute'
-  if (dateStr === yesterday) return 'Gestern'
+  if (dateStr === today) return tr('Heute')
+  if (dateStr === yesterday) return tr('Gestern')
   const [year, month, day] = dateStr.split('-')
+  if (getLang() === 'en') return new Date(Number(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   return `${parseInt(day)}. ${['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][parseInt(month) - 1]}`
 }
 
 export default function PrayerTimeline({ personId, personName }) {
+  const { t, lang } = useT()
   const { grouped, loading, userId, loadMore } = usePersonPrayerTimeline(personId)
   const days = Object.keys(grouped).sort().reverse()
   const totalLogs = Object.values(grouped).flat().length
@@ -17,7 +20,7 @@ export default function PrayerTimeline({ personId, personName }) {
   return (
     <div style={{ marginBottom: 32 }}>
       <h4 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)', marginBottom: 14 }}>
-        Gebetsgeschichte
+        {t('Gebetsgeschichte')}
       </h4>
 
       {loading ? (
@@ -25,7 +28,7 @@ export default function PrayerTimeline({ personId, personName }) {
       ) : totalLogs === 0 ? (
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', lineHeight: 1.5 }}>
-            Noch niemand hat für {personName} gebetet.
+            {t('Noch niemand hat für {name} gebetet.', { name: personName })}
           </p>
         </div>
       ) : (
@@ -49,10 +52,12 @@ export default function PrayerTimeline({ personId, personName }) {
                   <div key={log.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 14 }}>🙏</span>
                     <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>
-                      {log.user_id === userId ? 'Du hast' : 'Jemand hat'} für {log.prayer_requests?.title ? `„${log.prayer_requests.title}"` : 'ein Anliegen'} gebetet
+                      {log.prayer_requests?.title
+                        ? (log.user_id === userId ? t('Du hast für „{title}" gebetet', { title: log.prayer_requests.title }) : t('Jemand hat für „{title}" gebetet', { title: log.prayer_requests.title }))
+                        : (log.user_id === userId ? t('Du hast für ein Anliegen gebetet') : t('Jemand hat für ein Anliegen gebetet'))}
                     </span>
                     <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', marginLeft: 'auto', flexShrink: 0 }}>
-                      {new Date(log.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(log.created_at).toLocaleTimeString(lang === 'en' ? 'en-US' : 'de-DE', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 ))}
@@ -65,7 +70,7 @@ export default function PrayerTimeline({ personId, personName }) {
               onClick={loadMore}
               style={{ width: '100%', padding: '8px 0', marginTop: 4, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer', fontStyle: 'italic' }}
             >
-              Mehr anzeigen
+              {t('Mehr anzeigen')}
             </button>
           )}
         </div>

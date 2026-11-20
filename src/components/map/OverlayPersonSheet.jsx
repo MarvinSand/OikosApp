@@ -6,6 +6,7 @@ import PrayerRequestsSection from '../person/PrayerRequestsSection'
 import ImpactMapSection from '../person/ImpactMapSection'
 import StoryLineSection from '../person/StoryLineSection'
 import LinkedProfilePreview from './LinkedProfilePreview'
+import { useT } from '../../i18n'
 
 const BADGE_COLORS = {
   'Freund/in':    { bg: '#E8F4E8', color: 'var(--color-warm-1)' },
@@ -30,6 +31,7 @@ export default function OverlayPersonSheet({
   hostOverlayData = [],
   mapName,
 }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const [person, setPerson] = useState(initialPerson)
   const [connections, setConnections] = useState([])
@@ -171,20 +173,20 @@ export default function OverlayPersonSheet({
                 </h3>
                 {mapName && (
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 6 }}>
-                    aus Karte „{mapName}"
+                    {t('aus Karte „{name}"', { name: mapName })}
                   </p>
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {person.relationship_type && (
                     <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: relBadge?.bg || 'var(--color-warm-4)', color: relBadge?.color || 'var(--color-text-muted)' }}>
-                      {person.relationship_type}
+                      {t(person.relationship_type)}
                     </span>
                   )}
                   <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: person.is_christian ? 'var(--color-accent-light)' : 'var(--color-warm-4)', color: person.is_christian ? 'var(--color-accent-dark)' : 'var(--color-text-muted)' }}>
-                    {person.is_christian ? 'Christ 🌿' : 'Noch nicht 🌱'}
+                    {person.is_christian ? t('Christ 🌿') : t('Noch nicht 🌱')}
                   </span>
                   <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: 'var(--color-gold-text)' }}>
-                    Stufe {stageNum} – {stageName}
+                    {t('Stufe {n}', { n: stageNum })} – {t(stageName)}
                   </span>
                 </div>
               </div>
@@ -203,7 +205,7 @@ export default function OverlayPersonSheet({
           {person.linked_user_id && linkedProfile && (
             <div style={{ marginBottom: 20 }}>
               <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Oikos Connect Account
+                {t('Oikos Connect Account')}
               </h4>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
@@ -224,7 +226,7 @@ export default function OverlayPersonSheet({
                   onClick={() => navigate(`/user/${person.linked_user_id}`)}
                   style={{ padding: '7px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
                 >
-                  Profil →
+                  {t('Profil →')}
                 </button>
               </div>
 
@@ -264,12 +266,12 @@ export default function OverlayPersonSheet({
           {/* Verbindungen */}
           <div style={{ marginBottom: 8 }}>
             <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Verbindungen
+              {t('Verbindungen')}
             </h4>
 
             {allConnections.length === 0 && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', marginBottom: 12 }}>
-                Keine Verbindungen.
+                {t('Keine Verbindungen.')}
               </p>
             )}
 

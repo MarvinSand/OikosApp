@@ -10,6 +10,7 @@ import {
 import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
 import { useToast } from '../context/ToastContext'
+import { useT } from '../i18n'
 import { BIBLE_BOOKS, findBook } from '../lib/bibleBooks'
 import SavedVersesSheet from '../components/bible/SavedVersesSheet'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
@@ -28,6 +29,7 @@ const BIBLE_ID_STORAGE_KEY = 'oikos_bible_version_id'
 
 export default function BibleView() {
   const navigate = useNavigate()
+  const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -76,8 +78,8 @@ export default function BibleView() {
   const [positionWaitOver, setPositionWaitOver] = useState(false)
   useEffect(() => {
     if (!needsDbPosition) return
-    const t = setTimeout(() => setPositionWaitOver(true), 2500)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setPositionWaitOver(true), 2500)
+    return () => clearTimeout(timer)
   }, [needsDbPosition])
   const waitingForPosition = needsDbPosition && readingProgress === undefined && !positionWaitOver && !userNavigatedRef.current
   const { html, loading, error, retry: retryChapter } = useChapterText(bibleId, waitingForPosition ? null : book, chapter)
@@ -101,10 +103,11 @@ export default function BibleView() {
   // Hintergrund liegenden Tab bei Speicherdruck verwerfen und beim
   // Zurückwechseln neu laden - ohne Query-Params bliebe dann nur der
   // Hardcoded-Default JHN/3 übrig).
-  function syncPositionToUrl(nextBook, nextChapter, nextBibleId) {
+  function syncPositionToUrl(nextBook, nextChapter, nextBibleId, nextVerse = null) {
     const params = new URLSearchParams()
     params.set('book', nextBook)
     params.set('chapter', String(nextChapter))
+    if (nextVerse != null) params.set('verse', String(nextVerse))
     if (nextBibleId && String(nextBibleId) !== String(DEFAULT_BIBLE_ID)) params.set('bibleId', String(nextBibleId))
     setSearchParams(params, { replace: true })
   }
@@ -227,14 +230,15 @@ export default function BibleView() {
     return formatReferenceLabel({ book, chapter, verseStart: nums[0], verseEnd: nums[nums.length - 1] })
   }
 
-  function goToChapter(nextBook, nextChapter) {
+  // `verse` (optional, aus der Verssuche): nach dem Laden zum Vers scrollen + hervorheben
+  function goToChapter(nextBook, nextChapter, verse = null) {
     userNavigatedRef.current = true
     setBook(nextBook)
     setChapter(nextChapter)
     setSelectedVerses(new Set())
     setShowBookPicker(false)
-    setPendingVerses(null)
-    syncPositionToUrl(nextBook, nextChapter, bibleId)
+    setPendingVerses(verse != null ? { start: verse, end: verse } : null)
+    syncPositionToUrl(nextBook, nextChapter, bibleId, verse)
     if (user) saveReadingProgress(user.id, { bibleId, book: nextBook, chapter: nextChapter })
   }
 
@@ -282,7 +286,7 @@ export default function BibleView() {
       <div className="sticky top-0 z-20 px-4 pt-4 pb-3" style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
-            <BookMarked size={20} style={{ color: 'var(--color-accent)' }} /> Bibel
+            <BookMarked size={20} style={{ color: 'var(--color-accent)' }} /> {t('Bibel')}
           </h1>
           <YouVersionBadge yv={yv} />
         </div>
@@ -316,7 +320,7 @@ export default function BibleView() {
           <button
             onClick={() => setShowSaved(true)}
             className="p-1.5 rounded-lg"
-            aria-label="Meine Verse"
+            aria-label={t('Meine Verse')}
             style={{ color: 'var(--color-accent)' }}
           >
             <Bookmark size={18} />
@@ -329,16 +333,16 @@ export default function BibleView() {
         className="px-5 py-5"
         style={{ paddingBottom: selectedVerses.size > 0 ? 220 : 'calc(84px + env(safe-area-inset-bottom, 0px))' }}
       >
-        {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
+        {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>{t('Lädt…')}</p>}
         {error && (
           <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}>
-            Der Bibeltext konnte gerade nicht geladen werden. Bitte prüfe deine Internetverbindung.
+            {t('Der Bibeltext konnte gerade nicht geladen werden. Bitte prüfe deine Internetverbindung.')}
             <button
               onClick={retryChapter}
               className="block mt-3 px-4 py-2 rounded-full text-sm font-semibold"
               style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
             >
-              Erneut versuchen
+              {t('Erneut versuchen')}
             </button>
           </div>
         )}
@@ -356,7 +360,7 @@ export default function BibleView() {
         )}
 
         {!loading && !error && !html && (
-          <p style={{ color: 'var(--color-text-tertiary)' }}>Kein Text gefunden.</p>
+          <p style={{ color: 'var(--color-text-tertiary)' }}>{t('Kein Text gefunden.')}</p>
         )}
       </div>
 
@@ -439,7 +443,8 @@ export default function BibleView() {
         <BookChapterPicker
           currentBook={book}
           currentChapter={chapter}
-          onSelect={(code, ch) => goToChapter(code, ch)}
+          bibleId={bibleId}
+          onSelect={(code, ch, verse) => goToChapter(code, ch, verse)}
           onClose={() => setShowBookPicker(false)}
         />
       )}
@@ -464,11 +469,11 @@ export default function BibleView() {
             const post = await createFeedPost(user.id, data)
             setSharePayload(null)
             if (post) {
-              showToast('Beitrag geteilt 🙌')
+              showToast(t('Beitrag geteilt 🙌'))
               setSelectedVerses(new Set())
               setNoteDraft(''); setNoteLinks([])
             } else {
-              showToast('Fehler beim Posten', 'error')
+              showToast(t('Fehler beim Posten'), 'error')
             }
           }}
         />
@@ -478,6 +483,7 @@ export default function BibleView() {
 }
 
 function YouVersionBadge({ yv }) {
+  const { t } = useT()
   if (yv.connected === null) return null
   // Verbinden per OAuth-Redirect funktioniert nur im Browser (siehe Auth.jsx)
   if (!yv.connected && isNativeApp) return null
@@ -486,7 +492,7 @@ function YouVersionBadge({ yv }) {
       <span
         className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
         style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-accent)' }}
-        title="Highlights aus der YouVersion-App werden beim Öffnen eines Kapitels automatisch übernommen"
+        title={t('Highlights aus der YouVersion-App werden beim Öffnen eines Kapitels automatisch übernommen')}
       >
         <BookMarked size={12} /> YouVersion ✓
       </span>
@@ -499,7 +505,7 @@ function YouVersionBadge({ yv }) {
       className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
       style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
     >
-      <BookMarked size={12} /> {yv.connecting ? '…' : 'Mit YouVersion verbinden'}
+      <BookMarked size={12} /> {yv.connecting ? '…' : t('Mit YouVersion verbinden')}
     </button>
   )
 }
@@ -512,6 +518,7 @@ function VerseActionBar({
   onClose, onHighlight, onRemoveHighlight, onBookmark, onSaveNote, onRemoveNote, onShareToFeed,
 }) {
   const navigate = useNavigate()
+  const { t } = useT()
   const [showVisibilityPicker, setShowVisibilityPicker] = useState(false)
   const [showReferences, setShowReferences] = useState(false)
   const activeHex = existingHighlight && isCustomHex(existingHighlight.color)
@@ -538,7 +545,7 @@ function VerseActionBar({
         <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{referenceLabel}</p>
         <div className="flex items-center gap-1">
           {onShareToFeed && (
-            <button onClick={onShareToFeed} title="Als Beitrag teilen">
+            <button onClick={onShareToFeed} title={t('Als Beitrag teilen')}>
               <Share2 size={17} style={{ color: 'var(--color-text-tertiary)' }} />
             </button>
           )}
@@ -571,7 +578,7 @@ function VerseActionBar({
                     key={hex}
                     onClick={() => isActive ? onRemoveHighlight(existingHighlight.id) : onHighlight(hex)}
                     onContextMenu={e => { e.preventDefault(); onToggleSaveColor?.(hex) }}
-                    title="Gespeicherte Farbe (lang drücken: entfernen)"
+                    title={t('Gespeicherte Farbe (lang drücken: entfernen)')}
                     className="w-9 h-9 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: hex, boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : '0 0 0 1px var(--color-border)', color: highlightTextColor(hex) }}
                   >
@@ -589,7 +596,7 @@ function VerseActionBar({
                 onClick={() => setShowMoreColors(false)}
                 className="w-9 h-9 rounded-full flex items-center justify-center ml-2"
                 style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-                aria-label="Zurück"
+                aria-label={t('Zurück')}
               >
                 <X size={16} style={{ color: 'var(--color-text)' }} />
               </button>
@@ -598,7 +605,7 @@ function VerseActionBar({
             <button
               onClick={() => setShowMoreColors(true)}
               className="w-9 h-9 rounded-full relative"
-              aria-label="Weitere Farben"
+              aria-label={t('Weitere Farben')}
             >
               {['#f09ae9', '#e8312a', '#8ef98b'].map((c, i) => (
                 <span key={c} className="absolute w-6 h-6 rounded-full" style={{ backgroundColor: c, left: 2 + i * 5, top: 6, border: '1px solid var(--color-bg)' }} />
@@ -628,7 +635,7 @@ function VerseActionBar({
               style={{ color: 'var(--color-text-secondary)' }}
             >
               {showPublicNotes ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {showPublicNotes ? 'Notizen ausblenden' : `Öffentliche Notizen ansehen (${otherNotes.length})`}
+              {showPublicNotes ? t('Notizen ausblenden') : t('Öffentliche Notizen ansehen ({n})', { n: otherNotes.length })}
             </button>
             {showPublicNotes && (
               <div className="mt-2">
@@ -646,7 +653,7 @@ function VerseActionBar({
               style={{ color: 'var(--color-text-secondary)' }}
             >
               {showReferences ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {referencesLoading ? 'Lädt Erwähnungen…' : `${references.length} Erwähnung${references.length === 1 ? '' : 'en'} anzeigen`}
+              {referencesLoading ? t('Lädt Erwähnungen…') : references.length === 1 ? t('1 Erwähnung anzeigen') : t('{n} Erwähnungen anzeigen', { n: references.length })}
             </button>
             {showReferences && (
               <div className="mt-2 flex flex-col gap-1.5">
@@ -662,7 +669,7 @@ function VerseActionBar({
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
-                        {r.author?.full_name || r.author?.username || 'Jemand'}
+                        {r.author?.full_name || r.author?.username || t('Jemand')}
                       </p>
                       {r.text && (
                         <p className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>{r.text}</p>
@@ -680,7 +687,7 @@ function VerseActionBar({
           <textarea
             value={noteDraft}
             onChange={e => { setNoteDraft(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px` }}
-            placeholder="Notiz hinzufügen…"
+            placeholder={t('Notiz hinzufügen…')}
             rows={2}
             className="flex-1 px-3 py-2 rounded-xl text-sm"
             style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)', resize: 'none', lineHeight: 1.4 }}
@@ -696,7 +703,7 @@ function VerseActionBar({
             className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
             style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}
           >
-            <Link2 size={13} /> Bibelvers verknüpfen
+            <Link2 size={13} /> {t('Bibelvers verknüpfen')}
           </button>
         </div>
 
@@ -707,7 +714,7 @@ function VerseActionBar({
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
               style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}
             >
-              <VisibilityIcon size={13} /> {visibilityObj.label}
+              <VisibilityIcon size={13} /> {t(visibilityObj.label)}
               {showVisibilityPicker ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
             {showVisibilityPicker && (
@@ -732,7 +739,7 @@ function VerseActionBar({
           className="w-full px-3 py-2 rounded-xl text-sm font-medium"
           style={{ backgroundColor: noteDraft.trim() ? 'var(--color-accent)' : 'var(--color-bg-secondary)', color: noteDraft.trim() ? 'white' : 'var(--color-text-tertiary)' }}
         >
-          Notiz sichern
+          {t('Notiz sichern')}
         </button>
       </div>
     </div>
@@ -741,6 +748,7 @@ function VerseActionBar({
 
 // "…"-Button für frei wählbare Farben über den nativen Farbwähler (<input type="color">).
 function CustomColorButton({ value, onPick, onCommit, onRemove }) {
+  const { t } = useT()
   const inputRef = useRef(null)
   // Natives "change" feuert erst beim Schließen des Farbwählers → dann speichern
   // (React-onChange entspricht "input" und käme bei jedem Ziehen).
@@ -763,7 +771,7 @@ function CustomColorButton({ value, onPick, onCommit, onRemove }) {
         boxShadow: isActive ? '0 0 0 2px var(--color-accent)' : 'none',
         color: isActive ? highlightTextColor(value) : undefined,
       }}
-      title="Eigene Farbe"
+      title={t('Eigene Farbe')}
     >
       {isActive ? <span style={{ fontSize: 12 }}>✓</span> : <MoreHorizontal size={16} style={{ color: 'var(--color-text-tertiary)' }} />}
       <input
@@ -773,7 +781,7 @@ function CustomColorButton({ value, onPick, onCommit, onRemove }) {
         onInput={e => onPick(e.target.value)}
         onChange={() => {}}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        aria-label="Eigene Farbe wählen"
+        aria-label={t('Eigene Farbe wählen')}
       />
     </button>
   )

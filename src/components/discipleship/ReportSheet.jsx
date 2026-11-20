@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
+import { useT } from '../../i18n'
 
 const REASONS = ['Anstößiger Inhalt', 'Spam', 'Falsche Lehre', 'Sonstiges']
 
@@ -12,6 +13,7 @@ const REASONS = ['Anstößiger Inhalt', 'Spam', 'Falsche Lehre', 'Sonstiges']
 // gemeldeten Datensatz, die Tabelle ist bewusst generisch gehalten, damit
 // spätere Report-Buttons (z.B. Feed) sie mitnutzen können.
 export default function ReportSheet({ contentType, contentId, onClose }) {
+  const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
   const [saving, setSaving] = useState(false)
@@ -22,8 +24,8 @@ export default function ReportSheet({ contentType, contentId, onClose }) {
       reporter_id: user.id, content_type: contentType, content_id: contentId, reason,
     })
     setSaving(false)
-    if (error) { showToast('Meldung konnte nicht gesendet werden', 'error'); return }
-    showToast('Danke – wir prüfen die Meldung innerhalb von 24 Stunden.')
+    if (error) { showToast(t('Meldung konnte nicht gesendet werden'), 'error'); return }
+    showToast(t('Danke – wir prüfen die Meldung innerhalb von 24 Stunden.'))
     onClose()
   }
 
@@ -49,7 +51,7 @@ export default function ReportSheet({ contentType, contentId, onClose }) {
         }}
       >
         <div className="flex items-center justify-between mb-4">
-          <p className="font-bold" style={{ color: 'var(--color-text)' }}>Inhalt melden</p>
+          <p className="font-bold" style={{ color: 'var(--color-text)' }}>{t('Inhalt melden')}</p>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--color-text-tertiary)' }} /></button>
         </div>
         <div className="space-y-2">
@@ -61,7 +63,7 @@ export default function ReportSheet({ contentType, contentId, onClose }) {
               className="w-full text-left px-4 py-3 rounded-xl"
               style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', fontSize: 14 }}
             >
-              {r}
+              {t(r)}
             </button>
           ))}
         </div>

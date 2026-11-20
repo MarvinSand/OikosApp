@@ -21,6 +21,7 @@ import {
   timeAgo, formatLastPrayed, getInitials, authorName as displayName, KIND_OIKOS,
   prayerContext,
 } from '../../lib/prayerModel'
+import { useT, tr } from '../../i18n'
 
 // ════════════════════════════════════════════════════════════════════════
 // Die EINE Gebets-Karte
@@ -53,7 +54,7 @@ function OverlappingPrayerAvatars({ prayersByUser, currentUserId }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center' }}>
       {shown.map((p, i) => {
-        const name = p.userId === currentUserId ? 'Du' : (p.profile?.full_name || p.profile?.username || '?')
+        const name = p.userId === currentUserId ? tr('Du') : (p.profile?.full_name || p.profile?.username || '?')
         return (
           <div key={p.userId} style={{
             width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
@@ -73,41 +74,40 @@ function OverlappingPrayerAvatars({ prayersByUser, currentUserId }) {
 // Woher stammt dieses Gebet – kleiner Kontext-Hinweis, damit im
 // „Alle Gebete"-Feed erkennbar bleibt, worüber man es sieht.
 const CATEGORIES = [
-  { key: 'heilung',   label: 'Heilung',   emoji: '🌿' },
-  { key: 'weisheit',  label: 'Weisheit',  emoji: '🕊️' },
-  { key: 'erweckung', label: 'Erweckung', emoji: '🔥' },
-  { key: 'wahrheit',  label: 'Wahrheit',  emoji: '📖' },
-  { key: 'liebe',     label: 'Liebe',     emoji: '❤️' },
-  { key: 'sonstiges', label: 'Sonstiges', emoji: '🙏' },
+  { key: 'heilung',   get label() { return tr('Heilung') },   emoji: '🌿' },
+  { key: 'weisheit',  get label() { return tr('Weisheit') },  emoji: '🕊️' },
+  { key: 'erweckung', get label() { return tr('Erweckung') }, emoji: '🔥' },
+  { key: 'wahrheit',  get label() { return tr('Wahrheit') },  emoji: '📖' },
+  { key: 'liebe',     get label() { return tr('Liebe') },     emoji: '❤️' },
+  { key: 'sonstiges', get label() { return tr('Sonstiges') }, emoji: '🙏' },
 ]
 
 const SOURCE_LABELS = {
-  oikos: 'Oikos',
-  community: 'Community',
-  shared: 'Geteilt',
-  sibling: 'Geschwister',
+  get oikos() { return 'Oikos' },
+  get community() { return tr('Community') },
+  get shared() { return tr('Geteilt') },
+  get sibling() { return tr('Geschwister') },
 }
 
 // Ein Kommentar + seine öffentlichen Antworten. Nur eine Ebene tief –
 // „direkt unter dem Gebet im Kommentarbereich" reicht für Antworten.
 function CommentThread({ note, replies, currentUserId, replyingTo, setReplyingTo, onSubmitReply, onDelete, onPrivateReply }) {
+  const { t } = useT()
   const isReplying = replyingTo === note.id
 
   function Row({ n, isReply }) {
     const isOwn = n.author_id === currentUserId
     return (
       <div style={{ display: 'flex', gap: 8 }}>
-        <AvatarBubble name={n.profiles?.full_name || n.profiles?.username || 'Du'} size={isReply ? 24 : 28} avatarUrl={n.profiles?.avatar_url} />
+        <AvatarBubble name={n.profiles?.full_name || n.profiles?.username || tr('Du')} size={isReply ? 24 : 28} avatarUrl={n.profiles?.avatar_url} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderRadius: 10, padding: '8px 10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
-                {isOwn ? 'Du' : (n.profiles?.full_name || n.profiles?.username || 'Unbekannt')}
+                {isOwn ? t('Du') : (n.profiles?.full_name || n.profiles?.username || t('Unbekannt'))}
               </span>
               {n.is_public === false && (
-                <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)', border: '1px solid var(--color-border)', borderRadius: 4, padding: '1px 5px' }}>
-                  nur Ersteller
-                </span>
+                <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)', border: '1px solid var(--color-border)', borderRadius: 4, padding: '1px 5px' }}>{t('nur Ersteller')}</span>
               )}
             </div>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{n.text}</p>
@@ -115,18 +115,14 @@ function CommentThread({ note, replies, currentUserId, replyingTo, setReplyingTo
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, paddingLeft: 2 }}>
             {!isReply && (
               <button onClick={() => setReplyingTo(isReplying ? null : n.id)} style={commentActionLink}>
-                <CornerUpLeft size={11} /> Antworten
-              </button>
+                <CornerUpLeft size={11} />{' '}{t('Antworten')}</button>
             )}
             {!isOwn && (
-              <button onClick={() => onPrivateReply(n)} style={commentActionLink}>
-                Privat antworten
-              </button>
+              <button onClick={() => onPrivateReply(n)} style={commentActionLink}>{t('Privat antworten')}</button>
             )}
             {isOwn && (
               <button onClick={() => onDelete(n)} style={{ ...commentActionLink, color: 'var(--color-error)' }}>
-                <Trash2 size={11} /> Löschen
-              </button>
+                <Trash2 size={11} />{' '}{t('Löschen')}</button>
             )}
           </div>
         </div>
@@ -146,7 +142,7 @@ function CommentThread({ note, replies, currentUserId, replyingTo, setReplyingTo
         <div style={{ marginLeft: 22 }}>
           <CommentInput
             onSubmit={(text, isPublic) => { onSubmitReply(text, isPublic); setReplyingTo(null) }}
-            placeholder="Antworten…"
+            placeholder={t('Antworten…')}
           />
         </div>
       )}
@@ -180,6 +176,7 @@ export default function PrayerCard({
   onForward,
   onOpenGoal,
 }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const navigate = useNavigate()
   const [showPrayedBy, setShowPrayedBy] = useState(false)
@@ -212,16 +209,16 @@ export default function PrayerCard({
   async function handlePray() {
     try {
       await onPray?.(prayer)
-      showToast('🙏 Gebet wurde notiert')
+      showToast(t('🙏 Gebet wurde notiert'))
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     }
   }
 
   async function handleToggleAnswered() {
     if (!isAnswered) { setConfetti(true); setTimeout(() => setConfetti(false), 3200) }
     await onToggleAnswered?.(prayer)
-    showToast(isAnswered ? 'Als offen markiert' : '🎉 Als erhört markiert!')
+    showToast(isAnswered ? t('Als offen markiert') : t('🎉 Als erhört markiert!'))
   }
 
   return (
@@ -265,12 +262,10 @@ export default function PrayerCard({
                   {name}
                 </p>
               )}
-              {author?.gender === 'brother' && !isOwner && <span style={genderBadge}>Bruder</span>}
-              {author?.gender === 'sister' && !isOwner && <span style={genderBadge}>Schwester</span>}
+              {author?.gender === 'brother' && !isOwner && <span style={genderBadge}>{t('Bruder')}</span>}
+              {author?.gender === 'sister' && !isOwner && <span style={genderBadge}>{t('Schwester')}</span>}
               {isAnswered && (
-                <span style={{ ...genderBadge, backgroundColor: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', fontWeight: 700 }}>
-                  🎉 Erhört
-                </span>
+                <span style={{ ...genderBadge, backgroundColor: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', fontWeight: 700 }}>{t('🎉 Erhört')}</span>
               )}
               {cat && <span style={genderBadge}>{cat.emoji} {cat.label}</span>}
               {sourceLabel && <span style={genderBadge}>{sourceLabel}</span>}
@@ -290,7 +285,7 @@ export default function PrayerCard({
             <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
               <button
                 onClick={() => onUpdate?.(prayer, { is_pinned: !prayer.isPinned })}
-                title={prayer.isPinned ? 'Nicht mehr anpinnen' : 'Oben anpinnen'}
+                title={prayer.isPinned ? t('Nicht mehr anpinnen') : t('Oben anpinnen')}
                 style={iconBtn(prayer.isPinned ? 'var(--color-accent)' : 'var(--color-text-tertiary)')}
               >
                 <Pin size={16} fill={prayer.isPinned ? 'var(--color-accent)' : 'none'} />
@@ -317,7 +312,7 @@ export default function PrayerCard({
             </p>
             {desc.length > 120 && (
               <button onClick={() => setExpanded(v => !v)} style={linkBtn}>
-                {expanded ? 'Weniger anzeigen' : 'Mehr anzeigen'}
+                {expanded ? t('Weniger anzeigen') : t('Mehr anzeigen')}
               </button>
             )}
           </div>
@@ -355,12 +350,11 @@ export default function PrayerCard({
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: goal.goal_type === 'custom' ? 0 : 8 }}>
               <span style={{ fontSize: 15 }}>{goal.icon || '🎯'}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-                {goal.goal_type === 'hours' ? 'Stunden-Ziel' : goal.goal_type === 'days' ? 'Tage-Ziel' : goal.goal_type === 'custom' ? 'Individuelles Ziel' : 'Personen-Ziel'}
+                {goal.goal_type === 'hours' ? t('Stunden-Ziel') : goal.goal_type === 'days' ? t('Tage-Ziel') : goal.goal_type === 'custom' ? t('Individuelles Ziel') : t('Personen-Ziel')}
               </span>
               {goal.goal_type !== 'custom' && (
                 <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-                  🙏 {goal.participant_count || 0} dabei
-                </span>
+                  🙏 {goal.participant_count || 0}{' '}{t('dabei')}</span>
               )}
             </div>
             {goal.goal_type === 'custom' ? (
@@ -386,42 +380,37 @@ export default function PrayerCard({
               <>
                 <OverlappingPrayerAvatars prayersByUser={prayersByUser} currentUserId={currentUserId} />
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 500, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
-                  {peopleCount} {peopleCount === 1 ? 'Person' : 'Personen'} · {totalCount} {totalCount === 1 ? 'Gebet' : 'Gebete'}
+                  {peopleCount} {peopleCount === 1 ? t('Person') : t('Personen')} · {totalCount} {totalCount === 1 ? t('Gebet') : t('Gebete')}
                 </span>
               </>
             ) : engagementPending ? (
               // Platzhalter statt „Noch keine Gebete", solange die Zahlen laden
               <span aria-hidden="true" className="animate-pulse" style={{ display: 'inline-block', width: 150, height: 26, borderRadius: 20, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }} />
             ) : (
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>
-                Noch keine Gebete
-              </span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic', padding: '3px 10px', borderRadius: 20, backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>{t('Noch keine Gebete')}</span>
             )}
           </button>
 
-          <button onClick={handlePray} style={prayBtn}>🙏 Beten</button>
+          <button onClick={handlePray} style={prayBtn}>{t('🙏 Beten')}</button>
         </div>
 
         {/* Letztes Gebet – eigenes und fremdes */}
         <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap', visibility: engagementPending ? 'hidden' : 'visible' }}>
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-            Du: {formatLastPrayed(myLastPrayedAt)}
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Du:')}{' '}{formatLastPrayed(myLastPrayedAt)}
           </span>
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-            Andere: {formatLastPrayed(othersLastPrayedAt)}
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Andere:')}{' '}{formatLastPrayed(othersLastPrayedAt)}
           </span>
         </div>
 
         {/* Aktionen: Kommentar · Liste · Weiterleiten · Besitzer-Menü */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--color-border)' }}>
           <button onClick={() => setShowComments(v => !v)} style={actionBtn}>
-            <MessageCircle size={14} />
-            Kommentar{commentList.length > 0 ? ` · ${commentList.length}` : ''}
+            <MessageCircle size={14} />{t('Kommentar')}{commentList.length > 0 ? ` · ${commentList.length}` : ''}
             {showComments ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
 
           <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
-            <button ref={menuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label="Weitere Optionen" style={{ ...actionBtn, padding: '6px 10px' }}>
+            <button ref={menuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label={t('Weitere Optionen')} style={{ ...actionBtn, padding: '6px 10px' }}>
               <MoreVertical size={16} />
             </button>
             {showMenu && (
@@ -436,21 +425,16 @@ export default function PrayerCard({
                   </button>
                 ))}
                 <button onClick={() => { setShowMenu(false); onAddToList?.(prayer) }} style={anchoredMenuItemStyle}>
-                  <BookmarkPlus size={15} /> Zur Gebetsliste hinzufügen
-                </button>
-                <button onClick={() => { setShowMenu(false); onLaterPray?.(prayer) }} style={anchoredMenuItemStyle}>
-                  ⏰ Später beten
-                </button>
+                  <BookmarkPlus size={15} />{' '}{t('Zur Gebetsliste hinzufügen')}</button>
+                <button onClick={() => { setShowMenu(false); onLaterPray?.(prayer) }} style={anchoredMenuItemStyle}>{t('⏰ Später beten')}</button>
                 <button onClick={() => { setShowMenu(false); onForward?.(prayer) }} style={anchoredMenuItemStyle}>
-                  <Forward size={15} /> Weiterleiten
-                </button>
+                  <Forward size={15} />{' '}{t('Weiterleiten')}</button>
                 {isOwner && (
                   <>
                     <button onClick={() => { setShowMenu(false); setShowEdit(true) }} style={anchoredMenuItemStyle}>
-                      <Pencil size={15} /> Bearbeiten
-                    </button>
+                      <Pencil size={15} />{' '}{t('Bearbeiten')}</button>
                     <button onClick={() => { setShowMenu(false); handleToggleAnswered() }} style={anchoredMenuItemStyle}>
-                      <Check size={15} /> {isAnswered ? 'Als offen markieren' : 'Als erhört markieren'}
+                      <Check size={15} /> {isAnswered ? t('Als offen markieren') : t('Als erhört markieren')}
                     </button>
                     {/* Community-Anliegen behalten ihre Community-Sichtbarkeit –
                         ein Privat-Schalter würde sie aus der Community entfernen. */}
@@ -459,18 +443,16 @@ export default function PrayerCard({
                         onClick={() => { setShowMenu(false); onUpdate?.(prayer, prayer.kind === KIND_OIKOS ? { is_public: !prayer.isPublic } : { visibility: prayer.visibility === 'private' ? 'public' : 'private' }) }}
                         style={anchoredMenuItemStyle}
                       >
-                        {prayer.isPublic ? <><Lock size={15} /> Privat machen</> : <><Globe size={15} /> Öffentlich machen</>}
+                        {prayer.isPublic ? <><Lock size={15} />{' '}{t('Privat machen')}</> : <><Globe size={15} />{' '}{t('Öffentlich machen')}</>}
                       </button>
                     )}
                     <button onClick={() => { setShowMenu(false); onDelete?.(prayer) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
-                      <Trash2 size={15} /> Löschen
-                    </button>
+                      <Trash2 size={15} />{' '}{t('Löschen')}</button>
                   </>
                 )}
                 {!isOwner && prayer.ownerId && (
                   <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
-                    <Flag size={15} /> Melden / Blockieren
-                  </button>
+                    <Flag size={15} />{' '}{t('Melden / Blockieren')}</button>
                 )}
                 {isAppAdmin && !isOwner && (
                   <AdminContentMenuItems

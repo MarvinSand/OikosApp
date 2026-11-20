@@ -1,25 +1,26 @@
+import { tr } from '../i18n'
 // ─── Wiederkehrende Events: Berechnung & Anzeige ──────────────────────────
 // Events speichern nur die ANKER-Termin-Daten (starts_at/ends_at) plus eine
 // Wiederholungsregel. Der jeweils nächste Termin wird bei Bedarf im Frontend
 // berechnet (nextOccurrence) statt einzelne Termine in der DB zu materialisieren.
 
 export const RECURRENCE_FREQ_OPTIONS = [
-  { key: null,      label: 'Einmalig' },
-  { key: 'daily',   label: 'Täglich' },
-  { key: 'weekly',  label: 'Wöchentlich' },
-  { key: 'monthly', label: 'Monatlich' },
-  { key: 'yearly',  label: 'Jährlich' },
+  { key: null,      get label() { return tr('Einmalig') } },
+  { key: 'daily',   get label() { return tr('Täglich') } },
+  { key: 'weekly',  get label() { return tr('Wöchentlich') } },
+  { key: 'monthly', get label() { return tr('Monatlich') } },
+  { key: 'yearly',  get label() { return tr('Jährlich') } },
 ]
 
 // value = JS Date.getDay() (0 = Sonntag … 6 = Samstag), Anzeige Montag-first
 export const WEEKDAY_OPTIONS = [
-  { value: 1, label: 'Mo' },
-  { value: 2, label: 'Di' },
-  { value: 3, label: 'Mi' },
-  { value: 4, label: 'Do' },
-  { value: 5, label: 'Fr' },
-  { value: 6, label: 'Sa' },
-  { value: 0, label: 'So' },
+  { value: 1, get label() { return tr('Mo') } },
+  { value: 2, get label() { return tr('Di') } },
+  { value: 3, get label() { return tr('Mi') } },
+  { value: 4, get label() { return tr('Do') } },
+  { value: 5, get label() { return tr('Fr') } },
+  { value: 6, get label() { return tr('Sa') } },
+  { value: 0, get label() { return tr('So') } },
 ]
 
 const WEEKDAY_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
@@ -28,10 +29,10 @@ const mondayFirst = (d) => (d + 6) % 7
 export function intervalUnitLabel(freq, interval) {
   const n = Number(interval) || 1
   const map = {
-    daily:   n === 1 ? 'Tag'   : 'Tage',
-    weekly:  n === 1 ? 'Woche' : 'Wochen',
-    monthly: n === 1 ? 'Monat' : 'Monate',
-    yearly:  n === 1 ? 'Jahr'  : 'Jahre',
+    daily:   n === 1 ? tr('Tag') : tr('Tage'),
+    weekly:  n === 1 ? tr('Woche') : tr('Wochen'),
+    monthly: n === 1 ? tr('Monat') : tr('Monate'),
+    yearly:  n === 1 ? tr('Jahr') : tr('Jahre'),
   }
   return map[freq] || ''
 }
@@ -127,13 +128,13 @@ export function formatRecurrenceLabel(activity) {
   if (freq === 'weekly' && Array.isArray(activity.recurrence_weekdays) && activity.recurrence_weekdays.length > 0) {
     const days = [...activity.recurrence_weekdays]
       .sort((a, b) => mondayFirst(a) - mondayFirst(b))
-      .map(d => WEEKDAY_SHORT[d])
+      .map(d => tr(WEEKDAY_SHORT[d]))
       .join(', ')
-    return interval === 1 ? `Wöchentlich (${days})` : `Alle ${interval} Wochen (${days})`
+    return interval === 1 ? tr('Wöchentlich ({days})', { days }) : tr('Alle {interval} Wochen ({days})', { interval, days })
   }
 
   if (interval === 1) {
-    return { daily: 'Täglich', weekly: 'Wöchentlich', monthly: 'Monatlich', yearly: 'Jährlich' }[freq] || null
+    return { daily: tr('Täglich'), weekly: tr('Wöchentlich'), monthly: tr('Monatlich'), yearly: tr('Jährlich') }[freq] || null
   }
-  return `Alle ${interval} ${intervalUnitLabel(freq, interval)}`
+  return tr('Alle {interval} {unit}', { interval, unit: intervalUnitLabel(freq, interval) })
 }

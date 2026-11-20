@@ -4,9 +4,11 @@ import { BookMarked, AlertCircle } from 'lucide-react'
 import { completeYouVersionLogin, completeYouVersionSignIn } from '../lib/youversion'
 import { resolveYouVersionRedirectUri } from '../hooks/useYouVersionAccount'
 import { supabase } from '../lib/supabase'
+import { useT } from '../i18n'
 
 export default function YouVersionCallback() {
   const navigate = useNavigate()
+  const { t } = useT()
   const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
   const [errorDetail, setErrorDetail] = useState(null)
   const [fallbackPath, setFallbackPath] = useState('/bible')
@@ -79,7 +81,7 @@ export default function YouVersionCallback() {
       {status === 'loading' && (
         <>
           <div className="w-14 h-14 rounded-full animate-spin mb-6" style={{ border: '3px solid var(--color-border)', borderTopColor: 'var(--color-accent)' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>Verbinde mit YouVersion…</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('Verbinde mit YouVersion…')}</p>
         </>
       )}
       {status === 'success' && (
@@ -87,8 +89,8 @@ export default function YouVersionCallback() {
           <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
             <BookMarked size={36} style={{ color: 'var(--color-accent)' }} />
           </div>
-          <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>YouVersion verbunden</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>Du wirst weitergeleitet…</p>
+          <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>{t('YouVersion verbunden')}</h1>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('Du wirst weitergeleitet…')}</p>
         </>
       )}
       {status === 'error' && (
@@ -96,16 +98,16 @@ export default function YouVersionCallback() {
           <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
             <AlertCircle size={36} style={{ color: 'var(--color-error, #e11d48)' }} />
           </div>
-          <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>Verbindung fehlgeschlagen</h1>
+          <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>{t('Verbindung fehlgeschlagen')}</h1>
           <p className="mb-6" style={{ color: 'var(--color-text-secondary)' }}>
-            {errorDetail || 'Unbekannter Fehler'}
+            {errorDetail || t('Unbekannter Fehler')}
           </p>
           <button
             onClick={() => navigate(fallbackPath, { replace: true })}
             className="px-5 py-2.5 rounded-xl font-medium"
             style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
           >
-            Zurück
+            {t('Zurück')}
           </button>
         </>
       )}

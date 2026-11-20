@@ -3,6 +3,7 @@ import { X, Trash2 } from 'lucide-react'
 import { useFriendships } from '../../hooks/useFriendships'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useToast } from '../../context/ToastContext'
+import { useT } from '../../i18n'
 
 const VISIBILITY_OPTIONS = [
   { value: 'private',          icon: '🔒', label: 'Nur ich' },
@@ -13,6 +14,7 @@ const VISIBILITY_OPTIONS = [
 ]
 
 export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const { friends } = useFriendships()
   const { myCommunities } = useCommunities()
@@ -41,10 +43,10 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
         visibility_user_ids: ['specific_include', 'specific_exclude'].includes(visibility) ? selectedIds : [],
         visibility_community_id: visibility === 'community' ? (communityId || null) : null,
       })
-      showToast('Einstellungen gespeichert ✓')
+      showToast(t('Einstellungen gespeichert ✓'))
       onClose()
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     } finally {
       setSaving(false)
     }
@@ -55,10 +57,10 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
     setDeleting(true)
     try {
       await deleteMap(map.id)
-      showToast('Map gelöscht')
+      showToast(t('Map gelöscht'))
       onClose()
     } catch {
-      showToast('Fehler beim Löschen', 'error')
+      showToast(t('Fehler beim Löschen'), 'error')
       setDeleting(false)
     }
   }
@@ -85,7 +87,7 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)' }}>
-            Map-Einstellungen
+            {t('Map-Einstellungen')}
           </h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
@@ -93,8 +95,8 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
         </div>
 
         {/* Name */}
-        <p style={sectionLabel}>Allgemein</p>
-        <label style={lbl}>Map-Name</label>
+        <p style={sectionLabel}>{t('Allgemein')}</p>
+        <label style={lbl}>{t('Map-Name')}</label>
         <input
           type="text"
           value={name}
@@ -105,8 +107,8 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '20px 0' }} />
 
         {/* Sichtbarkeit */}
-        <p style={sectionLabel}>Sichtbarkeit</p>
-        <label style={lbl}>Wer kann diese Map sehen?</label>
+        <p style={sectionLabel}>{t('Sichtbarkeit')}</p>
+        <label style={lbl}>{t('Wer kann diese Map sehen?')}</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
           {VISIBILITY_OPTIONS.map(opt => (
             <button
@@ -125,7 +127,7 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
               }}
             >
               <span>{opt.icon}</span>
-              <span style={{ flex: 1 }}>{opt.label}</span>
+              <span style={{ flex: 1 }}>{t(opt.label)}</span>
               {visibility === opt.value && <span style={{ fontSize: 12 }}>●</span>}
             </button>
           ))}
@@ -135,11 +137,11 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
         {showFriendsList && (
           <div style={{ marginBottom: 14 }}>
             <label style={{ ...lbl, marginBottom: 8 }}>
-              {visibility === 'specific_include' ? 'Sichtbar für:' : 'Ausgenommen:'}
+              {visibility === 'specific_include' ? t('Sichtbar für:') : t('Ausgenommen:')}
             </label>
             {friends.length === 0 ? (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                Noch keine verbundenen Geschwister.
+                {t('Noch keine verbundenen Geschwister.')}
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -171,10 +173,10 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
         {/* Community-Auswahl */}
         {showCommunityPicker && (
           <div style={{ marginBottom: 14 }}>
-            <label style={lbl}>Community auswählen</label>
+            <label style={lbl}>{t('Community auswählen')}</label>
             {myCommunities.length === 0 ? (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                Du bist noch in keiner Community.
+                {t('Du bist noch in keiner Community.')}
               </p>
             ) : (
               <select
@@ -182,7 +184,7 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
                 onChange={e => setCommunityId(e.target.value)}
                 style={{ ...inp, appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\'%3E%3Cpath fill=\'%23888\' d=\'M7 10l5 5 5-5z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
               >
-                <option value="">— Auswählen —</option>
+                <option value="">{t('— Auswählen —')}</option>
                 {myCommunities.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -201,12 +203,12 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
             color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600,
           }}
         >
-          {saving ? 'Speichere…' : 'Speichern'}
+          {saving ? t('Speichere…') : t('Speichern')}
         </button>
 
         {/* Danger Zone – Map löschen */}
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '24px 0 16px' }} />
-        <p style={{ ...sectionLabel, color: '#C0392B', marginBottom: 10 }}>Gefahrenzone</p>
+        <p style={{ ...sectionLabel, color: '#C0392B', marginBottom: 10 }}>{t('Gefahrenzone')}</p>
 
         {!confirmDelete ? (
           <button
@@ -217,29 +219,29 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
               color: '#C0392B', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
           >
-            <Trash2 size={15} /> Map löschen
+            <Trash2 size={15} /> {t('Map löschen')}
           </button>
         ) : (
           <div style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: '14px 16px', border: '1.5px solid #FECACA' }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: '#991B1B', fontWeight: 600, marginBottom: 4 }}>
-              Map wirklich löschen?
+              {t('Map wirklich löschen?')}
             </p>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: '#B91C1C', marginBottom: 14, lineHeight: 1.5 }}>
-              Alle Personen, Verbindungen und Gebetsanliegen auf dieser Map werden unwiderruflich gelöscht.
+              {t('Alle Personen, Verbindungen und Gebetsanliegen auf dieser Map werden unwiderruflich gelöscht.')}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => setConfirmDelete(false)}
                 style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid #FECACA', background: 'white', fontFamily: 'Lora, serif', fontSize: 13, color: '#991B1B', cursor: 'pointer' }}
               >
-                Abbrechen
+                {t('Abbrechen')}
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
                 style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: '#DC2626', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.7 : 1 }}
               >
-                {deleting ? 'Lösche…' : 'Ja, endgültig löschen'}
+                {deleting ? t('Lösche…') : t('Ja, endgültig löschen')}
               </button>
             </div>
           </div>

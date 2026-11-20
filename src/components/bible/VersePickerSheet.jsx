@@ -5,6 +5,7 @@ import { formatReferenceLabel } from '../../lib/bibleLink'
 import { verseTextFromContainer } from '../../lib/biblePassageHtml'
 import BookChapterPicker from './BookChapterPicker'
 import VersionPicker from './VersionPicker'
+import { useT } from '../../i18n'
 
 const BIBLE_ID_STORAGE_KEY = 'oikos_bible_version_id'
 
@@ -14,6 +15,7 @@ const BIBLE_ID_STORAGE_KEY = 'oikos_bible_version_id'
 // zurück. Wird sowohl von den Post-/Gebets-Composern als auch vom "Als
 // Beitrag teilen"-Flow aus BibleView genutzt.
 export default function VersePickerSheet({ initialBibleId = null, onSelect, onClose }) {
+  const { t } = useT()
   const [step, setStep] = useState('book') // 'book' | 'verse'
   const [book, setBook] = useState(null)
   const [chapter, setChapter] = useState(null)
@@ -30,10 +32,10 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
 
   const { html, loading, error } = useChapterText(bibleId, book, chapter)
 
-  function handleBookSelect(code, ch) {
+  function handleBookSelect(code, ch, verse) {
     setBook(code)
     setChapter(ch)
-    setSelectedVerses(new Set())
+    setSelectedVerses(new Set(verse != null ? [verse] : []))
     setStep('verse')
   }
 
@@ -91,14 +93,14 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
   }
 
   if (step === 'book') {
-    return <BookChapterPicker currentBook={book} currentChapter={chapter} onSelect={handleBookSelect} onClose={onClose} />
+    return <BookChapterPicker currentBook={book} currentChapter={chapter} bibleId={bibleId} onSelect={handleBookSelect} onClose={onClose} />
   }
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--color-bg)', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <button onClick={() => setStep('book')} className="text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
-          Buch wechseln
+          {t('Buch wechseln')}
         </button>
         <button onClick={onClose}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
       </div>
@@ -109,13 +111,13 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
           className="px-2.5 py-1 rounded-lg text-xs font-semibold"
           style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-accent)' }}
         >
-          {currentVersionMeta?.localized_abbreviation || currentVersionMeta?.abbreviation || 'Übersetzung'}
+          {currentVersionMeta?.localized_abbreviation || currentVersionMeta?.abbreviation || t('Übersetzung')}
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
-        {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
-        {error && <p style={{ color: 'var(--color-text-tertiary)' }}>Text konnte nicht geladen werden.</p>}
+        {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>{t('Lädt…')}</p>}
+        {error && <p style={{ color: 'var(--color-text-tertiary)' }}>{t('Text konnte nicht geladen werden.')}</p>}
         {!loading && !error && html && (
           <div
             ref={contentRef}
@@ -131,7 +133,7 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
         style={{ borderTop: '1px solid var(--color-border)', paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}
       >
         <p className="flex-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          {nums.length ? referenceLabel : 'Vers(e) antippen'}
+          {nums.length ? referenceLabel : t('Vers(e) antippen')}
         </p>
         <button
           onClick={handleConfirm}
@@ -142,7 +144,7 @@ export default function VersePickerSheet({ initialBibleId = null, onSelect, onCl
             color: nums.length ? 'white' : 'var(--color-text-tertiary)',
           }}
         >
-          Vers übernehmen
+          {t('Vers übernehmen')}
         </button>
       </div>
 

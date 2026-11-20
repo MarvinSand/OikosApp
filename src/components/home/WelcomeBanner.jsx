@@ -4,24 +4,26 @@ import {
   MapPin, HandHeart, ListChecks, Target, Users, Globe,
   Newspaper, MessageCircle, Moon, ChevronRight, ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { useT, tr } from '../../i18n'
 
 // Alle Kernfunktionen der App – eine Karte, ein Überblick, direkt navigierbar.
 const FEATURES = [
-  { icon: MapPin,      title: 'Oikos Map',                   text: 'Begleite Menschen aus deinem Umfeld im Gebet – dein persönliches Beziehungsnetz.', target: '/profile' },
-  { icon: HandHeart,   title: 'Geführter Gebetsmodus',        text: 'Bete fokussiert durch Listen, Ziele & die Oikos Map.', target: '/prayers?open=mode' },
-  { icon: ListChecks,  title: 'Gebetslisten',                 text: 'Anliegen merken und in eigenen Listen sammeln.', target: '/prayers?open=lists' },
-  { icon: Target,      title: 'Gebetsziele & Gruppengebete',  text: 'Setzt euch gemeinsame Ziele und betet miteinander.', target: '/prayers?view=goals' },
-  { icon: Users,       title: 'Community',                    text: 'Finde Geschwister, tritt Communities bei und betet gemeinsam.', target: '/?tab=community' },
-  { icon: Globe,       title: 'Weltkarte',                    text: 'Sieh Events und wo deine Geschwister weltweit unterwegs sind.', target: '/worldmap' },
-  { icon: Newspaper,   title: 'For-You-Feed',                 text: 'Anliegen teilen, kommentieren, reagieren & weiterleiten.', target: '/friends?tab=feed' },
-  { icon: MessageCircle, title: 'Chats & Benachrichtigungen', text: 'Direkt mit Geschwistern austauschen und nichts verpassen.', target: '/chats' },
-  { icon: Moon,        title: 'Dark Mode',                    text: 'Augenschonendes dunkles Design, umschaltbar in den Einstellungen.', target: '/settings' },
+  { icon: MapPin,      get title() { return tr('Oikos Map') },                   get text() { return tr('Begleite Menschen aus deinem Umfeld im Gebet – dein persönliches Beziehungsnetz.') }, target: '/profile' },
+  { icon: HandHeart,   get title() { return tr('Geführter Gebetsmodus') },        get text() { return tr('Bete fokussiert durch Listen, Ziele & die Oikos Map.') }, target: '/prayers?open=mode' },
+  { icon: ListChecks,  get title() { return tr('Gebetslisten') },                 get text() { return tr('Anliegen merken und in eigenen Listen sammeln.') }, target: '/prayers?open=lists' },
+  { icon: Target,      get title() { return tr('Gebetsziele & Gruppengebete') },  get text() { return tr('Setzt euch gemeinsame Ziele und betet miteinander.') }, target: '/prayers?view=goals' },
+  { icon: Users,       get title() { return tr('Community') },                    get text() { return tr('Finde Geschwister, tritt Communities bei und betet gemeinsam.') }, target: '/?tab=community' },
+  { icon: Globe,       get title() { return tr('Weltkarte') },                    get text() { return tr('Sieh Events und wo deine Geschwister weltweit unterwegs sind.') }, target: '/worldmap' },
+  { icon: Newspaper,   get title() { return tr('For-You-Feed') },                 get text() { return tr('Anliegen teilen, kommentieren, reagieren & weiterleiten.') }, target: '/friends?tab=feed' },
+  { icon: MessageCircle, get title() { return tr('Chats & Benachrichtigungen') }, get text() { return tr('Direkt mit Geschwistern austauschen und nichts verpassen.') }, target: '/chats' },
+  { icon: Moon,        get title() { return tr('Dark Mode') },                    get text() { return tr('Augenschonendes dunkles Design, umschaltbar in den Einstellungen.') }, target: '/settings' },
 ]
 
 const INITIAL_COUNT = 4
 
 // Dauerhaft eingeblendete Willkommens- & Funktionsübersicht auf der Home-Startseite.
 export default function WelcomeBanner() {
+  const { t } = useT()
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
   const visible = expanded ? FEATURES : FEATURES.slice(0, INITIAL_COUNT)
@@ -39,19 +41,15 @@ export default function WelcomeBanner() {
         overflow: 'hidden',
       }}
     >
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 800, color: 'var(--color-text)', margin: '0 0 4px' }}>
-        Willkommen bei Oikos Connect! 🌱
-      </p>
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '0 0 14px' }}>
-        Schön, dass du da bist. Das kannst du hier entdecken:
-      </p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 800, color: 'var(--color-text)', margin: '0 0 4px' }}>{t('Willkommen bei Oikos Connect! 🌱')}</p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '0 0 14px' }}>{t('Schön, dass du da bist. Das kannst du hier entdecken:')}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {visible.map(({ icon: Icon, title, text, target }) => (
           <button
             key={title}
             onClick={() => navigate(target)}
-            aria-label={`${title} öffnen`}
+            aria-label={t('{title} öffnen', { title })}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
               padding: 6, margin: -6, borderRadius: 12, border: 'none', background: 'none',
@@ -92,7 +90,7 @@ export default function WelcomeBanner() {
             fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-accent)',
           }}
         >
-          {expanded ? <>Weniger anzeigen <ChevronUp size={15} /></> : <>Alle Funktionen anzeigen <ChevronDown size={15} /></>}
+          {expanded ? <>{t('Weniger anzeigen')}{' '}<ChevronUp size={15} /></> : <>{t('Alle Funktionen anzeigen')}{' '}<ChevronDown size={15} /></>}
         </button>
       )}
     </div>

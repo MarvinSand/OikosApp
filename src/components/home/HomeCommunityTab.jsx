@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase'
 import { readCache, writeCache } from '../../lib/swrCache'
 import CommunityCard from '../community/CommunityCard'
 import PeopleYouMayKnow from './PeopleYouMayKnow'
+import { useT } from '../../i18n'
 
 // Lazy: CreateCommunitySheet zieht AddressAutocomplete (Google-Maps-Loader)
 // mit – soll erst laden, wenn der Nutzer tatsächlich "Erstellen" tippt.
@@ -23,6 +24,7 @@ const sectionLabel = {
 // Community-Tab auf Home: eigene Communities, öffentliche zum Beitreten,
 // und ein Sprung zum Geschwister-Tab.
 export default function HomeCommunityTab() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -66,10 +68,10 @@ export default function HomeCommunityTab() {
       .insert({ community_id: community.id, user_id: user.id, role: 'member' })
     setJoining(null)
     if (!error) {
-      showToast(`Willkommen in ${community.name}!`)
+      showToast(t('Willkommen in {name}!', { name: community.name }))
       navigate(`/community/${community.id}`)
     } else {
-      showToast('Fehler beim Beitreten', 'error')
+      showToast(t('Fehler beim Beitreten'), 'error')
     }
   }
 
@@ -86,8 +88,7 @@ export default function HomeCommunityTab() {
           boxShadow: '0 4px 14px rgba(58,46,36,0.1)',
         }}
       >
-        <Users size={17} /> Geschwister
-      </button>
+        <Users size={17} />{' '}{t('Geschwister')}</button>
 
       {/* Neue Geschwister, die man vielleicht kennt */}
       <PeopleYouMayKnow />
@@ -98,28 +99,24 @@ export default function HomeCommunityTab() {
           onClick={() => setShowCreate(true)}
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
         >
-          <Plus size={15} /> Erstellen
-        </button>
+          <Plus size={15} />{' '}{t('Erstellen')}</button>
         <button
           onClick={() => setShowJoin(true)}
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
         >
-          <Hash size={15} /> Beitreten
-        </button>
+          <Hash size={15} />{' '}{t('Beitreten')}</button>
       </div>
 
       {/* Meine Communities */}
       <div>
-        <p style={{ ...sectionLabel, marginBottom: 12 }}>Meine Communities</p>
+        <p style={{ ...sectionLabel, marginBottom: 12 }}>{t('Meine Communities')}</p>
 
         {loading && (
           <div style={{ height: 150, borderRadius: 18, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
         )}
 
         {!loading && myCommunities.length === 0 && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '8px 0 4px', margin: 0 }}>
-            Du bist noch in keiner Community – erstelle eine oder tritt per Code bei.
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '8px 0 4px', margin: 0 }}>{t('Du bist noch in keiner Community – erstelle eine oder tritt per Code bei.')}</p>
         )}
 
         {!loading && myCommunities.length > 0 && (
@@ -140,17 +137,14 @@ export default function HomeCommunityTab() {
       {/* Entdecken */}
       <div>
         <p style={{ ...sectionLabel, display: 'flex', alignItems: 'center', gap: 5, marginBottom: 12 }}>
-          <Compass size={12} /> Entdecken
-        </p>
+          <Compass size={12} />{' '}{t('Entdecken')}</p>
 
         {loadingPublic && (
           <div style={{ height: 150, borderRadius: 18, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
         )}
 
         {!loadingPublic && publicCommunities.length === 0 && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '12px 0', margin: 0 }}>
-            Aktuell keine öffentlichen Communities verfügbar.
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '12px 0', margin: 0 }}>{t('Aktuell keine öffentlichen Communities verfügbar.')}</p>
         )}
 
         {!loadingPublic && publicCommunities.length > 0 && (

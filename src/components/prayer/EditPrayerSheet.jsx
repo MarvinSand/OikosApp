@@ -4,12 +4,14 @@ import { KIND_OIKOS } from '../../lib/prayerModel'
 import { useCommunities } from '../../hooks/useCommunities'
 import { FEED_VISIBILITY, SiblingPickerFeed } from '../feed/FeedPostSheet'
 import BodyPortal from '../common/BodyPortal'
+import { useT } from '../../i18n'
 
 // Bearbeiten eines Gebets (Titel, Beschreibung, Sichtbarkeit).
 // Oikos-Anliegen: Sichtbarkeit wie beim Feedpost (öffentlich / Community /
 // Geschwister / ausgewählte Geschwister / privat). Feed-Gebete: Öffentlich/Privat;
 // Community-Gebete behalten ihre Community-Sichtbarkeit.
 export default function EditPrayerSheet({ prayer, onSave, onClose }) {
+  const { t } = useT()
   const [title, setTitle] = useState(prayer.title || '')
   const [description, setDescription] = useState(prayer.description || '')
   const [isPublic, setIsPublic] = useState(prayer.isPublic)
@@ -55,23 +57,23 @@ export default function EditPrayerSheet({ prayer, onSave, onClose }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-border)', margin: '0 auto 14px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Anliegen bearbeiten</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Anliegen bearbeiten')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
-        <label style={lbl}>Titel *</label>
+        <label style={lbl}>{t('Titel *')}</label>
         <input autoFocus type="text" value={title} onChange={e => setTitle(e.target.value)} style={inp} />
 
-        <label style={{ ...lbl, marginTop: 12 }}>Beschreibung</label>
+        <label style={{ ...lbl, marginTop: 12 }}>{t('Beschreibung')}</label>
         <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={3} style={{ ...inp, resize: 'vertical' }} />
 
         {isOikos && (
           <div style={{ marginTop: 14 }}>
-            <label style={lbl}>Wer soll es sehen?</label>
+            <label style={lbl}>{t('Wer soll es sehen?')}</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[...FEED_VISIBILITY, { key: 'private', label: 'Nur für mich', icon: Lock }].map(o => {
+              {[...FEED_VISIBILITY, { key: 'private', label: t('Nur für mich'), icon: Lock }].map(o => {
                 const Icon = o.icon
                 const active = visibility === o.key
                 return (
@@ -84,7 +86,7 @@ export default function EditPrayerSheet({ prayer, onSave, onClose }) {
             </div>
             {visibility === 'communities' && (
               myCommunities.length === 0 ? (
-                <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '8px 0 0' }}>Du bist noch in keiner Community.</p>
+                <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontStyle: 'italic', margin: '8px 0 0' }}>{t('Du bist noch in keiner Community.')}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
                   {myCommunities.map(c => {
@@ -113,11 +115,11 @@ export default function EditPrayerSheet({ prayer, onSave, onClose }) {
             <div>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 1px' }}>
                 {isPublic
-                  ? <><Globe size={12} style={{ display: 'inline', marginRight: 4 }} />Öffentlich</>
-                  : <><Lock size={12} style={{ display: 'inline', marginRight: 4 }} />Privat</>}
+                  ? <><Globe size={12} style={{ display: 'inline', marginRight: 4 }} />{t('Öffentlich')}</>
+                  : <><Lock size={12} style={{ display: 'inline', marginRight: 4 }} />{t('Privat')}</>}
               </p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-secondary)', margin: 0 }}>
-                {isPublic ? 'Für andere sichtbar' : 'Nur für dich'}
+                {isPublic ? t('Für andere sichtbar') : t('Nur für dich')}
               </p>
             </div>
             <button
@@ -139,7 +141,7 @@ export default function EditPrayerSheet({ prayer, onSave, onClose }) {
             cursor: title.trim() && visOk ? 'pointer' : 'not-allowed',
           }}
         >
-          {saving ? 'Speichere…' : 'Speichern'}
+          {saving ? t('Speichere…') : t('Speichern')}
         </button>
       </div>
     </BodyPortal>

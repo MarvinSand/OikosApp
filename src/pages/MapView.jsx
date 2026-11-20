@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense, useRef } from 'react'
-import { Plus, ChevronDown, SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin, Wand2 } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { Plus, ArrowLeft, ChevronDown,SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin, Wand2 } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
+import { useT } from '../i18n'
 import { useOikosMaps } from '../hooks/useOikosMaps'
 import { usePlaces } from '../hooks/usePlaces'
 import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
@@ -39,6 +40,7 @@ const COLOR_FILTER_OPTIONS = [
 ]
 
 function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
+  const { t } = useT()
   const allVisible = hiddenColors.size === 0
   return (
     <div style={{
@@ -54,7 +56,7 @@ function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-          Nach Farbe filtern
+          {t('Nach Farbe filtern')}
         </p>
         <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, color: 'var(--color-text-light)', display: 'flex' }}>
           <X size={15} />
@@ -70,7 +72,7 @@ function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
           style={{ accentColor: 'var(--color-warm-1)', width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }}
         />
         <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-          Alle einblenden
+          {t('Alle einblenden')}
         </span>
       </label>
 
@@ -86,7 +88,7 @@ function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
             />
             <div style={{ width: 16, height: 16, borderRadius: '50%', backgroundColor: c.hex, border: '1.5px solid rgba(0,0,0,0.12)', flexShrink: 0 }} />
             <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)' }}>
-              {c.label}
+              {t(c.label)}
             </span>
           </label>
         )
@@ -97,6 +99,7 @@ function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
 
 // ─── Generationen-Ansicht Panel ───────────────────────────────
 function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
+  const { t } = useT()
   const [busyIds, setBusyIds] = useState(new Set())
   // { [personId]: { maps: [{id, name}], loading: bool } }
   const [personMaps, setPersonMaps] = useState({})
@@ -200,7 +203,7 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-          Generationen-Ansicht
+          {t('Generationen-Ansicht')}
         </p>
         <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, color: 'var(--color-text-light)', display: 'flex' }}>
           <X size={15} />
@@ -209,16 +212,16 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
         <button onClick={allOn} style={{ flex: 1, padding: '5px 0', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-warm-1)', cursor: 'pointer' }}>
-          Alle ein
+          {t('Alle ein')}
         </button>
         <button onClick={allOff} style={{ flex: 1, padding: '5px 0', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
-          Alle aus
+          {t('Alle aus')}
         </button>
       </div>
 
       {persons.length === 0 && (
         <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '8px 0', margin: 0 }}>
-          Noch keine verknüpften Personen.
+          {t('Noch keine verknüpften Personen.')}
         </p>
       )}
 
@@ -244,7 +247,7 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
                 {loadingMaps ? (
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0' }}>…</p>
                 ) : maps.length === 0 ? (
-                  <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '2px 0' }}>Keine Maps verfügbar</p>
+                  <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '2px 0' }}>{t('Keine Maps verfügbar')}</p>
                 ) : (
                   maps.map(map => (
                     <label key={map.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', cursor: 'pointer' }}>
@@ -270,6 +273,7 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
 }
 
 export default function MapView({ hideWorldMapToggle = false, initialMapId = null } = {}) {
+  const { t } = useT()
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('oikos')
@@ -471,12 +475,12 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [mapPrayerItems, setMapPrayerItems] = useState(null)
   const [loadingPrayerMode, setLoadingPrayerMode] = useState(false)
 
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Du'
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('Du')
 
   async function startMapPrayerMode() {
     if (loadingPrayerMode) return
     const ids = people.map(p => p.id).filter(Boolean)
-    if (ids.length === 0) { showToast('Diese Map hat noch keine Personen'); return }
+    if (ids.length === 0) { showToast(t('Diese Map hat noch keine Personen')); return }
     setLoadingPrayerMode(true)
     try {
       // Ohne Profil-Embed laden – ein nicht auflösbarer Join würde sonst die
@@ -493,13 +497,13 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       const nameById = Object.fromEntries(people.map(p => [p.id, p.name]))
       const items = (data || []).map(r => ({
         type: 'oikos',
-        request: { ...r, profiles: { full_name: nameById[r.person_id] || 'Person' } },
+        request: { ...r, profiles: { full_name: nameById[r.person_id] || t('Person') } },
         ampel: null,
       }))
-      if (items.length === 0) { showToast('Keine offenen Gebete in dieser Map'); return }
+      if (items.length === 0) { showToast(t('Keine offenen Gebete in dieser Map')); return }
       setMapPrayerItems(items)
     } catch {
-      showToast('Fehler beim Laden', 'error')
+      showToast(t('Fehler beim Laden'), 'error')
     } finally {
       setLoadingPrayerMode(false)
     }
@@ -571,13 +575,13 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               onClick={() => setActiveTab('oikos')}
               style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: activeTab === 'oikos' ? 'var(--color-accent)' : 'transparent', color: activeTab === 'oikos' ? '#fff' : 'var(--color-text-secondary)', fontSize: 13, fontWeight: activeTab === 'oikos' ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
-              Mein OIKOS
+              {t('Mein OIKOS')}
             </button>
             <button
               onClick={() => setActiveTab('world')}
               style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: activeTab === 'world' ? 'var(--color-accent)' : 'transparent', color: activeTab === 'world' ? '#fff' : 'var(--color-text-secondary)', fontSize: 13, fontWeight: activeTab === 'world' ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
-              Weltkarte
+              {t('Weltkarte')}
             </button>
           </div>
 
@@ -591,6 +595,20 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
 
       {/* Header Island (OIKOS mode only) */}
       <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-surface border border-warm-3 px-4 py-2.5 flex items-center justify-between z-30 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
+        {/* Eigene Map (aus dem Profil geöffnet): klarer Zurück-Pfeil zum Profil */}
+        {hideWorldMapToggle && (
+          <button
+            onClick={() => {
+              // Direkt geöffnet (kein Verlauf, z. B. Deep-Link) → Profil statt App verlassen
+              if (window.history.state?.idx > 0) navigate(-1)
+              else navigate('/profile')
+            }}
+            aria-label={t('Zurück zum Profil')}
+            className="tour-map-back shrink-0 -ml-1.5 mr-1 w-9 h-9 flex items-center justify-center rounded-full border-none bg-accent-light text-dark cursor-pointer active:scale-95 transition-transform"
+          >
+            <ArrowLeft size={20} strokeWidth={2.5} />
+          </button>
+        )}
         <button
           onClick={() => setShowMapMenu(!showMapMenu)}
           className="flex items-center gap-2 border-none bg-transparent cursor-pointer font-serif text-[16px] font-semibold text-dark rounded-lg min-w-0 flex-1 mr-2 text-left hover:opacity-80 transition-opacity"
@@ -605,7 +623,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           <div className="flex gap-1 items-center shrink-0">
             <button
               onClick={() => setShowColorFilter(v => !v)}
-              title="Nach Farbe filtern"
+              title={t('Nach Farbe filtern')}
               className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Filter size={18} />
@@ -616,21 +634,21 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           <div className="flex gap-1 items-center shrink-0">
             <button
               onClick={() => setConnectionMode(v => !v)}
-              title="Verbindungsmodus"
+              title={t('Verbindungsmodus')}
               className={`p-1 rounded-full transition-colors flex items-center ${connectionMode ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Link size={18} />
             </button>
             <button
               onClick={() => setShowColorFilter(v => !v)}
-              title="Nach Farbe filtern"
+              title={t('Nach Farbe filtern')}
               className={`p-1 rounded-full transition-colors flex items-center ${showColorFilter || hiddenColors.size > 0 ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Filter size={18} />
             </button>
             <button
               onClick={() => setShowGenerationen(v => !v)}
-              title="Generationen-Ansicht"
+              title={t('Generationen-Ansicht')}
               className={`p-1 rounded-full transition-colors flex items-center ${showGenerationen ? 'text-warm-1 bg-accent-light' : 'text-dark-muted hover:bg-black/5'}`}
             >
               <Layers size={18} />
@@ -638,7 +656,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             <button
               ref={cleanupBtnRef}
               onClick={() => setShowCleanupConfirm(v => !v)}
-              title="Karte aufräumen"
+              title={t('Karte aufräumen')}
               className="p-1 rounded-full transition-colors flex items-center text-dark-muted hover:bg-black/5"
             >
               <Wand2 size={18} />
@@ -647,14 +665,14 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               <AnchoredMenu anchorRef={cleanupBtnRef} onClose={() => setShowCleanupConfirm(false)} minWidth={240}>
                 <div style={{ padding: '12px 14px 10px' }}>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', lineHeight: 1.5, margin: '0 0 10px' }}>
-                    Alle Personen wieder sauber im Kreis anordnen? Manuell verschobene Positionen gehen dabei verloren.
+                    {t('Alle Personen wieder sauber im Kreis anordnen? Manuell verschobene Positionen gehen dabei verloren.')}
                   </p>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button
                       onClick={() => setShowCleanupConfirm(false)}
                       style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}
                     >
-                      Abbrechen
+                      {t('Abbrechen')}
                     </button>
                     <button
                       disabled={cleaningUp}
@@ -669,7 +687,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                       }}
                       style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-bg)', cursor: cleaningUp ? 'default' : 'pointer', opacity: cleaningUp ? 0.7 : 1 }}
                     >
-                      {cleaningUp ? 'Räume auf…' : 'Ja, aufräumen'}
+                      {cleaningUp ? t('Räume auf…') : t('Ja, aufräumen')}
                     </button>
                   </div>
                 </div>
@@ -679,12 +697,12 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               <button
                 ref={addMenuBtnRef}
                 onClick={() => setShowAddMenu(v => !v)}
-                aria-label="Hinzufügen"
+                aria-label={t('Hinzufügen')}
                 className="flex items-center gap-1 bg-warm-1 hover:opacity-90 text-bg border-none rounded-xl px-3 py-1.5 font-serif text-[13px] font-medium cursor-pointer shrink-0 shadow-sm transition-all active:scale-95"
               >
                 {/* Text erst ab ~420px: auf iPhone-Breite (390–402px) schob er
                     die Leiste sonst über den rechten Bildschirmrand hinaus. */}
-                <Plus size={15} /> <span className="hidden min-[420px]:inline">Hinzufügen</span>
+                <Plus size={15} /> <span className="hidden min-[420px]:inline">{t('Hinzufügen')}</span>
               </button>
               {showAddMenu && (
                 <AnchoredMenu anchorRef={addMenuBtnRef} onClose={() => setShowAddMenu(false)} minWidth={160}>
@@ -692,13 +710,13 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                     onClick={() => { setShowAddMenu(false); setShowAddPerson(true) }}
                     style={anchoredMenuItemStyle}
                   >
-                    <User size={14} className="text-warm-1" /> Person hinzufügen
+                    <User size={14} className="text-warm-1" /> {t('Person hinzufügen')}
                   </button>
                   <button
                     onClick={() => { setShowAddMenu(false); setShowAddPlace(true) }}
                     style={anchoredMenuItemStyle}
                   >
-                    <MapPin size={14} className="text-warm-1" /> Ort hinzufügen
+                    <MapPin size={14} className="text-warm-1" /> {t('Ort hinzufügen')}
                   </button>
                 </AnchoredMenu>
               )}
@@ -713,11 +731,11 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         <button
           onClick={startMapPrayerMode}
           disabled={loadingPrayerMode}
-          aria-label="Gebetsmodus starten"
+          aria-label={t('Gebetsmodus starten')}
           className="absolute top-[114px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border-none px-4 py-2 font-serif text-[13px] font-semibold text-white cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-60"
           style={{ backgroundColor: '#5AC8FA' }}
         >
-          <HandHeart size={16} /> {loadingPrayerMode ? 'Lädt…' : 'Gebetsmodus'}
+          <HandHeart size={16} /> {loadingPrayerMode ? t('Lädt…') : t('Gebetsmodus')}
         </button>
       )}
 
@@ -756,11 +774,11 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                 }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {m.kind === 'siblings' && <Pin size={13} aria-label="Angepinnt" />}
+                  {m.kind === 'siblings' && <Pin size={13} aria-label={t('Angepinnt')} />}
                   {siblingsMapTitle(m, m.name)}
                 </span>
                 {m.is_public && (
-                  <span style={{ fontSize: 11, color: 'var(--color-text-light)' }}>öffentlich</span>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-light)' }}>{t('öffentlich')}</span>
                 )}
               </button>
             ))}
@@ -770,7 +788,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                   onClick={() => { setShowMapMenu(false); setShowSettings(true) }}
                   className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <SlidersHorizontal size={13} /> Einstellungen
+                  <SlidersHorizontal size={13} /> {t('Einstellungen')}
                 </button>
                 <div className="w-[1px] bg-warm-3" />
                 </>)}
@@ -778,7 +796,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                   onClick={() => { setShowMapMenu(false); setShowNewMap(true) }}
                   className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-warm-1 font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Plus size={14} /> Neue Map
+                  <Plus size={14} /> {t('Neue Map')}
                 </button>
               </div>
           </div>
@@ -790,7 +808,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
         {!activeMap ? (
           <div style={{ textAlign: 'center', padding: 32 }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 17, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 24, lineHeight: 1.6 }}>
-              Du hast noch keine Oikos Map.
+              {t('Du hast noch keine Oikos Map.')}
             </p>
             <button
               onClick={() => setShowNewMap(true)}
@@ -801,7 +819,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                 cursor: 'pointer',
               }}
             >
-              Erste Map erstellen
+              {t('Erste Map erstellen')}
             </button>
           </div>
         ) : (

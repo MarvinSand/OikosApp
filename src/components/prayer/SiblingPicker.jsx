@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useT } from '../../i18n'
 
 function Avatar({ profile, size = 30 }) {
   const name = profile?.full_name || profile?.username || '?'
@@ -22,6 +23,7 @@ function Avatar({ profile, size = 30 }) {
 // Auswahl-Liste der verbundenen Geschwister (akzeptierte Freundschaften).
 // selected: Array von Profil-IDs, onChange: (newIds) => void
 export default function SiblingPicker({ selected, onChange }) {
+  const { t } = useT()
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [siblings, setSiblings] = useState([])
@@ -60,11 +62,11 @@ export default function SiblingPicker({ selected, onChange }) {
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Geschwister suchen…"
+          placeholder={t('Geschwister suchen…')}
           style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, backgroundColor: 'transparent', color: 'var(--color-text)' }}
         />
       </div>
-      {loading && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '16px 0' }}>Lade…</p>}
+      {loading && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '16px 0' }}>{t('Lade…')}</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
         {filtered.map(s => {
           const checked = selected.includes(s.id)
@@ -96,7 +98,7 @@ export default function SiblingPicker({ selected, onChange }) {
           )
         })}
         {!loading && filtered.length === 0 && (
-          <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '16px 0' }}>Keine Geschwister gefunden</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', margin: '16px 0' }}>{t('Keine Geschwister gefunden')}</p>
         )}
       </div>
     </div>

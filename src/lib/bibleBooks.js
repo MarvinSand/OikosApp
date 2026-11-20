@@ -1,3 +1,5 @@
+import { getLang } from '../i18n'
+
 // Statische Bücherliste (66 protestantische Bücher, USFM-3-Buchstaben-Codes).
 // Unabhängig von der YouVersion-API nutzbar für Navigation/Auswahl – nur das
 // Laden des eigentlichen Bibeltexts hängt am API-Proxy.
@@ -72,6 +74,93 @@ export const BIBLE_BOOKS = [
 
 export function findBook(code) {
   return BIBLE_BOOKS.find(b => b.code === code) || null
+}
+
+// Englische Buchnamen (gleiche Reihenfolge wie BIBLE_BOOKS)
+const EN_NAMES = {
+  GEN: 'Genesis', EXO: 'Exodus', LEV: 'Leviticus', NUM: 'Numbers', DEU: 'Deuteronomy',
+  JOS: 'Joshua', JDG: 'Judges', RUT: 'Ruth', '1SA': '1 Samuel', '2SA': '2 Samuel',
+  '1KI': '1 Kings', '2KI': '2 Kings', '1CH': '1 Chronicles', '2CH': '2 Chronicles',
+  EZR: 'Ezra', NEH: 'Nehemiah', EST: 'Esther', JOB: 'Job', PSA: 'Psalms', PRO: 'Proverbs',
+  ECC: 'Ecclesiastes', SNG: 'Song of Solomon', ISA: 'Isaiah', JER: 'Jeremiah', LAM: 'Lamentations',
+  EZK: 'Ezekiel', DAN: 'Daniel', HOS: 'Hosea', JOL: 'Joel', AMO: 'Amos', OBA: 'Obadiah',
+  JON: 'Jonah', MIC: 'Micah', NAM: 'Nahum', HAB: 'Habakkuk', ZEP: 'Zephaniah', HAG: 'Haggai',
+  ZEC: 'Zechariah', MAL: 'Malachi', MAT: 'Matthew', MRK: 'Mark', LUK: 'Luke', JHN: 'John',
+  ACT: 'Acts', ROM: 'Romans', '1CO': '1 Corinthians', '2CO': '2 Corinthians', GAL: 'Galatians',
+  EPH: 'Ephesians', PHP: 'Philippians', COL: 'Colossians', '1TH': '1 Thessalonians',
+  '2TH': '2 Thessalonians', '1TI': '1 Timothy', '2TI': '2 Timothy', TIT: 'Titus', PHM: 'Philemon',
+  HEB: 'Hebrews', JAS: 'James', '1PE': '1 Peter', '2PE': '2 Peter', '1JN': '1 John',
+  '2JN': '2 John', '3JN': '3 John', JUD: 'Jude', REV: 'Revelation',
+}
+
+// Gängige Kürzel (zusätzlich zu Namen und USFM-Code) für die Suche
+const EXTRA_ALIASES = {
+  GEN: ['1mo', '1mos'], EXO: ['2mo', '2mos', 'ex'], LEV: ['3mo', '3mos', 'lv'], NUM: ['4mo', '4mos', 'nm'],
+  DEU: ['5mo', '5mos', 'dt', 'deut'], JOS: ['jos', 'josh'], JDG: ['ri', 'judg'], '1SA': ['1sam'], '2SA': ['2sam'],
+  '1KI': ['1kön', '1koen', '1kg'], '2KI': ['2kön', '2koen', '2kg'], '1CH': ['1chr'], '2CH': ['2chr'],
+  PSA: ['ps', 'psalm', 'psalmen', 'psa'], PRO: ['spr', 'prov'], ECC: ['pred', 'eccl'], SNG: ['hld', 'hl', 'song'],
+  ISA: ['jes'], JER: ['jer'], LAM: ['klgl', 'kla'], EZK: ['hes', 'hez', 'ezek'], DAN: ['dan'], JOL: ['joel'],
+  OBA: ['obd', 'obad'], MIC: ['mi'], HAB: ['hab'], ZEP: ['zef', 'zeph'], ZEC: ['sach', 'zech'],
+  MAT: ['mt', 'matt', 'matth'], MRK: ['mk', 'mar'], LUK: ['lk', 'luk'], JHN: ['joh', 'jn'], ACT: ['apg', 'apostelgeschichte'],
+  ROM: ['röm', 'roem', 'rm'], '1CO': ['1kor', '1cor'], '2CO': ['2kor', '2cor'], GAL: ['gal'], EPH: ['eph'],
+  PHP: ['phil', 'phlp'], COL: ['kol'], '1TH': ['1thes', '1thess'], '2TH': ['2thes', '2thess'],
+  '1TI': ['1tim'], '2TI': ['2tim'], HEB: ['hebr', 'hebräer', 'heb'], JAS: ['jak', 'jam'], '1PE': ['1petr', '1pet'],
+  '2PE': ['2petr', '2pet'], '1JN': ['1joh', '1john'], '2JN': ['2joh', '2john'], '3JN': ['3joh', '3john'],
+  JUD: ['jud', 'judas'], REV: ['offb', 'offenb', 'rev', 'apk'],
+}
+
+// Buchname in der gewählten App-Sprache
+export function bookName(code, lang = getLang()) {
+  if (lang === 'en') return EN_NAMES[code] || findBook(code)?.name || code
+  return findBook(code)?.name || code
+}
+
+const norm = (str) => str.toLowerCase().replace(/[.\s]+/g, '')
+
+// Suchschlüssel pro Buch: DE-/EN-Name, USFM-Code, Kürzel (alle ohne Punkte/Leerzeichen)
+const SEARCH_KEYS = BIBLE_BOOKS.map(b => ({
+  code: b.code,
+  keys: [...new Set([b.name, EN_NAMES[b.code], b.code, ...(EXTRA_ALIASES[b.code] || [])].filter(Boolean).map(norm))],
+}))
+
+// Bücher, die zu einer Eingabe passen („joh“, „1 kor“, „psalm“, „matthew“, „korinther“).
+// Genau-Treffer zuerst, dann Präfix, dann Teilstring (ab 3 Zeichen).
+export function searchBooks(query) {
+  const k = norm(query || '')
+  if (!k) return BIBLE_BOOKS
+  const scored = []
+  for (const { code, keys } of SEARCH_KEYS) {
+    let best = 0
+    for (const key of keys) {
+      if (key === k) best = Math.max(best, 3)
+      else if (key.startsWith(k)) best = Math.max(best, 2)
+      else if (k.length >= 3 && key.includes(k)) best = Math.max(best, 1)
+    }
+    if (best) scored.push({ code, best })
+  }
+  // stabil: bei gleichem Score Bibelreihenfolge
+  const order = new Map(BIBLE_BOOKS.map((b, i) => [b.code, i]))
+  scored.sort((a, b) => b.best - a.best || order.get(a.code) - order.get(b.code))
+  return scored.map(s => findBook(s.code))
+}
+
+// Erkennt Stellenangaben: „Joh 3“, „Johannes 3,16“, „John 3:16-18“, „1 Kor 13“.
+// Liefert { book, chapter, verseStart, verseEnd } oder null. Das Buch ist der
+// beste Treffer; Kapitel/Verse werden gegen die Kapitelzahl geprüft.
+export function parseReferenceQuery(query) {
+  const m = (query || '').trim().match(/^(\d?\s?\.?\s?[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß.]*(?:\s+[A-Za-zÄÖÜäöüß]+)?)\s*(\d{1,3})(?:\s*[:,.]\s*(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?)?$/)
+  if (!m) return null
+  const [, rawBook, ch, vs, ve] = m
+  const book = searchBooks(rawBook)[0]
+  if (!book) return null
+  const chapter = parseInt(ch, 10)
+  if (chapter < 1 || chapter > book.chapters) return null
+  return {
+    book: book.code,
+    chapter,
+    verseStart: vs ? parseInt(vs, 10) : null,
+    verseEnd: ve ? parseInt(ve, 10) : null,
+  }
 }
 
 // Sehr einfacher Parser für Referenzen wie "Joh 3,16" oder "Joh 3,16-18" –

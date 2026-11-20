@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Circle, ChevronDown, ChevronUp } from 'lucide-react'
 import { useProfileCompletion } from '../../hooks/useProfileCompletion'
+import { useT, tr } from '../../i18n'
 
 // Zeigt den Fortschritt der Profil-Vervollständigung auf der Home-Startseite –
 // verschwindet automatisch, sobald alle Schritte erledigt sind.
 export default function ProfileCompletionCard() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { percent, steps, loading, isComplete } = useProfileCompletion()
   const [expanded, setExpanded] = useState(false)
@@ -32,17 +34,13 @@ export default function ProfileCompletionCard() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-          Profil vervollständigen
-        </p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{t('Profil vervollständigen')}</p>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 800, color: 'var(--color-accent)', margin: 0 }}>
           {percent}%
         </p>
       </div>
 
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '0 0 12px' }}>
-        Nur noch ein paar Schritte, bis dein Profil vollständig ist.
-      </p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '0 0 12px' }}>{t('Nur noch ein paar Schritte, bis dein Profil vollständig ist.')}</p>
 
       {/* Fortschrittsbalken */}
       <div style={{ height: 8, borderRadius: 4, backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: 14 }}>
@@ -63,7 +61,7 @@ export default function ProfileCompletionCard() {
             key={step.key}
             onClick={() => !step.isDone && navigate(step.target)}
             disabled={step.isDone}
-            aria-label={`${step.title}${step.isDone ? ' (erledigt)' : ' öffnen'}`}
+            aria-label={`${step.title}${step.isDone ? tr(' (erledigt)') : tr(' öffnen')}`}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
               padding: 6, margin: -6, borderRadius: 12, border: 'none', background: 'none',
@@ -103,7 +101,7 @@ export default function ProfileCompletionCard() {
             fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-accent)',
           }}
         >
-          {expanded ? <>Weniger anzeigen <ChevronUp size={15} /></> : <>Alle Schritte anzeigen <ChevronDown size={15} /></>}
+          {expanded ? <>{t('Weniger anzeigen')}{' '}<ChevronUp size={15} /></> : <>{t('Alle Schritte anzeigen')}{' '}<ChevronDown size={15} /></>}
         </button>
       )}
     </div>

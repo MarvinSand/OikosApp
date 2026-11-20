@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useChat } from '../hooks/useChat'
 import { useConversations } from '../hooks/useConversations'
 import { useToast } from '../context/ToastContext'
+import { useT, tr, getLang } from '../i18n'
 
 // ─── Helpers ─────────────────────────────────────────────────
 function formatDaySeparator(isoString) {
@@ -17,14 +18,14 @@ function formatDaySeparator(isoString) {
   const yesterday = new Date(today.getTime() - 86400000)
   const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
-  if (msgDate.getTime() === today.getTime()) return 'Heute'
-  if (msgDate.getTime() === yesterday.getTime()) return 'Gestern'
-  return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })
+  if (msgDate.getTime() === today.getTime()) return tr('Heute')
+  if (msgDate.getTime() === yesterday.getTime()) return tr('Gestern')
+  return date.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function formatTime(isoString) {
   if (!isoString) return ''
-  return new Date(isoString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  return new Date(isoString).toLocaleTimeString((getLang() === 'en' ? 'en-US' : 'de-DE'), { hour: '2-digit', minute: '2-digit' })
 }
 
 function sameDay(a, b) {
@@ -39,15 +40,16 @@ function sameDay(a, b) {
 
 function previewText(msg) {
   if (!msg) return ''
-  if (msg.is_deleted) return '(Nachricht gelöscht)'
-  if (msg.type === 'prayer_request') return `🙏 ${msg.text || 'Gebetsanliegen'}`
-  if (msg.type === 'bible_verse') return `📖 ${msg.bible_verse_reference || 'Bibelvers'}`
-  if (msg.type === 'photo') return msg.is_view_once ? '📷 Foto (einmal ansehen)' : '📷 Foto'
+  if (msg.is_deleted) return tr('(Nachricht gelöscht)')
+  if (msg.type === 'prayer_request') return `🙏 ${msg.text || tr('Gebetsanliegen')}`
+  if (msg.type === 'bible_verse') return `📖 ${msg.bible_verse_reference || tr('Bibelvers')}`
+  if (msg.type === 'photo') return msg.is_view_once ? tr('📷 Foto (einmal ansehen)') : tr('📷 Foto')
   return msg.text || ''
 }
 
 // ─── Foto-Nachricht (inkl. „einmal ansehen") ──────────────────
 function PhotoMessage({ msg, isOwn, photoUrl, onView }) {
+  const { t } = useT()
   const viewed = !!msg.viewed_at || (msg.is_view_once && !msg.image_path)
   const labelColor = isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-bubble-other-text)'
 
@@ -56,9 +58,7 @@ function PhotoMessage({ msg, isOwn, photoUrl, onView }) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
         <Eye size={16} color={labelColor} style={{ opacity: 0.7 }} />
-        <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, fontStyle: 'italic', color: labelColor, opacity: 0.8 }}>
-          Foto angesehen
-        </span>
+        <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, fontStyle: 'italic', color: labelColor, opacity: 0.8 }}>{t('Foto angesehen')}</span>
       </div>
     )
   }
@@ -68,9 +68,7 @@ function PhotoMessage({ msg, isOwn, photoUrl, onView }) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
         <Camera size={16} color={labelColor} />
-        <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: labelColor }}>
-          Foto · einmal ansehen
-        </span>
+        <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: labelColor }}>{t('Foto · einmal ansehen')}</span>
       </div>
     )
   }
@@ -87,20 +85,19 @@ function PhotoMessage({ msg, isOwn, photoUrl, onView }) {
           fontFamily: 'Lora, serif', fontSize: 13.5, fontWeight: 600,
         }}
       >
-        <Camera size={16} /> Foto · Tippen zum Ansehen
-      </button>
+        <Camera size={16} />{' '}{t('Foto · Tippen zum Ansehen')}</button>
     )
   }
 
   // Normales Foto: inline anzeigen
   const url = photoUrl(msg.image_path)
   if (!url) {
-    return <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: labelColor, fontStyle: 'italic' }}>📷 Foto nicht verfügbar</span>
+    return <span style={{ fontFamily: 'Lora, serif', fontSize: 13.5, color: labelColor, fontStyle: 'italic' }}>{t('📷 Foto nicht verfügbar')}</span>
   }
   return (
     <img
       src={url}
-      alt="Foto"
+      alt={t('Foto')}
       onClick={() => onView(msg, url)}
       style={{ maxWidth: 220, width: '100%', borderRadius: 12, display: 'block', cursor: 'pointer' }}
     />
@@ -136,6 +133,7 @@ function Avatar({ name, size = 36, isChristian, avatarUrl }) {
 
 // ─── Prayer Request Card ──────────────────────────────────────
 function PrayerCard({ msg, isOwn, user, showToast }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const [logging, setLogging] = useState(false)
   const linkedId = msg.personal_prayer_request_id || msg.prayer_request_id
@@ -154,9 +152,9 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
           user_id: user.id,
         })
       }
-      showToast('Gebet protokolliert 🙏')
+      showToast(t('Gebet protokolliert 🙏'))
     } catch (e) {
-      showToast('Fehler beim Protokollieren', 'error')
+      showToast(t('Fehler beim Protokollieren'), 'error')
     } finally {
       setLogging(false)
     }
@@ -172,9 +170,7 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
         letterSpacing: '0.5px',
         color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-light)',
         margin: '0 0 4px 0',
-      }}>
-        🙏 Gebetsanliegen
-      </p>
+      }}>{t('🙏 Gebetsanliegen')}</p>
       <p style={{
         fontFamily: 'Lora, serif',
         fontSize: 14,
@@ -210,7 +206,7 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
           cursor: 'pointer',
         }}
       >
-        {logging ? '…' : 'Beten 🙏'}
+        {logging ? '…' : t('Beten 🙏')}
       </button>
       {/* Zur vollen Gebets-Karte – dort gibt es Kommentare, Gebetsliste und
           Weiterleiten, genau wie überall sonst. */}
@@ -224,9 +220,7 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
             color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text-secondary)',
             fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, cursor: 'pointer',
           }}
-        >
-          Öffnen
-        </button>
+        >{t('Öffnen')}</button>
       )}
     </div>
   )
@@ -262,7 +256,7 @@ function BibleVerseCard({ msg, isOwn }) {
 // ─── Reply Preview (inline in bubble) ─────────────────────────
 function ReplyQuote({ repliedMsg, isOwn, onJump }) {
   if (!repliedMsg) return null
-  const senderName = repliedMsg.profiles?.full_name || repliedMsg.profiles?.username || 'Geschwister'
+  const senderName = repliedMsg.profiles?.full_name || repliedMsg.profiles?.username || tr('Geschwister')
   return (
     <button
       onClick={e => { e.stopPropagation(); onJump?.(repliedMsg.id) }}
@@ -365,6 +359,7 @@ function useLongPress(callback, ms = 500) {
 
 // ─── Message Bubble ───────────────────────────────────────────
 function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJumpTo, onToggleReaction, user, showToast, registerRef, photoUrl, onViewPhoto }) {
+  const { t } = useT()
   const bubbleRef = useRef(null)
 
   useEffect(() => {
@@ -460,8 +455,7 @@ function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJump
             color: isOwn ? 'var(--color-bubble-own-text-muted)' : 'var(--color-text-muted)',
             display: 'flex', alignItems: 'center', gap: 4,
           }}>
-            <Forward size={11} /> Weitergeleitet
-          </p>
+            <Forward size={11} />{' '}{t('Weitergeleitet')}</p>
         )}
 
         {msg.is_deleted ? (
@@ -471,9 +465,7 @@ function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJump
             fontStyle: 'italic',
             color: 'var(--color-text-light)',
             margin: 0,
-          }}>
-            Nachricht gelöscht
-          </p>
+          }}>{t('Nachricht gelöscht')}</p>
         ) : msg.type === 'prayer_request' ? (
           <PrayerCard msg={msg} isOwn={isOwn} user={user} showToast={showToast} />
         ) : msg.type === 'bible_verse' ? (
@@ -526,6 +518,7 @@ function MessageBubble({ msg, isOwn, isCommunity, repliedMsg, onOpenMenu, onJump
 
 // ─── Message Context Menu (long-press / right-click) ──────────
 function MessageContextMenu({ msg, isOwn, anchorRect, onClose, onAction }) {
+  const { t } = useT()
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const menuRef = useRef(null)
   const [pos, setPos] = useState({ top: 0, left: 0, place: 'below' })
@@ -552,12 +545,12 @@ function MessageContextMenu({ msg, isOwn, anchorRect, onClose, onAction }) {
   }, [anchorRect, showEmojiPicker, isOwn])
 
   const actions = [
-    { key: 'reply',   icon: CornerUpLeft, label: 'Antworten', show: true },
-    { key: 'forward', icon: Forward,      label: 'Weiterleiten', show: !msg.is_deleted },
-    { key: 'copy',    icon: Copy,         label: 'Kopieren', show: !!(msg.text || msg.bible_verse_text) },
-    { key: msg.is_pinned ? 'unpin' : 'pin', icon: msg.is_pinned ? PinOff : Pin, label: msg.is_pinned ? 'Lösen' : 'Pinnen', show: true },
-    { key: 'delete',  icon: Trash2,       label: 'Löschen', show: isOwn, danger: true },
-    { key: 'report',  icon: Flag,         label: 'Melden / Blockieren', show: !isOwn && !msg.is_deleted, danger: true },
+    { key: 'reply',   icon: CornerUpLeft, label: t('Antworten'), show: true },
+    { key: 'forward', icon: Forward,      label: t('Weiterleiten'), show: !msg.is_deleted },
+    { key: 'copy',    icon: Copy,         label: t('Kopieren'), show: !!(msg.text || msg.bible_verse_text) },
+    { key: msg.is_pinned ? 'unpin' : 'pin', icon: msg.is_pinned ? PinOff : Pin, label: msg.is_pinned ? t('Lösen') : t('Pinnen'), show: true },
+    { key: 'delete',  icon: Trash2,       label: t('Löschen'), show: isOwn, danger: true },
+    { key: 'report',  icon: Flag,         label: t('Melden / Blockieren'), show: !isOwn && !msg.is_deleted, danger: true },
   ].filter(a => a.show)
 
   return (
@@ -661,6 +654,7 @@ function MessageContextMenu({ msg, isOwn, anchorRect, onClose, onAction }) {
 
 // ─── Pinned messages bar (top, like Telegram) ─────────────────
 function PinnedBar({ pinned, onJump, onUnpin, canUnpin }) {
+  const { t } = useT()
   const [idx, setIdx] = useState(0)
 
   useEffect(() => {
@@ -669,7 +663,7 @@ function PinnedBar({ pinned, onJump, onUnpin, canUnpin }) {
 
   if (!pinned || pinned.length === 0) return null
   const current = pinned[Math.min(idx, pinned.length - 1)]
-  const senderName = current.profiles?.full_name || current.profiles?.username || 'Geschwister'
+  const senderName = current.profiles?.full_name || current.profiles?.username || tr('Geschwister')
 
   function handleClick() {
     onJump(current.id)
@@ -711,8 +705,7 @@ function PinnedBar({ pinned, onJump, onUnpin, canUnpin }) {
         <p style={{
           margin: 0, fontFamily: 'Lora, serif',
           fontSize: 11, fontWeight: 700, color: 'var(--color-accent)',
-        }}>
-          Angeheftete Nachricht{pinned.length > 1 ? ` ${Math.min(idx, pinned.length - 1) + 1}/${pinned.length}` : ''}
+        }}>{t('Angeheftete Nachricht')}{pinned.length > 1 ? ` ${Math.min(idx, pinned.length - 1) + 1}/${pinned.length}` : ''}
         </p>
         <p style={{
           margin: '1px 0 0', fontFamily: 'Lora, serif',
@@ -727,7 +720,7 @@ function PinnedBar({ pinned, onJump, onUnpin, canUnpin }) {
       {canUnpin && (
         <button
           onClick={e => { e.stopPropagation(); onUnpin(current.id) }}
-          title="Lösen"
+          title={t('Lösen')}
           style={{
             width: 30, height: 30, borderRadius: '50%',
             border: 'none', background: 'transparent', cursor: 'pointer',
@@ -768,6 +761,7 @@ function DaySeparator({ label }) {
 
 // ─── Prayer Attachment Sheet ──────────────────────────────────
 function PrayerAttachSheet({ onClose, onSelect }) {
+  const { t } = useT()
   const { user } = useAuth()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -809,17 +803,13 @@ function PrayerAttachSheet({ onClose, onSelect }) {
         flexDirection: 'column',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
-        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: 'var(--color-text)', marginBottom: 12 }}>
-          Gebetsanliegen teilen
-        </h3>
+        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: 'var(--color-text)', marginBottom: 12 }}>{t('Gebetsanliegen teilen')}</h3>
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {loading && (
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>Lädt…</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>{t('Lädt…')}</p>
           )}
           {!loading && items.length === 0 && (
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
-              Keine Gebetsanliegen vorhanden.
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>{t('Keine Gebetsanliegen vorhanden.')}</p>
           )}
           {items.map(item => (
             <button
@@ -854,6 +844,7 @@ function PrayerAttachSheet({ onClose, onSelect }) {
 
 // ─── Bible Verse Modal ────────────────────────────────────────
 function BibleVerseModal({ onClose, onSend }) {
+  const { t } = useT()
   const [reference, setReference] = useState('')
   const [verseText, setVerseText] = useState('')
 
@@ -874,23 +865,19 @@ function BibleVerseModal({ onClose, onSend }) {
         boxShadow: '0 8px 32px rgba(58,46,36,0.15)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
-            Bibelvers teilen
-          </h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{t('Bibelvers teilen')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
-        <label style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>
-          Stelle (z.B. Johannes 3,16)
-        </label>
+        <label style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('Stelle (z.B. Johannes 3,16)')}</label>
         <input
           autoFocus
           type="text"
           value={reference}
           onChange={e => setReference(e.target.value)}
-          placeholder="z.B. Römer 8,28"
+          placeholder={t('z.B. Römer 8,28')}
           style={{
             width: '100%',
             padding: '10px 12px',
@@ -905,13 +892,11 @@ function BibleVerseModal({ onClose, onSend }) {
           }}
         />
 
-        <label style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>
-          Vers
-        </label>
+        <label style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('Vers')}</label>
         <textarea
           value={verseText}
           onChange={e => setVerseText(e.target.value)}
-          placeholder="Vers eingeben…"
+          placeholder={t('Vers eingeben…')}
           rows={4}
           style={{
             width: '100%',
@@ -942,9 +927,7 @@ function BibleVerseModal({ onClose, onSend }) {
               cursor: 'pointer',
               color: 'var(--color-text-muted)',
             }}
-          >
-            Abbrechen
-          </button>
+          >{t('Abbrechen')}</button>
           <button
             onClick={handleSend}
             disabled={!reference.trim() || !verseText.trim()}
@@ -960,9 +943,7 @@ function BibleVerseModal({ onClose, onSend }) {
               fontWeight: 600,
               cursor: reference.trim() && verseText.trim() ? 'pointer' : 'not-allowed',
             }}
-          >
-            Teilen
-          </button>
+          >{t('Teilen')}</button>
         </div>
       </div>
     </div>
@@ -971,6 +952,7 @@ function BibleVerseModal({ onClose, onSend }) {
 
 // ─── Forward Sheet (pick a conversation) ──────────────────────
 function ForwardSheet({ onClose, onSubmit, currentConversationId }) {
+  const { t } = useT()
   const { directChats, communityChats, activityChats } = useConversations()
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState([])
@@ -1005,13 +987,11 @@ function ForwardSheet({ onClose, onSubmit, currentConversationId }) {
         maxHeight: '80vh', display: 'flex', flexDirection: 'column',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 14px' }} />
-        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 12px' }}>
-          Weiterleiten an…
-        </h3>
+        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 12px' }}>{t('Weiterleiten an…')}</h3>
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Suchen…"
+          placeholder={t('Suchen…')}
           style={{
             width: '100%', padding: '10px 12px', borderRadius: 10,
             border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)',
@@ -1020,16 +1000,14 @@ function ForwardSheet({ onClose, onSubmit, currentConversationId }) {
         />
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {filtered.length === 0 && (
-            <p style={{ textAlign: 'center', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', padding: '20px 0', fontStyle: 'italic' }}>
-              Keine Chats gefunden.
-            </p>
+            <p style={{ textAlign: 'center', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', padding: '20px 0', fontStyle: 'italic' }}>{t('Keine Chats gefunden.')}</p>
           )}
           {filtered.map(conv => {
             const name = conv.type === 'direct'
-              ? (conv.otherUser?.full_name || conv.otherUser?.username || 'Unbekannt')
+              ? (conv.otherUser?.full_name || conv.otherUser?.username || tr('Unbekannt'))
               : conv.type === 'community'
-                ? (conv.community?.name || 'Community')
-                : (conv.activity?.title || 'Aktivität')
+                ? (conv.community?.name || tr('Community'))
+                : (conv.activity?.title || tr('Aktivität'))
             const checked = selected.includes(conv.id)
             return (
               <button
@@ -1070,9 +1048,7 @@ function ForwardSheet({ onClose, onSubmit, currentConversationId }) {
               border: '1.5px solid var(--color-warm-3)', background: 'none',
               fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer',
             }}
-          >
-            Abbrechen
-          </button>
+          >{t('Abbrechen')}</button>
           <button
             onClick={() => { onSubmit(selected); onClose() }}
             disabled={selected.length === 0}
@@ -1082,8 +1058,7 @@ function ForwardSheet({ onClose, onSubmit, currentConversationId }) {
               color: selected.length > 0 ? 'var(--color-bg)' : 'var(--color-text-secondary)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600,
               cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
             }}
-          >
-            Senden{selected.length > 0 ? ` (${selected.length})` : ''}
+          >{t('Senden')}{selected.length > 0 ? ` (${selected.length})` : ''}
           </button>
         </div>
       </div>
@@ -1093,8 +1068,9 @@ function ForwardSheet({ onClose, onSubmit, currentConversationId }) {
 
 // ─── Reply preview above input ────────────────────────────────
 function ReplyComposerPreview({ msg, onCancel }) {
+  const { t } = useT()
   if (!msg) return null
-  const senderName = msg.profiles?.full_name || msg.profiles?.username || 'Geschwister'
+  const senderName = msg.profiles?.full_name || msg.profiles?.username || tr('Geschwister')
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
@@ -1104,8 +1080,7 @@ function ReplyComposerPreview({ msg, onCancel }) {
     }}>
       <CornerUpLeft size={16} color="var(--color-accent)" />
       <div style={{ flex: 1, minWidth: 0, borderLeft: '2px solid var(--color-accent)', paddingLeft: 8 }}>
-        <p style={{ margin: 0, fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-accent)' }}>
-          Antwort an {senderName}
+        <p style={{ margin: 0, fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-accent)' }}>{t('Antwort an {senderName}', { senderName })}
         </p>
         <p style={{ margin: '1px 0 0', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {previewText(msg)}
@@ -1124,15 +1099,15 @@ function ReplyComposerPreview({ msg, onCancel }) {
 
 // ─── Emoji Picker ─────────────────────────────────────────────
 const EMOJI_CATEGORIES = [
-  { label: 'Häufig', emojis: ['😊','😂','❤️','🙏','👍','😍','🥰','😘','😭','😅','🤣','😁','😎','🥹','😢','😔','😬','🤔','🙈','😇'] },
-  { label: 'Gesichter', emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫡','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','💀','☠️'] },
-  { label: 'Herzen', emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💕','💞','💓','💗','💖','💘','💝','💟','❣️','💔','❤️‍🔥','❤️‍🩹'] },
-  { label: 'Hände', emojis: ['👋','🤚','🖐️','✋','🖖','🫱','🫲','🫳','🫴','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🙏','✍️','💅','🤳','💪','🦾','🦿'] },
-  { label: 'Natur', emojis: ['🌸','🌺','🌻','🌹','🌷','🌼','🪷','💐','🍀','🌿','🌱','🌲','🌳','🍃','🍂','🍁','🌾','🌵','🎋','🎍','☘️','🌴','🪴','🌊','🔥','⭐','✨','🌙','☀️','❄️','🌈','⛅','🌤️','🌦️','🌧️','⛈️','🌩️'] },
-  { label: 'Essen', emojis: ['🍕','🍔','🌮','🌯','🥗','🍜','🍣','🍱','🍦','🎂','🍰','🧁','🍩','🍪','🍫','🍬','🍭','🥂','🍷','☕','🧃','🥤','🧋','🍵','🍺','🍻','🥃'] },
-  { label: 'Aktivitäten', emojis: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🎱','🏓','🏸','🥊','⛷️','🏊','🚴','🎮','🎲','🎯','🎤','🎵','🎶','🎸','🥁','🎹','🎺','🎻'] },
-  { label: 'Orte', emojis: ['🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏧','🏨','⛪','🕌','🕍','🛕','⛩️','🗺️','🌍','🌎','🌏','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🌅','🌄','🌠','🎇','🎆'] },
-  { label: 'Symbole', emojis: ['✅','❌','❓','❗','💯','🔥','⚡','💥','✨','🎉','🎊','🎁','🎀','🏆','🥇','🥈','🥉','🎖️','🎗️','🎟️','🎫','🔔','🔕','🔇','🔈','🔉','🔊','📢','📣','💬','💭','💤','♟️','🔑','🗝️','🔒','🔓','❤️‍🔥','🙏','👑','🌟'] },
+  { get label() { return tr('Häufig') }, emojis: ['😊','😂','❤️','🙏','👍','😍','🥰','😘','😭','😅','🤣','😁','😎','🥹','😢','😔','😬','🤔','🙈','😇'] },
+  { get label() { return tr('Gesichter') }, emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫡','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','💀','☠️'] },
+  { get label() { return tr('Herzen') }, emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💕','💞','💓','💗','💖','💘','💝','💟','❣️','💔','❤️‍🔥','❤️‍🩹'] },
+  { get label() { return tr('Hände') }, emojis: ['👋','🤚','🖐️','✋','🖖','🫱','🫲','🫳','🫴','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🙏','✍️','💅','🤳','💪','🦾','🦿'] },
+  { get label() { return tr('Natur') }, emojis: ['🌸','🌺','🌻','🌹','🌷','🌼','🪷','💐','🍀','🌿','🌱','🌲','🌳','🍃','🍂','🍁','🌾','🌵','🎋','🎍','☘️','🌴','🪴','🌊','🔥','⭐','✨','🌙','☀️','❄️','🌈','⛅','🌤️','🌦️','🌧️','⛈️','🌩️'] },
+  { get label() { return tr('Essen') }, emojis: ['🍕','🍔','🌮','🌯','🥗','🍜','🍣','🍱','🍦','🎂','🍰','🧁','🍩','🍪','🍫','🍬','🍭','🥂','🍷','☕','🧃','🥤','🧋','🍵','🍺','🍻','🥃'] },
+  { get label() { return tr('Aktivitäten') }, emojis: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🎱','🏓','🏸','🥊','⛷️','🏊','🚴','🎮','🎲','🎯','🎤','🎵','🎶','🎸','🥁','🎹','🎺','🎻'] },
+  { get label() { return tr('Orte') }, emojis: ['🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏧','🏨','⛪','🕌','🕍','🛕','⛩️','🗺️','🌍','🌎','🌏','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🌅','🌄','🌠','🎇','🎆'] },
+  { get label() { return tr('Symbole') }, emojis: ['✅','❌','❓','❗','💯','🔥','⚡','💥','✨','🎉','🎊','🎁','🎀','🏆','🥇','🥈','🥉','🎖️','🎗️','🎟️','🎫','🔔','🔕','🔇','🔈','🔉','🔊','📢','📣','💬','💭','💤','♟️','🔑','🗝️','🔒','🔓','❤️‍🔥','🙏','👑','🌟'] },
 ]
 
 function EmojiPicker({ onSelect }) {
@@ -1188,6 +1163,7 @@ function EmojiPicker({ onSelect }) {
 
 // ─── Input Bar ────────────────────────────────────────────────
 function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyTo, onCancelReply, initialText = '' }) {
+  const { t } = useT()
   const [text, setText] = useState(initialText)
   const [showAttach, setShowAttach] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
@@ -1269,15 +1245,11 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
           <button
             onClick={() => { setShowAttach(false); onOpenPrayer() }}
             style={{ flex: 1, padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg-secondary)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 500, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'center' }}
-          >
-            🙏 Gebetsanliegen teilen
-          </button>
+          >{t('🙏 Gebetsanliegen teilen')}</button>
           <button
             onClick={() => { setShowAttach(false); onOpenVerse() }}
             style={{ flex: 1, padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg-secondary)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 500, color: 'var(--color-text)', cursor: 'pointer', textAlign: 'center' }}
-          >
-            📖 Bibelvers teilen
-          </button>
+          >{t('📖 Bibelvers teilen')}</button>
           <button
             onClick={() => { setShowAttach(false); onOpenPhotoPicker() }}
             style={{
@@ -1293,9 +1265,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
               cursor: 'pointer',
               textAlign: 'center',
             }}
-          >
-            📷 Foto senden
-          </button>
+          >{t('📷 Foto senden')}</button>
         </div>
       )}
 
@@ -1328,7 +1298,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
           onKeyDown={handleKeyDown}
           onClick={handleTextareaClick}
           onKeyUp={handleTextareaKeyUp}
-          placeholder="Nachricht schreiben..."
+          placeholder={t('Nachricht schreiben...')}
           rows={1}
           style={{
             flex: 1, padding: '8px 12px', borderRadius: 18,
@@ -1392,6 +1362,7 @@ function MessageSkeleton() {
 
 // ─── ConversationView (Main) ──────────────────────────────────
 export default function ConversationView() {
+  const { t } = useT()
   const { conversationId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -1436,7 +1407,7 @@ export default function ConversationView() {
     if (!photoDraft || photoSending) return
     setPhotoSending(true)
     const res = await sendPhoto(photoDraft.file, { viewOnce: photoViewOnce })
-    if (res?.error) showToast('Foto konnte nicht gesendet werden', 'error')
+    if (res?.error) showToast(t('Foto konnte nicht gesendet werden'), 'error')
     URL.revokeObjectURL(photoDraft.url)
     setPhotoDraft(null)
     setPhotoSending(false)
@@ -1476,18 +1447,18 @@ export default function ConversationView() {
       if (!conv) { setInfoLoading(false); return }
 
       if (conv.type === 'moderation') {
-        setConvInfo({ type: 'moderation', name: 'Moderation (Admins)' })
+        setConvInfo({ type: 'moderation', name: tr('Moderation (Admins)') })
       } else if (conv.type === 'community') {
         const { data: community } = await supabase
           .from('communities')
           .select('id, name')
           .eq('id', conv.community_id)
           .maybeSingle()
-        setConvInfo({ type: 'community', name: community?.name || 'Community', communityId: conv.community_id })
+        setConvInfo({ type: 'community', name: community?.name || tr('Community'), communityId: conv.community_id })
       } else if (conv.type === 'activity') {
         setConvInfo({
           type: 'activity',
-          name: conv.activity?.title || 'Aktivität',
+          name: conv.activity?.title || tr('Aktivität'),
           activityEmoji: conv.activity?.activity_emoji || '📍',
           activityId: conv.activity_id,
           activityType: conv.activity?.activity_type || '',
@@ -1507,7 +1478,7 @@ export default function ConversationView() {
             .maybeSingle()
           setConvInfo({
             type: 'direct',
-            name: profile?.full_name || profile?.username || 'Unbekannt',
+            name: profile?.full_name || profile?.username || tr('Unbekannt'),
             otherUserId,
             otherUser: profile,
           })
@@ -1528,7 +1499,7 @@ export default function ConversationView() {
     const p = m.profiles
     setConvInfo({
       type: 'direct',
-      name: p.full_name || p.username || 'Unbekannt',
+      name: p.full_name || p.username || tr('Unbekannt'),
       otherUserId: m.sender_id,
       otherUser: p,
     })
@@ -1606,7 +1577,7 @@ export default function ConversationView() {
   function jumpToMessage(id) {
     const el = messageRefs.current.get(id)
     if (!el) {
-      showToast('Nachricht nicht geladen', 'info')
+      showToast(t('Nachricht nicht geladen'), 'info')
       return
     }
     scrollContainerToElement(messagesContainerRef.current, el)
@@ -1639,20 +1610,20 @@ export default function ConversationView() {
         : (m.text || m.bible_verse_text || '')
       try {
         await navigator.clipboard.writeText(txt)
-        showToast('Kopiert ✓')
+        showToast(t('Kopiert ✓'))
       } catch {
-        showToast('Konnte nicht kopieren', 'error')
+        showToast(t('Konnte nicht kopieren'), 'error')
       }
       return
     }
     if (action === 'pin') {
       await pinMessage(m.id)
-      showToast('Angeheftet 📌')
+      showToast(t('Angeheftet 📌'))
       return
     }
     if (action === 'unpin') {
       await unpinMessage(m.id)
-      showToast('Gelöst', 'info')
+      showToast(t('Gelöst'), 'info')
       return
     }
     if (action === 'delete') {
@@ -1665,7 +1636,7 @@ export default function ConversationView() {
     if (!forwardMsg || !targetConvIds?.length) return
     await forwardMessage(forwardMsg, targetConvIds)
     setForwardMsg(null)
-    showToast(`Weitergeleitet an ${targetConvIds.length}`)
+    showToast(t('Weitergeleitet an {length}', { length: targetConvIds.length }))
   }
 
   const isCommunity = convInfo?.type === 'community' || convInfo?.type === 'activity'
@@ -1684,11 +1655,7 @@ export default function ConversationView() {
 
   return (
     <div className="flex flex-col bg-bg md:max-w-2xl md:mx-auto md:w-full" style={{ height: '100%' }}>
-      <style>{`
-        @keyframes menuFadeIn { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: none; } }
-        @keyframes msgHighlight { 0% { background-color: rgba(196,151,74,0); } 25% { background-color: rgba(196,151,74,0.25); } 100% { background-color: rgba(196,151,74,0); } }
-        .msg-highlight { animation: msgHighlight 1.8s ease-out; border-radius: 14px; }
-      `}</style>
+      <style>{'\n        @keyframes menuFadeIn { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: none; } }\n        @keyframes msgHighlight { 0% { background-color: rgba(196,151,74,0); } 25% { background-color: rgba(196,151,74,0.25); } 100% { background-color: rgba(196,151,74,0); } }\n        .msg-highlight { animation: msgHighlight 1.8s ease-out; border-radius: 14px; }\n      '}</style>
 
       {/* Header */}
       <div className="bg-gradient-to-br from-[var(--color-header-wash)] to-[var(--color-bg)] px-3 pt-3 pb-3 shrink-0 relative overflow-hidden border-b border-warm-3">
@@ -1737,10 +1704,10 @@ export default function ConversationView() {
                 </h2>
                 <p className="font-serif text-[12px] text-dark-muted m-0 mt-0.5 opacity-90 truncate">
                   {convInfo?.type === 'community'
-                    ? 'Community Chat'
+                    ? t('Community Chat')
                     : convInfo?.type === 'activity'
-                      ? `Aktivitäts-Chat${convInfo?.activityType ? ' · ' + convInfo.activityType : ''}`
-                      : 'Direktnachricht'}
+                      ? t('Aktivitäts-Chat{v1}', { v1: convInfo?.activityType ? ' · ' + convInfo.activityType : '' })
+                      : t('Direktnachricht')}
                 </p>
               </div>
             </div>
@@ -1774,9 +1741,7 @@ export default function ConversationView() {
       >
         {hasMore && (
           <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', fontStyle: 'italic' }}>
-              Ältere Nachrichten laden…
-            </span>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', fontStyle: 'italic' }}>{t('Ältere Nachrichten laden…')}</span>
           </div>
         )}
 
@@ -1790,9 +1755,7 @@ export default function ConversationView() {
               color: 'var(--color-text-muted)',
               fontStyle: 'italic',
               textAlign: 'center',
-            }}>
-              Schreib die erste Nachricht 👋
-            </p>
+            }}>{t('Schreib die erste Nachricht 👋')}</p>
           </div>
         )}
 
@@ -1862,7 +1825,7 @@ export default function ConversationView() {
             }}
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 14px' }} />
-            <img src={photoDraft.url} alt="Vorschau" style={{ width: '100%', maxHeight: '46vh', objectFit: 'contain', borderRadius: 14, backgroundColor: 'var(--color-bg-secondary)' }} />
+            <img src={photoDraft.url} alt={t('Vorschau')} style={{ width: '100%', maxHeight: '46vh', objectFit: 'contain', borderRadius: 14, backgroundColor: 'var(--color-bg-secondary)' }} />
 
             {/* Einmal ansehen Toggle */}
             <button
@@ -1876,8 +1839,8 @@ export default function ConversationView() {
             >
               <Eye size={20} color={photoViewOnce ? 'var(--color-accent-dark)' : 'var(--color-text-muted)'} />
               <span style={{ flex: 1 }}>
-                <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Einmal ansehen</span>
-                <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-secondary)' }}>Foto wird nach dem Ansehen gelöscht</span>
+                <span style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>{t('Einmal ansehen')}</span>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-secondary)' }}>{t('Foto wird nach dem Ansehen gelöscht')}</span>
               </span>
               <span style={{
                 width: 44, height: 26, borderRadius: 13, flexShrink: 0, position: 'relative',
@@ -1892,15 +1855,13 @@ export default function ConversationView() {
                 onClick={() => { URL.revokeObjectURL(photoDraft.url); setPhotoDraft(null) }}
                 disabled={photoSending}
                 style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', cursor: 'pointer' }}
-              >
-                Abbrechen
-              </button>
+              >{t('Abbrechen')}</button>
               <button
                 onClick={confirmSendPhoto}
                 disabled={photoSending}
                 style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-accent)', color: '#fff', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
               >
-                {photoSending ? 'Wird gesendet…' : 'Senden'}
+                {photoSending ? t('Wird gesendet…') : t('Senden')}
               </button>
             </div>
           </div>
@@ -1929,18 +1890,17 @@ export default function ConversationView() {
               setViewerPhoto(null)
               if (msg?.is_view_once && msg.sender_id !== user?.id) markPhotoViewed(msg)
             }}
-            aria-label="Schließen"
+            aria-label={t('Schließen')}
             style={{ position: 'absolute', top: 'max(16px, env(safe-area-inset-top))', right: 16, width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <X size={22} />
           </button>
           {viewerPhoto.url
-            ? <img src={viewerPhoto.url} alt="Foto" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />
-            : <span style={{ color: '#fff', fontFamily: 'Lora, serif' }}>Foto nicht verfügbar</span>}
+            ? <img src={viewerPhoto.url} alt={t('Foto')} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />
+            : <span style={{ color: '#fff', fontFamily: 'Lora, serif' }}>{t('Foto nicht verfügbar')}</span>}
           {viewerPhoto.msg?.is_view_once && (
             <div style={{ position: 'absolute', bottom: 'max(24px, env(safe-area-inset-bottom))', left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.85)', fontFamily: 'Lora, serif', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <Eye size={14} /> Einmal ansehen – wird nach dem Schließen gelöscht
-            </div>
+              <Eye size={14} />{' '}{t('Einmal ansehen – wird nach dem Schließen gelöscht')}</div>
           )}
         </div>
       )}

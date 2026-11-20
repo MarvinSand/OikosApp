@@ -1,3 +1,5 @@
+import { getLang } from '../i18n'
+
 // ISO 3166-1 alpha-2 → emoji flag
 export function countryToFlag(code) {
   if (!code || code.length !== 2) return ''
@@ -9,7 +11,7 @@ export function countryToFlag(code) {
 }
 
 // DACH first, then all others alphabetically
-export const COUNTRIES = [
+const RAW_COUNTRIES = [
   { code: 'DE', name: 'Deutschland' },
   { code: 'AT', name: 'Österreich' },
   { code: 'CH', name: 'Schweiz' },
@@ -205,3 +207,20 @@ export const COUNTRIES = [
   { code: 'ZM', name: 'Sambia' },
   { code: 'ZW', name: 'Simbabwe' },
 ]
+
+// Anzeigename: Deutsch aus der Liste, Englisch über Intl.DisplayNames.
+let enNames = null
+function englishName(code) {
+  try {
+    if (!enNames) enNames = new Intl.DisplayNames(['en'], { type: 'region' })
+    return enNames.of(code) || null
+  } catch {
+    return null
+  }
+}
+
+// `name` ist ein Getter und folgt so der aktuellen App-Sprache.
+export const COUNTRIES = RAW_COUNTRIES.map(c => ({
+  code: c.code,
+  get name() { return getLang() === 'en' ? (englishName(c.code) || c.name) : c.name },
+}))

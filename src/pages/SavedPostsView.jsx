@@ -6,8 +6,10 @@ import { useAuth } from '../hooks/useAuth'
 import { useSavedPosts } from '../hooks/useSavedPosts'
 import { useBookmarkCollections } from '../hooks/useBookmarkCollections'
 import { PostCard } from './FriendsView'
+import { useT } from '../i18n'
 
 export default function SavedPostsView() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { posts, loading, removeBookmark, reactToPost, toggleRepost } = useSavedPosts()
@@ -21,14 +23,14 @@ export default function SavedPostsView() {
   }, [posts, activeCollection])
 
   const chips = [
-    { key: 'all', label: 'Alle' },
+    { key: 'all', label: t('Alle') },
     ...collections.map(c => ({ key: c.id, label: c.name })),
-    { key: 'none', label: 'Ohne Kategorie' },
+    { key: 'none', label: t('Ohne Kategorie') },
   ]
 
   return (
     <div className="min-h-screen bg-bg pb-24">
-      <PageHeader title="Gespeicherte Beiträge">
+      <PageHeader title={t('Gespeicherte Beiträge')}>
         {collections.length > 0 && (
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '2px 16px 10px' }} className="hide-scrollbar">
             {chips.map(c => {
@@ -67,7 +69,7 @@ export default function SavedPostsView() {
           <div style={{ textAlign: 'center', padding: '48px 20px' }}>
             <p style={{ fontSize: 32, margin: '0 0 10px' }}>🔖</p>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-              {posts.length === 0 ? 'Noch keine gespeicherten Beiträge.' : 'Keine Beiträge in dieser Kategorie.'}
+              {posts.length === 0 ? t('Noch keine gespeicherten Beiträge.') : t('Keine Beiträge in dieser Kategorie.')}
             </p>
           </div>
         )}

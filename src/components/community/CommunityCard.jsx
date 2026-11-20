@@ -1,6 +1,7 @@
 import { ChevronRight, Globe, Lock, Shield, Users } from 'lucide-react'
 import { communityCover, getInitials } from '../../lib/communityTheme'
 import MemberAvatarStack from './MemberAvatarStack'
+import { useT } from '../../i18n'
 
 // Premium Community-Karte mit Cover-Akzent, Avatar, Meta und Mitglieder-Stapel.
 // variant="member"  → ganze Karte tippbar (öffnen)
@@ -9,6 +10,7 @@ export default function CommunityCard({
   community, members = [], variant = 'member',
   onOpen, onJoin, joining = false, requested = false,
 }) {
+  const { t } = useT()
   const cover = communityCover(community.id || community.name)
   const memberCount = community.memberCount ?? community.member_count ?? 0
   const isMember = variant === 'member'
@@ -38,7 +40,7 @@ export default function CommunityCard({
           backgroundColor: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(4px)',
           color: '#fff', fontFamily: 'Lora, serif', fontSize: 10.5, fontWeight: 600,
         }}>
-          {!community.is_public ? <><Lock size={11} /> Privat</> : needsRequest ? <><Globe size={11} /> Mit Anfrage</> : <><Globe size={11} /> Öffentlich</>}
+          {!community.is_public ? <><Lock size={11} />{' '}{t('Privat')}</> : needsRequest ? <><Globe size={11} />{' '}{t('Mit Anfrage')}</> : <><Globe size={11} />{' '}{t('Öffentlich')}</>}
         </span>
         {community.role === 'admin' && (
           <span style={{
@@ -48,8 +50,7 @@ export default function CommunityCard({
             backgroundColor: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(4px)',
             color: '#fff', fontFamily: 'Lora, serif', fontSize: 10.5, fontWeight: 700,
           }}>
-            <Shield size={11} /> Admin
-          </span>
+            <Shield size={11} />{' '}{t('Admin')}</span>
         )}
       </div>
 
@@ -66,7 +67,7 @@ export default function CommunityCard({
               </p>
             ) : (
               <p style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'Lora, serif', fontSize: 12.5, color: 'var(--color-text-muted)', margin: 0 }}>
-                <Users size={12} /> {memberCount} {memberCount === 1 ? 'Mitglied' : 'Mitglieder'}
+                <Users size={12} /> {memberCount} {memberCount === 1 ? t('Mitglied') : t('Mitglieder')}
               </p>
             )}
           </div>
@@ -78,7 +79,7 @@ export default function CommunityCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <MemberAvatarStack members={members} count={memberCount} />
             <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-              {memberCount} {memberCount === 1 ? 'Mitglied' : 'Mitglieder'}
+              {memberCount} {memberCount === 1 ? t('Mitglied') : t('Mitglieder')}
             </span>
           </div>
           {!isMember && (
@@ -94,7 +95,7 @@ export default function CommunityCard({
                 transition: 'opacity 0.15s, transform 0.15s',
               }}
             >
-              {joining ? '…' : requested ? 'Angefragt' : needsRequest ? 'Anfrage senden' : 'Beitreten'}
+              {joining ? '…' : requested ? t('Angefragt') : needsRequest ? t('Anfrage senden') : t('Beitreten')}
             </button>
           )}
         </div>

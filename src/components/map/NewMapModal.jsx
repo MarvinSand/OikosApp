@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useFriendships } from '../../hooks/useFriendships'
 import { useCommunities } from '../../hooks/useCommunities'
+import { useT } from '../../i18n'
 
 const VISIBILITY_OPTIONS = [
   {
@@ -37,6 +38,7 @@ const VISIBILITY_OPTIONS = [
 ]
 
 export default function NewMapModal({ onClose, onCreate }) {
+  const { t } = useT()
   const { friends } = useFriendships()
   const { myCommunities } = useCommunities()
 
@@ -77,22 +79,22 @@ export default function NewMapModal({ onClose, onCreate }) {
     <div style={overlay}>
       <div style={modal}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={title}>Neue Oikos Map</h3>
+          <h3 style={title}>{t('Neue Oikos Map')}</h3>
           <button onClick={onClose} style={closeBtn}><X size={18} /></button>
         </div>
 
-        <label style={label}>Name der Map</label>
+        <label style={label}>{t('Name der Map')}</label>
         <input
           autoFocus
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleCreate()}
-          placeholder="z.B. Meine Familie"
+          placeholder={t('z.B. Meine Familie')}
           style={input}
         />
 
-        <label style={{ ...label, marginTop: 18 }}>Wer kann diese Map sehen?</label>
+        <label style={{ ...label, marginTop: 18 }}>{t('Wer kann diese Map sehen?')}</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {VISIBILITY_OPTIONS.map(opt => (
             <button
@@ -115,10 +117,10 @@ export default function NewMapModal({ onClose, onCreate }) {
                   color: visibility === opt.value ? 'var(--color-warm-1)' : 'var(--color-text)',
                   fontWeight: visibility === opt.value ? 600 : 400,
                 }}>
-                  {opt.label}
+                  {t(opt.label)}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>
-                  {opt.hint}
+                  {t(opt.hint)}
                 </div>
               </div>
             </button>
@@ -129,11 +131,11 @@ export default function NewMapModal({ onClose, onCreate }) {
         {showFriendsList && (
           <div style={{ marginTop: 14 }}>
             <label style={{ ...label, marginBottom: 8 }}>
-              {visibility === 'specific_include' ? 'Sichtbar für:' : 'Ausgenommen:'}
+              {visibility === 'specific_include' ? t('Sichtbar für:') : t('Ausgenommen:')}
             </label>
             {friends.length === 0 ? (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                Noch keine verbundenen Geschwister.
+                {t('Noch keine verbundenen Geschwister.')}
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -165,10 +167,10 @@ export default function NewMapModal({ onClose, onCreate }) {
         {/* Community picker */}
         {showCommunityPicker && (
           <div style={{ marginTop: 14 }}>
-            <label style={label}>Community auswählen</label>
+            <label style={label}>{t('Community auswählen')}</label>
             {myCommunities.length === 0 ? (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                Du bist noch in keiner Community.
+                {t('Du bist noch in keiner Community.')}
               </p>
             ) : (
               <select
@@ -176,7 +178,7 @@ export default function NewMapModal({ onClose, onCreate }) {
                 onChange={e => setCommunityId(e.target.value)}
                 style={{ ...input, appearance: 'none' }}
               >
-                <option value="">— Auswählen —</option>
+                <option value="">{t('— Auswählen —')}</option>
                 {myCommunities.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -192,7 +194,7 @@ export default function NewMapModal({ onClose, onCreate }) {
           disabled={!name.trim() || loading}
           style={{ ...primaryBtn(!name.trim() || loading), marginTop: 20 }}
         >
-          {loading ? 'Erstelle…' : 'Map erstellen'}
+          {loading ? t('Erstelle…') : t('Map erstellen')}
         </button>
       </div>
     </div>

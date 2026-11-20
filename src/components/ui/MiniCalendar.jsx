@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useT } from '../../i18n'
 
 // Compact month calendar for picking a date range (from / to).
 // value: { from: 'YYYY-MM-DD'|null, to: 'YYYY-MM-DD'|null }
 // onChange({ from, to }) – first tap sets `from`, second tap sets `to`.
 
-const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+const localeOf = lang => (lang === 'en' ? 'en-US' : 'de-DE')
 
 function toKey(d) {
   const y = d.getFullYear()
@@ -16,6 +16,10 @@ function toKey(d) {
 }
 
 export default function MiniCalendar({ value = {}, onChange }) {
+  const { t, lang } = useT()
+  const locale = localeOf(lang)
+  // Montag-basiert (2024-01-01 war ein Montag)
+  const weekdays = Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(locale, { weekday: 'short' }).replace('.', '').slice(0, 2))
   const initial = value.from ? new Date(value.from) : new Date()
   const [viewYear, setViewYear] = useState(initial.getFullYear())
   const [viewMonth, setViewMonth] = useState(initial.getMonth())
@@ -70,21 +74,21 @@ export default function MiniCalendar({ value = {}, onChange }) {
     }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <button onClick={prevMonth} aria-label="Vorheriger Monat" style={navBtn}>
+        <button onClick={prevMonth} aria-label={t('Vorheriger Monat')} style={navBtn}>
           <ChevronLeft size={18} color="var(--color-text-secondary)" />
         </button>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-          {MONTHS[viewMonth]} {viewYear}
+          {new Date(viewYear, viewMonth, 1).toLocaleDateString(locale, { month: 'long' })} {viewYear}
         </span>
-        <button onClick={nextMonth} aria-label="Nächster Monat" style={navBtn}>
+        <button onClick={nextMonth} aria-label={t('Nächster Monat')} style={navBtn}>
           <ChevronRight size={18} color="var(--color-text-secondary)" />
         </button>
       </div>
 
       {/* Weekday labels */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
-        {WEEKDAYS.map(w => (
-          <div key={w} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--color-text-tertiary)' }}>{w}</div>
+        {weekdays.map((w, i) => (
+          <div key={i} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--color-text-tertiary)' }}>{w}</div>
         ))}
       </div>
 
@@ -123,17 +127,17 @@ export default function MiniCalendar({ value = {}, onChange }) {
       {value.from && (
         <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--color-text-secondary)', textAlign: 'center' }}>
           {value.to
-            ? `${formatShort(value.from)} – ${formatShort(value.to)}`
-            : `Ab ${formatShort(value.from)} · zweites Datum wählen`}
+            ? `${formatShort(value.from, locale)} – ${formatShort(value.to, locale)}`
+            : t('Ab {date} · zweites Datum wählen', { date: formatShort(value.from, locale) })}
         </div>
       )}
     </div>
   )
 }
 
-function formatShort(key) {
+function formatShort(key, locale) {
   const d = new Date(key)
-  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
 }
 
 const navBtn = {

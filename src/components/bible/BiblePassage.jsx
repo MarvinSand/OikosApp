@@ -1,4 +1,5 @@
 import { usePassageText, DEFAULT_BIBLE_ID } from '../../hooks/useBible'
+import { useT } from '../../i18n'
 
 // Eingebettete Bibelstelle für Bible Studies im Jüngerschaftsbereich, z. B.:
 //   <BiblePassage book="JHN" chapter={3} verseStart={16} verseEnd={16} referenceLabel="Joh 3,16" />
@@ -7,6 +8,7 @@ import { usePassageText, DEFAULT_BIBLE_ID } from '../../hooks/useBible'
 // eigenen Edge Function (Server-zu-Server-Proxy zu api.youversion.com) kommt,
 // nicht aus Nutzereingaben.
 export default function BiblePassage({ book, chapter, verseStart, verseEnd, referenceLabel, bibleId = DEFAULT_BIBLE_ID }) {
+  const { t } = useT()
   const { html, loading, error } = usePassageText(bibleId, book, chapter, verseStart, verseEnd)
 
   return (
@@ -19,12 +21,12 @@ export default function BiblePassage({ book, chapter, verseStart, verseEnd, refe
       </p>
 
       {loading && (
-        <p style={{ color: 'var(--color-text-tertiary)', fontSize: 13 }}>Lädt Bibeltext…</p>
+        <p style={{ color: 'var(--color-text-tertiary)', fontSize: 13 }}>{t('Lädt Bibeltext…')}</p>
       )}
 
       {error && (
         <p style={{ color: 'var(--color-text-tertiary)', fontSize: 13, fontStyle: 'italic' }}>
-          Bibeltext gerade nicht verfügbar – {referenceLabel} kann in der YouVersion-App nachgeschlagen werden.
+          {t('Bibeltext gerade nicht verfügbar – {ref} kann in der YouVersion-App nachgeschlagen werden.', { ref: referenceLabel })}
         </p>
       )}
 
@@ -37,7 +39,7 @@ export default function BiblePassage({ book, chapter, verseStart, verseEnd, refe
       )}
 
       {!loading && !error && !html && (
-        <p style={{ color: 'var(--color-text-tertiary)', fontSize: 13 }}>Kein Text gefunden.</p>
+        <p style={{ color: 'var(--color-text-tertiary)', fontSize: 13 }}>{t('Kein Text gefunden.')}</p>
       )}
     </div>
   )

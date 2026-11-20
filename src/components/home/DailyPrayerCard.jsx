@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useDailyPrayer } from '../../hooks/useDailyPrayer'
 import GuidedPrayerMode from '../prayer/GuidedPrayerMode'
+import { useT } from '../../i18n'
 
 // Gebet des Tages – prominent auf der Home-Seite.
 export default function DailyPrayerCard() {
+  const { t } = useT()
   const { daily, participantCount, hasPrayedToday, loading, reload } = useDailyPrayer()
   const [showPrayer, setShowPrayer] = useState(false)
 
@@ -29,9 +31,7 @@ export default function DailyPrayerCard() {
         <div style={{ position: 'absolute', top: '-30%', right: '-10%', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(212,168,83,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: '#D4A853', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 10px' }}>
-            🕊 Gebet des Tages
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: '#D4A853', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 10px' }}>{t('🕊 Gebet des Tages')}</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
             <span style={{ fontSize: 34, lineHeight: 1 }}>{daily.icon || '🙏'}</span>
             <h2 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: '#F0EDE6', margin: 0, lineHeight: 1.25 }}>
@@ -53,8 +53,7 @@ export default function DailyPrayerCard() {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'rgba(240,237,230,0.6)' }}>
-              🙏 {participantCount} {participantCount === 1 ? 'Geschwister betet' : 'Geschwister beten'} heute mit
-            </span>
+              🙏 {participantCount} {participantCount === 1 ? t('Geschwister betet') : t('Geschwister beten')}{' '}{t('heute mit')}</span>
             <button
               onClick={() => setShowPrayer(true)}
               style={{
@@ -64,7 +63,7 @@ export default function DailyPrayerCard() {
                 fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              {hasPrayedToday ? 'Nochmal beten' : '🙏 Ich bete mit'}
+              {hasPrayedToday ? t('Nochmal beten') : t('🙏 Ich bete mit')}
             </button>
           </div>
         </div>

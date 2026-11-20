@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useToast } from '../../context/ToastContext'
 import BodyPortal from '../common/BodyPortal'
+import { useT } from '../../i18n'
 const AddressAutocomplete = lazy(() => import('../common/AddressAutocomplete'))
 
 // Community erstellen/beitreten – aus FriendsView.jsx ausgelagert, weil
@@ -24,14 +25,15 @@ const inp = { width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.
 
 // ─── Zugang: Öffentlich / Mit Anfrage / Privat ───────────────
 function AccessPicker({ value, onChange, allowPrivate = true }) {
+  const { t } = useT()
   const opts = [
-    { key: 'open', label: 'Öffentlich', hint: 'Jeder kann direkt beitreten', Icon: Globe },
-    { key: 'request', label: 'Mit Anfrage', hint: 'Beitritt braucht Freigabe der Admins', Icon: HandHeart },
-    ...(allowPrivate ? [{ key: 'private', label: 'Privat', hint: 'Nur per Einladungscode', Icon: Lock }] : []),
+    { key: 'open', label: t('Öffentlich'), hint: t('Jeder kann direkt beitreten'), Icon: Globe },
+    { key: 'request', label: t('Mit Anfrage'), hint: t('Beitritt braucht Freigabe der Admins'), Icon: HandHeart },
+    ...(allowPrivate ? [{ key: 'private', label: t('Privat'), hint: t('Nur per Einladungscode'), Icon: Lock }] : []),
   ]
   return (
     <div style={{ marginTop: 14 }}>
-      <label style={lbl}>Zugang</label>
+      <label style={lbl}>{t('Zugang')}</label>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {opts.map(o => {
           const active = value === o.key
@@ -56,6 +58,7 @@ function AccessPicker({ value, onChange, allowPrivate = true }) {
 
 // ─── Beitrittsanfrage senden (optionaler Text) ────────────────
 export function RequestJoinSheet({ community, onClose, onSent }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -66,8 +69,8 @@ export function RequestJoinSheet({ community, onClose, onSent }) {
       p_community_id: community.id, p_message: message.trim() || null,
     })
     setSending(false)
-    if (error) { showToast(error.message || 'Fehler beim Senden', 'error'); return }
-    showToast('Beitrittsanfrage gesendet ✓')
+    if (error) { showToast(error.message || t('Fehler beim Senden'), 'error'); return }
+    showToast(t('Beitrittsanfrage gesendet ✓'))
     onSent?.(community.id)
     onClose()
   }
@@ -77,16 +80,14 @@ export function RequestJoinSheet({ community, onClose, onSent }) {
       <div onClick={onClose} className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40" />
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 shadow-glass animate-[sheetSlideUp_0.3s_ease-out]" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
         <div style={sheetHandle} />
-        <h3 style={sheetTitleStyle}>Beitritt anfragen</h3>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: '-8px 0 14px' }}>
-          Deine Anfrage geht an die Admins von „{community.name}“.
-        </p>
-        <label style={lbl}>Nachricht (optional)</label>
-        <textarea autoFocus value={message} onChange={e => setMessage(e.target.value.slice(0, 500))} rows={3} placeholder="Wer bist du, warum möchtest du beitreten?" style={{ ...inp, resize: 'none' }} />
+        <h3 style={sheetTitleStyle}>{t('Beitritt anfragen')}</h3>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: '-8px 0 14px' }}>{t('Deine Anfrage geht an die Admins von „{name}“.', { name: community.name })}</p>
+        <label style={lbl}>{t('Nachricht (optional)')}</label>
+        <textarea autoFocus value={message} onChange={e => setMessage(e.target.value.slice(0, 500))} rows={3} placeholder={t('Wer bist du, warum möchtest du beitreten?')} style={{ ...inp, resize: 'none' }} />
         <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>{t('Abbrechen')}</button>
           <button onClick={handleSend} disabled={sending} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-            {sending ? 'Sende…' : 'Anfrage senden'}
+            {sending ? t('Sende…') : t('Anfrage senden')}
           </button>
         </div>
       </div>
@@ -96,6 +97,7 @@ export function RequestJoinSheet({ community, onClose, onSent }) {
 
 // ─── CreateCommunitySheet ────────────────────────────────────
 export function CreateCommunitySheet({ onClose }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const { createCommunity } = useCommunities()
   const { showToast } = useToast()
@@ -124,11 +126,11 @@ export function CreateCommunitySheet({ onClose }) {
         longitude: isGemeinde ? (location?.lng ?? null) : null,
         meeting_info: isGemeinde ? (meetingInfo.trim() || null) : null,
       })
-      showToast(isGemeinde ? 'Gemeinde erstellt ✓' : 'Community erstellt ✓')
+      showToast(isGemeinde ? t('Gemeinde erstellt ✓') : t('Community erstellt ✓'))
       onClose()
       navigate(`/community/${community.id}`)
     } catch (e) {
-      showToast(e?.message || 'Fehler beim Erstellen', 'error')
+      showToast(e?.message || t('Fehler beim Erstellen'), 'error')
     } finally {
       setSaving(false)
     }
@@ -141,11 +143,11 @@ export function CreateCommunitySheet({ onClose }) {
       <div onClick={onClose} className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 transition-opacity" />
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
         <div style={sheetHandle} />
-        <h3 style={sheetTitleStyle}>{isGemeinde ? 'Gemeinde erstellen' : 'Community erstellen'}</h3>
+        <h3 style={sheetTitleStyle}>{isGemeinde ? t('Gemeinde erstellen') : t('Community erstellen')}</h3>
 
         {/* Typ-Auswahl */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-          {[{ key: 'group', label: 'Community' }, { key: 'gemeinde', label: 'Gemeinde/Hausgemeinde' }].map(opt => (
+          {[{ key: 'group', label: t('Community') }, { key: 'gemeinde', label: t('Gemeinde/Hausgemeinde') }].map(opt => (
             <button
               key={opt.key}
               onClick={() => { setCommunityType(opt.key); setAccess(a => opt.key === 'gemeinde' ? (a === 'private' ? 'request' : a) : a) }}
@@ -163,24 +165,22 @@ export function CreateCommunitySheet({ onClose }) {
           ))}
         </div>
 
-        <label style={lbl}>Name *</label>
-        <input autoFocus type="text" value={name} onChange={e => setName(e.target.value)} placeholder={isGemeinde ? 'z.B. Hausgemeinde Mitte' : 'z.B. Gebetsgruppe Nord'} style={inp} />
+        <label style={lbl}>{t('Name *')}</label>
+        <input autoFocus type="text" value={name} onChange={e => setName(e.target.value)} placeholder={isGemeinde ? t('z.B. Hausgemeinde Mitte') : t('z.B. Gebetsgruppe Nord')} style={inp} />
 
-        <label style={{ ...lbl, marginTop: 14 }}>Beschreibung</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 200))} placeholder="Worum geht es in eurer Community?" rows={3} style={{ ...inp, resize: 'none' }} />
+        <label style={{ ...lbl, marginTop: 14 }}>{t('Beschreibung')}</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 200))} placeholder={t('Worum geht es in eurer Community?')} rows={3} style={{ ...inp, resize: 'none' }} />
         <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', textAlign: 'right', marginTop: 2 }}>{description.length}/200</p>
 
         {isGemeinde ? (
           <>
-            <label style={{ ...lbl, marginTop: 14 }}>Standort *</label>
-            <Suspense fallback={null}><AddressAutocomplete value={location} onChange={setLocation} placeholder="Adresse der Gemeinde…" showMapPreview /></Suspense>
+            <label style={{ ...lbl, marginTop: 14 }}>{t('Standort *')}</label>
+            <Suspense fallback={null}><AddressAutocomplete value={location} onChange={setLocation} placeholder={t('Adresse der Gemeinde…')} showMapPreview /></Suspense>
 
-            <label style={{ ...lbl, marginTop: 14 }}>Treffzeit (optional)</label>
-            <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder="z.B. Wöchentlich, Mittwoch 19 Uhr" style={inp} />
+            <label style={{ ...lbl, marginTop: 14 }}>{t('Treffzeit (optional)')}</label>
+            <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder={t('z.B. Wöchentlich, Mittwoch 19 Uhr')} style={inp} />
 
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 10 }}>
-              Gemeinden erscheinen als Pin auf der Karte, damit sie gefunden werden können.
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 10 }}>{t('Gemeinden erscheinen als Pin auf der Karte, damit sie gefunden werden können.')}</p>
           </>
         ) : null}
 
@@ -191,7 +191,7 @@ export function CreateCommunitySheet({ onClose }) {
           disabled={!name.trim() || saving || (isGemeinde && !location?.lat)}
           style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', marginTop: 20, backgroundColor: (name.trim() && !(isGemeinde && !location?.lat)) ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: (name.trim() && !(isGemeinde && !location?.lat)) ? 'pointer' : 'not-allowed' }}
         >
-          {saving ? 'Erstelle…' : isGemeinde ? 'Gemeinde erstellen' : 'Community erstellen'}
+          {saving ? t('Erstelle…') : isGemeinde ? t('Gemeinde erstellen') : t('Community erstellen')}
         </button>
       </div>
     </BodyPortal>
@@ -200,6 +200,7 @@ export function CreateCommunitySheet({ onClose }) {
 
 // ─── JoinCommunityModal ──────────────────────────────────────
 export function JoinCommunityModal({ onClose }) {
+  const { t } = useT()
   const { joinByCode } = useCommunities()
   const { showToast } = useToast()
   const navigate = useNavigate()
@@ -213,7 +214,7 @@ export function JoinCommunityModal({ onClose }) {
     setError('')
     try {
       const community = await joinByCode(code.trim())
-      showToast(`Willkommen in ${community.name}!`)
+      showToast(t('Willkommen in {name}!', { name: community.name }))
       onClose()
       navigate(`/community/${community.id}`)
     } catch (e) {
@@ -227,14 +228,14 @@ export function JoinCommunityModal({ onClose }) {
     <BodyPortal>
     <div style={overlay}>
       <div style={modal}>
-        <h3 style={sheetTitleStyle}>Community beitreten</h3>
-        <label style={lbl}>Einladungscode</label>
-        <input autoFocus type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setError('') }} placeholder="z.B. 550E8400" onKeyDown={e => e.key === 'Enter' && handleJoin()} style={{ ...inp, letterSpacing: 2, textTransform: 'uppercase' }} />
+        <h3 style={sheetTitleStyle}>{t('Community beitreten')}</h3>
+        <label style={lbl}>{t('Einladungscode')}</label>
+        <input autoFocus type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setError('') }} placeholder={t('z.B. 550E8400')} onKeyDown={e => e.key === 'Enter' && handleJoin()} style={{ ...inp, letterSpacing: 2, textTransform: 'uppercase' }} />
         {error && <p style={{ color: '#C0392B', fontFamily: 'Lora, serif', fontSize: 13, marginTop: 6, fontStyle: 'italic' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, cursor: 'pointer', color: 'var(--color-text-muted)' }}>{t('Abbrechen')}</button>
           <button onClick={handleJoin} disabled={!code.trim() || loading} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: code.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-            {loading ? 'Beitrete…' : 'Beitreten'}
+            {loading ? t('Beitrete…') : t('Beitreten')}
           </button>
         </div>
       </div>

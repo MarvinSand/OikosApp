@@ -10,18 +10,19 @@ import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
 import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
 import { useBlocks } from '../../hooks/useBlocks'
 import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
+import { useT, tr, getLang } from '../../i18n'
 
 function timeAgo(iso) {
   const d = new Date(iso)
   const diff = Math.floor((new Date() - d) / 60000)
-  if (diff < 1) return 'Gerade eben'
-  if (diff < 60) return `vor ${diff} Min.`
+  if (diff < 1) return tr('Gerade eben')
+  if (diff < 60) return tr('vor {n} Min.', { n: diff })
   const h = Math.floor(diff / 60)
-  if (h < 24) return `vor ${h} Std.`
+  if (h < 24) return tr('vor {n} Std.', { n: h })
   const days = Math.floor(h / 24)
-  if (days === 1) return 'gestern'
-  if (days < 7) return `vor ${days} Tagen`
-  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+  if (days === 1) return tr('gestern')
+  if (days < 7) return tr('vor {n} Tagen', { n: days })
+  return d.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'short' })
 }
 
 function CommentAvatar({ profile, size = 36 }) {
@@ -46,6 +47,7 @@ function CommentAvatar({ profile, size = 36 }) {
 // (Kommentar/Repost/Like/Bookmark/Teilen); Klick öffnet den Kommentar als
 // eigenen Thread mit all seinen Antworten (/feed/comment/:id).
 export default function CommentCard({ comment, currentUserId, onLike, onRepost, onBookmark, onBookmarkSaved, onDelete, onClick, threadLineBefore, threadLineAfter }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const menuBtnRef = useRef(null)
@@ -74,12 +76,10 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
-              {author?.full_name || author?.username || 'Geschwister'}
+              {author?.full_name || author?.username || t('Geschwister')}
             </span>
             {author?.is_christian && (
-              <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20, backgroundColor: 'rgba(196,151,74,0.15)', color: 'var(--color-accent)', fontFamily: 'Lora, serif', letterSpacing: 0.3 }}>
-                Geschwister
-              </span>
+              <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20, backgroundColor: 'rgba(196,151,74,0.15)', color: 'var(--color-accent)', fontFamily: 'Lora, serif', letterSpacing: 0.3 }}>{t('Geschwister')}</span>
             )}
           </div>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)' }}>
@@ -88,14 +88,12 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
         </div>
         {!isOwn && (
           <>
-            <button ref={menuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label="Optionen" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+            <button ref={menuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label={t('Optionen')} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
               <MoreHorizontal size={16} />
             </button>
             {showMenu && (
               <AnchoredMenu anchorRef={menuBtnRef} onClose={() => setShowMenu(false)} minWidth={220}>
-                <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
-                  Melden / Blockieren
-                </button>
+                <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>{t('Melden / Blockieren')}</button>
                 {isAppAdmin && (
                   <AdminContentMenuItems
                     contentType="feed_comment"
@@ -128,8 +126,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
                   onClick={() => { setShowMenu(false); onDelete?.(comment.id) }}
                   style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
                 >
-                  <Trash2 size={14} /> Löschen
-                </button>
+                  <Trash2 size={14} />{' '}{t('Löschen')}</button>
               </AnchoredMenu>
             )}
           </>

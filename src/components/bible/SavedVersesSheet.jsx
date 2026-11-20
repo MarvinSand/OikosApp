@@ -4,6 +4,7 @@ import { X, Bookmark, Highlighter, StickyNote } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { resolveHighlightColor } from '../../lib/bibleColors'
+import { useT } from '../../i18n'
 
 const TABS = [
   { key: 'highlights', label: 'Markierungen', icon: Highlighter },
@@ -14,6 +15,7 @@ const TABS = [
 // Alle eigenen Verse nach Art (wie in der YouVersion-App): Markierungen,
 // Gespeichert (Lesezeichen), Notizen. Antippen springt zur Stelle.
 export default function SavedVersesSheet({ onClose, onOpen }) {
+  const { t } = useT()
   const { user } = useAuth()
   const [tab, setTab] = useState('highlights')
   const [data, setData] = useState({ highlights: null, bookmarks: null, notes: null })
@@ -43,32 +45,32 @@ export default function SavedVersesSheet({ onClose, onOpen }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
-          <h2 className="text-base font-bold" style={{ color: 'var(--color-text)' }}>Meine Verse</h2>
-          <button onClick={onClose} aria-label="Schließen"><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
+          <h2 className="text-base font-bold" style={{ color: 'var(--color-text)' }}>{t('Meine Verse')}</h2>
+          <button onClick={onClose} aria-label={t('Schließen')}><X size={20} style={{ color: 'var(--color-text-tertiary)' }} /></button>
         </div>
 
         <div className="flex gap-2 px-4 pb-3 flex-shrink-0">
-          {TABS.map(t => {
-            const Icon = t.icon
-            const active = tab === t.key
+          {TABS.map(tb => {
+            const Icon = tb.icon
+            const active = tab === tb.key
             return (
               <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
+                key={tb.key}
+                onClick={() => setTab(tb.key)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold"
                 style={{ backgroundColor: active ? 'var(--color-accent)' : 'var(--color-bg-secondary)', color: active ? '#fff' : 'var(--color-text-secondary)' }}
               >
-                <Icon size={14} /> {t.label}
+                <Icon size={14} /> {t(tb.label)}
               </button>
             )
           })}
         </div>
 
         <div className="flex-1 overflow-y-auto px-4" style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
-          {list === null && <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
+          {list === null && <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>{t('Lädt…')}</p>}
           {list?.length === 0 && (
             <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
-              {tab === 'highlights' ? 'Noch keine markierten Verse.' : tab === 'bookmarks' ? 'Noch keine gespeicherten Verse.' : 'Noch keine Notizen.'}
+              {tab === 'highlights' ? t('Noch keine markierten Verse.') : tab === 'bookmarks' ? t('Noch keine gespeicherten Verse.') : t('Noch keine Notizen.')}
             </p>
           )}
           {list?.map(item => {

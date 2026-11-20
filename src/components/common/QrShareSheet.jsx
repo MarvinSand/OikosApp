@@ -2,15 +2,17 @@ import { useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { X, Copy, Share2, Download } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
+import { useT } from '../../i18n'
 
 // QR-Code zum Teilen von Profil oder Community. Der Code liegt immer auf
 // weißem Grund (auch im Dark Mode), sonst lesen Kameras ihn nicht zuverlässig.
 export default function QrShareSheet({ title, subtitle, url, onClose }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const boxRef = useRef(null)
 
   async function copy() {
-    try { await navigator.clipboard.writeText(url); showToast('Link kopiert ✓') }
+    try { await navigator.clipboard.writeText(url); showToast(t('Link kopiert ✓')) }
     catch { showToast(url, 'info') }
   }
 
@@ -46,7 +48,7 @@ export default function QrShareSheet({ title, subtitle, url, onClose }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 80, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
       <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', maxWidth: 340, backgroundColor: 'var(--color-surface)', borderRadius: 24, padding: '24px 20px 20px', textAlign: 'center' }}>
-        <button onClick={onClose} aria-label="Schließen" style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+        <button onClick={onClose} aria-label={t('Schließen')} style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <X size={16} />
         </button>
         <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: '0 28px 2px' }}>{title}</h3>
@@ -55,12 +57,12 @@ export default function QrShareSheet({ title, subtitle, url, onClose }) {
           <QRCodeSVG value={url} size={220} level="M" bgColor="#ffffff" fgColor="#000000" />
         </div>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '14px 0 16px' }}>
-          Mit der Kamera oder in Oikos Connect scannen
+          {t('Mit der Kamera oder in Oikos Connect scannen')}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={copy} style={btn}><Copy size={15} /> Link</button>
-          <button onClick={share} style={btn}><Share2 size={15} /> Teilen</button>
-          <button onClick={download} style={btn}><Download size={15} /> Bild</button>
+          <button onClick={copy} style={btn}><Copy size={15} /> {t('Link')}</button>
+          <button onClick={share} style={btn}><Share2 size={15} /> {t('Teilen')}</button>
+          <button onClick={download} style={btn}><Download size={15} /> {t('Bild')}</button>
         </div>
       </div>
     </div>

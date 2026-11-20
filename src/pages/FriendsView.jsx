@@ -37,6 +37,7 @@ import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import { useBlocks } from '../hooks/useBlocks'
 import { profilePreviewState } from '../lib/profilePreview'
+import { useT, tr, getLang } from '../i18n'
 
 // ─── Avatar ────────────────────────────────────────────────
 function Avatar({ name, size = 40, isChristian, avatarUrl }) {
@@ -67,6 +68,7 @@ function Avatar({ name, size = 40, isChristian, avatarUrl }) {
 
 // ─── Notifications Sheet ─────────────────────────────────────
 function NotificationsSheet({ onClose }) {
+  const { t } = useT()
   const { notifications, loading, unreadCount, markAllRead, markRead } = useNotifications()
 
   useEffect(() => {
@@ -78,11 +80,11 @@ function NotificationsSheet({ onClose }) {
     const now = new Date()
     const diffMs = now - d
     const diffMin = Math.floor(diffMs / 60000)
-    if (diffMin < 1) return 'Gerade eben'
-    if (diffMin < 60) return `vor ${diffMin} Min.`
+    if (diffMin < 1) return tr('Gerade eben')
+    if (diffMin < 60) return tr('vor {n} Min.', { n: diffMin })
     const diffH = Math.floor(diffMin / 60)
-    if (diffH < 24) return `vor ${diffH} Std.`
-    return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+    if (diffH < 24) return tr('vor {n} Std.', { n: diffH })
+    return d.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'short' })
   }
 
   const icons = {
@@ -99,14 +101,14 @@ function NotificationsSheet({ onClose }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))', maxHeight: '75vh', overflowY: 'auto', animation: 'sheetSlideUp 0.3s ease-out' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
-        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>Benachrichtigungen</h3>
+        <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>{t('Benachrichtigungen')}</h3>
 
         {loading && <div style={{ height: 60, borderRadius: 12, backgroundColor: 'var(--color-warm-4)', animation: 'pulse 1.5s ease-in-out infinite' }} />}
 
         {!loading && notifications.length === 0 && (
           <div style={{ textAlign: 'center', padding: '30px 0' }}>
             <p style={{ fontSize: 32, margin: '0 0 10px' }}>🔔</p>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Noch keine Benachrichtigungen.</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>{t('Noch keine Benachrichtigungen.')}</p>
           </div>
         )}
 
@@ -154,6 +156,7 @@ function birthdayDaysUntil(birthdayStr) {
 
 // ─── FriendsTab ─────────────────────────────────────────────
 function FriendsTab() {
+  const { t } = useT()
   const { user } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -267,9 +270,9 @@ function FriendsTab() {
     setSending(userId)
     try {
       await sendRequest(userId)
-      showToast('Anfrage gesendet ✓')
+      showToast(t('Anfrage gesendet ✓'))
     } catch (e) {
-      showToast(e.message || 'Fehler', 'error')
+      showToast(e.message || t('Fehler'), 'error')
     } finally {
       setSending(null)
     }
@@ -277,7 +280,7 @@ function FriendsTab() {
 
   async function handleAccept(fId) {
     await acceptRequest(fId)
-    showToast('Verbunden ✓')
+    showToast(t('Verbunden ✓'))
   }
 
   async function handleDecline(fId) {
@@ -286,9 +289,9 @@ function FriendsTab() {
 
   async function handleRemove(fId) {
     setOpenMenu(null)
-    if (!window.confirm('Verbindung wirklich entfernen?')) return
+    if (!window.confirm(t('Verbindung wirklich entfernen?'))) return
     await removeFriend(fId)
-    showToast('Verbindung entfernt', 'info')
+    showToast(t('Verbindung entfernt'), 'info')
   }
 
   const showSearch = query.trim().length >= 2
@@ -315,8 +318,7 @@ function FriendsTab() {
           fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer',
         }}
       >
-        <Globe size={17} /> Auf der Map suchen
-      </button>
+        <Globe size={17} />{' '}{t('Auf der Map suchen')}</button>
 
       {/* Suchfeld */}
       <div style={{ position: 'relative', marginBottom: 12 }}>
@@ -325,7 +327,7 @@ function FriendsTab() {
           type="text"
           value={query}
           onChange={e => handleQuery(e.target.value)}
-          placeholder="Name oder Username suchen…"
+          placeholder={t('Name oder Username suchen…')}
           style={{ width: '100%', padding: '11px 12px 11px 36px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
         />
       </div>
@@ -333,10 +335,10 @@ function FriendsTab() {
       {/* Filter Chips */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
         {[
-          { key: null, label: '🌍 Alle' },
-          { key: 'city', label: cityFilter ? `📍 ${cityFilter}` : '📍 Stadt' },
-          { key: 'country', label: countryFilter ? `🏳 Land` : '🏳 Land' },
-          { key: 'church', label: churchFilter ? `⛪ ${churchFilter}` : '⛪ Gemeinde' },
+          { key: null, label: t('🌍 Alle') },
+          { key: 'city', label: cityFilter ? `📍 ${cityFilter}` : t('📍 Stadt') },
+          { key: 'country', label: countryFilter ? t('🏳 Land') : t('🏳 Land') },
+          { key: 'church', label: churchFilter ? `⛪ ${churchFilter}` : t('⛪ Gemeinde') },
         ].map(f => (
           <button
             key={String(f.key)}
@@ -362,7 +364,7 @@ function FriendsTab() {
             type="text"
             value={cityFilter}
             onChange={e => setCityFilter(e.target.value)}
-            placeholder="Stadt eingeben…"
+            placeholder={t('Stadt eingeben…')}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--color-warm-1)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
           />
         </div>
@@ -375,10 +377,10 @@ function FriendsTab() {
             onChange={e => { setCountryFilter(e.target.value); setActiveFilter(null) }}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--color-warm-1)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
           >
-            <option value="">— Land wählen —</option>
-            <option value="DE">🇩🇪 Deutschland</option>
-            <option value="AT">🇦🇹 Österreich</option>
-            <option value="CH">🇨🇭 Schweiz</option>
+            <option value="">{t('— Land wählen —')}</option>
+            <option value="DE">{t('🇩🇪 Deutschland')}</option>
+            <option value="AT">{t('🇦🇹 Österreich')}</option>
+            <option value="CH">{t('🇨🇭 Schweiz')}</option>
           </select>
         </div>
       )}
@@ -389,7 +391,7 @@ function FriendsTab() {
             type="text"
             value={churchFilter}
             onChange={e => setChurchFilter(e.target.value)}
-            placeholder="Gemeinde suchen…"
+            placeholder={t('Gemeinde suchen…')}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--color-warm-1)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
           />
         </div>
@@ -398,9 +400,9 @@ function FriendsTab() {
       {/* Suchergebnisse */}
       {showSearch && (
         <div style={{ marginBottom: 24 }}>
-          <p style={sectionLabel}>Suchergebnisse</p>
-          {searching && <p style={mutedText}>Suche…</p>}
-          {!searching && searchResults.length === 0 && <p style={mutedText}>Keine Nutzer gefunden.</p>}
+          <p style={sectionLabel}>{t('Suchergebnisse')}</p>
+          {searching && <p style={mutedText}>{t('Suche…')}</p>}
+          {!searching && searchResults.length === 0 && <p style={mutedText}>{t('Keine Nutzer gefunden.')}</p>}
           {searchResults.map(u => {
             const status = getFriendshipStatus(u.id)
             return (
@@ -412,12 +414,12 @@ function FriendsTab() {
                 </div>
                 {status === 'none' && (
                   <button onClick={() => handleSend(u.id)} disabled={sending === u.id} style={connectBtn}>
-                    {sending === u.id ? '…' : 'Verbinden'}
+                    {sending === u.id ? '…' : t('Verbinden')}
                   </button>
                 )}
-                {status === 'sent' && <span style={pendingBadge}>Ausstehend</span>}
-                {status === 'friends' && <span style={friendsBadge}>Verbunden ✓</span>}
-                {status === 'received' && <span style={pendingBadge}>Anfrage erhalten</span>}
+                {status === 'sent' && <span style={pendingBadge}>{t('Ausstehend')}</span>}
+                {status === 'friends' && <span style={friendsBadge}>{t('Verbunden ✓')}</span>}
+                {status === 'received' && <span style={pendingBadge}>{t('Anfrage erhalten')}</span>}
               </div>
             )
           })}
@@ -427,7 +429,7 @@ function FriendsTab() {
       {/* Geburtstage in den nächsten 7 Tagen */}
       {!showSearch && upcomingBirthdays.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <p style={sectionLabel}>🎂 Bald Geburtstag</p>
+          <p style={sectionLabel}>{t('🎂 Bald Geburtstag')}</p>
           <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
             {upcomingBirthdays.map(p => (
               <button
@@ -440,7 +442,7 @@ function FriendsTab() {
                   {(p.full_name || p.username || '').split(' ')[0]}
                 </p>
                 <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: p.daysUntil === 0 ? '#F9A825' : 'var(--color-text-muted)', margin: 0, fontWeight: p.daysUntil === 0 ? 700 : 400 }}>
-                  {p.daysUntil === 0 ? 'Heute! 🎂' : `in ${p.daysUntil} Tag${p.daysUntil === 1 ? '' : 'en'}`}
+                  {p.daysUntil === 0 ? t('Heute! 🎂') : (p.daysUntil === 1 ? t('in 1 Tag') : t('in {daysUntil} Tagen', { daysUntil: p.daysUntil }))}
                 </p>
               </button>
             ))}
@@ -451,7 +453,7 @@ function FriendsTab() {
       {/* Geschwister in deiner Nähe */}
       {!showSearch && myCity && nearbyUsers.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <p style={sectionLabel}>📍 Geschwister in {myCity}</p>
+          <p style={sectionLabel}>{t('📍 Geschwister in {myCity}', { myCity })}</p>
           <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
             {nearbyUsers.slice(0, 5).map(u => (
               <button
@@ -472,7 +474,7 @@ function FriendsTab() {
       {/* Offene Anfragen */}
       {pendingReceived.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <p style={sectionLabel}>Anfragen erhalten ({pendingReceived.length})</p>
+          <p style={sectionLabel}>{t('Anfragen erhalten ({length})', { length: pendingReceived.length })}</p>
           {pendingReceived.map(f => (
             <div key={f.id} style={personRow}>
               <Avatar name={f.otherUser?.full_name || f.otherUser?.username} isChristian={f.otherUser?.is_christian} avatarUrl={f.otherUser?.avatar_url} />
@@ -495,12 +497,10 @@ function FriendsTab() {
 
       {/* Freundesliste */}
       <div>
-        <p style={sectionLabel}>Verbunden ({friends.length})</p>
+        <p style={sectionLabel}>{t('Verbunden ({length})', { length: friends.length })}</p>
         {loading && <div style={skeleton} />}
         {!loading && friends.length === 0 && (
-          <p style={{ ...mutedText, textAlign: 'center', padding: '16px 0' }}>
-            Noch keine Verbindungen. Suche nach Nutzern. ↑
-          </p>
+          <p style={{ ...mutedText, textAlign: 'center', padding: '16px 0' }}>{t('Noch keine Verbindungen. Suche nach Nutzern. ↑')}</p>
         )}
         {friends.map(f => {
           const other = f.otherUser
@@ -520,7 +520,7 @@ function FriendsTab() {
                   if (!error) navigate(`/chat/${convId}`)
                 }}
                 style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, color: 'var(--color-warm-1)', display: 'flex', alignItems: 'center' }}
-                title="Nachricht schreiben"
+                title={t('Nachricht schreiben')}
               >
                 <MessageCircle size={18} />
               </button>
@@ -537,9 +537,7 @@ function FriendsTab() {
                   onClose={() => setOpenMenu(null)}
                   minWidth={180}
                 >
-                  <button onClick={() => { setOpenMenu(null); handleRemove(f.id) }} style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}>
-                    Verbindung entfernen
-                  </button>
+                  <button onClick={() => { setOpenMenu(null); handleRemove(f.id) }} style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}>{t('Verbindung entfernen')}</button>
                 </AnchoredMenu>
               )}
             </div>
@@ -551,7 +549,7 @@ function FriendsTab() {
       {filteredNotConnected.length > 0 && (
         <div style={{ marginTop: 28 }}>
           <p style={sectionLabel}>
-            {hasAnyFilter ? `Gefilterte Ergebnisse (${filteredNotConnected.length})` : `Noch nicht connected (${filteredNotConnected.length})`}
+            {hasAnyFilter ? t('Gefilterte Ergebnisse ({length})', { length: filteredNotConnected.length }) : t('Noch nicht connected ({length})', { length: filteredNotConnected.length })}
           </p>
           {filteredNotConnected.map(u => (
             <div key={u.id} style={personRow}>
@@ -567,12 +565,12 @@ function FriendsTab() {
                 </div>
               </button>
               {getFriendshipStatus(u.id) === 'sent' ? (
-                <span style={pendingBadge}>Anfrage gesendet</span>
+                <span style={pendingBadge}>{t('Anfrage gesendet')}</span>
               ) : getFriendshipStatus(u.id) === 'received' ? (
-                <span style={pendingBadge}>Anfrage erhalten</span>
+                <span style={pendingBadge}>{t('Anfrage erhalten')}</span>
               ) : (
                 <button onClick={() => handleSend(u.id)} disabled={sending === u.id} style={connectBtn}>
-                  {sending === u.id ? '…' : 'Verbinden'}
+                  {sending === u.id ? '…' : t('Verbinden')}
                 </button>
               )}
             </div>
@@ -585,6 +583,7 @@ function FriendsTab() {
 
 // ─── CommunitiesTab ──────────────────────────────────────────
 function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { myCommunities, loading, joinByCode } = useCommunities()
@@ -640,10 +639,10 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
         .from('community_members')
         .insert({ community_id: community.id, user_id: user.id, role: 'member' })
       if (error) throw error
-      showToast(`Willkommen in ${community.name}!`)
+      showToast(t('Willkommen in {name}!', { name: community.name }))
       navigate(`/community/${community.id}`)
     } catch {
-      showToast('Fehler beim Beitreten', 'error')
+      showToast(t('Fehler beim Beitreten'), 'error')
     } finally {
       setJoiningId(null)
     }
@@ -653,20 +652,16 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
         <button onClick={onCreateOpen} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          <Plus size={15} /> Erstellen
-        </button>
+          <Plus size={15} />{' '}{t('Erstellen')}</button>
         <button onClick={onJoinOpen} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'transparent', color: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          <Hash size={15} /> Per Code
-        </button>
+          <Hash size={15} />{' '}{t('Per Code')}</button>
       </div>
 
       {/* Meine Communities */}
-      <p style={sectionLabel}>Meine Communities ({myCommunities.length})</p>
+      <p style={sectionLabel}>{t('Meine Communities ({length})', { length: myCommunities.length })}</p>
       {loading && <div style={skeleton} />}
       {!loading && myCommunities.length === 0 && (
-        <p style={{ ...mutedText, textAlign: 'center', padding: '16px 0 24px', lineHeight: 1.6 }}>
-          Du bist noch in keiner Community.
-        </p>
+        <p style={{ ...mutedText, textAlign: 'center', padding: '16px 0 24px', lineHeight: 1.6 }}>{t('Du bist noch in keiner Community.')}</p>
       )}
       {!loading && myCommunities.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
@@ -685,14 +680,10 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
       {/* Öffentliche Communities entdecken */}
       <div style={{ marginTop: 28 }}>
         <p style={sectionLabel}>
-          <Compass size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-          Entdecken
-        </p>
+          <Compass size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />{t('Entdecken')}</p>
         {loadingPublic && <div style={skeleton} />}
         {!loadingPublic && publicCommunities.length === 0 && (
-          <p style={{ ...mutedText, textAlign: 'center', padding: '12px 0' }}>
-            Keine öffentlichen Communities verfügbar.
-          </p>
+          <p style={{ ...mutedText, textAlign: 'center', padding: '12px 0' }}>{t('Keine öffentlichen Communities verfügbar.')}</p>
         )}
         {publicCommunities.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
@@ -740,6 +731,7 @@ function ChatsAvatar({ name, size = 40, isChristian, avatarUrl }) {
 }
 
 function ChatsTab() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { directChats, communityChats, activityChats, loading, startDirectChat } = useConversations()
   const { friends } = useFriendships()
@@ -758,18 +750,18 @@ function ChatsTab() {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const yesterday = new Date(today.getTime() - 86400000)
     const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-    if (diffMin < 1) return 'gerade'
-    if (diffMin < 60) return `vor ${diffMin} Min.`
-    if (diffHrs < 24 && msgDate.getTime() === today.getTime()) return `vor ${diffHrs} Std.`
-    if (msgDate.getTime() === yesterday.getTime()) return 'gestern'
-    return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+    if (diffMin < 1) return tr('gerade')
+    if (diffMin < 60) return tr('vor {n} Min.', { n: diffMin })
+    if (diffHrs < 24 && msgDate.getTime() === today.getTime()) return tr('vor {n} Std.', { n: diffHrs })
+    if (msgDate.getTime() === yesterday.getTime()) return tr('gestern')
+    return date.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'short' })
   }
 
   function lastMessagePreview(msg) {
     if (!msg) return ''
-    if (msg.is_deleted) return '(Nachricht gelöscht)'
-    if (msg.type === 'prayer_request') return '🙏 Gebetsanliegen'
-    if (msg.type === 'bible_verse') return '📖 Bibelvers'
+    if (msg.is_deleted) return tr('(Nachricht gelöscht)')
+    if (msg.type === 'prayer_request') return tr('🙏 Gebetsanliegen')
+    if (msg.type === 'bible_verse') return tr('📖 Bibelvers')
     return msg.text || ''
   }
 
@@ -816,7 +808,7 @@ function ChatsTab() {
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Geschwister oder Community suchen..."
+          placeholder={t('Geschwister oder Community suchen...')}
           style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }}
         />
       </div>
@@ -838,18 +830,16 @@ function ChatsTab() {
       {!loading && !hasAny && (
         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
           <MessageCircle size={40} color="var(--color-warm-3)" style={{ marginBottom: 12 }} />
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6 }}>
-            Noch keine Nachrichten. Starte ein Gespräch! 💬
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6 }}>{t('Noch keine Nachrichten. Starte ein Gespräch! 💬')}</p>
         </div>
       )}
 
       {!loading && filteredDirect.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <p style={sectionLabel}>Direktnachrichten</p>
+          <p style={sectionLabel}>{t('Direktnachrichten')}</p>
           {filteredDirect.map(conv => {
             const isDirect = conv.type === 'direct'
-            const name = isDirect ? (conv.otherUser?.full_name || conv.otherUser?.username || 'Unbekannt') : (conv.community?.name || 'Community')
+            const name = isDirect ? (conv.otherUser?.full_name || conv.otherUser?.username || tr('Unbekannt')) : (conv.community?.name || tr('Community'))
             const preview = lastMessagePreview(conv.lastMessage)
             const time = timeAgo(conv.lastMessage?.created_at)
             return (
@@ -862,7 +852,7 @@ function ChatsTab() {
                     <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', flexShrink: 0 }}>{time}</span>
                   </div>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: conv.unread ? 'var(--color-text-muted)' : 'var(--color-text-light)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: conv.unread ? 500 : 400 }}>
-                    {preview || 'Noch keine Nachrichten'}
+                    {preview || t('Noch keine Nachrichten')}
                   </p>
                 </div>
               </button>
@@ -873,9 +863,9 @@ function ChatsTab() {
 
       {!loading && filteredCommunity.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <p style={sectionLabel}>Community Chats</p>
+          <p style={sectionLabel}>{t('Community Chats')}</p>
           {filteredCommunity.map(conv => {
-            const name = conv.community?.name || 'Community'
+            const name = conv.community?.name || tr('Community')
             const preview = lastMessagePreview(conv.lastMessage)
             const time = timeAgo(conv.lastMessage?.created_at)
             return (
@@ -888,7 +878,7 @@ function ChatsTab() {
                     <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', flexShrink: 0 }}>{time}</span>
                   </div>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: conv.unread ? 'var(--color-text-muted)' : 'var(--color-text-light)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: conv.unread ? 500 : 400 }}>
-                    {preview || 'Noch keine Nachrichten'}
+                    {preview || t('Noch keine Nachrichten')}
                   </p>
                 </div>
               </button>
@@ -899,9 +889,9 @@ function ChatsTab() {
 
       {!loading && filteredActivity.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <p style={sectionLabel}>Aktivitäten</p>
+          <p style={sectionLabel}>{t('Aktivitäten')}</p>
           {filteredActivity.map(conv => {
-            const name = conv.activity?.title || 'Aktivität'
+            const name = conv.activity?.title || tr('Aktivität')
             const emoji = conv.activity?.activity_emoji || '📍'
             const subLabel = conv.activity?.activity_type || ''
             const preview = lastMessagePreview(conv.lastMessage)
@@ -918,7 +908,7 @@ function ChatsTab() {
                     <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', flexShrink: 0 }}>{time}</span>
                   </div>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: conv.unread ? 'var(--color-text-muted)' : 'var(--color-text-light)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: conv.unread ? 500 : 400 }}>
-                    {preview || (subLabel ? `Aktivität · ${subLabel}` : 'Noch keine Nachrichten')}
+                    {preview || (subLabel ? t('Aktivität · {subLabel}', { subLabel }) : t('Noch keine Nachrichten'))}
                   </p>
                 </div>
               </button>
@@ -941,16 +931,14 @@ function ChatsTab() {
           <div onClick={() => setShowNewChat(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(58,46,36,0.35)', zIndex: 40 }} />
           <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '20px 20px 0 0', zIndex: 50, padding: '16px 20px 0', animation: 'sheetSlideUp 0.3s ease-out', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
-            <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: 'var(--color-text)', marginBottom: 14 }}>Neue Nachricht</h3>
+            <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: 'var(--color-text)', marginBottom: 14 }}>{t('Neue Nachricht')}</h3>
             <div style={{ position: 'relative', marginBottom: 14 }}>
               <Search size={14} color="var(--color-text-light)" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="text" value={friendQuery} onChange={e => setFriendQuery(e.target.value)} placeholder="Geschwister suchen…" style={{ width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }} />
+              <input type="text" value={friendQuery} onChange={e => setFriendQuery(e.target.value)} placeholder={t('Geschwister suchen…')} style={{ width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block' }} />
             </div>
             <div style={{ overflowY: 'auto', flex: 1, paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
               {filteredFriends.length === 0 && (
-                <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
-                  Keine Geschwister gefunden.
-                </p>
+                <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>{t('Keine Geschwister gefunden.')}</p>
               )}
               {filteredFriends.map(f => {
                 const other = f.otherUser
@@ -978,32 +966,32 @@ function ChatsTab() {
 
 // ─── Feed helpers ───────────────────────────────────────────
 const TYPE_CONFIG = {
-  text:      { icon: MessageSquare, label: 'Gedanke',    bg: 'var(--color-warm-4)',   border: 'var(--color-warm-3)' },
-  bible:     { icon: BookOpen,      label: 'Bibelstelle', bg: 'rgba(196,151,74,0.08)', border: 'rgba(196,151,74,0.3)' },
-  testimony: { icon: HandHeart,     label: 'Zeugnis',    bg: 'rgba(74,103,65,0.07)',  border: 'rgba(74,103,65,0.25)' },
-  question:  { icon: HelpCircle,    label: 'Frage',      bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.25)' },
-  photo:     { icon: Image,         label: 'Foto',       bg: 'var(--color-warm-4)',   border: 'var(--color-warm-3)' },
+  text:      { icon: MessageSquare, get label() { return tr('Gedanke') },    bg: 'var(--color-warm-4)',   border: 'var(--color-warm-3)' },
+  bible:     { icon: BookOpen,      get label() { return tr('Bibelstelle') }, bg: 'rgba(196,151,74,0.08)', border: 'rgba(196,151,74,0.3)' },
+  testimony: { icon: HandHeart,     get label() { return tr('Zeugnis') },    bg: 'rgba(74,103,65,0.07)',  border: 'rgba(74,103,65,0.25)' },
+  question:  { icon: HelpCircle,    get label() { return tr('Frage') },      bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.25)' },
+  photo:     { icon: Image,         get label() { return tr('Foto') },       bg: 'var(--color-warm-4)',   border: 'var(--color-warm-3)' },
 }
 
 const FILTER_OPTIONS = [
-  { key: 'all',       label: '🌐 Alle' },
-  { key: 'bible',     label: '📖 Bibelstellen' },
-  { key: 'testimony', label: '🙌 Zeugnisse' },
-  { key: 'question',  label: '❓ Fragen' },
+  { key: 'all',       get label() { return tr('🌐 Alle') } },
+  { key: 'bible',     get label() { return tr('📖 Bibelstellen') } },
+  { key: 'testimony', get label() { return tr('🙌 Zeugnisse') } },
+  { key: 'question',  get label() { return tr('❓ Fragen') } },
 ]
 
 function timeAgoFeed(iso) {
   const d = new Date(iso)
   const now = new Date()
   const diff = Math.floor((now - d) / 60000)
-  if (diff < 1) return 'Gerade eben'
-  if (diff < 60) return `vor ${diff} Min.`
+  if (diff < 1) return tr('Gerade eben')
+  if (diff < 60) return tr('vor {n} Min.', { n: diff })
   const h = Math.floor(diff / 60)
-  if (h < 24) return `vor ${h} Std.`
+  if (h < 24) return tr('vor {n} Std.', { n: h })
   const days = Math.floor(h / 24)
-  if (days === 1) return 'gestern'
-  if (days < 7) return `vor ${days} Tagen`
-  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+  if (days === 1) return tr('gestern')
+  if (days < 7) return tr('vor {n} Tagen', { n: days })
+  return d.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'short' })
 }
 
 function FeedAvatar({ profile, size = 36 }) {
@@ -1026,6 +1014,7 @@ function FeedAvatar({ profile, size = 36 }) {
 
 // ─── Post Card ───────────────────────────────────────────────
 export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRepost, onBookmark, onBookmarkSaved, onShare, threadLineAfter }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
   const postMenuBtnRef = useRef(null)
@@ -1063,12 +1052,10 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
-              {author?.full_name || author?.username || 'Geschwister'}
+              {author?.full_name || author?.username || t('Geschwister')}
             </span>
             {author?.is_christian && (
-              <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20, backgroundColor: 'rgba(196,151,74,0.15)', color: 'var(--color-accent)', fontFamily: 'Lora, serif', letterSpacing: 0.3 }}>
-                Geschwister
-              </span>
+              <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20, backgroundColor: 'rgba(196,151,74,0.15)', color: 'var(--color-accent)', fontFamily: 'Lora, serif', letterSpacing: 0.3 }}>{t('Geschwister')}</span>
             )}
           </div>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)' }}>
@@ -1087,14 +1074,12 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
           )}
           {!isOwn && (
             <>
-              <button ref={postMenuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label="Optionen" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
+              <button ref={postMenuBtnRef} onClick={() => setShowMenu(v => !v)} aria-label={t('Optionen')} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-light)', display: 'flex' }}>
                 <MoreHorizontal size={16} />
               </button>
               {showMenu && (
                 <AnchoredMenu anchorRef={postMenuBtnRef} onClose={() => setShowMenu(false)} minWidth={220}>
-                  <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
-                    Melden / Blockieren
-                  </button>
+                  <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>{t('Melden / Blockieren')}</button>
                   {isAppAdmin && (
                     <AdminContentMenuItems
                       contentType="feed_post"
@@ -1128,8 +1113,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
                     onClick={() => { setShowMenu(false); onDelete?.(post.id) }}
                     style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
                   >
-                    <Trash2 size={14} /> Löschen
-                  </button>
+                    <Trash2 size={14} />{' '}{t('Löschen')}</button>
                 </AnchoredMenu>
               )}
             </>
@@ -1159,7 +1143,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
             onClick={e => { e.stopPropagation(); setExpanded(v => !v) }}
             style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', padding: '4px 0 0', fontWeight: 600 }}
           >
-            {expanded ? 'Weniger lesen' : 'Mehr lesen'}
+            {expanded ? t('Weniger lesen') : t('Mehr lesen')}
           </button>
         )}
       </div>
@@ -1196,6 +1180,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
 
 // ─── FeedTab ─────────────────────────────────────────────────
 function FeedTab() {
+  const { t } = useT()
   const { user } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -1232,14 +1217,14 @@ function FeedTab() {
 
   async function handleCreate(data) {
     const res = await createPost(data)
-    if (res) showToast('Post geteilt 🙌')
-    else showToast('Fehler beim Posten', 'error')
+    if (res) showToast(t('Post geteilt 🙌'))
+    else showToast(t('Fehler beim Posten'), 'error')
   }
 
   async function handleDelete(postId) {
-    if (!window.confirm('Post wirklich löschen?')) return
+    if (!window.confirm(t('Post wirklich löschen?'))) return
     await deletePost(postId)
-    showToast('Post gelöscht', 'info')
+    showToast(t('Post gelöscht'), 'info')
   }
 
   function toggleCategory(key) {
@@ -1277,10 +1262,10 @@ function FeedTab() {
         borderBottom: '1px solid var(--color-border)',
       }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
-          <ExpandableSearch value={searchQuery} onChange={setSearchQuery} placeholder="Post suchen…" />
+          <ExpandableSearch value={searchQuery} onChange={setSearchQuery} placeholder={t('Post suchen…')} />
           <button
             onClick={() => setShowFilters(v => !v)}
-            aria-label="Filter"
+            aria-label={t('Filter')}
             style={{
               position: 'relative',
               width: 40, height: 40, borderRadius: 12, flexShrink: 0,
@@ -1307,7 +1292,7 @@ function FeedTab() {
           </button>
           <button
             onClick={() => navigate('/feed/saved')}
-            aria-label="Gespeicherte Beiträge"
+            aria-label={t('Gespeicherte Beiträge')}
             style={{
               width: 40, height: 40, borderRadius: 12, flexShrink: 0,
               border: '1.5px solid var(--color-border)',
@@ -1329,9 +1314,7 @@ function FeedTab() {
             </div>
 
             {/* Kategorien */}
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>
-              Kategorien
-            </p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>{t('Kategorien')}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {FEED_CATEGORIES.map(c => {
                 const active = activeCategories.includes(c.key)
@@ -1362,9 +1345,7 @@ function FeedTab() {
                     backgroundColor: 'transparent', color: 'var(--color-text-muted)',
                     fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   }}
-                >
-                  Zurücksetzen
-                </button>
+                >{t('Zurücksetzen')}</button>
               )}
             </div>
 
@@ -1377,9 +1358,7 @@ function FeedTab() {
                   backgroundColor: 'transparent', color: 'var(--color-text-muted)',
                   fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 }}
-              >
-                Alle Filter zurücksetzen
-              </button>
+              >{t('Alle Filter zurücksetzen')}</button>
             )}
           </div>
         )}
@@ -1401,18 +1380,14 @@ function FeedTab() {
       {!loading && filteredPosts.length === 0 && posts.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
           <p style={{ fontSize: 32, margin: '0 0 10px' }}>🌱</p>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-            Noch keine Posts. Sei die Erste, die etwas teilt!
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>{t('Noch keine Posts. Sei die Erste, die etwas teilt!')}</p>
         </div>
       )}
 
       {!loading && filteredPosts.length === 0 && posts.length > 0 && hasActiveFilter && (
         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
           <p style={{ fontSize: 28, margin: '0 0 10px' }}>🔍</p>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-            Keine Posts gefunden. Versuche andere Filter.
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>{t('Keine Posts gefunden. Versuche andere Filter.')}</p>
         </div>
       )}
 
@@ -1438,16 +1413,14 @@ function FeedTab() {
       {/* Infinite scroll sentinel */}
       {!loading && hasMore && <div ref={loaderRef} style={{ height: 40 }} />}
       {!loading && !hasMore && posts.length > 0 && (
-        <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', textAlign: 'center', padding: '12px 0' }}>
-          Keine weiteren Posts.
-        </p>
+        <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', textAlign: 'center', padding: '12px 0' }}>{t('Keine weiteren Posts.')}</p>
       )}
       </div>
 
       {/* FAB – neuen Beitrag erstellen */}
       <button
         onClick={() => setShowComposer(true)}
-        aria-label="Neuen Beitrag erstellen"
+        aria-label={t('Neuen Beitrag erstellen')}
         style={{
           position: 'fixed',
           bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)',
@@ -1495,8 +1468,8 @@ function FeedTab() {
 // ─── Gebete ⇄ Feed (Wisch-Pager) ─────────────────────────────
 const PrayersPane = lazy(() => import('./Prayers'))
 const PRAYER_FEED_TABS = [
-  { key: 'prayers', label: 'Gebete', icon: HandHeart, target: '/prayers' },
-  { key: 'feed',    label: 'Feed',   icon: Newspaper, target: '/friends?tab=feed' },
+  { key: 'prayers', get label() { return tr('Gebete') }, icon: HandHeart, target: '/prayers' },
+  { key: 'feed',    get label() { return tr('Feed') },   icon: Newspaper, target: '/friends?tab=feed' },
 ]
 
 function PrayerFeedPager() {
@@ -1538,6 +1511,7 @@ function PrayerFeedPager() {
 
 // ─── FriendsView (Main) ──────────────────────────────────────
 export default function FriendsView() {
+  const { t } = useT()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const location = useLocation()
@@ -1550,7 +1524,7 @@ export default function FriendsView() {
 
   if (isPrayerFeedRoute(location.pathname, location.search)) return <PrayerFeedPager />
 
-  const headerTitle = activeTab === 'chats' ? 'Chats' : activeTab === 'communities' ? 'Communities' : 'Geschwister'
+  const headerTitle = activeTab === 'chats' ? tr('Chats') : activeTab === 'communities' ? tr('Communities') : tr('Geschwister')
 
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
@@ -1559,7 +1533,7 @@ export default function FriendsView() {
           {activeTab === 'friends' && (
             <button
               onClick={() => navigate(-1)}
-              aria-label="Zurück"
+              aria-label={t('Zurück')}
               style={{ width: 32, height: 32, marginLeft: -6, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
             >
               <ArrowLeft size={22} />
@@ -1582,10 +1556,7 @@ export default function FriendsView() {
       {showJoin && <JoinCommunityModal onClose={() => setShowJoin(false)} />}
       {showNotifications && <NotificationsSheet onClose={() => setShowNotifications(false)} />}
 
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-        @keyframes sheetSlideUp { from{transform:translateX(-50%) translateY(100%)} to{transform:translateX(-50%) translateY(0)} }
-      `}</style>
+      <style>{'\n        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }\n        @keyframes sheetSlideUp { from{transform:translateX(-50%) translateY(100%)} to{transform:translateX(-50%) translateY(0)} }\n      '}</style>
     </div>
   )
 }

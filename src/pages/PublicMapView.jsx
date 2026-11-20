@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { useT } from '../i18n'
 import { usePublicMap } from '../hooks/usePublicMap'
 import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
 import { useSiblingsCommunities } from '../hooks/useSiblingsCommunities'
@@ -14,6 +15,7 @@ const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet
 
 // ─── PublicMapView (Main) ─────────────────────────────────────
 export default function PublicMapView() {
+  const { t } = useT()
   const { id: userId, mapId } = useParams()
   const navigate = useNavigate()
   const { map, people, connections, places, placeConnections, ownerName, linkedProfiles, overlayData, togglePersonMapOverlay, loading } = usePublicMap(userId, mapId)
@@ -68,11 +70,11 @@ export default function PublicMapView() {
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)' }}>
         <div style={headerStyle}>
           <button onClick={() => navigate(-1)} style={backBtn}><ArrowLeft size={20} /></button>
-          <span style={headerTitle}>Nicht gefunden</span>
+          <span style={headerTitle}>{t('Nicht gefunden')}</span>
           <div style={{ width: 36 }} />
         </div>
         <p style={{ padding: 24, fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
-          Diese Map ist nicht verfügbar.
+          {t('Diese Map ist nicht verfügbar.')}
         </p>
       </div>
     )

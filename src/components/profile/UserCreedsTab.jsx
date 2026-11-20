@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useT } from '../../i18n'
 import { parseGermanReference } from '../../lib/bibleBooks'
 import { CreedRow } from './CreedRow'
 import { addConfession, removeConfessionLog } from '../../lib/creedConfessions'
@@ -18,6 +19,7 @@ const CREED_LINE_SELECT = 'body, bible_reference, bible_verse, bible_id, bible_b
 // "Read public creeds" erlaubt jedem Nutzer visibility='public'-Zeilen zu
 // lesen, egal von wem - hier einfach zusätzlich auf user_id gefiltert.
 export default function UserCreedsTab({ userId, displayName }) {
+  const { t } = useT()
   const { user } = useAuth()
 
   const [creeds, setCreeds] = useState([])
@@ -112,7 +114,7 @@ export default function UserCreedsTab({ userId, displayName }) {
 
   async function adoptCreed(creed) {
     const { data: lines } = await supabase.from('creed_lines').select(CREED_LINE_SELECT).eq('creed_id', creed.id).order('order_index')
-    setEditorInitial({ title: `${creed.title} (Kopie)`, visibility: 'private', lines: lines || [], sourceCreedId: creed.id })
+    setEditorInitial({ title: t('{title} (Kopie)', { title: creed.title }), visibility: 'private', lines: lines || [], sourceCreedId: creed.id })
     setShowEditor(true)
   }
 
@@ -123,10 +125,10 @@ export default function UserCreedsTab({ userId, displayName }) {
       )}
 
       <div className="px-4 py-4">
-        {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
+        {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>{t('Lädt…')}</p>}
         {!loading && creeds.length === 0 && (
           <p style={{ fontSize: 13.5, color: 'var(--color-text-tertiary)', textAlign: 'center', padding: '24px 0' }}>
-            {displayName || 'Diese Person'} hat noch kein öffentliches Bekenntnis geteilt.
+            {t('{name} hat noch kein öffentliches Bekenntnis geteilt.', { name: displayName || t('Diese Person') })}
           </p>
         )}
         {!loading && creeds.length > 0 && (

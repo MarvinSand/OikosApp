@@ -3,10 +3,12 @@ import { X } from 'lucide-react'
 import { useFriendships } from '../../hooks/useFriendships'
 import { useToast } from '../../context/ToastContext'
 import { getInitials } from '../../lib/communityTheme'
+import { useT, tr } from '../../i18n'
 
 // Mitglieder-Bottom-Sheet: startet über der unteren Hälfte, fährt beim Scrollen
 // auf Vollbild. Pro Mitglied „Verbinden" (Freundschaftsanfrage).
 export default function MembersSheet({ members, currentUserId, onClose, onSelectMember }) {
+  const { t } = useT()
   const { getFriendshipStatus, sendRequest } = useFriendships()
   const { showToast } = useToast()
   const [detent, setDetent] = useState('half') // 'half' | 'full'
@@ -22,8 +24,8 @@ export default function MembersSheet({ members, currentUserId, onClose, onSelect
     e.stopPropagation()
     if (sending) return
     setSending(uid)
-    try { await sendRequest(uid); showToast('Anfrage gesendet') }
-    catch { showToast('Fehler beim Senden', 'error') }
+    try { await sendRequest(uid); showToast(t('Anfrage gesendet')) }
+    catch { showToast(t('Fehler beim Senden'), 'error') }
     finally { setSending(null) }
   }
 
@@ -57,10 +59,9 @@ export default function MembersSheet({ members, currentUserId, onClose, onSelect
         >
           <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 10px' }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 10px', borderBottom: '1px solid var(--color-border)' }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-              Mitglieder — {members.length}
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{t('Mitglieder — {length}', { length: members.length })}
             </p>
-            <button onClick={onClose} aria-label="Schließen" style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={onClose} aria-label={t('Schließen')} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={16} />
             </button>
           </div>
@@ -69,7 +70,7 @@ export default function MembersSheet({ members, currentUserId, onClose, onSelect
         {/* Liste */}
         <div onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', padding: '8px 12px calc(80px + env(safe-area-inset-bottom, 0px))' }}>
           {members.map(m => {
-            const name = m.profile?.full_name || m.profile?.username || 'Unbekannt'
+            const name = m.profile?.full_name || m.profile?.username || tr('Unbekannt')
             const isSelf = m.user_id === currentUserId
             const status = isSelf ? 'self' : getFriendshipStatus(m.user_id)
             return (
@@ -88,20 +89,20 @@ export default function MembersSheet({ members, currentUserId, onClose, onSelect
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 14.5, fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {name}{isSelf ? ' (Du)' : ''}
+                    {name}{isSelf ? t(' (Du)') : ''}
                   </p>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: m.role === 'admin' ? 'var(--color-gold-text)' : 'var(--color-text-muted)', fontWeight: m.role === 'admin' ? 700 : 400, margin: 0 }}>
-                    {m.role === 'admin' ? 'Admin' : `@${m.profile?.username || 'user'}`}
+                    {m.role === 'admin' ? t('Admin') : `@${m.profile?.username || 'user'}`}
                   </p>
                 </div>
                 {status === 'none' && (
                   <button onClick={(e) => handleConnect(e, m.user_id)} disabled={sending === m.user_id} style={connectBtnStyle}>
-                    {sending === m.user_id ? '…' : 'Verbinden'}
+                    {sending === m.user_id ? '…' : t('Verbinden')}
                   </button>
                 )}
-                {status === 'sent' && <span style={badgeStyle}>Angefragt</span>}
-                {status === 'received' && <span style={badgeStyle}>Anfrage erhalten</span>}
-                {status === 'friends' && <span style={{ ...badgeStyle, color: 'var(--color-accent)', fontStyle: 'normal', fontWeight: 700 }}>Verbunden ✓</span>}
+                {status === 'sent' && <span style={badgeStyle}>{t('Angefragt')}</span>}
+                {status === 'received' && <span style={badgeStyle}>{t('Anfrage erhalten')}</span>}
+                {status === 'friends' && <span style={{ ...badgeStyle, color: 'var(--color-accent)', fontStyle: 'normal', fontWeight: 700 }}>{t('Verbunden ✓')}</span>}
               </div>
             )
           })}

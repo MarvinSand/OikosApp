@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X, ExternalLink } from 'lucide-react'
+import { useT } from '../../i18n'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -22,6 +23,7 @@ function getInitials(name) {
 // eigene, kleine Datei statt UserPinSheet.jsx zu verbiegen – dessen Felder
 // (username/bio/church_name/gender) passen nicht zu dieser Datenform.
 export default function OikosPersonPinSheet({ person, onClose }) {
+  const { t } = useT()
   const navigate = useNavigate()
 
   return createPortal(
@@ -65,7 +67,7 @@ export default function OikosPersonPinSheet({ person, onClose }) {
               </p>
             )}
             <p style={{ fontSize: 11, color: C.textTer, margin: '6px 0 0', fontStyle: 'italic' }}>
-              Aus deiner Oikos Map – kein eigener Account
+              {t('Aus deiner Oikos Map – kein eigener Account')}
             </p>
           </div>
         </div>
@@ -80,7 +82,7 @@ export default function OikosPersonPinSheet({ person, onClose }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
           >
-            <ExternalLink size={15} /> Profil ansehen
+            <ExternalLink size={15} /> {t('Profil ansehen')}
           </button>
         )}
       </div>

@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import { listColumn } from '../../lib/prayerModel'
 import BodyPortal from '../common/BodyPortal'
+import { useT } from '../../i18n'
 
 function isLightColor(hex) {
   if (!hex || hex[0] !== '#') return true
@@ -17,6 +18,7 @@ function isLightColor(hex) {
 // Sheet zum Hinzufügen eines Anliegens zu einer Gebetsliste.
 // prayer: normalisiertes Gebet (siehe lib/prayerModel).
 export default function AddToListSheet({ prayer, onClose }) {
+  const { t } = useT()
   const { lists, loading, createList } = usePrayerLists()
   const { showToast } = useToast()
   const [busyId, setBusyId] = useState(null)
@@ -40,7 +42,7 @@ export default function AddToListSheet({ prayer, onClose }) {
 
       if (existing) {
         setDone(d => [...d, listId])
-        showToast('Schon in dieser Liste')
+        showToast(t('Schon in dieser Liste'))
         return
       }
 
@@ -50,9 +52,9 @@ export default function AddToListSheet({ prayer, onClose }) {
       })
       if (error) throw error
       setDone(d => [...d, listId])
-      showToast('Zur Liste hinzugefügt ✓')
+      showToast(t('Zur Liste hinzugefügt ✓'))
     } catch {
-      showToast('Fehler beim Hinzufügen', 'error')
+      showToast(t('Fehler beim Hinzufügen'), 'error')
     } finally {
       setBusyId(null)
     }
@@ -66,7 +68,7 @@ export default function AddToListSheet({ prayer, onClose }) {
       setNewName('')
       await addToList(list.id)
     } catch {
-      showToast('Fehler beim Erstellen', 'error')
+      showToast(t('Fehler beim Erstellen'), 'error')
     } finally {
       setCreating(false)
     }
@@ -84,7 +86,7 @@ export default function AddToListSheet({ prayer, onClose }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Zu Liste hinzufügen</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 19, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Zu Liste hinzufügen')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>
@@ -100,7 +102,7 @@ export default function AddToListSheet({ prayer, onClose }) {
           <input
             value={newName}
             onChange={e => setNewName(e.target.value)}
-            placeholder="Neue Liste erstellen…"
+            placeholder={t('Neue Liste erstellen…')}
             style={{ flex: 1, padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', outline: 'none' }}
           />
           <button
@@ -121,9 +123,7 @@ export default function AddToListSheet({ prayer, onClose }) {
         {loading && <div style={{ height: 56, borderRadius: 12, backgroundColor: 'var(--color-bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />}
 
         {!loading && lists.length === 0 && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '12px 0', margin: 0 }}>
-            Noch keine Liste – erstelle oben deine erste.
-          </p>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '12px 0', margin: 0 }}>{t('Noch keine Liste – erstelle oben deine erste.')}</p>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -153,8 +153,7 @@ export default function AddToListSheet({ prayer, onClose }) {
                     {l.name}
                   </p>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
-                    {l.itemCount} Anliegen
-                  </p>
+                    {t('{itemCount} Anliegen', { itemCount: l.itemCount })}</p>
                 </div>
                 <div style={{
                   width: 26, height: 26, borderRadius: '50%', flexShrink: 0,

@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X, ExternalLink } from 'lucide-react'
+import { useT } from '../../i18n'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -18,17 +19,18 @@ function getInitials(name) {
 }
 
 export default function UserPinSheet({ user, onClose }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const isChristian = user.is_christian !== false
   const bioVisible = user.show_bio !== false && (user.bio_text || user.bio)
   const bioText = user.bio_text || user.bio
   const identityLabel = !isChristian
-    ? 'Noch nicht Christ/in'
+    ? t('Noch nicht Christ/in')
     : user.gender === 'brother'
-      ? 'Bruder in Christus'
+      ? t('Bruder in Christus')
       : user.gender === 'sister'
-        ? 'Schwester in Christus'
-        : 'Bruder/Schwester in Christus'
+        ? t('Schwester in Christus')
+        : t('Bruder/Schwester in Christus')
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
@@ -100,7 +102,7 @@ export default function UserPinSheet({ user, onClose }) {
 
         {user.distance != null && (
           <p style={{ fontSize: 12, color: C.textTer, textAlign: 'center', marginBottom: 16 }}>
-            {user.distance < 1 ? 'Weniger als 1 km entfernt' : `${Math.round(user.distance)} km entfernt`}
+            {user.distance < 1 ? t('Weniger als 1 km entfernt') : t('{n} km entfernt', { n: Math.round(user.distance) })}
           </p>
         )}
 
@@ -114,7 +116,7 @@ export default function UserPinSheet({ user, onClose }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          <ExternalLink size={15} /> Vollständiges Profil ansehen
+          <ExternalLink size={15} /> {t('Vollständiges Profil ansehen')}
         </button>
       </div>
     </div>,

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 const AddressAutocomplete = lazy(() => import('../common/AddressAutocomplete'))
 import { useToast } from '../../context/ToastContext'
+import { useT } from '../../i18n'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -46,6 +47,7 @@ function Toggle({ checked, onChange }) {
 }
 
 function PrecisionGroup({ title, value, onChange, disabled }) {
+  const { t } = useT()
   return (
     <div style={{ marginBottom: 20, opacity: disabled ? 0.45 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
       <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: '0 0 8px' }}>{title}</p>
@@ -68,7 +70,7 @@ function PrecisionGroup({ title, value, onChange, disabled }) {
               }}
             >
               <span>{opt.icon}</span>
-              <span style={{ flex: 1 }}>{opt.label}</span>
+              <span style={{ flex: 1 }}>{t(opt.label)}</span>
               {active && <span style={{ fontSize: 12, color: C.accent }}>●</span>}
             </button>
           )
@@ -79,6 +81,7 @@ function PrecisionGroup({ title, value, onChange, disabled }) {
 }
 
 export default function LocationSettingsSheet({ myProfile, updateLocationSettings, updateLocationVisibility, onClose }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const [savingAddr, setSavingAddr] = useState(false)
 
@@ -88,7 +91,7 @@ export default function LocationSettingsSheet({ myProfile, updateLocationSetting
 
   const addrValue = myProfile?.latitude != null && myProfile?.longitude != null
     ? {
-        shortName: myProfile.address_full || myProfile.city || 'Mein Standort',
+        shortName: myProfile.address_full || myProfile.city || t('Mein Standort'),
         lat: myProfile.latitude,
         lng: myProfile.longitude,
       }
@@ -107,18 +110,18 @@ export default function LocationSettingsSheet({ myProfile, updateLocationSetting
       country: loc.country || null,
     })
     setSavingAddr(false)
-    showToast(ok ? 'Adresse gespeichert ✓' : 'Fehler beim Speichern', ok ? 'success' : 'error')
+    showToast(ok ? t('Adresse gespeichert ✓') : t('Fehler beim Speichern'), ok ? 'success' : 'error')
   }
 
   async function handleToggleMap() {
     const ok = await updateLocationVisibility(!showOnMap)
-    showToast(ok ? (!showOnMap ? 'Auf der Weltkarte sichtbar ✓' : 'Nicht mehr auf der Weltkarte') : 'Fehler beim Speichern', ok ? 'success' : 'error')
+    showToast(ok ? (!showOnMap ? t('Auf der Weltkarte sichtbar ✓') : t('Nicht mehr auf der Weltkarte')) : t('Fehler beim Speichern'), ok ? 'success' : 'error')
   }
 
   async function handlePrecisionChange(audience, value) {
     const key = audience === 'public' ? 'location_precision_public' : 'location_precision_friends'
     const ok = await updateLocationSettings({ [key]: value })
-    showToast(ok ? 'Sichtbarkeit aktualisiert ✓' : 'Fehler beim Speichern', ok ? 'success' : 'error')
+    showToast(ok ? t('Sichtbarkeit aktualisiert ✓') : t('Fehler beim Speichern'), ok ? 'success' : 'error')
   }
 
   return createPortal(
@@ -140,21 +143,21 @@ export default function LocationSettingsSheet({ myProfile, updateLocationSetting
         </button>
 
         <h3 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: '0 0 4px' }}>
-          Standort-Einstellungen
+          {t('Standort-Einstellungen')}
         </h3>
         <p style={{ fontSize: 12, color: C.textTer, margin: '0 0 20px', lineHeight: 1.5 }}>
-          Lege deine Adresse fest und bestimme, wer wie genau sieht, wo du bist.
+          {t('Lege deine Adresse fest und bestimme, wer wie genau sieht, wo du bist.')}
         </p>
 
         {/* Adresse */}
-        <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: '0 0 8px' }}>Deine Adresse</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: '0 0 8px' }}>{t('Deine Adresse')}</p>
         <Suspense fallback={null}><AddressAutocomplete
           value={addrValue}
           onChange={handleSelectAddress}
-          placeholder="Straße und Hausnummer eingeben…"
+          placeholder={t('Straße und Hausnummer eingeben…')}
         /></Suspense>
         <p style={{ fontSize: 11, color: C.textTer, margin: '6px 2px 20px', lineHeight: 1.5 }}>
-          {savingAddr ? 'Wird gespeichert…' : 'Wird per Google-Suche automatisch erkannt und gespeichert.'}
+          {savingAddr ? t('Wird gespeichert…') : t('Wird per Google-Suche automatisch erkannt und gespeichert.')}
         </p>
 
         {/* Master-Toggle */}
@@ -165,9 +168,9 @@ export default function LocationSettingsSheet({ myProfile, updateLocationSetting
           marginBottom: 20,
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: C.text }}>Auf der Weltkarte sichtbar</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: C.text }}>{t('Auf der Weltkarte sichtbar')}</p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>
-              Grundschalter – bei „Aus" siehst du niemanden auf der Karte und wirst selbst für niemanden angezeigt.
+              {t('Grundschalter – bei „Aus" siehst du niemanden auf der Karte und wirst selbst für niemanden angezeigt.')}
             </p>
           </div>
           <Toggle checked={showOnMap} onChange={handleToggleMap} />
@@ -175,20 +178,20 @@ export default function LocationSettingsSheet({ myProfile, updateLocationSetting
 
         {/* Präzision pro Zielgruppe */}
         <PrecisionGroup
-          title="Sichtbar für alle Nutzer"
+          title={t('Sichtbar für alle Nutzer')}
           value={precisionPublic}
           onChange={(v) => handlePrecisionChange('public', v)}
           disabled={!showOnMap}
         />
         <PrecisionGroup
-          title="Sichtbar für Freunde"
+          title={t('Sichtbar für Freunde')}
           value={precisionFriends}
           onChange={(v) => handlePrecisionChange('friends', v)}
           disabled={!showOnMap}
         />
 
         <p style={{ fontSize: 11, color: C.textTer, margin: '4px 2px 0', lineHeight: 1.5 }}>
-          Änderungen werden sofort gespeichert. Freunde können unabhängig von der öffentlichen Stufe eine genauere Ansicht bekommen.
+          {t('Änderungen werden sofort gespeichert. Freunde können unabhängig von der öffentlichen Stufe eine genauere Ansicht bekommen.')}
         </p>
       </div>
     </div>,

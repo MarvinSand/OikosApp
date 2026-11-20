@@ -6,6 +6,7 @@ import { useAllNotificationPrefs } from '../hooks/useAllNotificationPrefs'
 import { useEmailNotificationPrefs } from '../hooks/useEmailNotificationPrefs'
 import { NOTIFICATION_PREF_FIELDS } from '../lib/notificationPrefFields'
 import { NOTIFICATION_TYPE_META } from '../lib/notificationTypeMeta'
+import { useT } from '../i18n'
 
 function getInitials(name) {
   if (!name) return '?'
@@ -33,6 +34,7 @@ const EMAILABLE_TYPES = Object.keys(NOTIFICATION_TYPE_META)
 
 export default function NotificationSettingsView() {
   const navigate = useNavigate()
+  const { t } = useT()
   const { friends, loading: friendsLoading } = useFriendships()
   const { getPrefs, loading: prefsLoading } = useAllNotificationPrefs()
   const { emailTypes, loading: emailLoading, toggleType } = useEmailNotificationPrefs()
@@ -42,18 +44,18 @@ export default function NotificationSettingsView() {
   return (
     <div className="bg-bg min-h-full pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
-      <PageHeader title="Benachrichtigungs-Einstellungen" />
+      <PageHeader title={t('Benachrichtigungs-Einstellungen')} />
 
       {/* Per E-Mail benachrichtigen */}
       <div className="px-4 pt-5">
         <div className="flex items-center gap-2 mb-1">
           <Mail size={15} color="var(--color-accent)" />
           <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            Per E-Mail benachrichtigen
+            {t('Per E-Mail benachrichtigen')}
           </p>
         </div>
         <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>
-          Zusätzlich zur Benachrichtigung in der App auch per E-Mail informiert werden.
+          {t('Zusätzlich zur Benachrichtigung in der App auch per E-Mail informiert werden.')}
         </p>
         <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderRadius: 12, padding: '2px 14px' }}>
           {EMAILABLE_TYPES.map(type => {
@@ -81,18 +83,18 @@ export default function NotificationSettingsView() {
       {/* Von wem bekomme ich was */}
       <div className="px-4 pt-6">
         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 2px' }}>
-          Von wem bekomme ich was
+          {t('Von wem bekomme ich was')}
         </p>
         <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>
-          Tippe auf eine Person, um die Einstellungen für sie anzupassen.
+          {t('Tippe auf eine Person, um die Einstellungen für sie anzupassen.')}
         </p>
 
         {loading && (
-          <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>Lade…</p>
+          <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>{t('Lade…')}</p>
         )}
         {!loading && friends.length === 0 && (
           <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>
-            Noch keine Geschwister verbunden.
+            {t('Noch keine Geschwister verbunden.')}
           </p>
         )}
         {!loading && friends.map(f => {
@@ -120,7 +122,7 @@ export default function NotificationSettingsView() {
                   color: activeCount > 0 ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
                 }}
               >
-                {activeCount}/{NOTIFICATION_PREF_FIELDS.length} aktiv
+                {t('{a}/{n} aktiv', { a: activeCount, n: NOTIFICATION_PREF_FIELDS.length })}
               </span>
             </button>
           )

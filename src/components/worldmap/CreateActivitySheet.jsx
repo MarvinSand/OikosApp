@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X, Navigation, MapPin, Search, Globe, Users, UserCheck } from 'lucide-react'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { useToast } from '../../context/ToastContext'
+import { useT, tr } from '../../i18n'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
@@ -71,6 +72,7 @@ const inp = {
 }
 
 function SiblingPicker({ selected, onChange }) {
+  const { t } = useT()
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [siblings, setSiblings] = useState([])
@@ -105,11 +107,11 @@ function SiblingPicker({ selected, onChange }) {
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Geschwister suchen…"
+          placeholder={t('Geschwister suchen…')}
           style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, background: 'transparent', color: C.text }}
         />
       </div>
-      {loading && <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', margin: '14px 0' }}>Lade…</p>}
+      {loading && <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', margin: '14px 0' }}>{t('Lade…')}</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
         {filtered.map(s => {
           const checked = selected.includes(s.id)
@@ -137,7 +139,7 @@ function SiblingPicker({ selected, onChange }) {
           )
         })}
         {!loading && filtered.length === 0 && (
-          <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', margin: '14px 0' }}>Keine Geschwister gefunden</p>
+          <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', margin: '14px 0' }}>{t('Keine Geschwister gefunden')}</p>
         )}
       </div>
     </div>
@@ -155,6 +157,7 @@ function MapPickerPinContent() {
 }
 
 export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
   const { myCommunities } = useCommunities()
@@ -273,7 +276,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   }, [miniMap, form.latitude, form.longitude])
 
   function handleGetGPS() {
-    if (!navigator.geolocation) { showToast('Standort wird auf diesem Gerät nicht unterstützt – bitte Adresse oder Karte nutzen', 'error'); return }
+    if (!navigator.geolocation) { showToast(t('Standort wird auf diesem Gerät nicht unterstützt – bitte Adresse oder Karte nutzen'), 'error'); return }
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
       async pos => {
@@ -286,15 +289,15 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
           if (label) setLocationLabel(label)
         } catch { /* Label optional – Koordinaten sind gesetzt */ }
         setReverseLoading(false)
-        showToast('Standort ermittelt ✓')
+        showToast(t('Standort ermittelt ✓'))
       },
       err => {
         setLocating(false)
         const msg = err?.code === 1
-          ? 'Standortzugriff blockiert. Bitte in den Browser-/Safari-Einstellungen erlauben – oder „Adresse" bzw. „Karte" nutzen.'
+          ? t('Standortzugriff blockiert. Bitte in den Browser-/Safari-Einstellungen erlauben – oder „Adresse" bzw. „Karte" nutzen.')
           : err?.code === 2
-            ? 'Standort nicht verfügbar. Bitte „Adresse" oder „Karte" nutzen.'
-            : 'Zeitüberschreitung beim Ermitteln. Bitte erneut versuchen – oder „Adresse"/„Karte" nutzen.'
+            ? t('Standort nicht verfügbar. Bitte „Adresse" oder „Karte" nutzen.')
+            : t('Zeitüberschreitung beim Ermitteln. Bitte erneut versuchen – oder „Adresse"/„Karte" nutzen.')
         showToast(msg, 'error')
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
@@ -312,26 +315,26 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
   }
 
   async function handleSubmit() {
-    if (!form.category) { showToast('Bitte Event-Art wählen', 'error'); return }
-    if (form.category === 'sonstiges' && !form.customTitle.trim()) { showToast('Bitte eine Überschrift angeben', 'error'); return }
-    if (form.category === 'sonstiges' && !form.customEmoji) { showToast('Bitte ein Symbol wählen', 'error'); return }
-    if (!form.starts_at) { showToast('Bitte Startzeit angeben', 'error'); return }
+    if (!form.category) { showToast(t('Bitte Event-Art wählen'), 'error'); return }
+    if (form.category === 'sonstiges' && !form.customTitle.trim()) { showToast(t('Bitte eine Überschrift angeben'), 'error'); return }
+    if (form.category === 'sonstiges' && !form.customEmoji) { showToast(t('Bitte ein Symbol wählen'), 'error'); return }
+    if (!form.starts_at) { showToast(t('Bitte Startzeit angeben'), 'error'); return }
     if (form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)) {
-      showToast('Ende muss nach dem Start liegen', 'error'); return
+      showToast(t('Ende muss nach dem Start liegen'), 'error'); return
     }
-    if (!form.latitude || !form.longitude) { showToast('Bitte Standort setzen', 'error'); return }
+    if (!form.latitude || !form.longitude) { showToast(t('Bitte Standort setzen'), 'error'); return }
     if (form.visibility_mode === 'communities' && form.community_ids.length === 0) {
-      showToast('Bitte mindestens eine Gemeinde wählen', 'error'); return
+      showToast(t('Bitte mindestens eine Gemeinde wählen'), 'error'); return
     }
     if (form.visibility_mode === 'specific' && form.visibility_user_ids.length === 0) {
-      showToast('Bitte mindestens ein Geschwister wählen', 'error'); return
+      showToast(t('Bitte mindestens ein Geschwister wählen'), 'error'); return
     }
 
     setSubmitting(true)
     await onSubmit({
       title: form.category === 'sonstiges'
         ? (form.customTitle.trim() || 'Event')
-        : (selectedCat?.label || 'Event'),
+        : (selectedCat ? tr(selectedCat.label) : 'Event'),
       activity_type: form.category,
       activity_emoji: resolvedEmoji,
       description: form.description.trim() || null,
@@ -409,7 +412,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h3 style={{ fontSize: 19, fontWeight: 700, color: C.text, margin: 0 }}>
-            Event hosten
+            {t('Event hosten')}
           </h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.textTer, padding: 4, display: 'flex' }}>
             <X size={20} />
@@ -426,7 +429,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
         {/* ─── Schritt 1: Wer darf das Event sehen? ─── */}
         {step === 'visibility' && (
           <div>
-            <label style={lbl}>Wer darf das Event sehen?</label>
+            <label style={lbl}>{t('Wer darf das Event sehen?')}</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {VISIBILITY.map(v => {
                 const active = form.visibility_mode === v.key
@@ -443,7 +446,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                     }}
                   >
                     <Icon size={18} color={active ? C.accent : C.textSec} />
-                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: active ? C.accent : C.text }}>{v.label}</span>
+                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: active ? C.accent : C.text }}>{t(v.label)}</span>
                     {v.sub && <span style={{ marginLeft: 'auto', fontSize: 13, color: C.textTer }}>›</span>}
                   </button>
                 )
@@ -455,10 +458,10 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
         {/* ─── Schritt 2 (nur Gemeinde): Communities auswählen ─── */}
         {step === 'community' && (
           <div>
-            <label style={lbl}>Welche Gemeinde(n)?</label>
+            <label style={lbl}>{t('Welche Gemeinde(n)?')}</label>
             {myCommunities.length === 0 ? (
               <p style={{ fontSize: 13, color: C.textSec, textAlign: 'center', margin: '24px 0' }}>
-                Du bist noch in keiner Community. Tritt zuerst einer Gemeinde bei.
+                {t('Du bist noch in keiner Community. Tritt zuerst einer Gemeinde bei.')}
               </p>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -483,13 +486,13 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24 }}>
-              <button style={backBtn} onClick={() => setStep('visibility')}>← Zurück</button>
+              <button style={backBtn} onClick={() => setStep('visibility')}>{t('← Zurück')}</button>
               <button
                 style={nextBtn(form.community_ids.length > 0)}
                 disabled={form.community_ids.length === 0}
                 onClick={() => setStep('category')}
               >
-                Weiter ({form.community_ids.length})
+                {t('Weiter ({n})', { n: form.community_ids.length })}
               </button>
             </div>
           </div>
@@ -498,19 +501,19 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
         {/* ─── Schritt (nur Ausgewählte): Geschwister auswählen ─── */}
         {step === 'siblings' && (
           <div>
-            <label style={lbl}>Welche Geschwister?</label>
+            <label style={lbl}>{t('Welche Geschwister?')}</label>
             <SiblingPicker
               selected={form.visibility_user_ids}
               onChange={(ids) => set('visibility_user_ids', ids)}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24 }}>
-              <button style={backBtn} onClick={() => setStep('visibility')}>← Zurück</button>
+              <button style={backBtn} onClick={() => setStep('visibility')}>{t('← Zurück')}</button>
               <button
                 style={nextBtn(form.visibility_user_ids.length > 0)}
                 disabled={form.visibility_user_ids.length === 0}
                 onClick={() => setStep('category')}
               >
-                Weiter ({form.visibility_user_ids.length})
+                {t('Weiter ({n})', { n: form.visibility_user_ids.length })}
               </button>
             </div>
           </div>
@@ -519,7 +522,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
         {/* ─── Schritt: Was für ein Event? (Auto-Weiter beim Anklicken) ─── */}
         {step === 'category' && (
           <div>
-            <label style={lbl}>Was für ein Event?</label>
+            <label style={lbl}>{t('Was für ein Event?')}</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
               {EVENT_CATEGORIES.map(cat => {
                 const active = form.category === cat.key
@@ -535,7 +538,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                     }}
                   >
                     <span style={{ fontSize: 22 }}>{cat.key === 'sonstiges' ? (form.customEmoji || '✨') : cat.emoji}</span>
-                    <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: C.text }}>{cat.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: C.text }}>{t(cat.label)}</span>
                   </button>
                 )
               })}
@@ -544,26 +547,26 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
             {/* "Sonstiges": eigener Titel + frei wählbares Emoji */}
             {form.category === 'sonstiges' && (
               <div style={{ marginTop: 18 }}>
-                <label style={lbl}>Überschrift des Events *</label>
+                <label style={lbl}>{t('Überschrift des Events *')}</label>
                 <input
                   value={form.customTitle}
                   onChange={e => set('customTitle', e.target.value)}
-                  placeholder="z. B. Grillabend, Spieleabend …"
+                  placeholder={t('z. B. Grillabend, Spieleabend …')}
                   maxLength={60}
                   style={inp}
                 />
 
-                <label style={{ ...lbl, marginTop: 16 }}>Symbol *</label>
+                <label style={{ ...lbl, marginTop: 16 }}>{t('Symbol *')}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <input
                     value={form.customEmoji}
                     onChange={e => set('customEmoji', lastGrapheme(e.target.value))}
                     placeholder="🙂"
-                    aria-label="Emoji"
+                    aria-label={t('Emoji')}
                     style={{ ...inp, width: 64, flexShrink: 0, textAlign: 'center', fontSize: 26, padding: '8px 0' }}
                   />
                   <span style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>
-                    Tippe ins Feld und wähle über die Emoji-Tastatur ein beliebiges Symbol – oder nimm eines unten.
+                    {t('Tippe ins Feld und wähle über die Emoji-Tastatur ein beliebiges Symbol – oder nimm eines unten.')}
                   </span>
                 </div>
 
@@ -588,13 +591,13 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                   disabled={!form.customTitle.trim() || !form.customEmoji}
                   onClick={() => setStep('info')}
                 >
-                  Weiter
+                  {t('Weiter')}
                 </button>
               </div>
             )}
 
             <div style={{ marginTop: 24 }}>
-              <button style={backBtn} onClick={() => setStep(subStep || 'visibility')}>← Zurück</button>
+              <button style={backBtn} onClick={() => setStep(subStep || 'visibility')}>{t('← Zurück')}</button>
             </div>
           </div>
         )}
@@ -602,17 +605,17 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
         {/* ─── Schritt: Infos (optional) ─── */}
         {step === 'info' && (
           <div>
-            <label style={lbl}>Infos (optional)</label>
+            <label style={lbl}>{t('Infos (optional)')}</label>
             <textarea
               value={form.description}
               onChange={e => set('description', e.target.value)}
-              placeholder="Was sollten andere wissen?"
+              placeholder={t('Was sollten andere wissen?')}
               rows={4}
               style={{ ...inp, resize: 'vertical' }}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24 }}>
-              <button style={backBtn} onClick={() => setStep('category')}>← Zurück</button>
-              <button style={nextBtn(true)} onClick={() => setStep('when')}>Weiter</button>
+              <button style={backBtn} onClick={() => setStep('category')}>{t('← Zurück')}</button>
+              <button style={nextBtn(true)} onClick={() => setStep('when')}>{t('Weiter')}</button>
             </div>
           </div>
         )}
@@ -621,10 +624,10 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
         {step === 'when' && (
           <div>
             {/* Zeit von – bis */}
-            <label style={lbl}>Wann? (von – bis)</label>
+            <label style={lbl}>{t('Wann? (von – bis)')}</label>
             <div style={{ display: 'flex', gap: 10, marginBottom: 6 }}>
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 11, color: C.textSec, margin: '0 0 4px' }}>Start *</p>
+                <p style={{ fontSize: 11, color: C.textSec, margin: '0 0 4px' }}>{t('Start *')}</p>
                 <input
                   type="datetime-local"
                   value={form.starts_at}
@@ -633,7 +636,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 11, color: C.textSec, margin: '0 0 4px' }}>Ende</p>
+                <p style={{ fontSize: 11, color: C.textSec, margin: '0 0 4px' }}>{t('Ende')}</p>
                 <input
                   type="datetime-local"
                   value={form.ends_at}
@@ -645,7 +648,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
             </div>
 
             {/* Wiederholung */}
-            <label style={{ ...lbl, marginTop: 18 }}>Wiederholung</label>
+            <label style={{ ...lbl, marginTop: 18 }}>{t('Wiederholung')}</label>
             <div className="hide-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
               {RECURRENCE_FREQ_OPTIONS.map(opt => {
                 const active = form.recurrence_freq === opt.key
@@ -661,7 +664,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                       fontSize: 13, fontWeight: active ? 700 : 500,
                     }}
                   >
-                    {opt.label}
+                    {t(opt.label)}
                   </button>
                 )
               })}
@@ -671,7 +674,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               <div style={{ marginTop: 10, padding: 12, borderRadius: 12, background: C.bgSec, border: `1px solid ${C.border}` }}>
                 {/* Intervall */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 13, color: C.text }}>Alle</span>
+                  <span style={{ fontSize: 13, color: C.text }}>{t('Alle ')}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button
                       onClick={() => set('recurrence_interval', Math.max(1, (Number(form.recurrence_interval) || 1) - 1))}
@@ -686,7 +689,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                     >+</button>
                   </div>
                   <span style={{ fontSize: 13, color: C.text }}>
-                    {intervalUnitLabel(form.recurrence_freq, form.recurrence_interval)}
+                    {t(intervalUnitLabel(form.recurrence_freq, form.recurrence_interval))}
                   </span>
                 </div>
 
@@ -706,7 +709,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                             color: sel ? '#fff' : C.textSec,
                           }}
                         >
-                          {w.label}
+                          {t(w.label)}
                         </button>
                       )
                     })}
@@ -715,19 +718,19 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
 
                 {/* Ende der Serie */}
                 <div style={{ marginTop: 12 }}>
-                  <span style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Endet</span>
+                  <span style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>{t('Endet')}</span>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button
                       onClick={() => set('recurrence_end_date', '')}
                       style={smallToggle(!form.recurrence_end_date)}
                     >
-                      Nie
+                      {t('Nie')}
                     </button>
                     <button
                       onClick={() => set('recurrence_end_date', form.recurrence_end_date || (form.starts_at ? form.starts_at.slice(0, 10) : ''))}
                       style={smallToggle(!!form.recurrence_end_date)}
                     >
-                      An einem Datum
+                      {t('An einem Datum')}
                     </button>
                   </div>
                   {form.recurrence_end_date && (
@@ -744,11 +747,11 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
             )}
 
             {/* Standort */}
-            <label style={{ ...lbl, marginTop: 18 }}>Standort *</label>
+            <label style={{ ...lbl, marginTop: 18 }}>{t('Standort *')}</label>
             <div style={{ display: 'flex', gap: 4, padding: 4, background: C.bgSec, borderRadius: 12, marginBottom: 12 }}>
-              <button style={tabStyle(locTab === 'gps')} onClick={() => setLocTab('gps')}>📡 Mein Standort</button>
-              <button style={tabStyle(locTab === 'address')} onClick={() => setLocTab('address')}>🔎 Adresse</button>
-              <button style={tabStyle(locTab === 'map')} onClick={() => setLocTab('map')}>🗺 Karte</button>
+              <button style={tabStyle(locTab === 'gps')} onClick={() => setLocTab('gps')}>{t('📡 Mein Standort')}</button>
+              <button style={tabStyle(locTab === 'address')} onClick={() => setLocTab('address')}>{t('🔎 Adresse')}</button>
+              <button style={tabStyle(locTab === 'map')} onClick={() => setLocTab('map')}>{t('🗺 Karte')}</button>
             </div>
 
             {/* GPS tab */}
@@ -769,7 +772,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                   }}
                 >
                   <Navigation size={16} />
-                  {locating ? 'Ermittle Standort…' : form.latitude ? 'Aktueller Standort gesetzt ✓' : 'Aktuellen Standort verwenden'}
+                  {locating ? t('Ermittle Standort…') : form.latitude ? t('Aktueller Standort gesetzt ✓') : t('Aktuellen Standort verwenden')}
                 </button>
                 {myProfile?.latitude && (
                   <button
@@ -781,7 +784,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                       cursor: 'pointer', width: '100%',
                     }}
                   >
-                    📍 Meinen Profilstandort verwenden
+                    {t('📍 Meinen Profilstandort verwenden')}
                   </button>
                 )}
               </div>
@@ -792,7 +795,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               <AddressAutocomplete
                 value={form.latitude ? { shortName: locationLabel, lat: form.latitude, lng: form.longitude } : null}
                 onChange={(loc) => applyLocation(loc.lat, loc.lng, loc.shortName)}
-                placeholder="Adresse oder Ort suchen…"
+                placeholder={t('Adresse oder Ort suchen…')}
               />
             )}
 
@@ -800,7 +803,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
             {locTab === 'map' && (
               <div>
                 <p style={{ fontSize: 11, color: C.textSec, margin: '0 0 8px' }}>
-                  Tippe auf die Karte, um den Standort zu setzen.
+                  {t('Tippe auf die Karte, um den Standort zu setzen.')}
                 </p>
                 <div style={{ height: 220, borderRadius: 12, overflow: 'hidden', border: `1px solid ${C.border}` }}>
                   {isLoaded ? (
@@ -839,19 +842,19 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
                 <MapPin size={14} color={C.accentDark} />
                 <p style={{ fontSize: 12, color: C.accentDark, margin: 0, fontWeight: 600 }}>
-                  {reverseLoading ? 'Adresse wird ermittelt…' : (locationLabel || 'Standort gesetzt')}
+                  {reverseLoading ? t('Adresse wird ermittelt…') : (locationLabel || t('Standort gesetzt'))}
                 </p>
               </div>
             )}
             {!form.latitude && (
               <p style={{ fontSize: 11, color: C.error, marginTop: 8 }}>
-                Bitte Standort setzen
+                {t('Bitte Standort setzen')}
               </p>
             )}
 
             {/* Zurück + Submit */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 22 }}>
-              <button style={backBtn} onClick={() => setStep('info')}>← Zurück</button>
+              <button style={backBtn} onClick={() => setStep('info')}>{t('← Zurück')}</button>
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
@@ -863,7 +866,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                   opacity: submitting ? 0.7 : 1, transition: 'all 0.15s',
                 }}
               >
-                {submitting ? 'Wird gehostet…' : 'Event hosten 📍'}
+                {submitting ? t('Wird gehostet…') : t('Event hosten 📍')}
               </button>
             </div>
           </div>

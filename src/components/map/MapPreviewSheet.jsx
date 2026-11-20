@@ -4,6 +4,7 @@ import { X, Maximize2, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { usePublicMap } from '../../hooks/usePublicMap'
 import MapCanvas from './MapCanvas'
+import { useT } from '../../i18n'
 
 // Zeigt die echte Map einer verlinkten Person unverändert (keine
 // Koordinaten-Übersetzung, keine gemeinsame Kollisionsauflösung mit der
@@ -12,6 +13,7 @@ import MapCanvas from './MapCanvas'
 // Person selbst auf ihrer Map sieht. Ergänzt (ersetzt nicht) das
 // eingeblendete Overlay direkt auf der eigenen Karte.
 export default function MapPreviewSheet({ userId, initialMapId, onClose }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const [maps, setMaps] = useState(null) // null = noch am Laden
   const [selectedMapId, setSelectedMapId] = useState(initialMapId || null)
@@ -78,13 +80,13 @@ export default function MapPreviewSheet({ userId, initialMapId, onClose }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px 10px', flexShrink: 0 }}>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {ownerName ? `${ownerName}s Map` : 'Map'}
+            {ownerName ? t('{name}s Map', { name: ownerName }) : t('Map')}
           </span>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             {selectedMapId && (
               <button
                 onClick={handleFullscreen}
-                aria-label="Vollbild"
+                aria-label={t('Vollbild')}
                 style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid var(--color-warm-3)', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               >
                 <Maximize2 size={15} color="var(--color-warm-1)" />
@@ -92,7 +94,7 @@ export default function MapPreviewSheet({ userId, initialMapId, onClose }) {
             )}
             <button
               onClick={onClose}
-              aria-label="Schließen"
+              aria-label={t('Schließen')}
               style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid var(--color-warm-3)', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
             >
               <X size={15} color="var(--color-text-muted)" />
@@ -126,7 +128,7 @@ export default function MapPreviewSheet({ userId, initialMapId, onClose }) {
           {showEmpty ? (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
-                Keine öffentliche Map verfügbar.
+                {t('Keine öffentliche Map verfügbar.')}
               </p>
             </div>
           ) : loading || !selectedMapId ? (

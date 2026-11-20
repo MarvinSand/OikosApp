@@ -2,19 +2,20 @@ import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/layout/PageHeader'
 import { ChevronLeft } from 'lucide-react'
 import { usePrayerStats } from '../hooks/usePrayerStats'
+import { useT, tr } from '../i18n'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function formatSeconds(secs) {
-  if (!secs || secs < 60) return `${secs || 0} Sek.`
+  if (!secs || secs < 60) return tr('{n} Sek.', { n: secs || 0 })
   const h = Math.floor(secs / 3600)
   const m = Math.floor((secs % 3600) / 60)
   if (h > 0) return `${h}h ${m > 0 ? m + 'min' : ''}`.trim()
-  return `${m} Minuten`
+  return tr('{n} Minuten', { n: m })
 }
 
 function formatAvgSecs(secs) {
-  if (!secs || secs < 60) return `${secs || 0} Sek.`
-  return `${Math.floor(secs / 60)} Minuten`
+  if (!secs || secs < 60) return tr('{n} Sek.', { n: secs || 0 })
+  return tr('{n} Minuten', { n: Math.floor(secs / 60) })
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────
@@ -81,11 +82,10 @@ function WeeklyBarChart({ data }) {
 
 // ─── Donut Chart ──────────────────────────────────────────────
 function CategoryChart({ data }) {
+  const { t } = useT()
   if (!data || data.length === 0) {
     return (
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>
-        Noch keine Kategorien zugewiesen
-      </p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>{t('Noch keine Kategorien zugewiesen')}</p>
     )
   }
 
@@ -147,11 +147,10 @@ function CategoryChart({ data }) {
 
 // ─── Monthly Answered Bars ────────────────────────────────────
 function MonthlyAnsweredChart({ data }) {
+  const { t } = useT()
   if (!data || data.length === 0) {
     return (
-      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>
-        Noch keine erhörten Gebete eingetragen
-      </p>
+      <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>{t('Noch keine erhörten Gebete eingetragen')}</p>
     )
   }
 
@@ -166,8 +165,7 @@ function MonthlyAnsweredChart({ data }) {
               {label}
             </span>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-success)' }}>
-              {count} erhört
-            </span>
+              {t('{count} erhört', { count })}</span>
           </div>
           <div style={{ height: 8, borderRadius: 4, backgroundColor: 'var(--color-warm-3)', overflow: 'hidden' }}>
             <div style={{
@@ -208,6 +206,7 @@ function SectionCard({ title, children }) {
 
 // ─── PrayerStatsView ──────────────────────────────────────────
 export default function PrayerStatsView() {
+  const { t } = useT()
   const navigate = useNavigate()
   const {
     stats,
@@ -238,7 +237,7 @@ export default function PrayerStatsView() {
       margin: '0 auto',
     }}>
       {/* Header */}
-      <PageHeader title="Meine Gebetsreise" subtitle="Deine persönliche Geschichte mit Gott" />
+      <PageHeader title={t('Meine Gebetsreise')} subtitle={t('Deine persönliche Geschichte mit Gott')} />
 
       <div style={{ padding: '16px 16px 0' }}>
         {loading ? (
@@ -262,36 +261,32 @@ export default function PrayerStatsView() {
         ) : !hasEnoughData ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <span style={{ fontSize: 48, display: 'block', marginBottom: 16 }}>🌱</span>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: 'var(--color-text)', marginBottom: 8 }}>
-              Kommt bald
-            </p>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.65 }}>
-              Deine Statistiken erscheinen sobald du deine ersten Gebete eingetragen hast.
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: 'var(--color-text)', marginBottom: 8 }}>{t('Kommt bald')}</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.65 }}>{t('Deine Statistiken erscheinen sobald du deine ersten Gebete eingetragen hast.')}</p>
           </div>
         ) : (
           <>
             {/* Abschnitt 1: Übersicht */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-              <StatTile icon="🔥" value={stats?.current_streak || 0} label="Tage Streak" />
-              <StatTile icon="🙏" value={stats?.total_prayers || weeklyActivity.reduce((s, d) => s + d.count, 0)} label="Gebete gesamt" />
-              <StatTile icon="👥" value={peopleCount} label="Menschen gebetet" />
-              <StatTile icon="🎉" value={answeredCount} label="Erhörte Gebete" />
+              <StatTile icon="🔥" value={stats?.current_streak || 0} label={t('Tage Streak')} />
+              <StatTile icon="🙏" value={stats?.total_prayers || weeklyActivity.reduce((s, d) => s + d.count, 0)} label={t('Gebete gesamt')} />
+              <StatTile icon="👥" value={peopleCount} label={t('Menschen gebetet')} />
+              <StatTile icon="🎉" value={answeredCount} label={t('Erhörte Gebete')} />
             </div>
 
             {/* Abschnitt 2: Aktivitäts-Diagramm */}
-            <SectionCard title="📅 Letzte 7 Tage">
+            <SectionCard title={t('📅 Letzte 7 Tage')}>
               <WeeklyBarChart data={weeklyActivity} />
             </SectionCard>
 
             {/* Abschnitt 3: Gebetszeit */}
             {totalPrayerTime > 0 && (
-              <SectionCard title="⏱ Gebetszeit">
+              <SectionCard title={t('⏱ Gebetszeit')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[
-                    ['Diese Woche', weekPrayerTime],
-                    ['Diesen Monat', monthPrayerTime],
-                    ['Gesamt', totalPrayerTime],
+                    [tr('Diese Woche'), weekPrayerTime],
+                    [tr('Diesen Monat'), monthPrayerTime],
+                    [tr('Gesamt'), totalPrayerTime],
                   ].map(([label, val]) => (
                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid var(--color-warm-3)' }}>
                       <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>{label}</span>
@@ -300,7 +295,7 @@ export default function PrayerStatsView() {
                   ))}
                   {avgSessionTime > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>⌀ Pro Gebetszeit</span>
+                      <span style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>{t('⌀ Pro Gebetszeit')}</span>
                       <span style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{formatAvgSecs(avgSessionTime)}</span>
                     </div>
                   )}
@@ -310,14 +305,14 @@ export default function PrayerStatsView() {
 
             {/* Abschnitt 4: Kategorien */}
             {categoryBreakdown.length > 0 && (
-              <SectionCard title="🏷 Kategorien">
+              <SectionCard title={t('🏷 Kategorien')}>
                 <CategoryChart data={categoryBreakdown} />
               </SectionCard>
             )}
 
             {/* Abschnitt 5: Erhörte Gebete pro Monat */}
             {monthlyAnswered.length > 0 && (
-              <SectionCard title="🎉 Erhörte Gebete">
+              <SectionCard title={t('🎉 Erhörte Gebete')}>
                 <MonthlyAnsweredChart data={monthlyAnswered} />
               </SectionCard>
             )}
@@ -329,9 +324,7 @@ export default function PrayerStatsView() {
               borderRadius: 16, padding: '18px 16px',
               marginBottom: 12,
             }}>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, color: 'var(--color-gold-text)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                💛 Für dich
-              </p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, color: 'var(--color-gold-text)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('💛 Für dich')}</p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-gold-text)', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
                 „{encouragement}"
               </p>
@@ -340,7 +333,7 @@ export default function PrayerStatsView() {
         )}
       </div>
 
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }`}</style>
+      <style>{'@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }'}</style>
     </div>
   )
 }

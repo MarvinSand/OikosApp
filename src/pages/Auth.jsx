@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext'
 import { useYouVersionSignIn } from '../hooks/useYouVersionAccount'
 import { isNativeApp } from '../lib/platform'
 import { TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
+import { useT } from '../i18n'
 
 // Offene E-Mail-Bestätigung merken, damit die Code-Eingabe auch nach einem
 // App-Neustart (z. B. nach dem Wechsel in die Mail-App) wieder erscheint.
@@ -15,6 +16,12 @@ const PENDING_VERIFY_KEY = 'oikos_pending_verify'
 const PENDING_VERIFY_MAX_AGE_MS = 24 * 60 * 60 * 1000
 const RESEND_COOLDOWN_S = 60
 const CODE_LENGTH = 6
+
+// Setzt `node` (z. B. fett gedruckte E-Mail) an die Stelle von {email} im übersetzten Text.
+function withEmail(text, node) {
+  const parts = text.split('{email}')
+  return parts.flatMap((p, i) => (i < parts.length - 1 ? [p, node] : [p]))
+}
 
 function readPendingVerify() {
   try {
@@ -44,6 +51,7 @@ function isRateLimit(err) {
 }
 
 export default function Auth() {
+  const { t, lang } = useT()
   // ?mode=register (Landingpage-CTA) öffnet direkt die Registrierung
   const wantsRegister = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'register'
   const pendingVerify = typeof window !== 'undefined' ? readPendingVerify() : null
@@ -70,8 +78,8 @@ export default function Auth() {
   // Countdown für "Code erneut senden"
   useEffect(() => {
     if (resendIn <= 0) return
-    const t = setTimeout(() => setResendIn(s => s - 1), 1000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setResendIn(s => s - 1), 1000)
+    return () => clearTimeout(timer)
   }, [resendIn])
 
   function startVerify(addr) {
@@ -103,13 +111,13 @@ export default function Auth() {
         await login(email, password)
       } else {
         if (!acceptedTerms) {
-          setError('Bitte akzeptiere die Nutzungsbedingungen.')
+          setError(t('Bitte akzeptiere die Nutzungsbedingungen.'))
           return
         }
         // Benutzername-Verfügbarkeit vor der Registrierung prüfen
         const { data: available, error: checkErr } = await supabase.rpc('is_username_available', { p_username: username.trim() })
         if (!checkErr && available === false) {
-          setError('Dieser Benutzername ist bereits vergeben.')
+          setError(t('Dieser Benutzername ist bereits vergeben.'))
           return
         }
         const data = await register(email, password, fullName, gender, username.trim())
@@ -124,9 +132,9 @@ export default function Auth() {
       if (err.message?.toLowerCase().includes('email not confirmed')) {
         setEmailNotConfirmed(true)
       } else if (err.code === '23505' || err.message?.toLowerCase().includes('duplicate') || err.message?.toLowerCase().includes('unique')) {
-        setError('Dieser Benutzername ist bereits vergeben.')
+        setError(t('Dieser Benutzername ist bereits vergeben.'))
       } else {
-        setError(err.message || 'Ein Fehler ist aufgetreten.')
+        setError(t(err.message || 'Ein Fehler ist aufgetreten.'))
       }
     } finally {
       setIsLoading(false)
@@ -141,15 +149,15 @@ export default function Auth() {
       setError('')
       setEmailNotConfirmed(false)
       startVerify(email.trim())
-      showToast('Code gesendet ✓')
+      showToast(t('Code gesendet ✓'))
     } catch (err) {
       if (isRateLimit(err)) {
         // Es wurde gerade erst ein Code verschickt – trotzdem zur Eingabe
         setEmailNotConfirmed(false)
         startVerify(email.trim())
-        showToast('Bitte nutze den zuletzt gesendeten Code oder warte kurz.', 'error')
+        showToast(t('Bitte nutze den zuletzt gesendeten Code oder warte kurz.'), 'error')
       } else {
-        showToast(err?.message || 'Fehler beim Senden', 'error')
+        showToast(err?.message || t('Fehler beim Senden'), 'error')
       }
     } finally {
       setIsLoading(false)
@@ -158,7 +166,7 @@ export default function Auth() {
 
   async function submitVerifyCode(value) {
     setError('')
-    if (value.length !== CODE_LENGTH) { setError(`Bitte den ${CODE_LENGTH}-stelligen Code aus der E-Mail eingeben.`); return }
+    if (value.length !== CODE_LENGTH) { setError(t('Bitte den {n}-stelligen Code aus der E-Mail eingeben.', { n: CODE_LENGTH })); return }
     if (isLoading) return
     lastSubmittedCode.current = value
     setIsLoading(true)
@@ -168,10 +176,10 @@ export default function Auth() {
       // Session ist da – App.jsx leitet automatisch weiter
     } catch (err) {
       const c = authErrorCode(err)
-      if (isRateLimit(err)) setError('Zu viele Versuche. Bitte warte einen Moment.')
-      else if (c === 'otp_expired' || /expired|invalid/i.test(err?.message || '')) setError('Der Code ist ungültig oder abgelaufen. Prüfe die Ziffern oder fordere einen neuen Code an.')
-      else if (/fetch|network|timeout/i.test(err?.message || '')) setError('Keine Verbindung. Bitte prüfe dein Internet und versuche es erneut.')
-      else setError('Der Code ist ungültig oder abgelaufen.')
+      if (isRateLimit(err)) setError(t('Zu viele Versuche. Bitte warte einen Moment.'))
+      else if (c === 'otp_expired' || /expired|invalid/i.test(err?.message || '')) setError(t('Der Code ist ungültig oder abgelaufen. Prüfe die Ziffern oder fordere einen neuen Code an.'))
+      else if (/fetch|network|timeout/i.test(err?.message || '')) setError(t('Keine Verbindung. Bitte prüfe dein Internet und versuche es erneut.'))
+      else setError(t('Der Code ist ungültig oder abgelaufen.'))
     } finally {
       setIsLoading(false)
     }
@@ -199,13 +207,13 @@ export default function Auth() {
       lastSubmittedCode.current = ''
       setError('')
       setResendIn(RESEND_COOLDOWN_S)
-      showToast('Neuer Code gesendet ✓')
+      showToast(t('Neuer Code gesendet ✓'))
     } catch (err) {
       if (isRateLimit(err)) {
         setResendIn(RESEND_COOLDOWN_S)
-        showToast('Bitte warte kurz, bevor du einen neuen Code anforderst.', 'error')
+        showToast(t('Bitte warte kurz, bevor du einen neuen Code anforderst.'), 'error')
       } else {
-        showToast(err?.message || 'Fehler beim Senden', 'error')
+        showToast(err?.message || t('Fehler beim Senden'), 'error')
       }
     }
   }
@@ -218,9 +226,9 @@ export default function Auth() {
   async function handleResendCode() {
     try {
       await resetFlow.sendCode(email)
-      showToast('Code erneut gesendet ✓')
+      showToast(t('Code erneut gesendet ✓'))
     } catch {
-      showToast('Fehler beim Senden', 'error')
+      showToast(t('Fehler beim Senden'), 'error')
     }
   }
 
@@ -228,7 +236,7 @@ export default function Auth() {
     e.preventDefault()
     const ok = await resetFlow.submit(email)
     if (ok) {
-      showToast('Passwort geändert ✓')
+      showToast(t('Passwort geändert ✓'))
       setTimeout(goToLogin, 1500)
     }
   }
@@ -248,7 +256,7 @@ export default function Auth() {
           <Cross size={22} className="text-warm-2" strokeWidth={2.5} />
         </div>
         <p className="font-serif italic text-sm text-dark-muted leading-relaxed">
-          „Dein Umfeld. Dein Gebet. Deine Mission."
+          {t('„Dein Umfeld. Dein Gebet. Deine Mission."')}
         </p>
       </div>
 
@@ -260,12 +268,12 @@ export default function Auth() {
           <>
             {/* Tab Switch */}
             <div className="flex bg-warm-4/50 p-1.5 rounded-2xl mb-7 backdrop-blur-sm">
-              {[['login', 'Anmelden'], ['register', 'Registrieren']].map(([t, label]) => (
+              {[['login', t('Anmelden')], ['register', t('Registrieren')]].map(([k, label]) => (
                 <button
-                  key={t}
-                  onClick={() => { setView(t); setError('') }}
+                  key={k}
+                  onClick={() => { setView(k); setError('') }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
-                    view === t 
+                    view === k 
                       ? 'bg-bg text-warm-1 shadow-sm font-semibold' 
                       : 'text-dark-muted hover:text-dark'
                   }`}
@@ -279,23 +287,23 @@ export default function Auth() {
               {view === 'register' && (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-dark-muted ml-1">Vollständiger Name</label>
+                    <label className="text-sm font-medium text-dark-muted ml-1">{t('Vollständiger Name')}</label>
                     <input 
                       type="text" 
                       value={fullName} 
                       onChange={e => setFullName(e.target.value)} 
-                      placeholder="Max Mustermann" 
+                      placeholder={t('Max Mustermann')} 
                       required 
                       className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-dark-muted ml-1">Benutzername</label>
+                    <label className="text-sm font-medium text-dark-muted ml-1">{t('Benutzername')}</label>
                     <input
                       type="text"
                       value={username}
                       onChange={e => setUsername(e.target.value)}
-                      placeholder="z.B. max_mustermann"
+                      placeholder={t('z.B. max_mustermann')}
                       required
                       minLength={3}
                       autoCapitalize="none"
@@ -304,9 +312,9 @@ export default function Auth() {
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-dark-muted ml-1">Geschlecht</label>
+                    <label className="text-sm font-medium text-dark-muted ml-1">{t('Geschlecht')}</label>
                     <div className="flex gap-2">
-                      {[['brother', '🙋‍♂️ Bruder'], ['sister', '🙋‍♀️ Schwester']].map(([val, label]) => (
+                      {[['brother', t('🙋‍♂️ Bruder')], ['sister', t('🙋‍♀️ Schwester')]].map(([val, label]) => (
                         <button
                           key={val}
                           type="button"
@@ -326,12 +334,12 @@ export default function Auth() {
               )}
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-dark-muted ml-1">E-Mail</label>
+                <label className="text-sm font-medium text-dark-muted ml-1">{t('E-Mail')}</label>
                 <input 
                   type="email" 
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
-                  placeholder="name@beispiel.de" 
+                  placeholder={t('name@beispiel.de')} 
                   required 
                   className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
@@ -339,14 +347,14 @@ export default function Auth() {
 
               <div className="flex flex-col gap-1.5">
                 <div className="flex justify-between items-baseline px-1">
-                  <label className="text-sm font-medium text-dark-muted">Passwort</label>
+                  <label className="text-sm font-medium text-dark-muted">{t('Passwort')}</label>
                   {view === 'login' && (
                     <button 
                       type="button" 
                       onClick={goToReset} 
                       className="text-xs font-medium text-accent hover:text-accent-dark transition-colors"
                     >
-                      Passwort vergessen?
+                      {t('Passwort vergessen?')}
                     </button>
                   )}
                 </div>
@@ -355,13 +363,14 @@ export default function Auth() {
                     type={showPassword ? 'text' : 'password'} 
                     value={password} 
                     onChange={e => setPassword(e.target.value)} 
-                    placeholder="Mindestens 6 Zeichen" 
+                    placeholder={t('Mindestens 6 Zeichen')} 
                     required minLength={6} 
                     className="w-full pl-4 pr-12 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(v => !v)} 
+                    aria-label={showPassword ? t('Passwort verbergen') : t('Passwort anzeigen')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-dark-light hover:text-accent transition-colors rounded-lg"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -377,15 +386,15 @@ export default function Auth() {
 
               {emailNotConfirmed && (
                 <div className="bg-gold-light text-gold-text text-sm p-3 rounded-xl animate-fade-in border border-gold/30">
-                  <p className="font-medium mb-1">E-Mail noch nicht bestätigt.</p>
-                  <p className="text-xs text-gold-text mb-2">Gib den 6-stelligen Code aus der E-Mail ein, um dich anzumelden.</p>
+                  <p className="font-medium mb-1">{t('E-Mail noch nicht bestätigt.')}</p>
+                  <p className="text-xs text-gold-text mb-2">{t('Gib den 6-stelligen Code aus der E-Mail ein, um dich anzumelden.')}</p>
                   <button
                     type="button"
                     onClick={handleResendConfirmation}
                     disabled={isLoading}
                     className="text-xs font-bold text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
                   >
-                    Neuen Code per E-Mail senden →
+                    {t('Neuen Code per E-Mail senden →')}
                   </button>
                 </div>
               )}
@@ -399,11 +408,11 @@ export default function Auth() {
                     style={{ width: 18, height: 18, marginTop: 1, flexShrink: 0, accentColor: 'var(--color-accent)' }}
                   />
                   <span>
-                    Ich akzeptiere die{' '}
-                    <Link to={TERMS_PATH} className="font-semibold text-accent underline">Nutzungsbedingungen</Link>
-                    {' '}(keine Toleranz für anstößige Inhalte oder Belästigung) und habe die{' '}
-                    <Link to={PRIVACY_PATH} className="font-semibold text-accent underline">Datenschutzerklärung</Link>
-                    {' '}gelesen.
+                    {t('Ich akzeptiere die')}{' '}
+                    <Link to={TERMS_PATH} className="font-semibold text-accent underline">{t('Nutzungsbedingungen')}</Link>
+                    {' '}{t('(keine Toleranz für anstößige Inhalte oder Belästigung) und habe die')}{' '}
+                    <Link to={PRIVACY_PATH} className="font-semibold text-accent underline">{t('Datenschutzerklärung')}</Link>
+                    {lang === 'de' ? ' ' : ''}{t('gelesen.')}
                   </span>
                 </label>
               )}
@@ -413,7 +422,7 @@ export default function Auth() {
                 disabled={isLoading || (view === 'register' && (!gender || !username.trim() || !acceptedTerms))}
                 className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
-                {isLoading ? 'Einen Moment...' : view === 'login' ? 'Anmelden' : 'Konto erstellen'}
+                {isLoading ? t('Einen Moment...') : view === 'login' ? t('Anmelden') : t('Konto erstellen')}
               </button>
             </form>
 
@@ -425,7 +434,7 @@ export default function Auth() {
             {!isNativeApp && (<>
             <div className="flex items-center gap-3 my-5">
               <div className="flex-1 h-px bg-warm-3" />
-              <span className="text-xs font-medium text-dark-light">oder</span>
+              <span className="text-xs font-medium text-dark-light">{t('oder')}</span>
               <div className="flex-1 h-px bg-warm-3" />
             </div>
 
@@ -436,19 +445,19 @@ export default function Auth() {
               className="w-full py-3.5 rounded-xl font-semibold text-dark bg-paper border-[1.5px] border-warm-3 hover:border-warm-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2"
             >
               <BookMarked size={18} />
-              {youversionSignIn.starting ? 'Einen Moment...' : (view === 'login' ? 'Mit YouVersion anmelden' : 'Mit YouVersion registrieren')}
+              {youversionSignIn.starting ? t('Einen Moment...') : (view === 'login' ? t('Mit YouVersion anmelden') : t('Mit YouVersion registrieren'))}
             </button>
             {youversionSignIn.error && (
               <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20 mt-3">
-                {youversionSignIn.error}
+                {t(youversionSignIn.error)}
               </div>
             )}
             </>)}
 
             <p className="text-xs text-dark-light text-center mt-5" style={{ lineHeight: 1.5 }}>
-              Mit der Nutzung von Oikos Connect akzeptierst du unsere{' '}
-              <Link to={TERMS_PATH} className="underline">Nutzungsbedingungen</Link> und{' '}
-              <Link to={PRIVACY_PATH} className="underline">Datenschutzerklärung</Link>.
+              {t('Mit der Nutzung von Oikos Connect akzeptierst du unsere')}{' '}
+              <Link to={TERMS_PATH} className="underline">{t('Nutzungsbedingungen')}</Link> {t('und')}{' '}
+              <Link to={PRIVACY_PATH} className="underline">{t('Datenschutzerklärung')}</Link>.
             </p>
           </>
         )}
@@ -458,22 +467,22 @@ export default function Auth() {
         {view === 'reset' && resetFlow.step === 'request' && (
           <div className="animate-fade-in">
             <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-accent transition-colors mb-6">
-              ← Zurück
+              {t('← Zurück')}
             </button>
-            <h3 className="text-2xl font-bold text-dark mb-2">Passwort zurücksetzen</h3>
+            <h3 className="text-2xl font-bold text-dark mb-2">{t('Passwort zurücksetzen')}</h3>
             <p className="text-sm text-dark-muted mb-6 leading-relaxed">
-              Gib deine E-Mail-Adresse ein, und wir senden dir einen Code zum Zurücksetzen deines Passworts.
+              {t('Gib deine E-Mail-Adresse ein, und wir senden dir einen Code zum Zurücksetzen deines Passworts.')}
             </p>
 
             <form onSubmit={handleSendReset} className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-dark-muted ml-1">E-Mail</label>
+                <label className="text-sm font-medium text-dark-muted ml-1">{t('E-Mail')}</label>
                 <input
                   autoFocus
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="name@beispiel.de"
+                  placeholder={t('name@beispiel.de')}
                   required
                   className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
@@ -481,7 +490,7 @@ export default function Auth() {
 
               {resetFlow.error && (
                 <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20">
-                  {resetFlow.error}
+                  {t(resetFlow.error)}
                 </div>
               )}
 
@@ -490,7 +499,7 @@ export default function Auth() {
                 disabled={resetFlow.isLoading || !email.trim()}
                 className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
-                {resetFlow.isLoading ? 'Sende…' : 'Code senden'}
+                {resetFlow.isLoading ? t('Sende…') : t('Code senden')}
               </button>
             </form>
           </div>
@@ -500,35 +509,35 @@ export default function Auth() {
         {view === 'reset' && resetFlow.step === 'code' && (
           <div className="animate-fade-in">
             <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-accent transition-colors mb-6">
-              ← Zurück
+              {t('← Zurück')}
             </button>
-            <h3 className="text-2xl font-bold text-dark mb-2">Code eingeben</h3>
+            <h3 className="text-2xl font-bold text-dark mb-2">{t('Code eingeben')}</h3>
             <p className="text-sm text-dark-muted mb-6 leading-relaxed">
-              Wir haben einen Code an <strong className="text-dark">{email}</strong> geschickt. Gib ihn hier zusammen mit deinem neuen Passwort ein.
+              {withEmail(t('Wir haben einen Code an {email} geschickt. Gib ihn hier zusammen mit deinem neuen Passwort ein.'), <strong key="e" className="text-dark">{email}</strong>)}
             </p>
 
             <form onSubmit={handleResetSubmit} className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-dark-muted ml-1">Code</label>
+                <label className="text-sm font-medium text-dark-muted ml-1">{t('Code')}</label>
                 <input
                   autoFocus
                   type="text"
                   inputMode="numeric"
                   value={resetFlow.code}
                   onChange={e => resetFlow.setCode(e.target.value)}
-                  placeholder="6-stelliger Code"
+                  placeholder={t('6-stelliger Code')}
                   required
                   className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light tracking-widest"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-dark-muted ml-1">Neues Passwort</label>
+                <label className="text-sm font-medium text-dark-muted ml-1">{t('Neues Passwort')}</label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={resetFlow.password}
                   onChange={e => resetFlow.setPassword(e.target.value)}
-                  placeholder="Mindestens 8 Zeichen"
+                  placeholder={t('Mindestens 8 Zeichen')}
                   required
                   minLength={8}
                   className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
@@ -536,12 +545,12 @@ export default function Auth() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-dark-muted ml-1">Passwort bestätigen</label>
+                <label className="text-sm font-medium text-dark-muted ml-1">{t('Passwort bestätigen')}</label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={resetFlow.confirm}
                   onChange={e => resetFlow.setConfirm(e.target.value)}
-                  placeholder="Passwort wiederholen"
+                  placeholder={t('Passwort wiederholen')}
                   required
                   className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light"
                 />
@@ -549,7 +558,7 @@ export default function Auth() {
 
               {resetFlow.error && (
                 <div className="bg-error-bg text-error text-sm p-3 rounded-xl text-center font-medium animate-fade-in border border-error/20">
-                  {resetFlow.error}
+                  {t(resetFlow.error)}
                 </div>
               )}
 
@@ -558,7 +567,7 @@ export default function Auth() {
                 disabled={resetFlow.isLoading}
                 className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
-                {resetFlow.isLoading ? 'Speichere…' : 'Passwort ändern'}
+                {resetFlow.isLoading ? t('Speichere…') : t('Passwort ändern')}
               </button>
 
               <button
@@ -567,7 +576,7 @@ export default function Auth() {
                 disabled={resetFlow.isLoading}
                 className="text-sm font-medium text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
               >
-                Code erneut senden
+                {t('Code erneut senden')}
               </button>
             </form>
           </div>
@@ -577,19 +586,19 @@ export default function Auth() {
         {view === 'verify' && (
           <div className="animate-fade-in">
             <button onClick={goToLogin} className="flex items-center gap-1.5 text-sm font-medium text-dark-muted hover:text-accent transition-colors mb-6">
-              ← Zurück
+              {t('← Zurück')}
             </button>
             <div className="w-16 h-16 bg-gold-light/30 rounded-full flex items-center justify-center mx-auto mb-5">
               <MailCheck size={32} className="text-gold" strokeWidth={2} />
             </div>
-            <h3 className="text-2xl font-bold text-dark mb-2 text-center">E-Mail bestätigen</h3>
+            <h3 className="text-2xl font-bold text-dark mb-2 text-center">{t('E-Mail bestätigen')}</h3>
             <p className="text-sm text-dark-muted mb-6 leading-relaxed text-center">
-              Wir haben einen 6-stelligen Code an <strong className="text-dark">{email}</strong> geschickt. Gib ihn hier ein, um dein Konto zu aktivieren.
+              {withEmail(t('Wir haben einen 6-stelligen Code an {email} geschickt. Gib ihn hier ein, um dein Konto zu aktivieren.'), <strong key="e" className="text-dark">{email}</strong>)}
             </p>
 
             <form onSubmit={handleVerifySubmit} className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-dark-muted ml-1">Code</label>
+                <label className="text-sm font-medium text-dark-muted ml-1">{t('Code')}</label>
                 <input
                   autoFocus
                   type="text"
@@ -605,11 +614,11 @@ export default function Auth() {
                     if (text) { e.preventDefault(); handleCodeChange(text) }
                   }}
                   placeholder="••••••"
-                  aria-label="6-stelliger Bestätigungscode"
+                  aria-label={t('6-stelliger Bestätigungscode')}
                   required
                   className="w-full px-4 py-3 rounded-xl border-[1.5px] border-warm-3 bg-paper focus:bg-bg focus:border-warm-1 focus:ring-4 focus:ring-warm-1/10 transition-all outline-none text-dark placeholder:text-dark-light text-center text-2xl font-semibold tracking-[0.5em] tabular-nums"
                 />
-                <p className="text-xs text-dark-light ml-1 mt-1">Keine E-Mail erhalten? Schau auch im Spam-Ordner nach.</p>
+                <p className="text-xs text-dark-light ml-1 mt-1">{t('Keine E-Mail erhalten? Schau auch im Spam-Ordner nach.')}</p>
               </div>
 
               {error && (
@@ -623,7 +632,7 @@ export default function Auth() {
                 disabled={isLoading || code.length !== CODE_LENGTH}
                 className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-dark hover:shadow-lg hover:shadow-accent/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               >
-                {isLoading ? 'Prüfe…' : 'Konto aktivieren'}
+                {isLoading ? t('Prüfe…') : t('Konto aktivieren')}
               </button>
 
               <button
@@ -632,7 +641,7 @@ export default function Auth() {
                 disabled={resendIn > 0}
                 className="text-sm font-medium text-dark-muted hover:text-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {resendIn > 0 ? `Code erneut senden (${resendIn} s)` : 'Code erneut senden'}
+                {resendIn > 0 ? t('Code erneut senden ({n} s)', { n: resendIn }) : t('Code erneut senden')}
               </button>
             </form>
           </div>

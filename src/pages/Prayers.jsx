@@ -22,29 +22,30 @@ import { KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
 import VersePickerSheet from '../components/bible/VersePickerSheet'
 import BodyPortal from '../components/common/BodyPortal'
+import { useT, tr } from '../i18n'
 
 // ─── Konstanten ───────────────────────────────────────────────
 
 const STATUS_OPTIONS = [
-  { key: 'all',      label: 'Alle Anliegen' },
-  { key: 'open',     label: '☑️ Offene Anliegen' },
-  { key: 'answered', label: '✅ Erhörte Anliegen' },
+  { key: 'all',      get label() { return tr('Alle Anliegen') } },
+  { key: 'open',     get label() { return tr('☑️ Offene Anliegen') } },
+  { key: 'answered', get label() { return tr('✅ Erhörte Anliegen') } },
 ]
 
 const CATEGORIES = [
-  { key: 'heilung',    label: 'Heilung',    emoji: '🌿' },
-  { key: 'weisheit',   label: 'Weisheit',   emoji: '🕊️' },
-  { key: 'erweckung',  label: 'Erweckung',  emoji: '🔥' },
-  { key: 'wahrheit',   label: 'Wahrheit',   emoji: '📖' },
-  { key: 'liebe',      label: 'Liebe',      emoji: '❤️' },
-  { key: 'sonstiges',  label: 'Sonstiges',  emoji: '🙏' },
+  { key: 'heilung',    get label() { return tr('Heilung') },    emoji: '🌿' },
+  { key: 'weisheit',   get label() { return tr('Weisheit') },   emoji: '🕊️' },
+  { key: 'erweckung',  get label() { return tr('Erweckung') },  emoji: '🔥' },
+  { key: 'wahrheit',   get label() { return tr('Wahrheit') },   emoji: '📖' },
+  { key: 'liebe',      get label() { return tr('Liebe') },      emoji: '❤️' },
+  { key: 'sonstiges',  get label() { return tr('Sonstiges') },  emoji: '🙏' },
 ]
 
 const VISIBILITY_OPTIONS = [
-  { key: 'public',   label: 'Öffentlich',            icon: Globe },
-  { key: 'community',label: 'Community',              icon: HomeIcon },
-  { key: 'siblings', label: 'Meine Geschwister',      icon: UserCheck },
-  { key: 'specific', label: 'Ausgewählte Geschwister', icon: Users },
+  { key: 'public',   get label() { return tr('Öffentlich') },            icon: Globe },
+  { key: 'community',get label() { return tr('Community') },              icon: HomeIcon },
+  { key: 'siblings', get label() { return tr('Meine Geschwister') },      icon: UserCheck },
+  { key: 'specific', get label() { return tr('Ausgewählte Geschwister') }, icon: Users },
 ]
 
 const sourceChipStyle = active => ({
@@ -93,15 +94,16 @@ function uniqueOptions(prayers, pick) {
 // ─── Neues Gebet erstellen ────────────────────────────────────
 
 const GOAL_TYPES = [
-  { val: 'people', label: 'Personen',   hint: 'beten mit',  placeholder: '100' },
-  { val: 'hours',  label: 'Stunden',    hint: 'Gebetszeit', placeholder: '1000' },
-  { val: 'days',   label: 'Tage',       hint: 'am Stück',   placeholder: '30' },
-  { val: 'custom', label: 'Individuell', hint: 'frei',      placeholder: '' },
+  { val: 'people', get label() { return tr('Personen') },   get hint() { return tr('beten mit') },  placeholder: '100' },
+  { val: 'hours',  get label() { return tr('Stunden') },    get hint() { return tr('Gebetszeit') }, placeholder: '1000' },
+  { val: 'days',   get label() { return tr('Tage') },       get hint() { return tr('am Stück') },   placeholder: '30' },
+  { val: 'custom', get label() { return tr('Individuell') }, get hint() { return tr('frei') },      placeholder: '' },
 ]
 
 // Erstellen-Sheet: alles in EINER Ansicht (Anliegen -> Kategorie -> Gebetsziel
 // -> Sichtbarkeit), danach eine Übersicht und "Gebet erstellen".
 function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
+  const { t } = useT()
   const { myCommunities } = useCommunities()
   const { showToast } = useToast()
   const [phase, setPhase] = useState('form') // 'form' | 'review'
@@ -128,7 +130,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
     (visibility !== 'specific' || selectedSiblings.length > 0)
   const formValid = text.trim().length > 0 && visOk && goalOk
 
-  const effectiveTitle = title.trim() || (CATEGORIES.find(c => c.key === category)?.label || 'Gebet')
+  const effectiveTitle = title.trim() || (CATEGORIES.find(c => c.key === category)?.label || tr('Gebet'))
   const catObj = CATEGORIES.find(c => c.key === category)
   const visObj = VISIBILITY_OPTIONS.find(v => v.key === visibility)
   const goalTypeObj = GOAL_TYPES.find(g => g.val === goalType)
@@ -161,7 +163,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
       onDone()
     } catch (e) {
       console.error('[CreatePrayer] Fehler beim Erstellen:', e)
-      showToast('Fehler beim Erstellen: ' + (e?.message || 'unbekannt'), 'error')
+      showToast(t('Fehler beim Erstellen: {msg}', { msg: e?.message || t('unbekannt') }), 'error')
       setSubmitting(false)
     }
   }
@@ -179,7 +181,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px', position: 'sticky', top: 0, backgroundColor: 'var(--color-bg)', zIndex: 1 }}>
           <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-text)' }}>
-            {phase === 'review' ? 'Übersicht' : 'Neues Gebet'}
+            {phase === 'review' ? t('Übersicht') : t('Neues Gebet')}
           </p>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--color-bg-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>
             <X size={16} />
@@ -189,18 +191,18 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
         {phase === 'form' ? (
           <div style={{ padding: '0 16px 28px' }}>
             {/* 1) Anliegen */}
-            <p style={secTitle}>1 · Dein Anliegen</p>
+            <p style={secTitle}>{t('1 · Dein Anliegen')}</p>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Überschrift (optional)"
+              placeholder={t('Überschrift (optional)')}
               style={{ ...field, fontWeight: 600, marginBottom: 8 }}
             />
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
-              placeholder="Schreibe dein Anliegen…"
+              placeholder={t('Schreibe dein Anliegen…')}
               rows={4}
               style={{ ...field, lineHeight: 1.6, resize: 'vertical' }}
             />
@@ -210,21 +212,19 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
               <div style={{ marginTop: 10 }}>
                 <BibleReferenceChip attachment={verse} variant="block" showVerse={quoteVerse} onRemove={() => setVerse(null)} />
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                  <input type="checkbox" checked={quoteVerse} onChange={e => setQuoteVerse(e.target.checked)} style={{ accentColor: 'var(--color-accent)' }} />
-                  Vers im Gebet zitieren
-                </label>
+                  <input type="checkbox" checked={quoteVerse} onChange={e => setQuoteVerse(e.target.checked)} style={{ accentColor: 'var(--color-accent)' }} />{t('Vers im Gebet zitieren')}</label>
               </div>
             ) : (
               <button onClick={() => setShowVersePicker(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginTop: 10, width: '100%' }}
               >
                 <span style={{ fontSize: 16 }}>📖</span>
-                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Bibelstelle verknüpfen</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{t('Bibelstelle verknüpfen')}</span>
               </button>
             )}
 
             {/* 2) Kategorie */}
-            <p style={secTitle}>2 · Kategorie</p>
+            <p style={secTitle}>{t('2 · Kategorie')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
               {CATEGORIES.map(c => (
                 <button key={c.key} onClick={() => setCategory(category === c.key ? null : c.key)} style={chip(category === c.key)}>
@@ -235,9 +235,9 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
             </div>
 
             {/* 3) Gebetsziel */}
-            <p style={secTitle}>3 · Gebetsziel (optional)</p>
+            <p style={secTitle}>{t('3 · Gebetsziel (optional)')}</p>
             <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border)', cursor: 'pointer' }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>🎯 Ziel hinzufügen</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{t('🎯 Ziel hinzufügen')}</span>
               <input type="checkbox" checked={goalEnabled} onChange={e => setGoalEnabled(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--color-accent)' }} />
             </label>
             {goalEnabled && (
@@ -255,7 +255,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
                     type="text"
                     value={goalCustom}
                     onChange={e => setGoalCustom(e.target.value)}
-                    placeholder={'Dein eigenes Ziel, z. B. Jeden Morgen beten'}
+                    placeholder={t('Dein eigenes Ziel, z. B. Jeden Morgen beten')}
                     style={field}
                   />
                 ) : (
@@ -263,7 +263,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
                     type="number" inputMode="numeric" min="1"
                     value={goalTarget}
                     onChange={e => setGoalTarget(e.target.value)}
-                    placeholder={`Zielwert (z. B. ${goalTypeObj?.placeholder})`}
+                    placeholder={t('Zielwert (z. B. {placeholder})', { placeholder: goalTypeObj?.placeholder })}
                     style={field}
                   />
                 )}
@@ -271,7 +271,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
             )}
 
             {/* 4) Sichtbarkeit */}
-            <p style={secTitle}>4 · Wer soll es sehen?</p>
+            <p style={secTitle}>{t('4 · Wer soll es sehen?')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {VISIBILITY_OPTIONS.map(o => {
                 const Icon = o.icon
@@ -286,10 +286,10 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
             </div>
             {visibility === 'community' && (
               myCommunities.length === 0 ? (
-                <p style={hint}>Du bist noch in keiner Community.</p>
+                <p style={hint}>{t('Du bist noch in keiner Community.')}</p>
               ) : (
                 <select value={selectedCommunity || ''} onChange={e => setSelectedCommunity(e.target.value || null)} style={{ ...field, marginTop: 8, appearance: 'none' }}>
-                  <option value="">— Community auswählen —</option>
+                  <option value="">{t('— Community auswählen —')}</option>
                   {myCommunities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               )
@@ -304,9 +304,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
               onClick={() => setPhase('review')}
               disabled={!formValid}
               style={{ ...primaryBtn(formValid), marginTop: 22 }}
-            >
-              Weiter zur Übersicht
-            </button>
+            >{t('Weiter zur Übersicht')}</button>
           </div>
         ) : (
           <div style={{ padding: '0 16px 28px' }}>
@@ -315,23 +313,21 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
               <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: 'var(--color-text)' }}>{effectiveTitle}</p>
               {text.trim() && <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{text.trim()}</p>}
             </div>
-            <SummaryRow label="Kategorie" value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
-            <SummaryRow label="Bibelstelle" value={verse ? verse.referenceLabel : '—'} />
-            <SummaryRow label="Gebetsziel" value={!goalEnabled || !goalOk ? 'Keins' : isCustomGoalType ? goalCustom.trim() : `${goalTarget} ${goalTypeObj?.label}`} />
-            <SummaryRow label="Sichtbarkeit" value={
+            <SummaryRow label={t('Kategorie')} value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
+            <SummaryRow label={t('Bibelstelle')} value={verse ? verse.referenceLabel : '—'} />
+            <SummaryRow label={t('Gebetsziel')} value={!goalEnabled || !goalOk ? tr('Keins') : isCustomGoalType ? goalCustom.trim() : `${goalTarget} ${goalTypeObj?.label}`} />
+            <SummaryRow label={t('Sichtbarkeit')} value={
               visibility === 'community'
                 ? `${visObj?.label} · ${myCommunities.find(c => c.id === selectedCommunity)?.name || ''}`
                 : visibility === 'specific'
-                ? `${visObj?.label} · ${selectedSiblings.length} ausgewählt`
+                ? t('{label} · {n} ausgewählt', { label: visObj?.label, n: selectedSiblings.length })
                 : (visObj?.label || '')
             } />
 
             <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-              <button onClick={() => setPhase('form')} disabled={submitting} style={{ padding: '13px 18px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 600, cursor: submitting ? 'default' : 'pointer' }}>
-                ← Zurück
-              </button>
+              <button onClick={() => setPhase('form')} disabled={submitting} style={{ padding: '13px 18px', borderRadius: 12, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 600, cursor: submitting ? 'default' : 'pointer' }}>{t('← Zurück')}</button>
               <button onClick={handleFinalCreate} disabled={submitting} style={{ ...primaryBtn(!submitting), flex: 1 }}>
-                {submitting ? 'Erstellt…' : '🙏 Gebet erstellen'}
+                {submitting ? t('Erstellt…') : t('🙏 Gebet erstellen')}
               </button>
             </div>
           </div>
@@ -389,6 +385,7 @@ function primaryBtn(enabled) {
 // ─── Haupt-Seite ──────────────────────────────────────────────
 
 export default function Prayers() {
+  const { t } = useT()
   const { showToast } = useToast()
   const { user } = useAuth()
   const [statusFilter, setStatusFilter] = useState('open') // 'all' | 'open' | 'answered'
@@ -476,7 +473,7 @@ export default function Prayers() {
   const showOikosFilters = sourceFilter === 'oikos'
   const showCommunityFilter = sourceFilter === 'communities'
 
-  const communityOptions = uniqueOptions(prayers, p => p.communityId && [p.communityId, p.communityName || 'Community'])
+  const communityOptions = uniqueOptions(prayers, p => p.communityId && [p.communityId, p.communityName || tr('Community')])
 
   const oikosFilterActive = showOikosFilters && oikosFilter.isActive
   const communityFilterActive = showCommunityFilter && communityFilter !== 'all'
@@ -567,10 +564,10 @@ export default function Prayers() {
         borderBottom: '1px solid var(--color-border)',
       }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
-          <ExpandableSearch value={searchQuery} onChange={setSearchQuery} placeholder="Gebet suchen…" />
+          <ExpandableSearch value={searchQuery} onChange={setSearchQuery} placeholder={t('Gebet suchen…')} />
           <button
             onClick={() => setShowFilters(v => !v)}
-            aria-label="Filter"
+            aria-label={t('Filter')}
             style={{
               position: 'relative',
               width: 40, height: 40, borderRadius: 12, flexShrink: 0,
@@ -600,9 +597,7 @@ export default function Prayers() {
         {showFilters && (
           <div style={{ paddingTop: 10 }}>
             {/* Status */}
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>
-              Status
-            </p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>{t('Status')}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
               {STATUS_OPTIONS.map(s => {
                 const active = statusFilter === s.key
@@ -630,9 +625,7 @@ export default function Prayers() {
             </div>
 
             {/* Kategorien */}
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>
-              Kategorien
-            </p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' }}>{t('Kategorien')}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {CATEGORIES.map(c => {
                 const active = activeCategories.includes(c.key)
@@ -663,9 +656,7 @@ export default function Prayers() {
                     backgroundColor: 'transparent', color: 'var(--color-text-muted)',
                     fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   }}
-                >
-                  Zurücksetzen
-                </button>
+                >{t('Zurücksetzen')}</button>
               )}
             </div>
 
@@ -678,9 +669,7 @@ export default function Prayers() {
                   backgroundColor: 'transparent', color: 'var(--color-text-muted)',
                   fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 }}
-              >
-                Alle Filter zurücksetzen
-              </button>
+              >{t('Alle Filter zurücksetzen')}</button>
             )}
           </div>
         )}
@@ -708,15 +697,13 @@ export default function Prayers() {
       {(showOikosFilters || showCommunityFilter) && (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '10px 16px', borderBottom: '1px solid var(--color-border)' }}>
           {showOikosFilters && (
-            <button onClick={() => setShowOikosFilterSheet(true)} style={sourceChipStyle(oikosFilter.isActive)}>
-              Von wem & welche Maps
-              {oikosFilter.isActive && <span style={{ marginLeft: 4 }}>●</span>}
+            <button onClick={() => setShowOikosFilterSheet(true)} style={sourceChipStyle(oikosFilter.isActive)}>{t('Von wem & welche Maps')}{oikosFilter.isActive && <span style={{ marginLeft: 4 }}>●</span>}
             </button>
           )}
           {showCommunityFilter && (
             <FilterSelect
               value={communityFilter} onChange={setCommunityFilter}
-              allLabel="Alle Communities" options={communityOptions}
+              allLabel={t('Alle Communities')} options={communityOptions}
             />
           )}
         </div>
@@ -736,31 +723,25 @@ export default function Prayers() {
               boxShadow: '0 4px 14px rgba(90,200,250,0.30)',
             }}
           >
-            <Play size={17} fill="#fff" /> Gebetsmodus starten
-          </button>
+            <Play size={17} fill="#fff" />{' '}{t('Gebetsmodus starten')}</button>
         </div>
       </div>
 
       <div ref={feedListRef} style={{ padding: '14px 16px 0', scrollMarginTop: 72 }}>
         {goalsOnly && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
-              🎯 Gebetsziele & Gruppengebete{!loading ? ` · ${shownPrayers.length}` : ''}
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{t('🎯 Gebetsziele & Gruppengebete')}{!loading ? ` · ${shownPrayers.length}` : ''}
             </span>
             <button
               onClick={() => setGoalsOnly(false)}
-              aria-label="Filter Gebetsziele entfernen"
+              aria-label={t('Filter Gebetsziele entfernen')}
               style={{ marginLeft: 'auto', fontSize: 12, padding: '4px 10px', borderRadius: 999, border: '1px solid var(--color-border)', background: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
-            >
-              Alle anzeigen ✕
-            </button>
+            >{t('Alle anzeigen ✕')}</button>
           </div>
         )}
 
         {goalsOnly && !loading && shownPrayers.length === 0 && (
-          <p style={{ textAlign: 'center', padding: '30px 20px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-            Noch keine Gebete mit Gebetsziel sichtbar. Tippe auf „+", um ein Anliegen mit Ziel zu erstellen und gemeinsam zu beten.
-          </p>
+          <p style={{ textAlign: 'center', padding: '30px 20px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{t('Noch keine Gebete mit Gebetsziel sichtbar. Tippe auf „+", um ein Anliegen mit Ziel zu erstellen und gemeinsam zu beten.')}</p>
         )}
 
         {loading && (
@@ -774,13 +755,11 @@ export default function Prayers() {
         {!loading && prayers.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <p style={{ fontSize: 40, margin: '0 0 12px' }}>🙏</p>
-            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>
-              Noch keine Gebete
-            </p>
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{t('Noch keine Gebete')}</p>
             <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: 0 }}>
               {sourceFilter === 'all'
-                ? 'Sei der Erste, der ein Anliegen teilt.'
-                : 'Aus dieser Quelle ist gerade nichts sichtbar.'}
+                ? t('Sei der Erste, der ein Anliegen teilt.')
+                : t('Aus dieser Quelle ist gerade nichts sichtbar.')}
             </p>
           </div>
         )}
@@ -788,9 +767,7 @@ export default function Prayers() {
         {!loading && prayers.length > 0 && filteredPrayers.length === 0 && hasActiveFilter && (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <p style={{ fontSize: 28, margin: '0 0 10px' }}>🔍</p>
-            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: 0 }}>
-              Keine Gebete gefunden. Versuche andere Filter.
-            </p>
+            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: 0 }}>{t('Keine Gebete gefunden. Versuche andere Filter.')}</p>
           </div>
         )}
 
@@ -811,7 +788,7 @@ export default function Prayers() {
       {pathname === '/prayers' && (
       <BodyPortal><button
         onClick={() => setShowCreate(true)}
-        aria-label="Gebet teilen"
+        aria-label={t('Gebet teilen')}
         style={{
           position: 'fixed', bottom: 'calc(var(--bottom-nav-h, 64px) + 16px)', right: 16,
           width: 48, height: 48, borderRadius: '50%',
@@ -840,7 +817,7 @@ export default function Prayers() {
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
           onCreateGoal={handleCreateGoal}
-          onDone={() => { setShowCreate(false); showToast('Gebet erstellt 🙏') }}
+          onDone={() => { setShowCreate(false); showToast(t('Gebet erstellt 🙏')) }}
         /></BodyPortal>
       )}
 

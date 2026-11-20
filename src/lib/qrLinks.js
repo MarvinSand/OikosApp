@@ -18,8 +18,13 @@ export function pathFromScan(text) {
   if (/^https?:\/\//i.test(raw)) {
     try {
       const u = new URL(raw)
-      // Alte Adresse bleibt gültig, damit bereits geteilte QR-Codes weiter funktionieren.
-      const known = [new URL(PUBLIC_APP_URL).host, 'oikos-app-tau.vercel.app', window.location.host]
+      // Alte Adressen bleiben gültig, damit bereits geteilte QR-Codes weiter funktionieren.
+      const known = [
+        new URL(PUBLIC_APP_URL).host,
+        'app.oikosconnect.net', 'oikosconnect.net', 'www.oikosconnect.net',
+        'oikosapp.net', 'www.oikosapp.net', 'oikos-app-tau.vercel.app',
+        window.location.host,
+      ]
       if (!known.includes(u.host)) return null
       pathname = u.pathname
     } catch { return null }

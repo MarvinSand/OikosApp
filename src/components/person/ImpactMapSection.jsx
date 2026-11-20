@@ -3,6 +3,20 @@ import { Check, Globe, Lock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useImpactMap, STAGES } from '../../hooks/useImpactMap'
 import { useToast } from '../../context/ToastContext'
 import Confetti from '../ui/Confetti'
+import { useT, getLang } from '../../i18n'
+
+// Die Leitfragen stehen als Funktionen in useImpactMap.js (deutsch) – hier übersetzbar nachgebaut.
+function stageQuestion(t, num, name, fallback) {
+  switch (num) {
+    case 1: return t('Hat {name} das Evangelium schon gehört?', { name })
+    case 2: return t('Bin ich es, der {name} das Evangelium weitergibt? Wenn ja – wann?', { name })
+    case 3: return t('In welcher Situation ist {name} gerade?', { name })
+    case 4: return t('Wie sieht Gott {name}?', { name })
+    case 5: return t('Hat Gott eine Bibelstelle für {name}?', { name })
+    case 6: return t('Plane dir 10 Min/Tag ein – für {name}', { name })
+    default: return fallback
+  }
+}
 
 function StepIndicator({ stageStatuses, currentStage }) {
   return (
@@ -38,6 +52,7 @@ function StepIndicator({ stageStatuses, currentStage }) {
 }
 
 function ActiveStageCard({ stage, entry, isOwner, onSave, onComplete, personName }) {
+  const { t } = useT()
   const s = STAGES[stage - 1]
   const [note, setNote] = useState(entry?.note || '')
   const [isPublic, setIsPublic] = useState(entry?.is_public !== false)
@@ -63,17 +78,17 @@ function ActiveStageCard({ stage, entry, isOwner, onSave, onComplete, personName
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
         <div>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-warm-1)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-            Stufe {stage}
+            {t('Stufe {n}', { n: stage })}
           </span>
           <h5 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text)', marginTop: 2 }}>
-            {s.name}
+            {t(s.name)}
           </h5>
         </div>
         {isOwner && (
           <button
             onClick={() => setIsPublic(!isPublic)}
             style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4 }}
-            title={isPublic ? 'Öffentlich' : 'Privat'}
+            title={isPublic ? t('Öffentlich') : t('Privat')}
           >
             {isPublic ? <Globe size={15} color="var(--color-accent)" /> : <Lock size={15} color="var(--color-text-light)" />}
           </button>
@@ -81,10 +96,10 @@ function ActiveStageCard({ stage, entry, isOwner, onSave, onComplete, personName
       </div>
 
       <p style={{ fontFamily: 'Lora, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--color-warm-2)', marginBottom: 6, lineHeight: 1.4 }}>
-        „{s.question(personName)}"
+        „{stageQuestion(t, stage, personName, s.question(personName))}"
       </p>
       <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
-        {s.explanation}
+        {t(s.explanation)}
       </p>
 
       {isOwner && (
@@ -92,7 +107,7 @@ function ActiveStageCard({ stage, entry, isOwner, onSave, onComplete, personName
           <textarea
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="Schreibe deine Gedanken, Gebete oder Erkenntnisse…"
+            placeholder={t('Schreibe deine Gedanken, Gebete oder Erkenntnisse…')}
             rows={4}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-white)', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', resize: 'vertical', display: 'block' }}
           />
@@ -102,14 +117,14 @@ function ActiveStageCard({ stage, entry, isOwner, onSave, onComplete, personName
               disabled={!note.trim() || saving}
               style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: note.trim() ? 'var(--color-warm-1)' : 'var(--color-text-light)', cursor: note.trim() ? 'pointer' : 'default' }}
             >
-              {saving ? 'Gespeichert ✓' : 'Speichern'}
+              {saving ? t('Gespeichert ✓') : t('Speichern')}
             </button>
             <button
               onClick={handleComplete}
               disabled={!note.trim() || completing}
               style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: note.trim() ? 'var(--color-gold)' : 'var(--color-warm-3)', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: note.trim() ? 'pointer' : 'default' }}
             >
-              {completing ? 'Wird abgeschlossen…' : `Stufe ${stage} abschließen ✓`}
+              {completing ? t('Wird abgeschlossen…') : t('Stufe {n} abschließen ✓', { n: stage })}
             </button>
           </div>
         </>
@@ -125,12 +140,13 @@ function ActiveStageCard({ stage, entry, isOwner, onSave, onComplete, personName
 }
 
 function CompletedStageRow({ stage, entry, isOwner, onSaveNote }) {
+  const { t } = useT()
   const s = STAGES[stage - 1]
   const [expanded, setExpanded] = useState(false)
   const [editNote, setEditNote] = useState(entry?.note || '')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const date = entry?.completed_at ? new Date(entry.completed_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' }) : ''
+  const date = entry?.completed_at ? new Date(entry.completed_at).toLocaleDateString(getLang() === 'en' ? 'en-US' : 'de-DE', { day: 'numeric', month: 'short' }) : ''
 
   async function handleSaveNote() {
     setSaving(true)
@@ -150,7 +166,7 @@ function CompletedStageRow({ stage, entry, isOwner, onSaveNote }) {
             <Check size={11} color="white" strokeWidth={3} />
           </div>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-            Stufe {stage} – {s.name}
+            {t('Stufe {n}', { n: stage })} – {t(s.name)}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -170,18 +186,18 @@ function CompletedStageRow({ stage, entry, isOwner, onSaveNote }) {
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', resize: 'vertical', display: 'block' }}
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}>Abbrechen</button>
-                <button onClick={handleSaveNote} disabled={saving} style={{ flex: 2, padding: '8px 0', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}>Speichern</button>
+                <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}>{t('Abbrechen')}</button>
+                <button onClick={handleSaveNote} disabled={saving} style={{ flex: 2, padding: '8px 0', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}>{t('Speichern')}</button>
               </div>
             </>
           ) : (
             <>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', fontStyle: 'italic', lineHeight: 1.5, marginBottom: isOwner ? 8 : 0 }}>
-                {entry?.note || '(Keine Notiz)'}
+                {entry?.note || t('(Keine Notiz)')}
               </p>
               {isOwner && (
                 <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)' }}>
-                  Notiz bearbeiten
+                  {t('Notiz bearbeiten')}
                 </button>
               )}
             </>
@@ -193,6 +209,7 @@ function CompletedStageRow({ stage, entry, isOwner, onSaveNote }) {
 }
 
 export default function ImpactMapSection({ personId, isOwner, personName, impactStage, onStageCompleted }) {
+  const { t } = useT()
   // Für Besucher können private Stufen-Einträge des Besitzers per RLS
   // unsichtbar sein — das impact_stage-Badge ist aber immer sichtbar, also
   // als Untergrenze nutzen, damit der Stepper nicht fälschlich zurückfällt.
@@ -210,28 +227,28 @@ export default function ImpactMapSection({ personId, isOwner, personName, impact
       if (stage === 6) {
         setShowConfetti(true)
         setTimeout(() => setShowConfetti(false), 3500)
-        showToast(`🎉 Du hast alle Stufen für ${personName} abgeschlossen!`)
+        showToast(t('🎉 Du hast alle Stufen für {name} abgeschlossen!', { name: personName }))
       } else {
-        showToast(`Stufe ${stage} abgeschlossen! Weiter zu Stufe ${stage + 1}.`)
+        showToast(t('Stufe {n} abgeschlossen! Weiter zu Stufe {next}.', { n: stage, next: stage + 1 }))
       }
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     }
   }
 
   async function handleSaveNote(stage, note, isPublic) {
     try {
       await saveNote(stage, note, isPublic)
-      showToast('Notiz gespeichert')
+      showToast(t('Notiz gespeichert'))
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     }
   }
 
   return (
     <div style={{ marginBottom: 24 }}>
       <Confetti show={showConfetti} />
-      <h4 style={{ ...sectionTitle, marginBottom: 14 }}>Impact Map</h4>
+      <h4 style={{ ...sectionTitle, marginBottom: 14 }}>{t('Impact Map')}</h4>
 
       {loading ? (
         <div style={skeleton} />
@@ -241,7 +258,7 @@ export default function ImpactMapSection({ personId, isOwner, personName, impact
 
           {isAllDone && (
             <div style={{ textAlign: 'center', padding: '12px 0', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-accent)', fontStyle: 'italic' }}>
-              🌿 Alle Stufen für {personName} abgeschlossen!
+              {t('🌿 Alle Stufen für {name} abgeschlossen!', { name: personName })}
             </div>
           )}
 

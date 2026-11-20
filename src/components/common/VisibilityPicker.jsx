@@ -1,5 +1,6 @@
 import { Lock, Globe, Home as HomeIcon, UserCheck, Users } from 'lucide-react'
 import SiblingPicker from '../prayer/SiblingPicker'
+import { tr, useT } from '../../i18n'
 
 // Gemeinsame Sichtbarkeits-Auswahl (Privat/Öffentlich/Community/Geschwister/
 // Ausgewählte Geschwister) - nach dem Vorbild von Prayers.jsx'
@@ -7,12 +8,13 @@ import SiblingPicker from '../prayer/SiblingPicker'
 // Komponente statt einer weiteren Kopie. "Privat" ergänzt (bei Prayers.jsx
 // aktuell nicht in der Erstellen-Oberfläche wählbar, obwohl die Spalte es
 // zulässt) - für Bibel-Notizen explizit gefordert.
+// `label` ist ein Getter, damit die Sprache zum Lesezeitpunkt gilt (auch außerhalb von React).
 export const VISIBILITY_OPTIONS = [
-  { key: 'private',  label: 'Privat',                  icon: Lock },
-  { key: 'public',   label: 'Öffentlich',               icon: Globe },
-  { key: 'community', label: 'Community',               icon: HomeIcon },
-  { key: 'siblings', label: 'Geschwister',               icon: UserCheck },
-  { key: 'specific', label: 'Ausgewählte Geschwister',   icon: Users },
+  { key: 'private',   get label() { return tr('Privat') },                icon: Lock },
+  { key: 'public',    get label() { return tr('Öffentlich') },            icon: Globe },
+  { key: 'community', get label() { return tr('Community') },            icon: HomeIcon },
+  { key: 'siblings',  get label() { return tr('Geschwister') },          icon: UserCheck },
+  { key: 'specific',  get label() { return tr('Ausgewählte Geschwister') }, icon: Users },
 ]
 
 function row(active) {
@@ -33,6 +35,7 @@ export default function VisibilityPicker({
   siblingIds, onSiblingIdsChange,
   myCommunities = [],
 }) {
+  const { t } = useT()
   return (
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -49,14 +52,14 @@ export default function VisibilityPicker({
       </div>
       {value === 'community' && (
         myCommunities.length === 0 ? (
-          <p style={hint}>Du bist noch in keiner Community.</p>
+          <p style={hint}>{t('Du bist noch in keiner Community.')}</p>
         ) : (
           <select
             value={communityId || ''}
             onChange={e => onCommunityIdChange(e.target.value || null)}
             style={{ ...field, marginTop: 8, appearance: 'none' }}
           >
-            <option value="">— Community auswählen —</option>
+            <option value="">{t('— Community auswählen —')}</option>
             {myCommunities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )

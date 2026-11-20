@@ -6,20 +6,21 @@ import { useAuth } from '../../hooks/useAuth'
 import { fetchPrayerModeItems } from '../../hooks/usePrayerModeSource'
 import { supabase } from '../../lib/supabase'
 import { noteColumn, KIND_OIKOS, KIND_PERSONAL } from '../../lib/prayerModel'
+import { useT, tr } from '../../i18n'
 
 const TIMER_OPTIONS = [
-  { label: '30 Sek', seconds: 30 },
-  { label: '1 Min', seconds: 60 },
-  { label: '2 Min', seconds: 120 },
-  { label: '3 Min', seconds: 180 },
-  { label: 'Kein Timer', seconds: 0 },
+  { get label() { return tr('30 Sek') }, seconds: 30 },
+  { get label() { return tr('1 Min') }, seconds: 60 },
+  { get label() { return tr('2 Min') }, seconds: 120 },
+  { get label() { return tr('3 Min') }, seconds: 180 },
+  { get label() { return tr('Kein Timer') }, seconds: 0 },
 ]
 
 const SESSION_GOAL_OPTIONS = [
-  { label: 'Kein Ziel', minutes: 0 },
-  { label: '5 Min', minutes: 5 },
-  { label: '10 Min', minutes: 10 },
-  { label: '15 Min', minutes: 15 },
+  { get label() { return tr('Kein Ziel') }, minutes: 0 },
+  { get label() { return tr('5 Min') }, minutes: 5 },
+  { get label() { return tr('10 Min') }, minutes: 10 },
+  { get label() { return tr('15 Min') }, minutes: 15 },
 ]
 
 const CIRCUMFERENCE = 2 * Math.PI * 54
@@ -79,9 +80,10 @@ function AmpelDot({ ampel }) {
 
 // ─── Prayer Card ──────────────────────────────────────────────
 function PrayerCard({ item, swipeDelta }) {
+  const { t } = useT()
   if (!item) return null
   const { type, request, ampel } = item
-  const ownerName = request?.profiles?.full_name || request?.profiles?.username || 'Unbekannt'
+  const ownerName = request?.profiles?.full_name || request?.profiles?.username || tr('Unbekannt')
 
   return (
     <div style={{
@@ -129,7 +131,7 @@ function PrayerCard({ item, swipeDelta }) {
         fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700,
         color: '#F0EDE6', textAlign: 'center', margin: '0 0 12px', lineHeight: 1.4,
       }}>
-        {request?.title || 'Anliegen'}
+        {request?.title || t('Anliegen')}
       </h2>
 
       {/* Description */}
@@ -162,11 +164,12 @@ function PrayerCard({ item, swipeDelta }) {
 // ─── Follow-up-Anliegen + Kommentar (unter der aktuellen Karte) ──
 // Immer nur EIN Panel gleichzeitig offen (activePanel: null | 'followup' | 'comment').
 function FollowupAndNotes({ item }) {
+  const { t } = useT()
   const { user } = useAuth()
   const request = item?.request
   const type = item?.type
   const kind = type === 'oikos' ? KIND_OIKOS : type === 'personal' ? KIND_PERSONAL : null
-  const personName = request?.profiles?.full_name || request?.profiles?.username || 'diese Person'
+  const personName = request?.profiles?.full_name || request?.profiles?.username || tr('diese Person')
 
   const [activePanel, setActivePanel] = useState(null)
 
@@ -264,19 +267,17 @@ function FollowupAndNotes({ item }) {
     <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
         {type === 'oikos' && request?.person_id && (
-          <button onClick={() => togglePanel('followup')} style={pillBtn(activePanel === 'followup')}>
-            ➕ Neues Anliegen für {personName}
+          <button onClick={() => togglePanel('followup')} style={pillBtn(activePanel === 'followup')}>{t('➕ Neues Anliegen für {personName}', { personName })}
           </button>
         )}
-        <button onClick={() => togglePanel('comment')} style={pillBtn(activePanel === 'comment')}>
-          💬 Kommentar{comments.length > 0 ? ` · ${comments.length}` : ''}
+        <button onClick={() => togglePanel('comment')} style={pillBtn(activePanel === 'comment')}>{t('💬 Kommentar')}{comments.length > 0 ? ` · ${comments.length}` : ''}
         </button>
       </div>
 
       {activePanel === 'followup' && (
         <div style={panelStyle}>
           {followupDone ? (
-            <p style={{ ...noticeText, color: '#8FBF6E' }}>✓ Neues Anliegen für {personName} hinzugefügt</p>
+            <p style={{ ...noticeText, color: '#8FBF6E' }}>{t('✓ Neues Anliegen für {personName} hinzugefügt', { personName })}</p>
           ) : (
             <>
               <input
@@ -284,19 +285,19 @@ function FollowupAndNotes({ item }) {
                 type="text"
                 value={followupTitle}
                 onChange={e => setFollowupTitle(e.target.value)}
-                placeholder="Überschrift des Anliegens *"
+                placeholder={t('Überschrift des Anliegens *')}
                 style={{ ...textareaStyle, marginBottom: 8 }}
               />
               <textarea
                 value={followupDesc}
                 onChange={e => setFollowupDesc(e.target.value)}
-                placeholder="Dein Anliegen (optional)"
+                placeholder={t('Dein Anliegen (optional)')}
                 rows={2}
                 style={textareaStyle}
               />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  {[{ val: true, label: 'Öffentlich' }, { val: false, label: 'Privat' }].map(o => (
+                  {[{ val: true, label: t('Öffentlich') }, { val: false, label: t('Privat') }].map(o => (
                     <button
                       key={String(o.val)}
                       onClick={() => setFollowupPublic(o.val)}
@@ -307,7 +308,7 @@ function FollowupAndNotes({ item }) {
                   ))}
                 </div>
                 <button onClick={handleAddFollowup} disabled={!followupTitle.trim() || followupSaving} style={saveBtn(!followupTitle.trim())}>
-                  {followupSaving ? 'Speichern…' : 'Speichern'}
+                  {followupSaving ? t('Speichern…') : t('Speichern')}
                 </button>
               </div>
             </>
@@ -318,19 +319,17 @@ function FollowupAndNotes({ item }) {
       {activePanel === 'comment' && (
         <div style={panelStyle}>
           {commentsLoading ? (
-            <p style={noticeText}>Lade…</p>
+            <p style={noticeText}>{t('Lade…')}</p>
           ) : comments.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
               {comments.map(n => (
                 <div key={n.id} style={{ textAlign: 'left' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)', margin: '0 0 2px' }}>
-                      {n.author_id === user?.id ? 'Du' : (n.profiles?.full_name || n.profiles?.username || 'Unbekannt')}
+                      {n.author_id === user?.id ? t('Du') : (n.profiles?.full_name || n.profiles?.username || t('Unbekannt'))}
                     </p>
                     {n.is_public === false && (
-                      <span style={{ fontSize: 9, color: 'rgba(240,237,230,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4, padding: '1px 5px' }}>
-                        nur Ersteller
-                      </span>
+                      <span style={{ fontSize: 9, color: 'rgba(240,237,230,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4, padding: '1px 5px' }}>{t('nur Ersteller')}</span>
                     )}
                   </div>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'rgba(240,237,230,0.75)', margin: 0, lineHeight: 1.5 }}>
@@ -340,19 +339,19 @@ function FollowupAndNotes({ item }) {
               ))}
             </div>
           ) : (
-            <p style={noticeText}>Noch keine Kommentare zu diesem Anliegen.</p>
+            <p style={noticeText}>{t('Noch keine Kommentare zu diesem Anliegen.')}</p>
           )}
           <textarea
             autoFocus
             value={commentText}
             onChange={e => setCommentText(e.target.value)}
-            placeholder="Kommentar schreiben…"
+            placeholder={t('Kommentar schreiben…')}
             rows={2}
             style={textareaStyle}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
             <div style={{ display: 'flex', gap: 6 }}>
-              {[{ val: true, label: 'Für alle' }, { val: false, label: 'Nur Ersteller' }].map(o => (
+              {[{ val: true, label: t('Für alle') }, { val: false, label: t('Nur Ersteller') }].map(o => (
                 <button
                   key={String(o.val)}
                   onClick={() => setCommentPublic(o.val)}
@@ -363,7 +362,7 @@ function FollowupAndNotes({ item }) {
               ))}
             </div>
             <button onClick={handleAddComment} disabled={!commentText.trim() || commentSaving} style={saveBtn(!commentText.trim())}>
-              {commentSaving ? 'Speichern…' : 'Kommentieren'}
+              {commentSaving ? t('Speichern…') : t('Kommentieren')}
             </button>
           </div>
         </div>
@@ -431,6 +430,7 @@ const darkBg = 'linear-gradient(160deg, #1A1208 0%, #251608 50%, #1A1208 100%)'
 
 // ─── Setup Screen ─────────────────────────────────────────────
 function SetupScreen({ items, onStart, onClose }) {
+  const { t } = useT()
   const [selectedSeconds, setSelectedSeconds] = useState(60)
   const [goalMinutes, setGoalMinutes] = useState(0)
   const estimatedMinutes = selectedSeconds > 0 ? Math.max(1, Math.ceil((items.length * selectedSeconds) / 60)) : null
@@ -461,12 +461,10 @@ function SetupScreen({ items, onStart, onClose }) {
         <h1 style={{
           fontFamily: 'Lora, serif', fontSize: 26, fontWeight: 700,
           color: '#F0EDE6', margin: '0 0 8px',
-        }}>
-          Gebetszeit starten
-        </h1>
+        }}>{t('Gebetszeit starten')}</h1>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'rgba(240,237,230,0.55)', margin: 0 }}>
-          {items.length} {items.length === 1 ? 'Anliegen' : 'Anliegen'}
-          {estimatedMinutes ? ` · ca. ${estimatedMinutes} ${estimatedMinutes === 1 ? 'Minute' : 'Minuten'}` : ''}
+          {items.length} {items.length === 1 ? t('Anliegen') : t('Anliegen')}
+          {estimatedMinutes ? (estimatedMinutes === 1 ? t(' · ca. 1 Minute') : t(' · ca. {estimatedMinutes} Minuten', { estimatedMinutes })) : ''}
         </p>
       </div>
 
@@ -474,9 +472,7 @@ function SetupScreen({ items, onStart, onClose }) {
         <p style={{
           fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)',
           textTransform: 'uppercase', letterSpacing: '0.7px', textAlign: 'center', marginBottom: 14,
-        }}>
-          ⏱ Zeit pro Anliegen
-        </p>
+        }}>{t('⏱ Zeit pro Anliegen')}</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
           {TIMER_OPTIONS.map(opt => (
             <button
@@ -501,9 +497,7 @@ function SetupScreen({ items, onStart, onClose }) {
         <p style={{
           fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)',
           textTransform: 'uppercase', letterSpacing: '0.7px', textAlign: 'center', margin: '24px 0 14px',
-        }}>
-          🎯 Mein Gebetsziel
-        </p>
+        }}>{t('🎯 Mein Gebetsziel')}</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
           {SESSION_GOAL_OPTIONS.map(opt => (
             <button
@@ -538,15 +532,14 @@ function SetupScreen({ items, onStart, onClose }) {
         onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)' }}
         onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
-      >
-        Gebetszeit beginnen
-      </button>
+      >{t('Gebetszeit beginnen')}</button>
     </div>
   )
 }
 
 // ─── Session Screen ───────────────────────────────────────────
 function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
+  const { t } = useT()
   const { currentCard, cardIndex, totalCards, timerDuration, timeLeft, timerExpired, markPrayed, skipCard, goBack } = session
   const swipeStartX = useRef(null)
   const [swipeDelta, setSwipeDelta] = useState(0)
@@ -626,10 +619,9 @@ function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
         {sessionGoalMinutes > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8 }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(240,237,230,0.4)' }}>
-              🎯 {elapsedMin}:{String(elapsedRest).padStart(2, '0')} / {sessionGoalMinutes} Min
-            </span>
+              🎯 {elapsedMin}:{String(elapsedRest).padStart(2, '0')}{' '}{t('/ {sessionGoalMinutes} Min', { sessionGoalMinutes })}</span>
             {goalPct >= 100 && (
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#D4A853' }}>· erreicht ✓</span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: '#D4A853' }}>{t('· erreicht ✓')}</span>
             )}
           </div>
         )}
@@ -648,9 +640,7 @@ function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 24, gap: 6 }}>
             <TimerCircle timeLeft={timeLeft} timerDuration={timerDuration} expired={timerExpired} />
             {timerExpired && (
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(230,126,34,0.8)', textAlign: 'center', margin: 0 }}>
-                Zeit abgelaufen – bete noch so lange du möchtest
-              </p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'rgba(230,126,34,0.8)', textAlign: 'center', margin: 0 }}>{t('Zeit abgelaufen – bete noch so lange du möchtest')}</p>
             )}
           </div>
         )}
@@ -674,9 +664,7 @@ function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
             color: cardIndex === 0 ? 'rgba(240,237,230,0.25)' : 'rgba(240,237,230,0.6)',
             cursor: cardIndex === 0 ? 'default' : 'pointer',
           }}
-        >
-          ← Zurück
-        </button>
+        >{t('← Zurück')}</button>
 
         <button
           onClick={markPrayed}
@@ -686,9 +674,7 @@ function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
             fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700,
             cursor: 'pointer', boxShadow: '0 4px 18px rgba(212,168,83,0.3)',
           }}
-        >
-          🙏 Gebetet
-        </button>
+        >{t('🙏 Gebetet')}</button>
 
         <button
           onClick={skipCard}
@@ -699,9 +685,7 @@ function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
             fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600,
             color: 'rgba(240,237,230,0.6)', cursor: 'pointer',
           }}
-        >
-          Weiter →
-        </button>
+        >{t('Weiter →')}</button>
       </div>
     </div>
   )
@@ -709,6 +693,7 @@ function SessionScreen({ session, sessionGoalMinutes = 0, onClose }) {
 
 // ─── Summary Screen ───────────────────────────────────────────
 function SummaryScreen({ summary, onClose, onRestart }) {
+  const { t } = useT()
   const durationMinutes = summary ? Math.max(1, Math.round(summary.duration / 60)) : 0
 
   if (!summary) {
@@ -732,28 +717,23 @@ function SummaryScreen({ summary, onClose, onRestart }) {
         <h1 style={{
           fontFamily: 'Lora, serif', fontSize: 26, fontWeight: 700,
           color: '#F0EDE6', margin: '0 0 8px',
-        }}>
-          Gut gemacht!
-        </h1>
+        }}>{t('Gut gemacht!')}</h1>
         <p style={{
           fontFamily: 'Lora, serif', fontSize: 16, color: 'rgba(240,237,230,0.65)',
           margin: '0 0 32px', lineHeight: 1.5,
-        }}>
-          Du hast für{' '}
+        }}>{t('Du hast für')}{' '}
           <span style={{ color: '#D4A853', fontWeight: 700 }}>
-            {summary.prayedCount} {summary.prayedCount === 1 ? 'Anliegen' : 'Anliegen'}
-          </span>{' '}
-          gebetet.
-        </p>
+            {summary.prayedCount === 1 ? t('1 Anliegen') : t('{n} Anliegen', { n: summary.prayedCount })}
+          </span>{t(' gebetet.')}</p>
 
         {/* Stats row */}
         <div style={{
           display: 'flex', gap: 10, marginBottom: 32, justifyContent: 'center',
         }}>
           {[
-            { emoji: '⏱', value: `${durationMinutes} Min`, label: 'Gebetszeit' },
-            { emoji: '🙏', value: summary.prayedCount, label: 'Gebetet' },
-            ...(summary.streak > 0 ? [{ emoji: '🔥', value: summary.streak, label: 'Streak' }] : []),
+            { emoji: '⏱', value: tr('{n} Min', { n: durationMinutes }), label: t('Gebetszeit') },
+            { emoji: '🙏', value: summary.prayedCount, label: t('Gebetet') },
+            ...(summary.streak > 0 ? [{ emoji: '🔥', value: summary.streak, label: t('Streak') }] : []),
           ].map(stat => (
             <div key={stat.label} style={{
               flex: 1, background: 'rgba(255,255,255,0.06)',
@@ -776,9 +756,7 @@ function SummaryScreen({ summary, onClose, onRestart }) {
             marginBottom: 24, padding: '12px 16px', borderRadius: 14,
             background: 'rgba(212,168,83,0.12)', border: '1px solid rgba(212,168,83,0.25)',
           }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: '#D4A853', margin: 0 }}>
-              ✨ Du hast <strong>{summary.goalContribution} Min</strong> zu einem gemeinsamen Gebetsziel beigetragen.
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: '#D4A853', margin: 0 }}>{t('✨ Du hast')}{' '}<strong>{t('{goalContribution} Min', { goalContribution: summary.goalContribution })}</strong>{t(' zu einem gemeinsamen Gebetsziel beigetragen.')}</p>
           </div>
         )}
 
@@ -791,9 +769,7 @@ function SummaryScreen({ summary, onClose, onRestart }) {
               fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700,
               cursor: 'pointer', boxShadow: '0 6px 22px rgba(212,168,83,0.3)',
             }}
-          >
-            Fertig
-          </button>
+          >{t('Fertig')}</button>
           <button
             onClick={onRestart}
             style={{
@@ -802,9 +778,7 @@ function SummaryScreen({ summary, onClose, onRestart }) {
               fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600,
               color: 'rgba(240,237,230,0.6)', cursor: 'pointer',
             }}
-          >
-            Nochmal beten
-          </button>
+          >{t('Nochmal beten')}</button>
         </div>
       </div>
     </div>
@@ -813,12 +787,13 @@ function SummaryScreen({ summary, onClose, onRestart }) {
 
 // ─── Continue Screen (Weiterbeten – Quelle wählen) ────────────
 const CONTINUE_SOURCES = [
-  { key: 'oikos',    emoji: '🏠', label: 'Meine Oikos Map',         desc: 'Offene Anliegen meiner Oikos-Personen' },
-  { key: 'siblings', emoji: '👥', label: 'Anliegen meiner Geschwister', desc: 'Gebete verbundener Geschwister' },
-  { key: 'all',      emoji: '🌍', label: 'Öffentliche Anliegen',    desc: 'Anliegen aus der ganzen Gemeinschaft' },
+  { key: 'oikos',    emoji: '🏠', get label() { return tr('Meine Oikos Map') },         get desc() { return tr('Offene Anliegen meiner Oikos-Personen') } },
+  { key: 'siblings', emoji: '👥', get label() { return tr('Anliegen meiner Geschwister') }, get desc() { return tr('Gebete verbundener Geschwister') } },
+  { key: 'all',      emoji: '🌍', get label() { return tr('Öffentliche Anliegen') },    get desc() { return tr('Anliegen aus der ganzen Gemeinschaft') } },
 ]
 
 function ContinueScreen({ excludeIds, onContinue, onSkip }) {
+  const { t } = useT()
   const { user } = useAuth()
   const [loadingSource, setLoadingSource] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -831,14 +806,14 @@ function ContinueScreen({ excludeIds, onContinue, onSkip }) {
       const items = await fetchPrayerModeItems({ source, userId: user.id, sort: 'random' })
       const filtered = items.filter(i => !excludeIds.includes(i.request?.id))
       if (filtered.length === 0) {
-        const label = CONTINUE_SOURCES.find(s => s.key === source)?.label || 'dieser Quelle'
-        setNotice(`Keine weiteren offenen Anliegen bei „${label}".`)
+        const label = CONTINUE_SOURCES.find(s => s.key === source)?.label || tr('dieser Quelle')
+        setNotice(t('Keine weiteren offenen Anliegen bei „{label}".', { label }))
         setLoadingSource(null)
         return
       }
       onContinue(filtered.slice(0, 10))
     } catch {
-      setNotice('Anliegen konnten nicht geladen werden.')
+      setNotice(t('Anliegen konnten nicht geladen werden.'))
       setLoadingSource(null)
     }
   }
@@ -849,12 +824,8 @@ function ContinueScreen({ excludeIds, onContinue, onSkip }) {
       <div style={{ zIndex: 1, width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🙏</div>
-          <h1 style={{ fontFamily: 'Lora, serif', fontSize: 23, fontWeight: 700, color: '#F0EDE6', margin: '0 0 6px' }}>
-            Möchtest du weiterbeten?
-          </h1>
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'rgba(240,237,230,0.55)', margin: 0 }}>
-            Wähle, wofür du als Nächstes beten möchtest.
-          </p>
+          <h1 style={{ fontFamily: 'Lora, serif', fontSize: 23, fontWeight: 700, color: '#F0EDE6', margin: '0 0 6px' }}>{t('Möchtest du weiterbeten?')}</h1>
+          <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'rgba(240,237,230,0.55)', margin: 0 }}>{t('Wähle, wofür du als Nächstes beten möchtest.')}</p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
@@ -892,9 +863,7 @@ function ContinueScreen({ excludeIds, onContinue, onSkip }) {
           </p>
         )}
 
-        <button onClick={onSkip} disabled={!!loadingSource} style={{ width: '100%', padding: '14px 0', borderRadius: 50, border: '1.5px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'rgba(240,237,230,0.6)', cursor: loadingSource ? 'default' : 'pointer' }}>
-          Fertig
-        </button>
+        <button onClick={onSkip} disabled={!!loadingSource} style={{ width: '100%', padding: '14px 0', borderRadius: 50, border: '1.5px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'rgba(240,237,230,0.6)', cursor: loadingSource ? 'default' : 'pointer' }}>{t('Fertig')}</button>
       </div>
     </div>
   )

@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { X, ArrowLeft } from 'lucide-react'
+import { useT } from '../../i18n'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -28,6 +29,7 @@ const WHO_OPTIONS = [
 ]
 
 export default function OikosWorldMapSourceSheet({ source, onClose }) {
+  const { t } = useT()
   const {
     ownMaps, loadingMaps, checkedMapIds, toggleMap, setAllMaps,
     step, confirmMaps, backToMaps,
@@ -62,17 +64,17 @@ export default function OikosWorldMapSourceSheet({ source, onClose }) {
         {step === 'maps' && (
           <>
             <h3 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: '0 0 4px', textAlign: 'center' }}>
-              Oikos Verbindungen anzeigen
+              {t('Oikos Verbindungen anzeigen')}
             </h3>
             <p style={{ fontSize: 12, color: C.textTer, margin: '0 0 18px', textAlign: 'center' }}>
-              Wähle eine oder mehrere deiner Oikos Maps aus.
+              {t('Wähle eine oder mehrere deiner Oikos Maps aus.')}
             </p>
 
             {loadingMaps ? (
-              <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', padding: '20px 0' }}>Lade Maps…</p>
+              <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', padding: '20px 0' }}>{t('Lade Maps…')}</p>
             ) : ownMaps.length === 0 ? (
               <p style={{ fontSize: 13, color: C.textTer, textAlign: 'center', padding: '20px 0' }}>
-                Du hast noch keine Oikos Map angelegt.
+                {t('Du hast noch keine Oikos Map angelegt.')}
               </p>
             ) : (
               <>
@@ -80,7 +82,7 @@ export default function OikosWorldMapSourceSheet({ source, onClose }) {
                   onClick={() => setAllMaps(!allChecked)}
                   style={{ border: 'none', background: 'none', color: C.accent, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 10 }}
                 >
-                  {allChecked ? 'Alle abwählen' : 'Alle auswählen'}
+                  {allChecked ? t('Alle abwählen') : t('Alle auswählen')}
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
                   {ownMaps.map(m => {
@@ -118,7 +120,7 @@ export default function OikosWorldMapSourceSheet({ source, onClose }) {
                 cursor: checkedMapIds.size === 0 ? 'not-allowed' : 'pointer',
               }}
             >
-              Weltkarte anzeigen
+              {t('Weltkarte anzeigen')}
             </button>
           </>
         )}
@@ -126,10 +128,10 @@ export default function OikosWorldMapSourceSheet({ source, onClose }) {
         {step === 'mode' && (
           <>
             <h3 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: '0 0 4px', textAlign: 'center' }}>
-              Wer soll angezeigt werden?
+              {t('Wer soll angezeigt werden?')}
             </h3>
             <p style={{ fontSize: 12, color: C.textTer, margin: '0 0 18px', textAlign: 'center' }}>
-              Bestimmt, welche Personen und Beziehungslinien eingeblendet werden.
+              {t('Bestimmt, welche Personen und Beziehungslinien eingeblendet werden.')}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -144,14 +146,14 @@ export default function OikosWorldMapSourceSheet({ source, onClose }) {
                     border: `1.5px solid ${C.border}`, background: C.bg, textAlign: 'left',
                   }}
                 >
-                  <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{opt.icon} {opt.label}</span>
-                  <span style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>{opt.desc}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{opt.icon} {t(opt.label)}</span>
+                  <span style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>{t(opt.desc)}</span>
                 </button>
               ))}
             </div>
 
             {loadingResult && (
-              <p style={{ fontSize: 12, color: C.textTer, textAlign: 'center', marginTop: 14 }}>Lade…</p>
+              <p style={{ fontSize: 12, color: C.textTer, textAlign: 'center', marginTop: 14 }}>{t('Lade…')}</p>
             )}
           </>
         )}

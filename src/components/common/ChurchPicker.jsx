@@ -4,11 +4,13 @@ import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import MemberAvatarStack from '../community/MemberAvatarStack'
 import { getInitials } from '../../lib/communityTheme'
+import { useT } from '../../i18n'
 
 // Gemeinde-Eingabe mit Dropdown der bereits eingetragenen Gemeinden
 // (phase91: get_churches). Freitext bleibt möglich – eine neue Gemeinde
 // erscheint nach dem Speichern automatisch für alle in der Liste.
 export default function ChurchPicker({ value, onChange, inputStyle }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const rootRef = useRef(null)
   const [churches, setChurches] = useState([])
@@ -47,7 +49,7 @@ export default function ChurchPicker({ value, onChange, inputStyle }) {
         value={value}
         onChange={e => { onChange(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
-        placeholder="Gemeinde wählen oder neu eingeben"
+        placeholder={t('Gemeinde wählen oder neu eingeben')}
         style={inputStyle}
       />
       {open && (filtered.length > 0 || isNew) && (
@@ -61,7 +63,7 @@ export default function ChurchPicker({ value, onChange, inputStyle }) {
         >
           {isNew && (
             <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--color-text-secondary)', borderBottom: '1px solid var(--color-border)' }}>
-              „{value.trim()}“ als neue Gemeinde hinzufügen
+              {t('„{name}“ als neue Gemeinde hinzufügen', { name: value.trim() })}
             </div>
           )}
           {filtered.map(c => (
@@ -76,7 +78,7 @@ export default function ChurchPicker({ value, onChange, inputStyle }) {
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); showMembers(c) }}
-                aria-label={`Mitglieder von ${c.name} anzeigen`}
+                aria-label={t('Mitglieder von {name} anzeigen', { name: c.name })}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
               >
                 <MemberAvatarStack members={c.members || []} count={c.member_count} size={20} max={3} />
@@ -102,12 +104,12 @@ export default function ChurchPicker({ value, onChange, inputStyle }) {
           >
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h3 style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)' }}>{membersOf.name}</h3>
-              <button type="button" onClick={() => setMembersOf(null)} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+              <button type="button" onClick={() => setMembersOf(null)} aria-label={t('Schließen')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
                 <X size={20} />
               </button>
             </div>
             {membersOf.list === null ? (
-              <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>Lade…</p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>{t('Lade…')}</p>
             ) : membersOf.list.map(m => (
               <div
                 key={m.id}

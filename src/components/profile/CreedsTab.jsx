@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { Plus, Search, ArrowDownNarrowWide, ArrowUpNarrowWide, Clock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useT } from '../../i18n'
 import { parseGermanReference } from '../../lib/bibleBooks'
 import { readCache, writeCache } from '../../lib/swrCache'
 import { CreedRow } from './CreedRow'
@@ -44,6 +45,7 @@ function sortOwnCreeds(creeds, sortBy, confessionByCreed) {
 }
 
 export default function CreedsTab() {
+  const { t } = useT()
   const { user } = useAuth()
 
   // Tab ist lazy-geladen (eigener Chunk) UND lud bisher bei jedem Öffnen
@@ -176,7 +178,7 @@ export default function CreedsTab() {
 
   async function adoptCreed(creed) {
     const { data: lines } = await supabase.from('creed_lines').select(CREED_LINE_SELECT).eq('creed_id', creed.id).order('order_index')
-    setEditorInitial({ title: `${creed.title} (Kopie)`, visibility: 'private', lines: lines || [], sourceCreedId: creed.id })
+    setEditorInitial({ title: t('{title} (Kopie)', { title: creed.title }), visibility: 'private', lines: lines || [], sourceCreedId: creed.id })
     setShowEditor(true)
   }
 
@@ -190,18 +192,18 @@ export default function CreedsTab() {
       )}
 
       <div className="px-4 py-4" style={{ paddingBottom: 16 }}>
-        {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>Lädt…</p>}
+        {loading && <p style={{ color: 'var(--color-text-tertiary)' }}>{t('Lädt…')}</p>}
 
         {!loading && (
           <>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold" style={{ fontFamily: 'Lora, serif', fontSize: 18, color: 'var(--color-text)' }}>Meine Bekenntnisse</h2>
+              <h2 className="font-bold" style={{ fontFamily: 'Lora, serif', fontSize: 18, color: 'var(--color-text)' }}>{t('Meine Bekenntnisse')}</h2>
               <button onClick={() => { setEditorInitial(undefined); setShowEditor(true) }} className="flex items-center gap-1 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
-                <Plus size={16} /> Neu
+                <Plus size={16} /> {t('Neu')}
               </button>
             </div>
             {ownCreeds.length === 0 && (
-              <p className="mb-6" style={{ fontSize: 13.5, color: 'var(--color-text-tertiary)' }}>Du hast noch kein eigenes Bekenntnis erstellt.</p>
+              <p className="mb-6" style={{ fontSize: 13.5, color: 'var(--color-text-tertiary)' }}>{t('Du hast noch kein eigenes Bekenntnis erstellt.')}</p>
             )}
             {ownCreeds.length > 0 && (
               <div className="flex items-center gap-1.5 mb-3 overflow-x-auto">
@@ -221,7 +223,7 @@ export default function CreedsTab() {
                         fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
                       }}
                     >
-                      <Icon size={13} /> {s.label}
+                      <Icon size={13} /> {t(s.label)}
                     </button>
                   )
                 })}
@@ -245,13 +247,13 @@ export default function CreedsTab() {
               ))}
             </div>
 
-            <h2 className="font-bold mb-3" style={{ fontFamily: 'Lora, serif', fontSize: 18, color: 'var(--color-text)' }}>Öffentliche Bekenntnisse entdecken</h2>
+            <h2 className="font-bold mb-3" style={{ fontFamily: 'Lora, serif', fontSize: 18, color: 'var(--color-text)' }}>{t('Öffentliche Bekenntnisse entdecken')}</h2>
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-3" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
               <Search size={15} style={{ color: 'var(--color-text-tertiary)' }} />
               <input
                 value={publicSearch}
                 onChange={e => setPublicSearch(e.target.value)}
-                placeholder="Bekenntnisse durchsuchen…"
+                placeholder={t('Bekenntnisse durchsuchen…')}
                 className="flex-1 bg-transparent text-sm outline-none"
                 style={{ color: 'var(--color-text)' }}
               />
@@ -274,7 +276,7 @@ export default function CreedsTab() {
                 />
               ))}
               {filteredPublic.length === 0 && (
-                <p style={{ fontSize: 13.5, color: 'var(--color-text-tertiary)' }}>Keine öffentlichen Bekenntnisse gefunden.</p>
+                <p style={{ fontSize: 13.5, color: 'var(--color-text-tertiary)' }}>{t('Keine öffentlichen Bekenntnisse gefunden.')}</p>
               )}
             </div>
           </>

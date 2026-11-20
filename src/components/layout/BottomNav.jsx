@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, HandHeart, Globe, BookOpen, User } from 'lucide-react'
+import { useT } from '../../i18n'
 
 // Instagram-artige Tab-Leiste: nur Icons, halbtransparentes „Glas" über dem
 // Inhalt und ein Slider, der dem aktiven Tab federnd hinterhergleitet.
@@ -22,6 +23,7 @@ function isPathActive(currentPath, match) {
 }
 
 export default function BottomNav() {
+  const { t } = useT()
   const location = useLocation()
   const navigate = useNavigate()
   const navRef = useRef(null)
@@ -57,7 +59,7 @@ export default function BottomNav() {
   return (
     <nav
       ref={navRef}
-      aria-label="Hauptnavigation"
+      aria-label={t('Hauptnavigation')}
       className="bottom-nav md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40"
     >
       <div className="bottom-nav-row">
@@ -80,7 +82,7 @@ export default function BottomNav() {
               key={path}
               type="button"
               onClick={() => navigate(path)}
-              aria-label={label}
+              aria-label={t(label)}
               aria-current={isActive ? 'page' : undefined}
               className={`bottom-nav-item${isActive ? ' is-active' : ''}`}
             >

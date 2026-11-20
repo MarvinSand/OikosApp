@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { readCache, writeCache } from '../lib/swrCache'
+import { useT, tr } from '../i18n'
 
 // Schritte zur Profil-Vervollständigung mit Gewichtung (Summe = 100).
 // Jeder Schritt hat ein Ziel (Route), zu dem die Home-Karte navigiert.
@@ -63,6 +64,7 @@ const STEPS = [
 // serverseitig in einem Request.
 export function useProfileCompletion() {
   const { user } = useAuth()
+  const { lang } = useT()
   const [status, setStatus] = useState(() => readCache(user?.id, 'profileCompletion') ?? null)
   const [loading, setLoading] = useState(() => readCache(user?.id, 'profileCompletion') === undefined)
 
@@ -82,6 +84,8 @@ export function useProfileCompletion() {
   const { percent, steps, nextStep } = useMemo(() => {
     const evaluated = STEPS.map(step => ({
       ...step,
+      title: tr(step.title),
+      text: tr(step.text),
       isDone: step.done(status),
     }))
     const totalWeight = evaluated.reduce((sum, s) => sum + s.weight, 0)
@@ -91,7 +95,7 @@ export function useProfileCompletion() {
       steps: evaluated,
       nextStep: evaluated.find(s => !s.isDone) || null,
     }
-  }, [status])
+  }, [status, lang])
 
   return { percent, steps, nextStep, loading, isComplete: percent >= 100 }
 }

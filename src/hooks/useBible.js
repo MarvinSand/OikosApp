@@ -131,6 +131,82 @@ export function usePassageText(bibleId, book, chapter, verseStart, verseEnd) {
   return { html, loading, error }
 }
 
+// ─── Verssuche (YouVersion GET /v1/search-verses) ───
+//
+// Die Suche liefert nur Referenzen (USFM, z. B. "JHN.3.16"), nie Text. Den
+// Text holen wir pro Treffer über die Passage-API nach (kleiner Cache, damit
+// "Mehr laden"/erneutes Tippen nicht dieselben Verse noch einmal abruft).
+const verseTextCache = new Map() // `${bibleId}:${ref}` -> { reference, text }
+
+async function loadVerseSnippet(bibleId, ref) {
+  const key = `${bibleId}:${ref}`
+  if (verseTextCache.has(key)) return verseTextCache.get(key)
+  try {
+    const data = await fetchBiblePath(`/v1/bibles/${bibleId}/passages/${ref}?format=text`)
+    const d = data?.data ?? data
+    const snippet = { reference: d?.reference || null, text: String(d?.content || '').replace(/\s+/g, ' ').trim() }
+    verseTextCache.set(key, snippet)
+    return snippet
+  } catch {
+    return { reference: null, text: '' }
+  }
+}
+
+function parseUsfmRef(ref) {
+  // "JHN.3.16" oder Bereich "JHN.3.16-JHN.3.18" → Anfang
+  const m = String(ref).match(/^([1-3A-Z]{3})\.(\d+)\.(\d+)/)
+  return m ? { book: m[1], chapter: parseInt(m[2], 10), verse: parseInt(m[3], 10) } : null
+}
+
+const SEARCH_PAGE = 15
+
+export function useVerseSearch(bibleId, query, { enabled = true, debounceMs = 450 } = {}) {
+  const q = (query || '').trim()
+  const active = enabled && q.length >= 3 && !!bibleId
+  const [state, setState] = useState({ q: '', results: [], nextToken: null, loading: false, error: null })
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  const buildResults = useCallback(async (verses) => {
+    const refs = (verses || []).map(v => v.reference).filter(Boolean)
+    const snippets = await Promise.all(refs.map(r => loadVerseSnippet(bibleId, r)))
+    return refs.map((ref, i) => ({ ref, ...parseUsfmRef(ref), reference: snippets[i].reference, text: snippets[i].text }))
+      .filter(r => r.book)
+  }, [bibleId])
+
+  useEffect(() => {
+    if (!active) { setState({ q: '', results: [], nextToken: null, loading: false, error: null }); return }
+    let cancelled = false
+    setState(s => ({ ...s, q, loading: true, error: null }))
+    const timer = setTimeout(async () => {
+      try {
+        const data = await fetchBiblePath(
+          `/v1/search-verses?query=${encodeURIComponent(q.slice(0, 100))}&bible_id=${encodeURIComponent(bibleId)}&page_size=${SEARCH_PAGE}`
+        )
+        const results = await buildResults(data?.verses)
+        if (!cancelled) setState({ q, results, nextToken: data?.next_page_token || null, loading: false, error: null })
+      } catch (e) {
+        if (!cancelled) setState({ q, results: [], nextToken: null, loading: false, error: e.message })
+      }
+    }, debounceMs)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [q, bibleId, active, debounceMs, buildResults])
+
+  const loadMore = useCallback(async () => {
+    if (!state.nextToken || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const data = await fetchBiblePath(
+        `/v1/search-verses?query=${encodeURIComponent(q.slice(0, 100))}&bible_id=${encodeURIComponent(bibleId)}&page_size=${SEARCH_PAGE}&page_token=${encodeURIComponent(state.nextToken)}`
+      )
+      const more = await buildResults(data?.verses)
+      setState(s => ({ ...s, results: [...s.results, ...more], nextToken: data?.next_page_token || null }))
+    } catch { /* leise: Liste bleibt, Knopf bleibt */ }
+    setLoadingMore(false)
+  }, [state.nextToken, loadingMore, q, bibleId, buildResults])
+
+  return { ...state, active, loadingMore, hasMore: !!state.nextToken, loadMore }
+}
+
 // ─── Übersetzungs-Katalog (pro Sprache) ───
 //
 // Der Gesamtkatalog (~1479 Übersetzungen, ~20 Seiten) wird NICHT mehr am Stück

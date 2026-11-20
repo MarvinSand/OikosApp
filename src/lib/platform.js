@@ -6,8 +6,12 @@ export const isNativeApp = Capacitor.isNativePlatform()
 // In der App ist `window.location.origin` `capacitor://localhost` – als Ziel
 // für geteilte Links oder E-Mail-Bestätigungen unbrauchbar (öffnet sich auf
 // keinem anderen Gerät). Dort stattdessen die öffentliche Web-Adresse nutzen.
-// Überschreibbar per VITE_PUBLIC_APP_URL (Vercel/GitHub-Secret).
-export const PUBLIC_APP_URL = (import.meta.env.VITE_PUBLIC_APP_URL || 'https://oikosapp.net').replace(/\/+$/, '')
+// Überschreibbar per VITE_PUBLIC_APP_URL (Vercel/GitHub-Variable).
+// Default = App-Subdomain: nur Hosts, die in iOS (`App.entitlements`) und Android
+// (`AndroidManifest.xml`) als Universal/App Link eingetragen sind, öffnen beim
+// Scannen eines QR-Codes mit der Kamera direkt die installierte App.
+// `oikosapp.net` (alt) leitet per 308 um und taugt dafür nicht.
+export const PUBLIC_APP_URL = (import.meta.env.VITE_PUBLIC_APP_URL || 'https://app.oikosconnect.net').replace(/\/+$/, '')
 
 // Links (Teilen, QR, E-Mail-Bestätigung) zeigen immer auf die öffentliche
 // Domain – auch wenn jemand die App noch über die alte Vercel-Adresse

@@ -1,4 +1,5 @@
 import { useAuth } from '../../hooks/useAuth'
+import { useT } from '../../i18n'
 
 function getInitials(name) {
   if (!name) return '?'
@@ -9,7 +10,8 @@ function getInitials(name) {
  * Twitter-style compose entry point. Shows the user's avatar next to a
  * placeholder "input" that, when clicked, opens the real compose sheet.
  */
-export default function ComposerBox({ placeholder = 'Was möchtest du teilen?', avatarUrl, onClick }) {
+export default function ComposerBox({ placeholder, avatarUrl, onClick }) {
+  const { t } = useT()
   const { user } = useAuth()
   const name = user?.user_metadata?.full_name || user?.email || '?'
   const initials = getInitials(name)
@@ -54,7 +56,7 @@ export default function ComposerBox({ placeholder = 'Was möchtest du teilen?', 
         )}
       </div>
       <span style={{ flex: 1, fontSize: 15, color: 'var(--color-text-tertiary)' }}>
-        {placeholder}
+        {placeholder ?? t('Was möchtest du teilen?')}
       </span>
     </button>
   )

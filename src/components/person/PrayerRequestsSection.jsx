@@ -6,9 +6,11 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import PrayerCardList from '../prayer/PrayerCardList'
 import { normalizePrayer, KIND_OIKOS } from '../../lib/prayerModel'
+import { useT } from '../../i18n'
 
 // ─── AddRequestForm ───────────────────────────────────────────
 function AddRequestForm({ onSave, onCancel }) {
+  const { t } = useT()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   // Standard privat: es geht um namentlich genannte Dritte – öffentlich nur bewusst.
@@ -24,16 +26,16 @@ function AddRequestForm({ onSave, onCancel }) {
 
   return (
     <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 14, padding: '14px', border: '1.5px solid var(--color-accent)' }}>
-      <input autoFocus type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Titel des Anliegens *" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleSave()} />
-      <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Beschreibung (optional)" rows={2} style={{ ...inputStyle, marginTop: 8, resize: 'vertical' }} />
+      <input autoFocus type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t('Titel des Anliegens *')} style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleSave()} />
+      <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('Beschreibung (optional)')} rows={2} style={{ ...inputStyle, marginTop: 8, resize: 'vertical' }} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
         <button onClick={() => setIsPublic(!isPublic)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)' }}>
           {isPublic ? <Globe size={13} color="var(--color-accent)" /> : <Lock size={13} />}
-          {isPublic ? 'Öffentlich' : 'Privat'}
+          {isPublic ? t('Öffentlich') : t('Privat')}
         </button>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ ...smallBtn, backgroundColor: 'transparent', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Abbrechen</button>
-          <button onClick={handleSave} disabled={!title.trim() || saving} style={{ ...smallBtn, backgroundColor: title.trim() ? 'var(--color-accent)' : 'var(--color-border)', color: '#fff', border: 'none' }}>Speichern</button>
+          <button onClick={onCancel} style={{ ...smallBtn, backgroundColor: 'transparent', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{t('Abbrechen')}</button>
+          <button onClick={handleSave} disabled={!title.trim() || saving} style={{ ...smallBtn, backgroundColor: title.trim() ? 'var(--color-accent)' : 'var(--color-border)', color: '#fff', border: 'none' }}>{t('Speichern')}</button>
         </div>
       </div>
     </div>
@@ -53,6 +55,7 @@ const FILTER_OPTIONS = [
 // (components/prayer/PrayerCard) – dasselbe Design wie im For-You-Feed und in
 // Communities.
 export default function PrayerRequestsSection({ personId, isOwner }) {
+  const { t } = useT()
   const { user } = useAuth()
   const { requests, loading, addRequest, reload } = usePrayerRequests(personId)
   const { showToast } = useToast()
@@ -103,13 +106,13 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
     try {
       await addRequest(data)
       setShowAddForm(false)
-      showToast('Anliegen hinzugefügt')
+      showToast(t('Anliegen hinzugefügt'))
       // Server-Stand nachladen, damit das Anliegen sicher persistiert ist
       reload()
     } catch (err) {
       // Echten Fehler (z.B. RLS-Ablehnung) in der Konsole sichtbar machen.
       console.error('[PrayerRequestsSection] Anliegen speichern fehlgeschlagen:', err)
-      const msg = err?.message ? `Fehler beim Speichern: ${err.message}` : 'Fehler beim Speichern'
+      const msg = err?.message ? t('Fehler beim Speichern: {msg}', { msg: err.message }) : t('Fehler beim Speichern')
       showToast(msg, 'error')
     }
   }
@@ -143,10 +146,10 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={sectionHeader}>
-        <h4 style={sectionTitle}>Gebetsanliegen</h4>
+        <h4 style={sectionTitle}>{t('Gebetsanliegen')}</h4>
         {isOwner && !showAddForm && (
           <button onClick={() => setShowAddForm(true)} style={addBtn}>
-            <Plus size={13} /> Hinzufügen
+            <Plus size={13} /> {t('Hinzufügen')}
           </button>
         )}
       </div>
@@ -154,10 +157,10 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
       {!loading && requests.length > 0 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <div style={statChip}>
-            🙏 <strong>{personStats.people}</strong> {personStats.people === 1 ? 'Person hat' : 'Personen haben'} gebetet
+            🙏 <strong>{personStats.people}</strong> {personStats.people === 1 ? t('Person hat gebetet') : t('Personen haben gebetet')}
           </div>
           <div style={statChip}>
-            📿 <strong>{personStats.prayers}</strong> {personStats.prayers === 1 ? 'Gebet' : 'Gebete'} insgesamt
+            📿 <strong>{personStats.prayers}</strong> {personStats.prayers === 1 ? t('Gebet insgesamt') : t('Gebete insgesamt')}
           </div>
         </div>
       )}
@@ -176,14 +179,14 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
                   borderColor: filterMode === opt.value ? 'var(--color-accent)' : 'var(--color-border)',
                 }}
               >
-                {opt.label}
+                {t(opt.label)}
               </button>
             ))}
           </div>
           <select value={sortMode} onChange={e => setSortMode(e.target.value)} style={sortSelect}>
-            <option value="standard">Sortierung: Standard</option>
-            <option value="laengste_pause">Am längsten nicht gebetet</option>
-            <option value="aeltestes">Ältestes Anliegen zuerst</option>
+            <option value="standard">{t('Sortierung: Standard')}</option>
+            <option value="laengste_pause">{t('Am längsten nicht gebetet')}</option>
+            <option value="aeltestes">{t('Ältestes Anliegen zuerst')}</option>
           </select>
         </div>
       )}
@@ -200,14 +203,14 @@ export default function PrayerRequestsSection({ personId, isOwner }) {
 
           {answered.length > 0 && (
             <div style={{ marginTop: 4 }}>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)', fontStyle: 'italic', marginBottom: 8 }}>Erhört ✓</p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-tertiary)', fontStyle: 'italic', marginBottom: 8 }}>{t('Erhört ✓')}</p>
               <PrayerCardList prayers={answered} onChanged={handleChanged} onPrayed={loadPrayerData} showContext={false} />
             </div>
           )}
 
           {requests.length === 0 && !showAddForm && (
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-tertiary)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>
-              {isOwner ? 'Füge dein erstes Gebetsanliegen hinzu.' : 'Noch keine öffentlichen Anliegen.'}
+              {isOwner ? t('Füge dein erstes Gebetsanliegen hinzu.') : t('Noch keine öffentlichen Anliegen.')}
             </p>
           )}
         </div>

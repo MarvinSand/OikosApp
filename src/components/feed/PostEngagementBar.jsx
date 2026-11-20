@@ -1,5 +1,6 @@
 import { MessageSquare, Repeat2, Heart, Bookmark, Share } from 'lucide-react'
 import { CONTENT_INSET } from './FeedCardFrame'
+import { useT } from '../../i18n'
 
 function fmtCount(n) {
   if (!n) return ''
@@ -27,6 +28,7 @@ export default function PostEngagementBar({
   // Avatar, bei fokussierten Beiträgen läuft sie über die volle Breite.
   inset = CONTENT_INSET,
 }) {
+  const { t } = useT()
   const item = (active, activeColor) => ({
     display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none',
     cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: active ? 700 : 400,
@@ -35,27 +37,27 @@ export default function PostEngagementBar({
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: `8px 16px 12px ${inset}px` }}>
-      <button onClick={e => { e.stopPropagation(); onComment?.() }} style={{ ...item(false), flex: 1 }} aria-label="Kommentieren">
+      <button onClick={e => { e.stopPropagation(); onComment?.() }} style={{ ...item(false), flex: 1 }} aria-label={t('Kommentieren')}>
         <MessageSquare size={15} />
         {commentCount > 0 && <span>{fmtCount(commentCount)}</span>}
       </button>
 
-      <button onClick={e => { e.stopPropagation(); onRepost?.() }} style={{ ...item(reposted, '#0F9D58'), flex: 1 }} aria-label="Repost">
+      <button onClick={e => { e.stopPropagation(); onRepost?.() }} style={{ ...item(reposted, '#0F9D58'), flex: 1 }} aria-label={t('Repost')}>
         <Repeat2 size={16} />
         {repostCount > 0 && <span>{fmtCount(repostCount)}</span>}
       </button>
 
-      <button onClick={e => { e.stopPropagation(); onLike?.() }} style={{ ...item(liked, '#E0245E'), flex: 1 }} aria-label="Gefällt mir">
+      <button onClick={e => { e.stopPropagation(); onLike?.() }} style={{ ...item(liked, '#E0245E'), flex: 1 }} aria-label={t('Gefällt mir')}>
         <Heart size={15} fill={liked ? '#E0245E' : 'none'} />
         {likeCount > 0 && <span>{fmtCount(likeCount)}</span>}
       </button>
 
-      <button onClick={e => { e.stopPropagation(); onBookmark?.() }} style={{ ...item(bookmarked, 'var(--color-accent-dark)'), flex: 1 }} aria-label="Merken">
+      <button onClick={e => { e.stopPropagation(); onBookmark?.() }} style={{ ...item(bookmarked, 'var(--color-accent-dark)'), flex: 1 }} aria-label={t('Merken')}>
         <Bookmark size={15} fill={bookmarked ? 'var(--color-accent-dark)' : 'none'} />
         {bookmarkCount > 0 && <span>{fmtCount(bookmarkCount)}</span>}
       </button>
 
-      <button onClick={e => { e.stopPropagation(); onShare?.() }} style={item(false)} aria-label="Teilen">
+      <button onClick={e => { e.stopPropagation(); onShare?.() }} style={item(false)} aria-label={t('Teilen')}>
         <Share size={15} />
       </button>
     </div>

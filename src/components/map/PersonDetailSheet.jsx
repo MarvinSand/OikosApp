@@ -10,6 +10,7 @@ import PrayerRequestsSection from '../person/PrayerRequestsSection'
 import ImpactMapSection from '../person/ImpactMapSection'
 import StoryLineSection from '../person/StoryLineSection'
 import LinkedProfilePreview from './LinkedProfilePreview'
+import { useT, tr } from '../../i18n'
 
 const RELATIONSHIP_TYPES = ['Freund/in', 'Kollege/in', 'Familie', 'Nachbar/in', 'Bekannte/r', 'Sonstige/r']
 
@@ -48,12 +49,13 @@ const CONN_COLORS = [
 ]
 
 function ColorSwatches({ colors, selected, onSelect }) {
+  const { t } = useT()
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {colors.map(c => (
         <button
           key={c.hex}
-          title={c.label}
+          title={t(c.label)}
           onClick={() => onSelect(c.hex)}
           style={{
             width: 32, height: 32, borderRadius: '50%', backgroundColor: c.hex,
@@ -82,6 +84,7 @@ function getInitials(name) {
 }
 
 function EditPersonForm({ person, onSave, onCancel }) {
+  const { t } = useT()
   const [name, setName] = useState(person.name)
   const [relType, setRelType] = useState(person.relationship_type || '')
   const [isChristian, setIsChristian] = useState(person.is_christian || false)
@@ -97,37 +100,37 @@ function EditPersonForm({ person, onSave, onCancel }) {
 
   return (
     <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 16, padding: 16, marginBottom: 20 }}>
-      <label style={lbl}>Name</label>
+      <label style={lbl}>{t('Name')}</label>
       <input type="text" value={name} onChange={e => setName(e.target.value)} style={inp} />
 
-      <label style={{ ...lbl, marginTop: 12 }}>Beziehung</label>
+      <label style={{ ...lbl, marginTop: 12 }}>{t('Beziehung')}</label>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
-        {RELATIONSHIP_TYPES.map(t => (
+        {RELATIONSHIP_TYPES.map(rt => (
           <button
-            key={t} onClick={() => setRelType(relType === t ? '' : t)}
-            style={{ padding: '5px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, backgroundColor: relType === t ? 'var(--color-warm-1)' : 'var(--color-white)', color: relType === t ? 'var(--color-bg)' : 'var(--color-text-muted)' }}
+            key={rt} onClick={() => setRelType(relType === rt ? '' : rt)}
+            style={{ padding: '5px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, backgroundColor: relType === rt ? 'var(--color-warm-1)' : 'var(--color-white)', color: relType === rt ? 'var(--color-bg)' : 'var(--color-text-muted)' }}
           >
-            {t}
+            {t(rt)}
           </button>
         ))}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-        <span style={lbl}>Ist Christ/in</span>
+        <span style={lbl}>{t('Ist Christ/in')}</span>
         <button onClick={() => setIsChristian(!isChristian)} style={toggleTrack(isChristian)}>
           <div style={toggleThumb(isChristian)} />
         </button>
       </div>
 
-      <label style={{ ...lbl, marginTop: 14 }}>Notiz / Beschreibung</label>
-      <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} style={{ ...inp, resize: 'vertical' }} placeholder="Wer ist diese Person?" />
+      <label style={{ ...lbl, marginTop: 14 }}>{t('Notiz / Beschreibung')}</label>
+      <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} style={{ ...inp, resize: 'vertical' }} placeholder={t('Wer ist diese Person?')} />
 
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
         <button onClick={onCancel} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer' }}>
-          Abbrechen
+          {t('Abbrechen')}
         </button>
         <button onClick={handleSave} disabled={!name.trim() || saving} style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-          {saving ? 'Gespeichert ✓' : 'Speichern'}
+          {saving ? t('Gespeichert ✓') : t('Speichern')}
         </button>
       </div>
     </div>
@@ -136,6 +139,7 @@ function EditPersonForm({ person, onSave, onCancel }) {
 
 // --- Connections Section ---
 function ConnectionsSection({ person, people, overlayData = [], connections, onDeleteConnection, onCreateConnection, onUpdateConnectionColor, onAddConnectedPerson, mapOwnerName, ownerDisconnected, onOwnerDisconnect, onDeletePerson, placeConnections = [], places = [], onDisconnectFromPlace, isOwner = true }) {
+  const { t } = useT()
   const [showAddSearch, setShowAddSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [labelModal, setLabelModal] = useState(null) // { targetId }
@@ -210,7 +214,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
   return (
     <div style={{ marginBottom: 8 }}>
       <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        Verbindungen
+        {t('Verbindungen')}
       </h4>
 
       {/* Map-Besitzer immer anzeigen */}
@@ -223,7 +227,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                 ↔ {mapOwnerName}
               </span>
               <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                (Map-Besitzer)
+                {t('(Map-Besitzer)')}
               </span>
             </div>
             {isOwner && (
@@ -234,7 +238,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                   else { setOwnerColorDraft(ownerColor); setOwnerPickerOpen(true) }
                 }}
                 style={{ border: 'none', background: ownerPickerOpen ? 'var(--color-warm-4)' : 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: ownerPickerOpen ? 'var(--color-warm-1)' : 'var(--color-text-muted)', flexShrink: 0, display: 'flex' }}
-                title="Verbindungsfarbe ändern"
+                title={t('Verbindungsfarbe ändern')}
               >
                 <Palette size={14} />
               </button>
@@ -260,7 +264,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                 onClick={() => { setOwnerColor(ownerColorDraft); setOwnerPickerOpen(false) }}
                 style={{ marginTop: 12, width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                Speichern
+                {t('Speichern')}
               </button>
             </div>
           )}
@@ -269,7 +273,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
 
       {myConnections.length === 0 && (!mapOwnerName || ownerDisconnected) && (
         <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', marginBottom: 12 }}>
-          Keine Verbindungen.
+          {t('Keine Verbindungen.')}
         </p>
       )}
 
@@ -288,23 +292,23 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
             zIndex: 70, boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
           }}>
             <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
-              Einzige Verbindung
+              {t('Einzige Verbindung')}
             </h3>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 20, lineHeight: 1.6 }}>
-              Du bist die einzige Verbindung von <strong>{person.name}</strong>. Möchtest du diese Person von der Map entfernen?
+              {t('Du bist die einzige Verbindung von')} <strong>{person.name}</strong>{t('. Möchtest du diese Person von der Map entfernen?')}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => setShowOwnerDisconnectConfirm(false)}
                 style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}
               >
-                Abbrechen
+                {t('Abbrechen')}
               </button>
               <button
                 onClick={() => { setShowOwnerDisconnectConfirm(false); onDeletePerson?.() }}
                 style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                Von Map entfernen
+                {t('Von Map entfernen')}
               </button>
             </div>
           </div>
@@ -343,7 +347,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                     }
                   }}
                   style={{ border: 'none', background: isPickerOpen ? 'var(--color-warm-4)' : 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: isPickerOpen ? 'var(--color-warm-1)' : 'var(--color-text-muted)', flexShrink: 0, display: 'flex' }}
-                  title="Verbindungsfarbe ändern"
+                  title={t('Verbindungsfarbe ändern')}
                 >
                   <Palette size={14} />
                 </button>
@@ -377,7 +381,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                     fontWeight: 600, cursor: colorSaving ? 'default' : 'pointer',
                   }}
                 >
-                  {colorSaving ? 'Wird gespeichert…' : 'Speichern'}
+                  {colorSaving ? t('Wird gespeichert…') : t('Speichern')}
                 </button>
               </div>
             )}
@@ -389,7 +393,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
       {myPlaceConnections.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <h5 style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, marginTop: 4 }}>
-            Orte
+            {t('Orte')}
           </h5>
           {myPlaceConnections.map(c => {
             const pl = places.find(p => p.id === c.place_id)
@@ -414,7 +418,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                 <button
                   onClick={() => onDisconnectFromPlace?.(pl.id, person.id)}
                   style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: '#C0392B', flexShrink: 0, display: 'flex' }}
-                  title="Verbindung zum Ort entfernen"
+                  title={t('Verbindung zum Ort entfernen')}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -432,13 +436,13 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
             onClick={() => setShowAddSearch(true)}
             style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600 }}
           >
-            + Verbindung
+            {t('+ Verbindung')}
           </button>
           <button
             onClick={() => { setShowNewPersonForm(true); setNewPersonName('') }}
             style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-1)', background: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-bg)', cursor: 'pointer', fontWeight: 600 }}
           >
-            + Person hinzufügen
+            {t('+ Person hinzufügen')}
           </button>
         </div>
       )}
@@ -447,13 +451,13 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
       {isOwner && showNewPersonForm && (
         <div style={{ marginTop: 10, backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 12 }}>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8, lineHeight: 1.5 }}>
-            Neue Person wird direkt mit <strong>{person.name}</strong> verbunden.
+            {t('Neue Person wird direkt mit')} <strong>{person.name}</strong>{t(' verbunden.')}
           </p>
           <input
             type="text"
             value={newPersonName}
             onChange={e => setNewPersonName(e.target.value)}
-            placeholder="Name der Person…"
+            placeholder={t('Name der Person…')}
             autoFocus
             style={{ ...inp, marginBottom: 10 }}
             onKeyDown={e => { if (e.key === 'Enter' && newPersonName.trim()) handleAddNewPerson() }}
@@ -463,14 +467,14 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
               onClick={() => { setShowNewPersonForm(false); setNewPersonName('') }}
               style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}
             >
-              Abbrechen
+              {t('Abbrechen')}
             </button>
             <button
               onClick={handleAddNewPerson}
               disabled={!newPersonName.trim() || addingNewPerson}
               style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: newPersonName.trim() && !addingNewPerson ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
-              {addingNewPerson ? 'Wird hinzugefügt…' : 'Hinzufügen'}
+              {addingNewPerson ? t('Wird hinzugefügt…') : t('Hinzufügen')}
             </button>
           </div>
         </div>
@@ -483,13 +487,13 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Person suchen…"
+            placeholder={t('Person suchen…')}
             autoFocus
             style={{ ...inp, marginBottom: 8 }}
           />
           {filteredPeople.length === 0 ? (
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>
-              Keine weiteren Personen.
+              {t('Keine weiteren Personen.')}
             </p>
           ) : (
             filteredPeople.map(p => (
@@ -506,7 +510,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
             onClick={() => { setShowAddSearch(false); setSearchQuery('') }}
             style={{ marginTop: 4, padding: '6px 12px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', cursor: 'pointer' }}
           >
-            Abbrechen
+            {t('Abbrechen')}
           </button>
         </div>
       )}
@@ -526,7 +530,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
             zIndex: 70, boxShadow: '0 8px 32px rgba(58,46,36,0.18)',
           }}>
             <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
-              Verbindung hinzufügen
+              {t('Verbindung hinzufügen')}
             </h3>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
               {person.name} ↔ {people.find(p => p.id === labelModal.targetId)?.name}
@@ -535,7 +539,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
               type="text"
               value={labelInput}
               onChange={e => setLabelInput(e.target.value)}
-              placeholder="Wie sind sie verbunden? (optional)"
+              placeholder={t('Wie sind sie verbunden? (optional)')}
               autoFocus
               style={{ ...inp, marginBottom: 14 }}
             />
@@ -544,13 +548,13 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
                 onClick={() => handleCreateWithLabel(null)}
                 style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}
               >
-                Überspringen
+                {t('Überspringen')}
               </button>
               <button
                 onClick={() => handleCreateWithLabel(labelInput.trim())}
                 style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                Verbinden
+                {t('Verbinden')}
               </button>
             </div>
           </div>
@@ -566,6 +570,7 @@ function ConnectionsSection({ person, people, overlayData = [], connections, onD
 // direkt per supabase.update() wie handleSaveEdit — sonst bleibt der people-State
 // des Hooks (der die Canvas-Darstellung treibt) nicht synchron.
 function LocationSection({ person, onUpdate }) {
+  const { t } = useT()
   const { friends } = useFriendships()
   const [savingAddr, setSavingAddr] = useState(false)
   const [visibility, setVisibility] = useState(person.location_visibility || 'private')
@@ -614,21 +619,21 @@ function LocationSection({ person, onUpdate }) {
   return (
     <div style={{ marginBottom: 8 }}>
       <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        Standort
+        {t('Standort')}
       </h4>
 
-      <LazyAddressAutocomplete value={addrValue} onChange={handleSelectAddress} placeholder="Adresse eingeben…" />
+      <LazyAddressAutocomplete value={addrValue} onChange={handleSelectAddress} placeholder={t('Adresse eingeben…')} />
       <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '6px 2px 14px' }}>
-        {savingAddr ? 'Wird gespeichert…' : 'Wird per Google-Suche automatisch erkannt und gespeichert.'}
+        {savingAddr ? t('Wird gespeichert…') : t('Wird per Google-Suche automatisch erkannt und gespeichert.')}
       </p>
 
       <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
-            Oikos Verbinden
+            {t('Oikos Verbinden')}
           </p>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
-            Schaltet den Standort für „Oikos Verbindungen anzeigen" auf der Weltkarte frei.
+            {t('Schaltet den Standort für „Oikos Verbindungen anzeigen" auf der Weltkarte frei.')}
           </p>
         </div>
         <button onClick={handleToggleConnect} style={toggleTrack(connectEnabled)}>
@@ -637,7 +642,7 @@ function LocationSection({ person, onUpdate }) {
       </div>
 
       <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 8px' }}>
-        Wer darf den Standort sehen?
+        {t('Wer darf den Standort sehen?')}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {LOCATION_VISIBILITY_OPTIONS.map(opt => {
@@ -657,7 +662,7 @@ function LocationSection({ person, onUpdate }) {
               }}
             >
               <span>{opt.icon}</span>
-              <span style={{ flex: 1 }}>{opt.label}</span>
+              <span style={{ flex: 1 }}>{t(opt.label)}</span>
               {active && <span style={{ fontSize: 12 }}>●</span>}
             </button>
           )
@@ -668,7 +673,7 @@ function LocationSection({ person, onUpdate }) {
         <div style={{ marginTop: 10 }}>
           {friends.length === 0 ? (
             <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-              Noch keine verbundenen Geschwister.
+              {t('Noch keine verbundenen Geschwister.')}
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -699,6 +704,7 @@ function LocationSection({ person, onUpdate }) {
 
 // --- Account Linking Section ---
 function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkAccount, onUpdateOverlay, onOverlayPreview, overlayData = [], isOwner = true }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -784,7 +790,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
     return (
       <div style={{ marginBottom: 8 }}>
         <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Oikos Connect Account
+          {t('Oikos Connect Account')}
         </h4>
 
         {/* Profile row */}
@@ -807,7 +813,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
             onClick={() => navigate(`/user/${person.linked_user_id}`)}
             style={{ padding: '7px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
           >
-            Profil →
+            {t('Profil →')}
           </button>
         </div>
 
@@ -824,7 +830,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
         <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: overlayEnabled ? 10 : 0 }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-              Oikos Connect einblenden
+              {t('Oikos Connect einblenden')}
             </span>
             <button onClick={() => handleToggleOverlay(!overlayEnabled)} style={toggleTrack(overlayEnabled)}>
               <div style={toggleThumb(overlayEnabled)} />
@@ -836,18 +842,18 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
             <div>
               {loadingMaps && (
                 <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '0 0 8px' }}>
-                  Lade Maps…
+                  {t('Lade Maps…')}
                 </p>
               )}
               {!loadingMaps && jimMaps.length === 0 && (
                 <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '0 0 8px' }}>
-                  Keine öffentlichen Maps verfügbar.
+                  {t('Keine öffentlichen Maps verfügbar.')}
                 </p>
               )}
               {!loadingMaps && jimMaps.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: selectedMapIds.length > 0 ? 10 : 0 }}>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 4px' }}>
-                    Maps auswählen
+                    {t('Maps auswählen')}
                   </p>
                   {jimMaps.map(m => {
                     const isSelected = selectedMapIds.includes(m.id)
@@ -879,7 +885,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
               {selectedMapIds.length > 0 && (
                 <div>
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 8px' }}>
-                    Anzeigen
+                    {t('Anzeigen')}
                   </p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
@@ -894,7 +900,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
                       }}
                     >
                       <span style={{ fontSize: 16 }}>{showChristian ? '✓' : '○'}</span>
-                      Christ 🌿
+                      {t('Christ 🌿')}
                     </button>
                     <button
                       onClick={() => handleToggleNonChristian(!showNonChristian)}
@@ -908,7 +914,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
                       }}
                     >
                       <span style={{ fontSize: 16 }}>{showNonChristian ? '✓' : '○'}</span>
-                      Noch nicht 🌱
+                      {t('Noch nicht 🌱')}
                     </button>
                   </div>
                 </div>
@@ -924,22 +930,22 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
             onClick={() => setConfirmUnlink(true)}
             style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: '#C0392B', cursor: 'pointer' }}
           >
-            Verknüpfung aufheben
+            {t('Verknüpfung aufheben')}
           </button>
         ) : (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>Wirklich aufheben?</span>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>{t('Wirklich aufheben?')}</span>
             <button
               onClick={() => { onUnlinkAccount?.(person.id); setConfirmUnlink(false); setOverlayEnabled(false); setSelectedMapIds([]) }}
               style={{ padding: '5px 10px', borderRadius: 8, border: 'none', backgroundColor: '#C0392B', color: 'white', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}
             >
-              Ja
+              {t('Ja')}
             </button>
             <button
               onClick={() => setConfirmUnlink(false)}
               style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, cursor: 'pointer' }}
             >
-              Nein
+              {t('Nein')}
             </button>
           </div>
         ))}
@@ -953,17 +959,17 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
   return (
     <div style={{ marginBottom: 8 }}>
       <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        Oikos Connect Account
+        {t('Oikos Connect Account')}
       </h4>
       <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 10 }}>
-        Hat {person.name} einen Oikos-Connect-Account?
+        {t('Hat {name} einen Oikos-Connect-Account?', { name: person.name })}
       </p>
       {!showSearch ? (
         <button
           onClick={() => setShowSearch(true)}
           style={{ padding: '8px 16px', borderRadius: 10, border: '1.5px solid var(--color-warm-1)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 600 }}
         >
-          Account verknüpfen
+          {t('Account verknüpfen')}
         </button>
       ) : (
         <div style={{ backgroundColor: 'var(--color-warm-4)', borderRadius: 12, padding: 12 }}>
@@ -971,12 +977,12 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
             type="text"
             value={searchQuery}
             onChange={e => handleSearch(e.target.value)}
-            placeholder="Benutzername oder Name suchen…"
+            placeholder={t('Benutzername oder Name suchen…')}
             autoFocus
             style={{ ...inp, marginBottom: 8 }}
           />
           {searching && (
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Suche…</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Suche…')}</p>
           )}
           {!searching && searchResults.map(profile => (
             <button
@@ -1006,7 +1012,7 @@ function AccountLinkingSection({ person, linkedProfile, onLinkAccount, onUnlinkA
             onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]) }}
             style={{ marginTop: 4, padding: '6px 12px', borderRadius: 8, border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', cursor: 'pointer' }}
           >
-            Abbrechen
+            {t('Abbrechen')}
           </button>
         </div>
       )}
@@ -1047,6 +1053,7 @@ export default function PersonDetailSheet({
   onDisconnectFromPlace,
   onCleanup,
 }) {
+  const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
   const [person, setPerson] = useState(initialPerson)
@@ -1062,7 +1069,7 @@ export default function PersonDetailSheet({
     setCleaningUp(true)
     try {
       await onCleanup?.(person.id)
-      showToast('Verbindungen im Kreis angeordnet')
+      showToast(t('Verbindungen im Kreis angeordnet'))
     } finally {
       setCleaningUp(false)
     }
@@ -1072,10 +1079,10 @@ export default function PersonDetailSheet({
   const connectedCount = connections.filter(c => c.source_person_id === person.id || c.target_person_id === person.id).length
   const relBadge = BADGE_COLORS[person.relationship_type] || null
   const currentStageNum = person.impact_stage || 1
-  const stageName = ['Freisetzung', 'Meine Rolle', 'Empathie', 'Perspektive', 'Wortkraft', 'Kontinuität'][currentStageNum - 1]
+  const stageName = tr(['Freisetzung', 'Meine Rolle', 'Empathie', 'Perspektive', 'Wortkraft', 'Kontinuität'][currentStageNum - 1])
 
   async function handleDelete() {
-    if (!window.confirm(`„${person.name}" wirklich löschen?`)) return
+    if (!window.confirm(t('„{name}" wirklich löschen?', { name: person.name }))) return
     onDelete()
   }
 
@@ -1089,9 +1096,9 @@ export default function PersonDetailSheet({
       if (error) throw error
       setPerson(p => ({ ...p, ...data }))
       setEditMode(false)
-      showToast('Änderungen gespeichert')
+      showToast(t('Änderungen gespeichert'))
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     }
   }
 
@@ -1101,7 +1108,7 @@ export default function PersonDetailSheet({
     setPerson(p => ({ ...p, ...updates }))
     // Optimistic update to map — DB error silently ignored if columns don't exist yet
     onUpdate?.(updates).catch(() => {})
-    showToast('Farben gespeichert')
+    showToast(t('Farben gespeichert'))
     setColorSaving(false)
   }
 
@@ -1132,14 +1139,14 @@ export default function PersonDetailSheet({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {person.relationship_type && (
                   <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: relBadge?.bg || 'var(--color-warm-4)', color: relBadge?.color || 'var(--color-text-muted)' }}>
-                    {person.relationship_type}
+                    {t(person.relationship_type)}
                   </span>
                 )}
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: person.is_christian ? 'var(--color-accent-light)' : 'var(--color-warm-4)', color: person.is_christian ? 'var(--color-accent-dark)' : 'var(--color-text-muted)' }}>
-                  {person.is_christian ? 'Christ 🌿' : 'Noch nicht 🌱'}
+                  {person.is_christian ? t('Christ 🌿') : t('Noch nicht 🌱')}
                 </span>
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-gold-light)', color: 'var(--color-gold-text)' }}>
-                  Stufe {currentStageNum} – {stageName}
+                  {t('Stufe {n}', { n: currentStageNum })} – {stageName}
                 </span>
               </div>
             </div>
@@ -1151,18 +1158,18 @@ export default function PersonDetailSheet({
               <button
                 onClick={() => setShowColorPanel(v => !v)}
                 style={{ ...iconBtn, backgroundColor: showColorPanel ? 'var(--color-warm-4)' : 'transparent' }}
-                title="Farben anpassen"
+                title={t('Farben anpassen')}
               >
                 <Palette size={16} color={showColorPanel ? 'var(--color-warm-1)' : 'var(--color-text-muted)'} />
               </button>
             )}
             {isOwner && !editMode && (
-              <button onClick={() => setEditMode(true)} style={iconBtn} title="Bearbeiten">
+              <button onClick={() => setEditMode(true)} style={iconBtn} title={t('Bearbeiten')}>
                 <Pencil size={16} color="var(--color-text-muted)" />
               </button>
             )}
             {isOwner && !editMode && connectedCount > 1 && (
-              <button onClick={handleCleanup} disabled={cleaningUp} style={{ ...iconBtn, opacity: cleaningUp ? 0.6 : 1 }} title="Verbundene Personen im Kreis anordnen">
+              <button onClick={handleCleanup} disabled={cleaningUp} style={{ ...iconBtn, opacity: cleaningUp ? 0.6 : 1 }} title={t('Verbundene Personen im Kreis anordnen')}>
                 <Wand2 size={16} color="var(--color-text-muted)" />
               </button>
             )}
@@ -1178,7 +1185,7 @@ export default function PersonDetailSheet({
             {/* Kreisfarbe */}
             <div style={{ marginBottom: 16 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px' }}>
-                Kreisfarbe
+                {t('Kreisfarbe')}
               </p>
               <ColorSwatches
                 colors={CIRCLE_COLORS}
@@ -1192,7 +1199,7 @@ export default function PersonDetailSheet({
             {/* Namensfarbe */}
             <div style={{ marginBottom: 16 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px' }}>
-                Namensfarbe
+                {t('Namensfarbe')}
               </p>
               <ColorSwatches
                 colors={NAME_COLORS}
@@ -1213,7 +1220,7 @@ export default function PersonDetailSheet({
                 fontWeight: 600, cursor: colorSaving ? 'default' : 'pointer',
               }}
             >
-              {colorSaving ? 'Wird gespeichert…' : 'Speichern'}
+              {colorSaving ? t('Wird gespeichert…') : t('Speichern')}
             </button>
           </div>
         )}
@@ -1319,7 +1326,7 @@ export default function PersonDetailSheet({
         {/* Person löschen */}
         {isOwner && (
           <button onClick={handleDelete} style={{ width: '100%', padding: '12px 0', borderRadius: 12, border: '1px solid #E8C0B8', background: 'none', fontFamily: 'Lora, serif', fontSize: 14, color: '#C0392B', cursor: 'pointer', marginTop: 8 }}>
-            Person aus Map entfernen
+            {t('Person aus Map entfernen')}
           </button>
         )}
       </div>

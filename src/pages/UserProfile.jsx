@@ -13,6 +13,7 @@ import { useToast } from '../context/ToastContext'
 import { useNotificationPrefs } from '../hooks/useNotificationPrefs'
 import { useProfileTabs } from '../hooks/useProfileTabs'
 import { countryToFlag, COUNTRIES } from '../lib/countries'
+import { useT, tr, getLang } from '../i18n'
 import { NOTIFICATION_PREF_FIELDS } from '../lib/notificationPrefFields'
 import { Avatar, MapsTab, PostsTab, RepostsTab, PrayersTab } from '../components/profile/ProfileTabs'
 import ProfileListOverlay from '../components/feed/ProfileListOverlay'
@@ -45,10 +46,10 @@ function formatLastActive(ts) {
   const minutes = diff / 60000
   const hours = minutes / 60
   const days = hours / 24
-  if (minutes < 60) return 'Gerade aktiv 🟢'
-  if (hours < 24) return 'Heute aktiv'
-  if (days < 2) return 'Gestern aktiv'
-  if (days < 7) return `Vor ${Math.floor(days)} Tagen aktiv`
+  if (minutes < 60) return tr('Gerade aktiv 🟢')
+  if (hours < 24) return tr('Heute aktiv')
+  if (days < 2) return tr('Gestern aktiv')
+  if (days < 7) return tr('Vor {n} Tagen aktiv', { n: Math.floor(days) })
   return null
 }
 
@@ -63,11 +64,12 @@ function formatBirthdayDisplay(dateStr) {
   if (!dateStr) return ''
   const [, month, day] = dateStr.split('-')
   const d = new Date(2000, parseInt(month) - 1, parseInt(day))
-  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })
+  return d.toLocaleDateString(getLang() === 'en' ? 'en-US' : 'de-DE', { day: 'numeric', month: 'long' })
 }
 
 // ─── UserProfile (Main) ──────────────────────────────────────
 export default function UserProfile() {
+  const { t } = useT()
   const { id: targetId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -179,7 +181,7 @@ export default function UserProfile() {
       if (error) throw error
       navigate(`/chat/${convId}`)
     } catch (e) {
-      showToast(e?.message?.includes('user_blocked') ? 'Chat nicht möglich – einer von euch hat den anderen blockiert' : 'Fehler beim Öffnen des Chats', 'error')
+      showToast(e?.message?.includes('user_blocked') ? t('Chat nicht möglich – einer von euch hat den anderen blockiert') : t('Fehler beim Öffnen des Chats'), 'error')
     } finally {
       setChatLoading(false)
     }
@@ -198,17 +200,17 @@ export default function UserProfile() {
     try {
       if (status === 'none') {
         await sendRequest(targetId)
-        showToast('Anfrage gesendet ✓')
+        showToast(t('Anfrage gesendet ✓'))
       } else if (status === 'received') {
         const fid = getFriendship(targetId)?.id || bootMeta?.friendship?.id
-        if (fid) { await acceptRequest(fid); showToast('Verbunden ✓') }
+        if (fid) { await acceptRequest(fid); showToast(t('Verbunden ✓')) }
       } else if (status === 'sent') {
         const fid = getFriendship(targetId)?.id || bootMeta?.friendship?.id
-        if (fid) { await declineRequest(fid); showToast('Anfrage zurückgezogen') }
+        if (fid) { await declineRequest(fid); showToast(t('Anfrage zurückgezogen')) }
       }
       setFriendActed(true)
     } catch (e) {
-      showToast(e.message || 'Fehler', 'error')
+      showToast(e.message || t('Fehler'), 'error')
     } finally {
       setActionLoading(false)
     }
@@ -236,17 +238,17 @@ export default function UserProfile() {
     return (
       <div className="bg-bg min-h-full">
         <header className="flex items-center gap-2 px-4" style={headerBarStyle}>
-          <button onClick={() => navigate(-1)} aria-label="Zurück" style={iconBtnStyle}><ArrowLeft size={20} /></button>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>Nicht gefunden</h2>
+          <button onClick={() => navigate(-1)} aria-label={t('Zurück')} style={iconBtnStyle}><ArrowLeft size={20} /></button>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>{t('Nicht gefunden')}</h2>
         </header>
         <p style={{ padding: 24, fontSize: 14, color: 'var(--color-text-tertiary)', textAlign: 'center' }}>
-          Dieser Nutzer existiert nicht.
+          {t('Dieser Nutzer existiert nicht.')}
         </p>
       </div>
     )
   }
 
-  const displayName = profile.full_name || profile.username || 'Unbekannt'
+  const displayName = profile.full_name || profile.username || t('Unbekannt')
   const countryObj = COUNTRIES.find(c => c.code === profile.country)
   const flag = countryObj ? countryToFlag(countryObj.code) : ''
   const cityLabel = [profile.city, countryObj?.name].filter(Boolean).join(' · ')
@@ -260,22 +262,22 @@ export default function UserProfile() {
   function FriendButton() {
     if (status === 'friends') return (
       <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 14, color: 'var(--color-text)', fontWeight: 600 }}>
-        <UserCheck size={15} /> Verbunden
+        <UserCheck size={15} /> {t('Verbunden')}
       </div>
     )
     if (status === 'sent') return (
       <button onClick={handleFriendAction} disabled={actionLoading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-        <Clock size={14} /> Ausstehend
+        <Clock size={14} /> {t('Ausstehend')}
       </button>
     )
     if (status === 'received') return (
       <button onClick={handleFriendAction} disabled={actionLoading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-        <UserCheck size={15} /> Annehmen
+        <UserCheck size={15} /> {t('Annehmen')}
       </button>
     )
     return (
       <button onClick={handleFriendAction} disabled={actionLoading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-        <UserPlus size={15} /> {actionLoading ? '…' : 'Anfragen'}
+        <UserPlus size={15} /> {actionLoading ? '…' : t('Anfragen')}
       </button>
     )
   }
@@ -288,7 +290,7 @@ export default function UserProfile() {
       {/* Header bar */}
       <header className="flex items-center justify-between px-4" style={headerBarStyle}>
         <div className="flex items-center gap-1" style={{ minWidth: 0 }}>
-          <button onClick={() => navigate(-1)} aria-label="Zurück" style={iconBtnStyle}>
+          <button onClick={() => navigate(-1)} aria-label={t('Zurück')} style={iconBtnStyle}>
             <ArrowLeft size={20} />
           </button>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -298,8 +300,8 @@ export default function UserProfile() {
         <div className="flex items-center">
           <button
             onClick={() => setShowNotifPrefs(true)}
-            aria-label="Benachrichtigungen"
-            title="Benachrichtigungen"
+            aria-label={t('Benachrichtigungen')}
+            title={t('Benachrichtigungen')}
             style={{ ...iconBtnStyle, position: 'relative', color: hasNotifPrefs ? 'var(--color-accent)' : 'var(--color-text)' }}
           >
             <Bell size={20} />
@@ -307,7 +309,7 @@ export default function UserProfile() {
               <div style={{ position: 'absolute', top: 8, right: 8, width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-accent)' }} />
             )}
           </button>
-          <button onClick={() => setShowModeration(true)} aria-label="Melden oder blockieren" title="Melden oder blockieren" style={iconBtnStyle}>
+          <button onClick={() => setShowModeration(true)} aria-label={t('Melden oder blockieren')} title={t('Melden oder blockieren')} style={iconBtnStyle}>
             <MoreHorizontal size={20} />
           </button>
         </div>
@@ -327,14 +329,14 @@ export default function UserProfile() {
       {(blocksLoading && bootMeta ? bootMeta.blocked_by_me : isBlocked(targetId)) && (
         <div style={{ margin: '12px 16px 0', padding: '12px 14px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10, backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)', fontSize: 13 }}>
           <Ban size={16} style={{ flexShrink: 0 }} />
-          <span style={{ flex: 1 }}>Du hast diese Person blockiert. Ihr seht gegenseitig keine Inhalte.</span>
+          <span style={{ flex: 1 }}>{t('Du hast diese Person blockiert. Ihr seht gegenseitig keine Inhalte.')}</span>
           <button
             onClick={async () => {
-              try { await unblock(targetId); showToast('Blockierung aufgehoben') } catch { showToast('Aufheben fehlgeschlagen', 'error') }
+              try { await unblock(targetId); showToast(t('Blockierung aufgehoben')) } catch { showToast(t('Aufheben fehlgeschlagen'), 'error') }
             }}
             style={{ border: 'none', background: 'none', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
           >
-            Aufheben
+            {t('Aufheben')}
           </button>
         </div>
       )}
@@ -342,18 +344,18 @@ export default function UserProfile() {
       {/* Geburtstags-Banner */}
       {showBirthdayBanner && (
         <div style={{ margin: '12px 16px 0', padding: '16px', borderRadius: 16, background: 'linear-gradient(135deg, #FFF8E1, #FFECB3)', border: '1.5px solid #F9A825', position: 'relative' }}>
-          <button onClick={dismissBanner} aria-label="Schließen" style={{ position: 'absolute', top: 10, right: 10, border: 'none', background: 'none', cursor: 'pointer', color: '#795548', padding: 4 }}>
+          <button onClick={dismissBanner} aria-label={t('Schließen')} style={{ position: 'absolute', top: 10, right: 10, border: 'none', background: 'none', cursor: 'pointer', color: '#795548', padding: 4 }}>
             <X size={16} />
           </button>
           <p style={{ fontSize: 16, fontWeight: 700, color: '#795548', margin: '0 0 4px' }}>
-            🎂 Heute hat {displayName} Geburtstag!
+            {t('🎂 Heute hat {name} Geburtstag!', { name: displayName })}
           </p>
           <p style={{ fontSize: 13, color: '#8D6E63', margin: '0 0 12px' }}>
-            Schreib ihm/ihr eine Nachricht
+            {t('Schreib ihm/ihr eine Nachricht')}
           </p>
           {status === 'friends' && (
             <button onClick={handleStartChat} disabled={chatLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, border: 'none', backgroundColor: '#F9A825', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <MessageCircle size={14} /> Gratulieren
+              <MessageCircle size={14} /> {t('Gratulieren')}
             </button>
           )}
         </div>
@@ -375,7 +377,7 @@ export default function UserProfile() {
                 {connectionsCount}
               </span>
               <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                Geschwister
+                {t('Geschwister')}
               </span>
             </button>
 
@@ -388,7 +390,7 @@ export default function UserProfile() {
                 {publicCommunities.length}
               </span>
               <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                Communities
+                {t('Communities')}
               </span>
             </button>
           </div>
@@ -401,12 +403,12 @@ export default function UserProfile() {
           </span>
           {profile.gender === 'brother' && (
             <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, backgroundColor: '#DBEAFE', color: '#1E40AF' }}>
-              🙋‍♂️ Bruder in Christus
+              {t('🙋‍♂️ Bruder in Christus')}
             </span>
           )}
           {profile.gender === 'sister' && (
             <span style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, backgroundColor: '#FCE7F3', color: '#9D174D' }}>
-              🙋‍♀️ Schwester in Christus
+              {t('🙋‍♀️ Schwester in Christus')}
             </span>
           )}
         </div>
@@ -470,7 +472,7 @@ export default function UserProfile() {
               disabled={chatLoading}
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', cursor: 'pointer' }}
             >
-              <MessageCircle size={15} /> Nachricht
+              <MessageCircle size={15} /> {t('Nachricht')}
             </button>
           )}
         </div>
@@ -487,18 +489,18 @@ export default function UserProfile() {
         }}
       >
         {[
-          { key: 'maps',    icon: MapIcon,   label: 'OIKOS Map' },
-          { key: 'creeds',  icon: ScrollText, label: 'Bekenntnis' },
-          { key: 'posts',   icon: Newspaper, label: 'Posts' },
-          { key: 'prayers', icon: HandHeart, label: 'Gebete' },
-          { key: 'reposts', icon: Repeat2,   label: 'Reposts' },
-        ].map(t => {
-          const isActive = activeTab === t.key
-          const Icon = t.icon
+          { key: 'maps',    icon: MapIcon,   label: t('OIKOS Map') },
+          { key: 'creeds',  icon: ScrollText, label: t('Bekenntnis') },
+          { key: 'posts',   icon: Newspaper, label: t('Posts') },
+          { key: 'prayers', icon: HandHeart, label: t('Gebete') },
+          { key: 'reposts', icon: Repeat2,   label: t('Reposts') },
+        ].map(tab => {
+          const isActive = activeTab === tab.key
+          const Icon = tab.icon
           return (
             <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className="flex-1"
               style={{
                 padding: '10px 0 8px',
@@ -515,7 +517,7 @@ export default function UserProfile() {
               }}
             >
               <Icon size={20} strokeWidth={isActive ? 2.4 : 2} />
-              <span style={{ fontSize: 11, fontWeight: isActive ? 700 : 500 }}>{t.label}</span>
+              <span style={{ fontSize: 11, fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
             </button>
           )
         })}
@@ -524,7 +526,7 @@ export default function UserProfile() {
       {/* Tab content */}
       {tabsLoading ? (
         <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>
-          Lade…
+          {t('Lade…')}
         </p>
       ) : (
         <>
@@ -557,7 +559,7 @@ export default function UserProfile() {
           {activeTab === 'prayers' && <PrayersTab prayers={prayerRequests} profile={profile} />}
           {activeTab === 'creeds' && (
             <Suspense fallback={
-              <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>Lade…</p>
+              <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>{t('Lade…')}</p>
             }>
               <UserCreedsTab userId={targetId} displayName={profile?.full_name || profile?.username} />
             </Suspense>
@@ -568,13 +570,13 @@ export default function UserProfile() {
       {/* Communities overlay */}
       {overlay === 'communities' && (
         <ProfileListOverlay
-          title={`Communities (${publicCommunities.length})`}
+          title={t('Communities ({n})', { n: publicCommunities.length })}
           items={publicCommunities.map(c => ({
             id: c.id,
             title: c.name,
-            subtitle: 'Öffentliche Community',
+            subtitle: t('Öffentliche Community'),
           }))}
-          emptyText="In keiner öffentlichen Community"
+          emptyText={t('In keiner öffentlichen Community')}
           onClose={() => setOverlay(null)}
           onSelect={(it) => {
             setOverlay(null)
@@ -592,14 +594,14 @@ export default function UserProfile() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <Bell size={18} color="var(--color-accent)" />
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                Benachrichtigungen für {displayName}
+                {t('Benachrichtigungen für {name}', { name: displayName })}
               </h3>
             </div>
             {NOTIFICATION_PREF_FIELDS.map(({ field, label, desc }) => (
               <div key={field} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--color-border)' }}>
                 <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>{label}</p>
-                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0 }}>{desc}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>{t(label)}</p>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0 }}>{t(desc)}</p>
                 </div>
                 <button onClick={() => updatePref(field, !prefs[field])} style={{ width: 44, height: 26, borderRadius: 13, border: 'none', backgroundColor: prefs[field] ? 'var(--color-accent)' : 'var(--color-border)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}>
                   <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: prefs[field] ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
@@ -607,7 +609,7 @@ export default function UserProfile() {
               </div>
             ))}
             <button onClick={() => setShowNotifPrefs(false)} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', marginTop: 20, backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
-              Fertig
+              {t('Fertig')}
             </button>
           </div>
         </>

@@ -9,6 +9,7 @@
 // kommen.
 
 import { verseAttachmentFromRow } from './bibleLink'
+import { tr, getLang } from '../i18n'
 
 export const KIND_OIKOS = 'oikos'
 export const KIND_PERSONAL = 'personal'
@@ -97,9 +98,9 @@ export function prayerContext(prayer) {
   if (prayer.kind === KIND_OIKOS) {
     if (!prayer.personName && !prayer.mapName) return null
     const parts = []
-    if (prayer.personName) parts.push(`Für ${prayer.personName}`)
+    if (prayer.personName) parts.push(tr('Für {name}', { name: prayer.personName }))
     if (prayer.mapName) parts.push(prayer.mapName)
-    parts.push(prayer.isOwnMap ? 'von dir' : (prayer.mapOwnerName ? `von ${prayer.mapOwnerName}` : 'von Geschwistern'))
+    parts.push(prayer.isOwnMap ? tr('von dir') : (prayer.mapOwnerName ? tr('von {name}', { name: prayer.mapOwnerName }) : tr('von Geschwistern')))
     return {
       icon: '🗺️',
       text: parts.join(' · '),
@@ -149,37 +150,37 @@ export function timeAgo(dateStr) {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'gerade eben'
-  if (mins < 60) return `vor ${mins} Min.`
+  if (mins < 1) return tr('gerade eben')
+  if (mins < 60) return tr('vor {n} Min.', { n: mins })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `vor ${hours} Std.`
-  if (hours < 48) return 'gestern'
+  if (hours < 24) return tr('vor {n} Std.', { n: hours })
+  if (hours < 48) return tr('gestern')
   const days = Math.floor(hours / 24)
-  if (days < 7) return `vor ${days} Tagen`
-  return new Date(dateStr).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })
+  if (days < 7) return tr('vor {n} Tagen', { n: days })
+  return new Date(dateStr).toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'long' })
 }
 
 export function formatLastPrayed(iso) {
-  if (!iso) return 'noch nie'
+  if (!iso) return tr('noch nie')
   const d = new Date(iso)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - 86400000)
   const dDay = new Date(d.getFullYear(), d.getMonth(), d.getDate())
   if (dDay.getTime() === today.getTime())
-    return `heute um ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
-  if (dDay.getTime() === yesterday.getTime()) return 'gestern'
+    return tr('heute um {time} Uhr', { time: d.toLocaleTimeString((getLang() === 'en' ? 'en-US' : 'de-DE'), { hour: '2-digit', minute: '2-digit' }) })
+  if (dDay.getTime() === yesterday.getTime()) return tr('gestern')
   const diffDays = Math.round((today - dDay) / 86400000)
-  if (diffDays < 30) return `vor ${diffDays} Tagen`
-  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })
+  if (diffDays < 30) return tr('vor {n} Tagen', { n: diffDays })
+  return d.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: 'numeric', month: 'long' })
 }
 
 export function getInitials(name) {
   return (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
-// Anzeigename eines Gebets-Autors ('Du' für eigene Anliegen).
+// Anzeigename eines Gebets-Autors (tr('Du') für eigene Anliegen).
 export function authorName(prayer, currentUserId) {
-  if (prayer.ownerId && prayer.ownerId === currentUserId) return 'Du'
-  return prayer.author?.full_name || prayer.author?.username || prayer.personName || 'Unbekannt'
+  if (prayer.ownerId && prayer.ownerId === currentUserId) return tr('Du')
+  return prayer.author?.full_name || prayer.author?.username || prayer.personName || tr('Unbekannt')
 }

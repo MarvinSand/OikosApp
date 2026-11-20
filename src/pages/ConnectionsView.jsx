@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useT } from '../i18n'
 import { useConnectionsList } from '../hooks/useConnectionsList'
 import { profilePreviewState } from '../lib/profilePreview'
 
@@ -50,6 +51,7 @@ function Avatar({ profile, size = 44 }) {
 }
 
 export default function ConnectionsView() {
+  const { t } = useT()
   const { id } = useParams() // optional :id param – if absent, show own connections
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -83,12 +85,12 @@ export default function ConnectionsView() {
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          aria-label="Zurück"
+          aria-label={t('Zurück')}
         >
           <ArrowLeft size={22} />
         </button>
         <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-          Geschwister {totalCount > 0 && <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>({totalCount})</span>}
+          {t('Geschwister')} {totalCount > 0 && <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>({totalCount})</span>}
         </h2>
       </header>
 
@@ -109,7 +111,7 @@ export default function ConnectionsView() {
             type="text"
             value={query}
             onChange={e => searchConnections(e.target.value)}
-            placeholder="Suchen…"
+            placeholder={t('Suchen…')}
             style={{
               flex: 1,
               border: 'none',
@@ -126,12 +128,12 @@ export default function ConnectionsView() {
       <div className="px-2 pt-2">
         {loading && (
           <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>
-            Lade…
+            {t('Lade…')}
           </p>
         )}
         {!loading && connections.length === 0 && (
           <p style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
-            {query ? 'Keine Treffer' : 'Noch keine Geschwister'}
+            {query ? t('Keine Treffer') : t('Noch keine Geschwister')}
           </p>
         )}
         {!loading && connections.map(c => (

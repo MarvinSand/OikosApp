@@ -7,6 +7,7 @@ import { useFriendships } from '../../hooks/useFriendships'
 import { useToast } from '../../context/ToastContext'
 import { countryToFlag, COUNTRIES } from '../../lib/countries'
 import { timeAgo, getInitials } from '../../lib/prayerModel'
+import { useT } from '../../i18n'
 
 // ════════════════════════════════════════════════════════════════════════
 // Mini-Profilvorschau für eine mit einem OIKOS-Account verknüpfte Person
@@ -15,6 +16,7 @@ import { timeAgo, getInitials } from '../../lib/prayerModel'
 // Profil-Zeile eingehängt — egal ob eigene oder fremde (Geschwister-)Map.
 
 export default function LinkedProfilePreview({ person, linkedProfile, isOwner, overlayData = [], onOverlayPreview, showMapsSection = !isOwner }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -93,7 +95,7 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
   const hasCoords = linkedProfile?.has_location === true || (linkedProfile?.latitude != null && linkedProfile?.longitude != null)
 
   function handleShowOnWorldMap() {
-    if (!hasCoords) { showToast('Kein Standort auf der Weltkarte hinterlegt'); return }
+    if (!hasCoords) { showToast(t('Kein Standort auf der Weltkarte hinterlegt')); return }
     navigate(`/worldmap?focus=${linkedUserId}`)
   }
 
@@ -104,7 +106,7 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
       if (error) throw error
       navigate(`/chat/${convId}`)
     } catch {
-      showToast('Fehler beim Öffnen des Chats', 'error')
+      showToast(t('Fehler beim Öffnen des Chats'), 'error')
     } finally {
       setChatLoading(false)
     }
@@ -149,7 +151,7 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
               onClick={handleShowOnWorldMap}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-warm-1)', cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
-              🌍 Auf Weltkarte anzeigen
+              {t('🌍 Auf Weltkarte anzeigen')}
             </button>
           )}
         </div>
@@ -162,10 +164,10 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
           style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
         >
           <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>
-            {loading ? 'Lade Freunde…' : (
+            {loading ? t('Lade Freunde…') : (
               <>
-                <strong style={{ color: 'var(--color-text)' }}>{connections.length}</strong> Freunde
-                {mutualFriends.length > 0 && ` · ${mutualFriends.length} gemeinsam`}
+                <strong style={{ color: 'var(--color-text)' }}>{connections.length}</strong> {t('Freunde')}
+                {mutualFriends.length > 0 && ` · ${t('{n} gemeinsam', { n: mutualFriends.length })}`}
               </>
             )}
           </span>
@@ -176,7 +178,7 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
             disabled={chatLoading}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
           >
-            <MessageCircle size={13} /> {chatLoading ? '…' : 'Nachricht'}
+            <MessageCircle size={13} /> {chatLoading ? '…' : t('Nachricht')}
           </button>
         )}
       </div>
@@ -210,7 +212,7 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
       {showMapsSection && !loading && maps.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <MapIcon size={12} /> Oikos-Maps von {linkedProfile.full_name || linkedProfile.username}
+            <MapIcon size={12} /> {t('Oikos-Maps von {name}', { name: linkedProfile.full_name || linkedProfile.username })}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {maps.map(m => {
@@ -243,7 +245,7 @@ export default function LinkedProfilePreview({ person, linkedProfile, isOwner, o
       {!loading && prayers.length > 0 && (
         <div>
           <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <HandHeart size={12} /> Gebetsanliegen
+            <HandHeart size={12} /> {t('Gebetsanliegen')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {prayers.map(p => (

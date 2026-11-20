@@ -8,13 +8,14 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import { useToast } from '../context/ToastContext'
+import { useT, tr, getLang } from '../i18n'
 
 const ACTION_BTNS = [
-  { key: 'dismiss', label: 'Verwerfen', icon: XCircle, status: 'dismissed', action: 'dismissed' },
-  { key: 'hide', label: 'Verstecken', icon: EyeOff, rpc: 'moderation_hide_content', status: 'resolved', action: 'hidden' },
-  { key: 'delete', label: 'Löschen', icon: Trash2, rpc: 'moderation_soft_delete_content', status: 'resolved', action: 'soft_deleted' },
-  { key: 'warn', label: 'Verwarnen', icon: AlertTriangle, warn: true, status: 'resolved', action: 'warned' },
-  { key: 'ban', label: 'Sperren', icon: Ban, ban: true, status: 'resolved', action: 'banned' },
+  { key: 'dismiss', get label() { return tr('Verwerfen') }, icon: XCircle, status: 'dismissed', action: 'dismissed' },
+  { key: 'hide', get label() { return tr('Verstecken') }, icon: EyeOff, rpc: 'moderation_hide_content', status: 'resolved', action: 'hidden' },
+  { key: 'delete', get label() { return tr('Löschen') }, icon: Trash2, rpc: 'moderation_soft_delete_content', status: 'resolved', action: 'soft_deleted' },
+  { key: 'warn', get label() { return tr('Verwarnen') }, icon: AlertTriangle, warn: true, status: 'resolved', action: 'warned' },
+  { key: 'ban', get label() { return tr('Sperren') }, icon: Ban, ban: true, status: 'resolved', action: 'banned' },
 ]
 
 function groupByContent(reports) {
@@ -32,6 +33,7 @@ function groupByContent(reports) {
 }
 
 export default function ModerationView() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { isAppAdmin, loading: adminLoading } = useIsAppAdmin()
@@ -60,7 +62,7 @@ export default function ModerationView() {
       .select('id, reporter_id, content_type, content_id, reason, status, target_author_id, community_id, created_at, action_taken, resolution_note, resolved_at')
       .order('created_at', { ascending: false })
       .limit(200)
-    if (error) showToast('Meldungen laden fehlgeschlagen', 'error')
+    if (error) showToast(t('Meldungen laden fehlgeschlagen'), 'error')
     else setReports(data || [])
     setLoading(false)
   }, [showToast])
@@ -158,12 +160,12 @@ export default function ModerationView() {
         })
         if (error) throw error
       }
-      showToast('Erledigt')
+      showToast(t('Erledigt'))
       setPreview(null)
       setNote('')
       await loadReports()
     } catch (e) {
-      showToast(e.message || 'Aktion fehlgeschlagen', 'error')
+      showToast(e.message || t('Aktion fehlgeschlagen'), 'error')
     }
     setBusy(false)
   }
@@ -183,14 +185,14 @@ export default function ModerationView() {
 
   async function grantAdmin(uid) {
     const { error } = await supabase.rpc('grant_app_admin', { p_user_id: uid })
-    if (error) showToast(error.message || 'Vergabe fehlgeschlagen', 'error')
-    else { showToast('Admin-Rechte vergeben'); loadAdmins(); setUserHits([]) }
+    if (error) showToast(error.message || t('Vergabe fehlgeschlagen'), 'error')
+    else { showToast(t('Admin-Rechte vergeben')); loadAdmins(); setUserHits([]) }
   }
 
   async function revokeAdmin(uid) {
     const { error } = await supabase.rpc('revoke_app_admin', { p_user_id: uid })
-    if (error) showToast(error.message || 'Entzug fehlgeschlagen', 'error')
-    else { showToast('Admin-Rechte entzogen'); loadAdmins() }
+    if (error) showToast(error.message || t('Entzug fehlgeschlagen'), 'error')
+    else { showToast(t('Admin-Rechte entzogen')); loadAdmins() }
   }
 
   async function sendChat() {
@@ -203,19 +205,19 @@ export default function ModerationView() {
       type: 'text',
       text,
     })
-    if (error) showToast('Nachricht fehlgeschlagen', 'error')
+    if (error) showToast(t('Nachricht fehlgeschlagen'), 'error')
     else loadChat()
   }
 
   if (adminLoading) {
-    return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-secondary)' }}>Laden…</div>
+    return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-secondary)' }}>{t('Laden…')}</div>
   }
 
   if (!isAppAdmin) {
     return (
       <div style={{ padding: 24 }}>
         <button onClick={() => navigate('/settings')} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><ArrowLeft size={20} /></button>
-        <p style={{ marginTop: 16 }}>Kein Zugriff.</p>
+        <p style={{ marginTop: 16 }}>{t('Kein Zugriff.')}</p>
       </div>
     )
   }
@@ -226,23 +228,23 @@ export default function ModerationView() {
         display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
         background: 'var(--color-white)', borderBottom: '1px solid var(--color-border)',
       }}>
-        <button onClick={() => navigate('/settings')} aria-label="Zurück" style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex' }}>
+        <button onClick={() => navigate('/settings')} aria-label={t('Zurück')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text)', display: 'flex' }}>
           <ArrowLeft size={20} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-text)' }}>Moderation</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{openCount} offene Meldung{openCount === 1 ? '' : 'en'}</div>
+          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-text)' }}>{t('Moderation')}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{openCount === 1 ? t('1 offene Meldung') : t('{openCount} offene Meldungen', { openCount })}</div>
         </div>
-        <button onClick={loadReports} aria-label="Aktualisieren" style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+        <button onClick={loadReports} aria-label={t('Aktualisieren')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
           <RefreshCw size={18} />
         </button>
       </div>
 
       <div style={{ display: 'flex', gap: 4, padding: '8px 12px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-white)' }}>
         {[
-          { k: 'reports', label: `Meldungen (${openCount})`, icon: Flag },
-          { k: 'admins', label: 'Admins', icon: Shield },
-          { k: 'chat', label: 'Admin-Chat', icon: MessageSquare },
+          { k: 'reports', label: t('Meldungen ({openCount})', { openCount }), icon: Flag },
+          { k: 'admins', label: t('Admins'), icon: Shield },
+          { k: 'chat', label: t('Admin-Chat'), icon: MessageSquare },
         ].map(t => (
           <button
             key={t.k}
@@ -261,8 +263,8 @@ export default function ModerationView() {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
         {tab === 'reports' && (
-          loading ? <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>Laden…</p>
-          : grouped.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>Keine offenen Meldungen.</p>
+          loading ? <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>{t('Laden…')}</p>
+          : grouped.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>{t('Keine offenen Meldungen.')}</p>
           : grouped.map(g => (
             <button
               key={g.key}
@@ -274,13 +276,13 @@ export default function ModerationView() {
               }}
             >
               <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)' }}>
-                {g.content_type} · {g.reports.length} Meldung{g.reports.length === 1 ? '' : 'en'}
+                {g.content_type}{' '}{g.reports.length === 1 ? t('· 1 Meldung') : t('· {length} Meldungen', { length: g.reports.length })}
               </div>
               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                 {g.reports.map(r => r.reason).filter((v, i, a) => a.indexOf(v) === i).join(' · ')}
               </div>
               <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
-                {new Date(g.reports[0].created_at).toLocaleString('de-DE')}
+                {new Date(g.reports[0].created_at).toLocaleString((getLang() === 'en' ? 'en-US' : 'de-DE'))}
               </div>
             </button>
           ))
@@ -288,9 +290,7 @@ export default function ModerationView() {
 
         {tab === 'admins' && (
           <div>
-            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
-              App-Admins können Meldungen prüfen und Rechte vergeben. Kein Selbst-Vergabe.
-            </p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>{t('App-Admins können Meldungen prüfen und Rechte vergeben. Kein Selbst-Vergabe.')}</p>
             {admins.map(a => (
               <div key={a.user_id} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
@@ -305,20 +305,19 @@ export default function ModerationView() {
                     border: 'none', background: 'var(--color-bg-secondary)', borderRadius: 8, padding: '6px 10px',
                     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--color-error)',
                   }}>
-                    <UserMinus size={14} /> Entziehen
-                  </button>
+                    <UserMinus size={14} />{' '}{t('Entziehen')}</button>
                 )}
               </div>
             ))}
 
             <div style={{ marginTop: 20 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>Nutzer suchen & Admin machen</div>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>{t('Nutzer suchen & Admin machen')}</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   value={userQuery}
                   onChange={e => setUserQuery(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && searchUsers()}
-                  placeholder="Name oder Username…"
+                  placeholder={t('Name oder Username…')}
                   style={{
                     flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--color-border)',
                     background: 'var(--color-white)', fontSize: 14,
@@ -341,16 +340,15 @@ export default function ModerationView() {
                       <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>@{u.username}</div>
                     </div>
                     {already ? (
-                      <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>bereits Admin</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{t('bereits Admin')}</span>
                     ) : u.id === user.id ? (
-                      <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>du</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{t('du')}</span>
                     ) : (
                       <button onClick={() => grantAdmin(u.id)} style={{
                         border: 'none', background: 'var(--color-accent)', color: 'white', borderRadius: 8,
                         padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
                       }}>
-                        <UserPlus size={14} /> Admin machen
-                      </button>
+                        <UserPlus size={14} />{' '}{t('Admin machen')}</button>
                     )}
                   </div>
                 )
@@ -361,17 +359,13 @@ export default function ModerationView() {
 
         {tab === 'chat' && (
           <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 8px)', minHeight: 360 }}>
-            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px' }}>
-              Interner Admin-Chat (nicht in der normalen Chat-Liste).
-            </p>
+            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px' }}>{t('Interner Admin-Chat (nicht in der normalen Chat-Liste).')}</p>
             <div style={{
               flex: 1, overflowY: 'auto', background: 'var(--color-white)', borderRadius: 12,
               border: '1px solid var(--color-border)', padding: 12, marginBottom: 8,
             }}>
               {chatMessages.length === 0 && (
-                <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontStyle: 'italic', fontSize: 13 }}>
-                  Noch keine Nachrichten.
-                </p>
+                <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontStyle: 'italic', fontSize: 13 }}>{t('Noch keine Nachrichten.')}</p>
               )}
               {chatMessages.map(m => (
                 <div key={m.id} style={{
@@ -379,14 +373,14 @@ export default function ModerationView() {
                   alignSelf: m.sender_id === user.id ? 'flex-end' : 'flex-start',
                 }}>
                   <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 2 }}>
-                    {m.profiles?.full_name || m.profiles?.username || 'Admin'}
+                    {m.profiles?.full_name || m.profiles?.username || t('Admin')}
                   </div>
                   <div style={{
                     display: 'inline-block', maxWidth: '85%', padding: '8px 12px', borderRadius: 12,
                     background: m.sender_id === user.id ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
                     color: m.sender_id === user.id ? 'white' : 'var(--color-text)', fontSize: 14,
                   }}>
-                    {m.is_deleted ? <em>gelöscht</em> : m.text}
+                    {m.is_deleted ? <em>{t('gelöscht')}</em> : m.text}
                   </div>
                 </div>
               ))}
@@ -396,7 +390,7 @@ export default function ModerationView() {
                 value={chatText}
                 onChange={e => setChatText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendChat()}
-                placeholder="Nachricht an Admins…"
+                placeholder={t('Nachricht an Admins…')}
                 style={{
                   flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--color-border)',
                   background: 'var(--color-white)', fontSize: 14,
@@ -405,15 +399,13 @@ export default function ModerationView() {
               <button onClick={sendChat} style={{
                 border: 'none', background: 'var(--color-accent)', color: 'white', borderRadius: 10,
                 padding: '0 16px', cursor: 'pointer', fontWeight: 600,
-              }}>Senden</button>
+              }}>{t('Senden')}</button>
             </div>
             {modConvId && (
               <button
                 onClick={() => navigate(`/chat/${modConvId}`)}
                 style={{ marginTop: 8, border: 'none', background: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12 }}
-              >
-                Im vollen Chat öffnen →
-              </button>
+              >{t('Im vollen Chat öffnen →')}</button>
             )}
           </div>
         )}
@@ -432,28 +424,28 @@ export default function ModerationView() {
               paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
             }}
           >
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Meldung prüfen</div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{t('Meldung prüfen')}</div>
             <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
               {preview.group.content_type} · {preview.group.content_id.slice(0, 8)}…
             </div>
-            {preview.loading ? <p>Laden…</p> : (
+            {preview.loading ? <p>{t('Laden…')}</p> : (
               <div style={{
                 padding: 12, borderRadius: 12, background: 'var(--color-white)',
                 border: '1px solid var(--color-border)', marginBottom: 12, fontSize: 14, whiteSpace: 'pre-wrap',
               }}>
                 {preview.body
                   ? (preview.body.title || preview.body.body || preview.body.content || preview.body.description || preview.body.bio || preview.body.full_name || JSON.stringify(preview.body, null, 2))
-                  : <em>Inhalt nicht gefunden (gelöscht?)</em>}
+                  : <em>{t('Inhalt nicht gefunden (gelöscht?)')}</em>}
                 {preview.body?.moderation_hidden_at && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-error)' }}>Derzeit versteckt</div>
+                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-error)' }}>{t('Derzeit versteckt')}</div>
                 )}
                 {preview.body?.moderation_deleted_at && (
-                  <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-error)' }}>Soft-gelöscht</div>
+                  <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-error)' }}>{t('Soft-gelöscht')}</div>
                 )}
               </div>
             )}
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Gründe</div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('Gründe')}</div>
               {preview.group.reports.map(r => (
                 <div key={r.id} style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>• {r.reason}</div>
               ))}
@@ -461,7 +453,7 @@ export default function ModerationView() {
             <textarea
               value={note}
               onChange={e => setNote(e.target.value)}
-              placeholder="Notiz (optional)…"
+              placeholder={t('Notiz (optional)…')}
               rows={2}
               style={{
                 width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10,
@@ -496,7 +488,7 @@ export default function ModerationView() {
                     })
                     setBusy(false)
                     if (error) showToast(error.message, 'error')
-                    else { showToast('Wiederhergestellt'); loadPreview(preview.group) }
+                    else { showToast(t('Wiederhergestellt')); loadPreview(preview.group) }
                   }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', borderRadius: 10,
@@ -504,8 +496,7 @@ export default function ModerationView() {
                     cursor: 'pointer', fontSize: 13, fontWeight: 600,
                   }}
                 >
-                  <CheckCircle2 size={14} /> Wiederherstellen
-                </button>
+                  <CheckCircle2 size={14} />{' '}{t('Wiederherstellen')}</button>
               )}
             </div>
           </div>

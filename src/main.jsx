@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { ThemeProvider } from './context/ThemeContext'
+import { LanguageProvider } from './i18n'
 // Schriften lokal gebündelt statt von fonts.googleapis.com: In der iOS-App
 // liegt so alles offline im App-Bundle (vorher blockierte das externe
 // Stylesheet den ersten Paint, offline bis zum Timeout), und es geht keine
@@ -19,8 +20,10 @@ try {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </LanguageProvider>
   </React.StrictMode>,
 )

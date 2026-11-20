@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useBlocks } from '../../hooks/useBlocks'
 import { useToast } from '../../context/ToastContext'
+import { useT } from '../../i18n'
 
 // Melden + Blockieren für fremde Inhalte (App-Store-Richtlinie 1.2: Apps mit
 // nutzergenerierten Inhalten müssen beides anbieten). Meldungen landen in
@@ -20,6 +21,7 @@ const REASONS = [
 ]
 
 export default function ModerationSheet({ contentType, contentId, authorId, authorName, onClose, onBlocked }) {
+  const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
   const { isBlocked, block, unblock } = useBlocks()
@@ -27,7 +29,7 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
   const [busy, setBusy] = useState(false)
   const canBlock = authorId && authorId !== user?.id
   const blocked = canBlock && isBlocked(authorId)
-  const name = authorName || 'diese Person'
+  const name = authorName || t('diese Person')
 
   async function report(reason) {
     setBusy(true)
@@ -35,8 +37,8 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
       reporter_id: user.id, content_type: contentType, content_id: contentId, reason,
     })
     setBusy(false)
-    if (error) { showToast('Meldung konnte nicht gesendet werden', 'error'); return }
-    showToast('Danke – wir prüfen die Meldung innerhalb von 24 Stunden.')
+    if (error) { showToast(t('Meldung konnte nicht gesendet werden'), 'error'); return }
+    showToast(t('Danke – wir prüfen die Meldung innerhalb von 24 Stunden.'))
     onClose()
   }
 
@@ -44,11 +46,11 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
     setBusy(true)
     try {
       await block(authorId)
-      showToast(`${name} ist blockiert`)
+      showToast(t('{name} ist blockiert', { name }))
       onClose()
       onBlocked?.()
     } catch {
-      showToast('Blockieren fehlgeschlagen', 'error')
+      showToast(t('Blockieren fehlgeschlagen'), 'error')
       setBusy(false)
     }
   }
@@ -57,10 +59,10 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
     setBusy(true)
     try {
       await unblock(authorId)
-      showToast('Blockierung aufgehoben')
+      showToast(t('Blockierung aufgehoben'))
       onClose()
     } catch {
-      showToast('Aufheben fehlgeschlagen', 'error')
+      showToast(t('Aufheben fehlgeschlagen'), 'error')
       setBusy(false)
     }
   }
@@ -98,15 +100,15 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {step !== 'menu' && (
-              <button onClick={() => setStep('menu')} aria-label="Zurück" style={{ border: 'none', background: 'none', padding: 2, cursor: 'pointer', color: 'var(--color-text)', display: 'flex' }}>
+              <button onClick={() => setStep('menu')} aria-label={t('Zurück')} style={{ border: 'none', background: 'none', padding: 2, cursor: 'pointer', color: 'var(--color-text)', display: 'flex' }}>
                 <ChevronLeft size={20} />
               </button>
             )}
             <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--color-text)' }}>
-              {step === 'report' ? 'Warum meldest du das?' : step === 'confirmBlock' ? `${name} blockieren?` : 'Optionen'}
+              {step === 'report' ? t('Warum meldest du das?') : step === 'confirmBlock' ? t('{name} blockieren?', { name }) : t('Optionen')}
             </p>
           </div>
-          <button onClick={onClose} aria-label="Schließen" style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }}>
+          <button onClick={onClose} aria-label={t('Schließen')} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }}>
             <X size={18} style={{ color: 'var(--color-text-tertiary)' }} />
           </button>
         </div>
@@ -114,16 +116,16 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
         {step === 'menu' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button onClick={() => setStep('report')} style={rowStyle}>
-              <Flag size={16} /> {contentType === 'user' ? 'Profil melden' : 'Inhalt melden'}
+              <Flag size={16} /> {contentType === 'user' ? t('Profil melden') : t('Inhalt melden')}
             </button>
             {canBlock && (
               blocked ? (
                 <button onClick={doUnblock} disabled={busy} style={rowStyle}>
-                  <Ban size={16} /> Blockierung von {name} aufheben
+                  <Ban size={16} /> {t('Blockierung von {name} aufheben', { name })}
                 </button>
               ) : (
                 <button onClick={() => setStep('confirmBlock')} style={{ ...rowStyle, color: 'var(--color-error, #C0392B)' }}>
-                  <Ban size={16} /> {name} blockieren
+                  <Ban size={16} /> {t('{name} blockieren', { name })}
                 </button>
               )
             )}
@@ -133,7 +135,7 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
         {step === 'report' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {REASONS.map(r => (
-              <button key={r} onClick={() => report(r)} disabled={busy} style={rowStyle}>{r}</button>
+              <button key={r} onClick={() => report(r)} disabled={busy} style={rowStyle}>{t(r)}</button>
             ))}
           </div>
         )}
@@ -141,16 +143,14 @@ export default function ModerationSheet({ contentType, contentId, authorId, auth
         {step === 'confirmBlock' && (
           <div>
             <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
-              Ihr seht gegenseitig keine Beiträge, Kommentare, Gebete und Nachrichten mehr und könnt euch nicht mehr
-              direkt schreiben. Eine bestehende Verbindung wird entfernt. Du kannst das jederzeit in den
-              Einstellungen rückgängig machen.
+              {t('Ihr seht gegenseitig keine Beiträge, Kommentare, Gebete und Nachrichten mehr und könnt euch nicht mehr direkt schreiben. Eine bestehende Verbindung wird entfernt. Du kannst das jederzeit in den Einstellungen rückgängig machen.')}
             </p>
             <button
               onClick={doBlock}
               disabled={busy}
               style={{ ...rowStyle, justifyContent: 'center', fontWeight: 700, color: 'white', backgroundColor: 'var(--color-error, #C0392B)' }}
             >
-              {busy ? 'Einen Moment…' : 'Blockieren'}
+              {busy ? t('Einen Moment…') : t('Blockieren')}
             </button>
           </div>
         )}

@@ -1,3 +1,5 @@
+import { useT } from '../../i18n'
+
 function getInitials(name) {
   if (!name) return '?'
   return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -6,6 +8,7 @@ function getInitials(name) {
 // Kleiner, sich überlappender Avatar-Stapel (max. 2 Bilder) + Anzahl-Text.
 // Für "gemeinsame Freunde"-Hinweise neben Namen oder auf Vorschlagskarten.
 export default function MutualAvatars({ people = [], count = people.length, size = 18 }) {
+  const { t } = useT()
   if (count === 0) return null
   const shown = people.slice(0, 2)
 
@@ -44,7 +47,7 @@ export default function MutualAvatars({ people = [], count = people.length, size
         ))}
       </div>
       <span style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)' }}>
-        {count} gemeinsame{count === 1 ? 'r' : ''} Freund{count === 1 ? '' : 'e'}
+        {count === 1 ? t('{n} gemeinsamer Freund', { n: count }) : t('{n} gemeinsame Freunde', { n: count })}
       </span>
     </div>
   )

@@ -4,11 +4,13 @@ import ProgressBar from './ProgressBar'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 import { timeAgo } from '../../lib/prayerModel'
+import { useT, tr } from '../../i18n'
 
 // Karte für ein Gebetsziel mit Fortschrittsbalken.
 // onOpenDetail(goal): Karte angeklickt → Detailseite
 // onPrayHours(goal): Stunden-Ziel "Mitbeten" → geführter Gebetsmodus
 export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const [joined, setJoined] = useState(false)
   const [count, setCount] = useState(goal.participant_count || 0)
@@ -19,7 +21,7 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
   const isTimeBased = isHours || isDays // wird über den Gebetsmodus erfasst
   const unit = isHours ? 'Std' : isDays ? 'Tage' : 'Pers.'
   const TypeIcon = isHours ? Clock : isDays ? CalendarDays : Users
-  const typeLabel = isHours ? 'Stunden-Ziel' : isDays ? 'Tage-Ziel' : 'Personen-Ziel'
+  const typeLabel = isHours ? tr('Stunden-Ziel') : isDays ? tr('Tage-Ziel') : tr('Personen-Ziel')
   const authorLabel = goal.author?.full_name || goal.author?.username || null
 
   async function handleJoin(e) {
@@ -30,12 +32,12 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
     setCurrent(c => c + 1)
     try {
       await supabase.rpc('contribute_to_prayer_goal', { p_goal_id: goal.id, p_minutes: 0 })
-      showToast('Du betest mit 🙏')
+      showToast(t('Du betest mit 🙏'))
     } catch {
       setJoined(false)
       setCount(c => Math.max(0, c - 1))
       setCurrent(c => Math.max(0, c - 1))
-      showToast('Fehler beim Mitbeten', 'error')
+      showToast(t('Fehler beim Mitbeten'), 'error')
     }
   }
 
@@ -66,8 +68,7 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
             {typeLabel}
           </p>
           {authorLabel && (
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-              Gepostet von {authorLabel} · {timeAgo(goal.created_at)}
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>{t('Gepostet von {authorLabel} ·', { authorLabel })}{' '}{timeAgo(goal.created_at)}
             </p>
           )}
         </div>
@@ -80,8 +81,7 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
       {/* Footer */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
         <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>
-          🙏 {count} {count === 1 ? 'Person betet' : 'Personen beten'} mit
-        </span>
+          🙏 {count} {count === 1 ? t('Person betet') : t('Personen beten')}{' '}{t('mit')}</span>
         {isTimeBased ? (
           <button
             onClick={(e) => { e.stopPropagation(); onPrayHours?.(goal) }}
@@ -90,9 +90,7 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
               backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)',
               fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
-          >
-            🙏 Mitbeten
-          </button>
+          >{t('🙏 Mitbeten')}</button>
         ) : (
           <button
             onClick={handleJoin}
@@ -106,7 +104,7 @@ export default function GoalCard({ goal, onOpenDetail, onPrayHours }) {
               cursor: joined ? 'default' : 'pointer',
             }}
           >
-            {joined ? 'Du betest mit ✓' : '🙏 Ich bete mit'}
+            {joined ? t('Du betest mit ✓') : t('🙏 Ich bete mit')}
           </button>
         )}
       </div>

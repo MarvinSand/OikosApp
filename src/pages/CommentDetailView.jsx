@@ -12,17 +12,18 @@ import FeedCardFrame from '../components/feed/FeedCardFrame'
 import PostEngagementBar from '../components/feed/PostEngagementBar'
 import ShareSheet from '../components/feed/ShareSheet'
 import SavePostSheet from '../components/feed/SavePostSheet'
+import { useT, tr, getLang } from '../i18n'
 
 function timeAgo(iso) {
   const d = new Date(iso)
   const diff = Math.floor((new Date() - d) / 60000)
-  if (diff < 1) return 'Gerade eben'
-  if (diff < 60) return `vor ${diff} Min.`
+  if (diff < 1) return tr('Gerade eben')
+  if (diff < 60) return tr('vor {n} Min.', { n: diff })
   const h = Math.floor(diff / 60)
-  if (h < 24) return `vor ${h} Std.`
+  if (h < 24) return tr('vor {n} Std.', { n: h })
   const days = Math.floor(h / 24)
-  if (days === 1) return 'gestern'
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
+  if (days === 1) return tr('gestern')
+  return d.toLocaleDateString((getLang() === 'en' ? 'en-US' : 'de-DE'), { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
 function UserAvatar({ profile, size = 36 }) {
@@ -48,6 +49,7 @@ function UserAvatar({ profile, size = 36 }) {
 // von Kommentaren darüber. Unter dem fokussierten Kommentar stehen nur
 // dessen direkte Antworten, die selbst wieder anklickbar sind.
 export default function CommentDetailView() {
+  const { t } = useT()
   const { id: commentId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -81,12 +83,12 @@ export default function CommentDetailView() {
       setDraft('')
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
     } else {
-      showToast('Fehler beim Antworten', 'error')
+      showToast(t('Fehler beim Antworten'), 'error')
     }
   }
 
   async function handleDeleteRoot() {
-    if (!comment || !window.confirm('Kommentar wirklich löschen?')) return
+    if (!comment || !window.confirm(t('Kommentar wirklich löschen?'))) return
     await supabase.from('feed_comments').delete().eq('id', comment.id)
     if (comment.parent_id) navigate(`/feed/comment/${comment.parent_id}`, { replace: true })
     else navigate(`/feed/post/${comment.post_id}`, { replace: true })
@@ -97,13 +99,13 @@ export default function CommentDetailView() {
   }
 
   async function handleDeleteAncestorComment(id) {
-    if (!window.confirm('Kommentar wirklich löschen?')) return
+    if (!window.confirm(t('Kommentar wirklich löschen?'))) return
     await supabase.from('feed_comments').delete().eq('id', id)
     await reload()
   }
 
   async function handleDeleteAncestorPost() {
-    if (!window.confirm('Post wirklich löschen?')) return
+    if (!window.confirm(t('Post wirklich löschen?'))) return
     await deletePost()
     navigate('/friends?tab=feed', { replace: true })
   }
@@ -123,7 +125,7 @@ export default function CommentDetailView() {
   if (!comment) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center">
-        <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Kommentar nicht gefunden.</p>
+        <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Kommentar nicht gefunden.')}</p>
       </div>
     )
   }
@@ -142,8 +144,7 @@ export default function CommentDetailView() {
           onClick={() => navigate(-1)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-warm-1)', fontWeight: 600, padding: 0 }}
         >
-          <ArrowLeft size={18} /> Zurück
-        </button>
+          <ArrowLeft size={18} />{' '}{t('Zurück')}</button>
       </div>
 
       <div>
@@ -187,7 +188,7 @@ export default function CommentDetailView() {
             </button>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                {comment.profiles?.full_name || comment.profiles?.username || 'Geschwister'}
+                {comment.profiles?.full_name || comment.profiles?.username || t('Geschwister')}
               </p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', margin: 0 }}>{timeAgo(comment.created_at)}</p>
             </div>
@@ -202,8 +203,7 @@ export default function CommentDetailView() {
                       onClick={() => { setShowMenu(false); handleDeleteRoot() }}
                       style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
                     >
-                      <Trash2 size={14} /> Löschen
-                    </button>
+                      <Trash2 size={14} />{' '}{t('Löschen')}</button>
                   </AnchoredMenu>
                 )}
               </>
@@ -243,7 +243,7 @@ export default function CommentDetailView() {
           borderBottom: '1px solid var(--color-warm-3)',
         }}>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: 0.2 }}>
-            {replies.length} {replies.length === 1 ? 'Antwort' : 'Antworten'}
+            {replies.length} {replies.length === 1 ? t('Antwort') : t('Antworten')}
           </span>
         </div>
 
@@ -253,9 +253,7 @@ export default function CommentDetailView() {
             textAlign: 'center', padding: '24px 16px',
             borderBottom: '1px solid var(--color-warm-3)',
           }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', margin: 0 }}>
-              Noch keine Antworten. Sei die Erste!
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', margin: 0 }}>{t('Noch keine Antworten. Sei die Erste!')}</p>
           </div>
         )}
 
@@ -284,7 +282,7 @@ export default function CommentDetailView() {
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-            placeholder="Antworten…"
+            placeholder={t('Antworten…')}
             rows={1}
             style={{ flex: 1, padding: '10px 14px', borderRadius: 20, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', resize: 'none', outline: 'none', lineHeight: 1.4 }}
           />

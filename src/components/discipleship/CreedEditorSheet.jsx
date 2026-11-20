@@ -8,15 +8,16 @@ import { verseFieldsFromAttachment, verseAttachmentFromRow } from '../../lib/bib
 import BibleReferenceChip from '../bible/BibleReferenceChip'
 import VersePickerSheet from '../bible/VersePickerSheet'
 import SiblingPicker from '../prayer/SiblingPicker'
+import { useT, tr } from '../../i18n'
 
 // Sichtbarkeit wie beim Feed-Post-Composer (FeedPostSheet.jsx): öffentlich /
 // privat / Community / meine Geschwister / ausgewählte Geschwister.
 const VISIBILITY_OPTIONS = [
-  { key: 'private',           label: 'Privat',                  icon: Lock },
-  { key: 'public',            label: 'Öffentlich',              icon: Globe },
-  { key: 'community',         label: 'Community',               icon: HomeIcon },
-  { key: 'siblings',          label: 'Meine Geschwister',       icon: UserCheck },
-  { key: 'specific_include',  label: 'Ausgewählte Geschwister', icon: Users },
+  { key: 'private',           get label() { return tr('Privat') },                  icon: Lock },
+  { key: 'public',            get label() { return tr('Öffentlich') },              icon: Globe },
+  { key: 'community',         get label() { return tr('Community') },               icon: HomeIcon },
+  { key: 'siblings',          get label() { return tr('Meine Geschwister') },       icon: UserCheck },
+  { key: 'specific_include',  get label() { return tr('Ausgewählte Geschwister') }, icon: Users },
 ]
 
 const field = { width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box', display: 'block' }
@@ -35,6 +36,7 @@ function row(active) {
 // `initial` gesetzt = Bearbeiten (auch für die per "Übernehmen" erzeugte
 // Kopie eines fremden Bekenntnisses, die sofort danach bearbeitbar sein soll).
 export default function CreedEditorSheet({ initial, onClose, onSaved }) {
+  const { t } = useT()
   const { user } = useAuth()
   const { myCommunities } = useCommunities()
   const { showToast } = useToast()
@@ -97,11 +99,11 @@ export default function CreedEditorSheet({ initial, onClose, onSaved }) {
         }))
       )
 
-      showToast('Bekenntnis gespeichert ✓')
+      showToast(t('Bekenntnis gespeichert ✓'))
       onSaved?.()
       onClose()
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     } finally {
       setSaving(false)
     }
@@ -118,14 +120,14 @@ export default function CreedEditorSheet({ initial, onClose, onSaved }) {
         }}
       >
         <div className="flex items-center justify-between mb-4">
-          <p className="font-bold" style={{ color: 'var(--color-text)' }}>{initial?.id ? 'Bekenntnis bearbeiten' : 'Neues Bekenntnis'}</p>
+          <p className="font-bold" style={{ color: 'var(--color-text)' }}>{initial?.id ? t('Bekenntnis bearbeiten') : t('Neues Bekenntnis')}</p>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--color-text-tertiary)' }} /></button>
         </div>
 
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          placeholder="Titel"
+          placeholder={t('Titel')}
           className="w-full px-3 py-2.5 rounded-xl text-sm mb-3"
           style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
         />
@@ -137,7 +139,7 @@ export default function CreedEditorSheet({ initial, onClose, onSaved }) {
                 <textarea
                   value={line.body}
                   onChange={e => updateLine(i, { body: e.target.value })}
-                  placeholder={`Zeile ${i + 1}`}
+                  placeholder={t('Zeile {v1}', { v1: i + 1 })}
                   rows={2}
                   className="flex-1 px-2.5 py-1.5 rounded-lg text-sm"
                   style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', border: 'none', resize: 'vertical' }}
@@ -157,7 +159,7 @@ export default function CreedEditorSheet({ initial, onClose, onSaved }) {
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderRadius: 8, border: '1px dashed var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', marginTop: 8, width: '100%' }}
                 >
                   <span style={{ fontSize: 13 }}>📖</span>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Bibelstelle auswählen</span>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{t('Bibelstelle auswählen')}</span>
                 </button>
               )}
             </div>
@@ -165,10 +167,9 @@ export default function CreedEditorSheet({ initial, onClose, onSaved }) {
         </div>
 
         <button onClick={addLine} className="flex items-center gap-1.5 text-sm font-medium mb-4" style={{ color: 'var(--color-accent)' }}>
-          <Plus size={15} /> Zeile hinzufügen
-        </button>
+          <Plus size={15} />{' '}{t('Zeile hinzufügen')}</button>
 
-        <p className="text-xs font-bold uppercase mb-2" style={{ color: 'var(--color-text-tertiary)', letterSpacing: '0.4px' }}>Wer soll es sehen?</p>
+        <p className="text-xs font-bold uppercase mb-2" style={{ color: 'var(--color-text-tertiary)', letterSpacing: '0.4px' }}>{t('Wer soll es sehen?')}</p>
         <div className="flex flex-col gap-2 mb-3">
           {VISIBILITY_OPTIONS.map(o => {
             const Icon = o.icon
@@ -183,10 +184,10 @@ export default function CreedEditorSheet({ initial, onClose, onSaved }) {
         </div>
         {visibility === 'community' && (
           myCommunities.length === 0 ? (
-            <p className="text-xs italic mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Du bist noch in keiner Community.</p>
+            <p className="text-xs italic mb-3" style={{ color: 'var(--color-text-tertiary)' }}>{t('Du bist noch in keiner Community.')}</p>
           ) : (
             <select value={selectedCommunity || ''} onChange={e => setSelectedCommunity(e.target.value || null)} style={{ ...field, marginBottom: 12, appearance: 'none' }}>
-              <option value="">— Community auswählen —</option>
+              <option value="">{t('— Community auswählen —')}</option>
               {myCommunities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )
@@ -203,7 +204,7 @@ export default function CreedEditorSheet({ initial, onClose, onSaved }) {
           className="w-full py-3 rounded-xl font-semibold"
           style={{ backgroundColor: 'var(--color-accent)', color: '#fff', opacity: valid ? 1 : 0.5 }}
         >
-          {saving ? 'Speichert…' : 'Speichern'}
+          {saving ? t('Speichert…') : t('Speichern')}
         </button>
       </div>
 

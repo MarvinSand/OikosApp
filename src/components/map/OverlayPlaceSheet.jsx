@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { useT } from '../../i18n'
 
 const TYPE_INFO = {
   sport:  { emoji: '🏋️', label: 'Sport' },
@@ -13,6 +14,7 @@ const TYPE_INFO = {
 // verlinkten Person — spiegelt OverlayPersonSheet, nur für Orte statt
 // Personen (kein Editieren/Löschen/Verbinden, das bleibt der Besitzer-Map).
 export default function OverlayPlaceSheet({ place, onClose, connectedPersonNames = [], mapName }) {
+  const { t } = useT()
   if (!place) return null
   const info = TYPE_INFO[place.type] || TYPE_INFO.place
   const notesVisible = place.is_public !== false && place.notes
@@ -60,11 +62,11 @@ export default function OverlayPlaceSheet({ place, onClose, connectedPersonNames
                 </h3>
                 {mapName && (
                   <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 4 }}>
-                    aus Karte „{mapName}"
+                    {t('aus Karte „{name}"', { name: mapName })}
                   </p>
                 )}
                 <span style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, padding: '3px 8px', borderRadius: 20, backgroundColor: 'var(--color-warm-4)', color: 'var(--color-text-muted)' }}>
-                  {info.label}
+                  {t(info.label)}
                 </span>
               </div>
             </div>
@@ -85,7 +87,7 @@ export default function OverlayPlaceSheet({ place, onClose, connectedPersonNames
           {prayerVisible && (
             <div style={{ marginBottom: 20, padding: '10px 14px', backgroundColor: 'var(--color-gold-light)', borderRadius: 12 }}>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-gold-text)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>
-                Gebetsanliegen
+                {t('Gebetsanliegen')}
               </p>
               <p style={{ fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
                 {place.prayer_request}
@@ -97,11 +99,11 @@ export default function OverlayPlaceSheet({ place, onClose, connectedPersonNames
 
           <div>
             <h4 style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Verbundene Personen
+              {t('Verbundene Personen')}
             </h4>
             {connectedPersonNames.length === 0 && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic' }}>
-                Keine Personen verbunden.
+                {t('Keine Personen verbunden.')}
               </p>
             )}
             {connectedPersonNames.map((name, i) => (

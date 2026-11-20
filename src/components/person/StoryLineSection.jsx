@@ -3,17 +3,18 @@ import { Plus, MoreVertical, Globe, Lock, Pencil, Trash2 } from 'lucide-react'
 import { useStoryLine } from '../../hooks/useStoryLine'
 import { useToast } from '../../context/ToastContext'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
+import { useT, tr, getLang } from '../../i18n'
 
 function formatEntryDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T00:00:00')
   const today = new Date()
   const todayStr = today.toISOString().slice(0, 10)
-  if (dateStr === todayStr) return 'Heute'
+  if (dateStr === todayStr) return tr('Heute')
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)
-  if (dateStr === yesterday.toISOString().slice(0, 10)) return 'Gestern'
-  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })
+  if (dateStr === yesterday.toISOString().slice(0, 10)) return tr('Gestern')
+  return d.toLocaleDateString(getLang() === 'en' ? 'en-US' : 'de-DE', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function today() {
@@ -22,6 +23,7 @@ function today() {
 
 // ─── Inline Add/Edit Form ─────────────────────────────────────
 function EntryForm({ initial, onSave, onCancel }) {
+  const { t } = useT()
   const [text, setText] = useState(initial?.text || '')
   const [date, setDate] = useState(initial?.entry_date || today())
   const [isPublic, setIsPublic] = useState(initial?.is_public !== false)
@@ -51,7 +53,7 @@ function EntryForm({ initial, onSave, onCancel }) {
         autoFocus
         value={text}
         onChange={e => setText(e.target.value.slice(0, 5000))}
-        placeholder="Was erlebt diese Person gerade?"
+        placeholder={t('Was erlebt diese Person gerade?')}
         rows={3}
         style={{ width: '100%', padding: '9px 11px', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text)', resize: 'vertical', display: 'block', lineHeight: 1.5 }}
       />
@@ -61,19 +63,19 @@ function EntryForm({ initial, onSave, onCancel }) {
           style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', padding: 0 }}
         >
           {isPublic
-            ? <><Globe size={13} color="var(--color-accent)" /> Öffentlich</>
-            : <><Lock size={13} /> Privat</>}
+            ? <><Globe size={13} color="var(--color-accent)" /> {t('Öffentlich')}</>
+            : <><Lock size={13} /> {t('Privat')}</>}
         </button>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onCancel} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
-            Abbrechen
+            {t('Abbrechen')}
           </button>
           <button
             onClick={handleSave}
             disabled={!text.trim() || saving}
             style={{ padding: '6px 14px', borderRadius: 8, border: 'none', backgroundColor: text.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'not-allowed' }}
           >
-            {saving ? '…' : 'Speichern'}
+            {saving ? '…' : t('Speichern')}
           </button>
         </div>
       </div>
@@ -83,6 +85,7 @@ function EntryForm({ initial, onSave, onCancel }) {
 
 // ─── Single Entry Row ─────────────────────────────────────────
 function EntryRow({ entry, isOwner, onUpdate, onDelete }) {
+  const { t } = useT()
   const [showMenu, setShowMenu] = useState(false)
   const menuBtnRef = useRef(null)
   const [editing, setEditing] = useState(false)
@@ -138,19 +141,19 @@ function EntryRow({ entry, isOwner, onUpdate, onDelete }) {
                         onClick={() => { setShowMenu(false); setEditing(true) }}
                         style={anchoredMenuItemStyle}
                       >
-                        <Pencil size={12} /> Bearbeiten
+                        <Pencil size={12} /> {t('Bearbeiten')}
                       </button>
                       <button
                         onClick={() => { setShowMenu(false); onUpdate(entry.id, { is_public: !entry.is_public }) }}
                         style={anchoredMenuItemStyle}
                       >
-                        {entry.is_public ? <><Lock size={12} /> Privat machen</> : <><Globe size={12} /> Öffentlich machen</>}
+                        {entry.is_public ? <><Lock size={12} /> {t('Privat machen')}</> : <><Globe size={12} /> {t('Öffentlich machen')}</>}
                       </button>
                       <button
                         onClick={() => { setShowMenu(false); onDelete(entry.id) }}
                         style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
                       >
-                        <Trash2 size={12} /> Löschen
+                        <Trash2 size={12} /> {t('Löschen')}
                       </button>
                     </AnchoredMenu>
                   )}
@@ -165,7 +168,7 @@ function EntryRow({ entry, isOwner, onUpdate, onDelete }) {
             </p>
             {isLong && !showFull && (
               <button onClick={() => setShowFull(true)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', padding: '4px 0 0', fontStyle: 'italic' }}>
-                Mehr lesen…
+                {t('Mehr lesen…')}
               </button>
             )}
           </>
@@ -177,6 +180,7 @@ function EntryRow({ entry, isOwner, onUpdate, onDelete }) {
 
 // ─── StoryLineSection ─────────────────────────────────────────
 export default function StoryLineSection({ personId, isOwner }) {
+  const { t } = useT()
   const { entries, loading, addEntry, updateEntry, deleteEntry, reload } = useStoryLine(personId)
   const { showToast } = useToast()
   const [showAddForm, setShowAddForm] = useState(false)
@@ -189,16 +193,16 @@ export default function StoryLineSection({ personId, isOwner }) {
     try {
       await addEntry(data)
       setShowAddForm(false)
-      showToast('Eintrag hinzugefügt ✓')
+      showToast(t('Eintrag hinzugefügt ✓'))
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     }
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Eintrag wirklich löschen?')) return
+    if (!window.confirm(t('Eintrag wirklich löschen?'))) return
     await deleteEntry(id)
-    showToast('Eintrag gelöscht')
+    showToast(t('Eintrag gelöscht'))
   }
 
   return (
@@ -206,14 +210,14 @@ export default function StoryLineSection({ personId, isOwner }) {
       {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <h4 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
-          📖 Story-Line
+          {t('📖 Story-Line')}
         </h4>
         {isOwner && !showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer' }}
           >
-            <Plus size={13} /> Eintrag
+            <Plus size={13} /> {t('Eintrag')}
           </button>
         )}
       </div>
@@ -252,7 +256,7 @@ export default function StoryLineSection({ personId, isOwner }) {
               onClick={() => setShowAll(v => !v)}
               style={{ width: '100%', padding: '8px 0', border: 'none', background: 'none', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-warm-1)', cursor: 'pointer', fontWeight: 500, textAlign: 'center', paddingLeft: 24 }}
             >
-              {showAll ? 'Weniger anzeigen ↑' : `Alle ${entries.length} Einträge anzeigen ↓`}
+              {showAll ? t('Weniger anzeigen ↑') : t('Alle {n} Einträge anzeigen ↓', { n: entries.length })}
             </button>
           )}
 
@@ -260,8 +264,8 @@ export default function StoryLineSection({ personId, isOwner }) {
           {entries.length === 0 && !showAddForm && (
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-light)', fontStyle: 'italic', lineHeight: 1.6, paddingLeft: 24 }}>
               {isOwner
-                ? 'Noch keine Einträge. Halte die Lebensgeschichte dieser Person fest.'
-                : 'Noch keine öffentlichen Einträge.'}
+                ? t('Noch keine Einträge. Halte die Lebensgeschichte dieser Person fest.')
+                : t('Noch keine öffentlichen Einträge.')}
             </p>
           )}
         </div>

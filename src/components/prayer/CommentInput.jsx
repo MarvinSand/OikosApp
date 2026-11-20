@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Send } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
+import { useT, tr } from '../../i18n'
 
 // Kommentar-Eingabe unter einer Gebets-Karte. „Nur Ersteller" schreibt den
 // Kommentar als nicht-öffentliche Notiz (prayer_notes.is_public = false).
-export default function CommentInput({ onSubmit, placeholder = 'Kommentar schreiben…' }) {
+export default function CommentInput({ onSubmit, placeholder = tr('Kommentar schreiben…') }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const [text, setText] = useState('')
   const [isPublic, setIsPublic] = useState(true)
@@ -17,7 +19,7 @@ export default function CommentInput({ onSubmit, placeholder = 'Kommentar schrei
       await onSubmit(text.trim(), isPublic)
       setText('')
     } catch {
-      showToast('Fehler beim Kommentieren', 'error')
+      showToast(t('Fehler beim Kommentieren'), 'error')
     } finally {
       setSubmitting(false)
     }
@@ -27,8 +29,8 @@ export default function CommentInput({ onSubmit, placeholder = 'Kommentar schrei
     <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10 }}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
         {[
-          { val: true, label: 'Für alle' },
-          { val: false, label: 'Nur Ersteller' },
+          { val: true, label: t('Für alle') },
+          { val: false, label: t('Nur Ersteller') },
         ].map(o => (
           <button
             key={String(o.val)}

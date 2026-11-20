@@ -8,6 +8,7 @@ import {
   fetchPlaceDetails,
 } from '../../lib/googleMaps'
 import AdvancedMarker from '../worldmap/AdvancedMarker'
+import { useT } from '../../i18n'
 
 function debounce(fn, ms) {
   let t
@@ -76,9 +77,10 @@ function MapPreview({ lat, lng }) {
 export default function AddressAutocomplete({
   value,
   onChange,
-  placeholder = 'Adresse eingeben…',
+  placeholder,
   showMapPreview = false,
 }) {
+  const { t } = useT()
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
 
   const [inputVal, setInputVal] = useState(value?.shortName || value?.address || '')
@@ -202,7 +204,7 @@ export default function AddressAutocomplete({
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          placeholder={isLoaded ? placeholder : 'Karte wird geladen…'}
+          placeholder={isLoaded ? (placeholder ?? t('Adresse eingeben…')) : t('Karte wird geladen…')}
           autoComplete="off"
           disabled={!isLoaded}
           style={{
@@ -220,7 +222,7 @@ export default function AddressAutocomplete({
 
       {slowWarning && (
         <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>
-          Suche dauert länger als üblich…
+          {t('Suche dauert länger als üblich…')}
         </p>
       )}
 
@@ -259,7 +261,7 @@ export default function AddressAutocomplete({
             </button>
           )) : (
             <p style={{ padding: '12px 14px', fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>
-              Keine Adresse gefunden. Versuche eine genauere Eingabe.
+              {t('Keine Adresse gefunden. Versuche eine genauere Eingabe.')}
             </p>
           )}
         </div>,

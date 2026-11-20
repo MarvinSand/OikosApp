@@ -4,11 +4,13 @@ import { useToast } from '../../context/ToastContext'
 import { useCommunities } from '../../hooks/useCommunities'
 import SiblingPicker from './SiblingPicker'
 import BodyPortal from '../common/BodyPortal'
+import { useT, tr } from '../../i18n'
 
 const GOAL_COLORS = ['#5AC8FA', '#7A9E7E', '#D4A853', '#C0392B', '#8E44AD', '#2980B9', '#E67E22', '#2C3E50']
 const GOAL_EMOJIS = ['🙏', '🌍', '🇩🇪', '🔥', '🕊️', '❤️', '✝️', '🌅', '🛡️', '🤲', '⛪', '🌿']
 
-export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', successMessage = 'Gebetsziel erstellt ✓' }) {
+export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', successMessage = tr('Gebetsziel erstellt ✓') }) {
+  const { t } = useT()
   const [title, setTitle] = useState(initialTitle)
   const [description, setDescription] = useState('')
   const [icon, setIcon] = useState('🙏')
@@ -44,7 +46,7 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', 
       showToast(successMessage)
       onClose()
     } catch {
-      showToast('Fehler beim Erstellen', 'error')
+      showToast(t('Fehler beim Erstellen'), 'error')
     } finally {
       setSaving(false)
     }
@@ -62,19 +64,19 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', 
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Neues Gebetsziel</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Neues Gebetsziel')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
         {/* Ziel-Typ */}
-        <label style={lbl}>Art des Ziels</label>
+        <label style={lbl}>{t('Art des Ziels')}</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           {[
-            { val: 'people', icon: <Users size={15} />, label: 'Personen', hint: 'z.B. 100 beten mit' },
-            { val: 'hours', icon: <Clock size={15} />, label: 'Stunden', hint: 'z.B. 1000 Std.' },
-            { val: 'days', icon: <CalendarDays size={15} />, label: 'Tage', hint: 'z.B. 30 Tage' },
+            { val: 'people', icon: <Users size={15} />, label: t('Personen'), hint: t('z.B. 100 beten mit') },
+            { val: 'hours', icon: <Clock size={15} />, label: t('Stunden'), hint: t('z.B. 1000 Std.') },
+            { val: 'days', icon: <CalendarDays size={15} />, label: t('Tage'), hint: t('z.B. 30 Tage') },
           ].map(t => (
             <button
               key={t.val}
@@ -95,7 +97,7 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', 
         </div>
 
         {/* Emoji */}
-        <label style={lbl}>Emoji</label>
+        <label style={lbl}>{t('Emoji')}</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
           {GOAL_EMOJIS.map(e => (
             <button key={e} onClick={() => setIcon(e)} style={{
@@ -107,21 +109,21 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', 
         </div>
 
         {/* Titel */}
-        <label style={lbl}>Titel *</label>
-        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. 1000 Stunden für Deutschland" style={inp} />
+        <label style={lbl}>{t('Titel *')}</label>
+        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={t('z.B. 1000 Stunden für Deutschland')} style={inp} />
 
         {/* Zielwert */}
         <label style={{ ...lbl, marginTop: 14 }}>
-          {goalType === 'hours' ? 'Ziel (Stunden) *' : goalType === 'days' ? 'Ziel (Tage) *' : 'Ziel (Anzahl Personen) *'}
+          {goalType === 'hours' ? t('Ziel (Stunden) *') : goalType === 'days' ? t('Ziel (Tage) *') : t('Ziel (Anzahl Personen) *')}
         </label>
         <input type="number" inputMode="numeric" min="1" value={targetValue} onChange={e => setTargetValue(e.target.value)} placeholder={goalType === 'hours' ? '1000' : goalType === 'days' ? '30' : '100'} style={inp} />
 
         {/* Beschreibung */}
-        <label style={{ ...lbl, marginTop: 14 }}>Beschreibung (optional)</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 300))} placeholder="Worum geht es bei diesem Ziel?" rows={2} style={{ ...inp, resize: 'none' }} />
+        <label style={{ ...lbl, marginTop: 14 }}>{t('Beschreibung (optional)')}</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 300))} placeholder={t('Worum geht es bei diesem Ziel?')} rows={2} style={{ ...inp, resize: 'none' }} />
 
         {/* Farbe */}
-        <label style={{ ...lbl, marginTop: 14 }}>Farbe</label>
+        <label style={{ ...lbl, marginTop: 14 }}>{t('Farbe')}</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           {GOAL_COLORS.map(c => (
             <button key={c} onClick={() => setColor(c)} style={{
@@ -133,13 +135,13 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', 
         </div>
 
         {/* Sichtbarkeit */}
-        <label style={lbl}>Sichtbarkeit</label>
+        <label style={lbl}>{t('Sichtbarkeit')}</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
           {[
-            { val: 'public', icon: '🌐', label: 'Öffentlich' },
-            { val: 'community', icon: '🏘', label: 'Community' },
-            { val: 'siblings', icon: '🤝', label: 'Verbundene Geschwister' },
-            { val: 'specific', icon: '👥', label: 'Ausgewählte Geschwister' },
+            { val: 'public', icon: '🌐', label: t('Öffentlich') },
+            { val: 'community', icon: '🏘', label: t('Community') },
+            { val: 'siblings', icon: '🤝', label: t('Verbundene Geschwister') },
+            { val: 'specific', icon: '👥', label: t('Ausgewählte Geschwister') },
           ].map(v => (
             <button key={v.val} type="button" onClick={() => setVisibility(v.val)} style={{
               padding: '10px', borderRadius: 10, cursor: 'pointer',
@@ -154,12 +156,10 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', 
 
         {visibility === 'community' && (
           myCommunities.length === 0 ? (
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 12 }}>
-              Du bist noch in keiner Community.
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 12 }}>{t('Du bist noch in keiner Community.')}</p>
           ) : (
             <select value={communityId} onChange={e => setCommunityId(e.target.value)} style={{ ...inp, appearance: 'none', marginBottom: 12 }}>
-              <option value="">— Community auswählen —</option>
+              <option value="">{t('— Community auswählen —')}</option>
               {myCommunities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )
@@ -181,7 +181,7 @@ export default function CreateGoalSheet({ onClose, onCreate, initialTitle = '', 
             cursor: valid ? 'pointer' : 'not-allowed',
           }}
         >
-          {saving ? 'Erstelle…' : 'Ziel erstellen'}
+          {saving ? t('Erstelle…') : t('Ziel erstellen')}
         </button>
       </div>
     </BodyPortal>

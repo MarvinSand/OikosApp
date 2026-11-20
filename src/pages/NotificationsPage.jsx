@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useFriendships } from '../hooks/useFriendships'
 import { buildBibleLink } from '../lib/bibleLink'
 import { NOTIFICATION_TYPE_META } from '../lib/notificationTypeMeta'
+import { useT, tr, getLang } from '../i18n'
 
 // Derive the best navigation target for a notification
 function resolveDestination(n, currentUserId) {
@@ -70,16 +71,17 @@ function formatTime(iso) {
   const now = new Date()
   const diffMs = now - d
   const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return 'Gerade eben'
-  if (diffMin < 60) return `vor ${diffMin} Min.`
+  if (diffMin < 1) return tr('Gerade eben')
+  if (diffMin < 60) return tr('vor {n} Min.', { n: diffMin })
   const diffH = Math.floor(diffMin / 60)
-  if (diffH < 24) return `vor ${diffH} Std.`
-  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
+  if (diffH < 24) return tr('vor {n} Std.', { n: diffH })
+  return d.toLocaleDateString(getLang() === 'en' ? 'en-US' : 'de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // ─── NotificationItem ─────────────────────────────────────────
 
 function NotificationItem({ n, onClick, onDelete, onViewProfile, onAccept, onDecline }) {
+  const { t } = useT()
   const isFriendRequest = n.type === 'friend_request' && n.data?.friendship_id && n.data?.requester_id
 
   return (
@@ -115,19 +117,19 @@ function NotificationItem({ n, onClick, onDelete, onViewProfile, onAccept, onDec
               onClick={onViewProfile}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-warm-3 text-[12px] font-semibold text-dark hover:bg-surface active:scale-95 transition-all duration-150"
             >
-              <User size={12} /> Profil
+              <User size={12} /> {t('Profil')}
             </button>
             <button
               onClick={onAccept}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-white text-[12px] font-semibold hover:opacity-90 active:scale-95 transition-all duration-150"
             >
-              <Check size={12} /> Annehmen
+              <Check size={12} /> {t('Annehmen')}
             </button>
             <button
               onClick={onDecline}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-warm-3 text-[12px] font-semibold text-warm-2/80 hover:bg-red-50 hover:text-red-600 hover:border-red-200 active:scale-95 transition-all duration-150"
             >
-              <X size={12} /> Ablehnen
+              <X size={12} /> {t('Ablehnen')}
             </button>
           </div>
         )}
@@ -141,7 +143,7 @@ function NotificationItem({ n, onClick, onDelete, onViewProfile, onAccept, onDec
       {/* Delete box */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete() }}
-        aria-label="Benachrichtigung löschen"
+        aria-label={t('Benachrichtigung löschen')}
         className="w-8 h-8 shrink-0 rounded-lg border border-warm-3 flex items-center justify-center text-warm-2/70 hover:text-red-600 hover:border-red-200 hover:bg-red-50 active:scale-95 transition-all duration-150 mt-1"
       >
         <Trash2 size={15} />
@@ -209,6 +211,7 @@ function LoadingSkeleton() {
 
 export default function NotificationsPage() {
   const navigate = useNavigate()
+  const { t } = useT()
   const { user } = useAuth()
   const { notifications, loading, markAllRead, markRead, deleteNotification } = useNotifications()
   const { acceptRequest, declineRequest } = useFriendships()
@@ -246,12 +249,12 @@ export default function NotificationsPage() {
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }} className="pb-24 md:pb-10 md:max-w-2xl md:mx-auto md:w-full">
       {/* Header */}
       <PageHeader
-        title="Benachrichtigungen"
+        title={t('Benachrichtigungen')}
         right={
           <button
             onClick={() => navigate('/notifications/settings')}
             style={backBtn}
-            aria-label="Benachrichtigungs-Einstellungen"
+            aria-label={t('Benachrichtigungs-Einstellungen')}
           >
             <Settings size={20} />
           </button>
@@ -272,7 +275,7 @@ export default function NotificationsPage() {
             fontStyle: 'italic',
             margin: 0,
           }}>
-            Noch keine Benachrichtigungen.
+            {t('Noch keine Benachrichtigungen.')}
           </p>
         </div>
       )}

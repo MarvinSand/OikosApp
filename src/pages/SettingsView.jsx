@@ -17,16 +17,24 @@ import { isNativeApp, publicOrigin } from '../lib/platform'
 import { Avatar } from '../components/profile/ProfileTabs'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import ChurchPicker from '../components/common/ChurchPicker'
+import LanguageSwitcher from '../components/common/LanguageSwitcher'
+import { useT, tr } from '../i18n'
 
 // Lazy: AddressAutocomplete zieht den Google-Maps-Loader (~161 kB) mit und
 // wird erst im Unterbereich „Profil bearbeiten" gebraucht.
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
 const BlockedUsersSheet = lazy(() => import('../components/common/BlockedUsersSheet'))
 
+// Setzt `node` (z. B. fett gedruckte E-Mail) an die Stelle von {email} im übersetzten Text.
+function withEmail(text, node) {
+  const parts = text.split('{email}')
+  return parts.flatMap((p, i) => (i < parts.length - 1 ? [p, node] : [p]))
+}
+
 function validateUsername(val) {
-  if (!val || val.trim().length < 3) return 'Mindestens 3 Zeichen'
-  if (/\s/.test(val)) return 'Keine Leerzeichen erlaubt'
-  if (!/^[a-zA-Z0-9_]+$/.test(val.trim())) return 'Nur Buchstaben, Zahlen und _ erlaubt'
+  if (!val || val.trim().length < 3) return tr('Mindestens 3 Zeichen')
+  if (/\s/.test(val)) return tr('Keine Leerzeichen erlaubt')
+  if (!/^[a-zA-Z0-9_]+$/.test(val.trim())) return tr('Nur Buchstaben, Zahlen und _ erlaubt')
   return null
 }
 
@@ -176,21 +184,22 @@ function AnchorSection({ id, activeAnchor, children }) {
 }
 
 function DeleteModal({ onCancel, onConfirm, loading }) {
+  const { t } = useT()
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 14, padding: 24, maxWidth: 380, width: '100%' }}>
         <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
-          Bist du sicher?
+          {t('Bist du sicher?')}
         </h3>
         <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, marginBottom: 20 }}>
-          Dein Account und alle deine Daten werden unwiderruflich gelöscht.
+          {t('Dein Account und alle deine Daten werden unwiderruflich gelöscht.')}
         </p>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onCancel} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-            Abbrechen
+            {t('Abbrechen')}
           </button>
           <button onClick={onConfirm} disabled={loading} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-error)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-            {loading ? 'Lösche…' : 'Ja, löschen'}
+            {loading ? t('Lösche…') : t('Ja, löschen')}
           </button>
         </div>
       </div>
@@ -199,6 +208,7 @@ function DeleteModal({ onCancel, onConfirm, loading }) {
 }
 
 function ChangePasswordModal({ email, onClose }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const flow = useChangePassword('loggedIn')
 
@@ -211,7 +221,7 @@ function ChangePasswordModal({ email, onClose }) {
     e.preventDefault()
     const ok = await flow.submit(email)
     if (ok) {
-      showToast('Passwort geändert ✓')
+      showToast(t('Passwort geändert ✓'))
       setTimeout(onClose, 1200)
     }
   }
@@ -220,79 +230,79 @@ function ChangePasswordModal({ email, onClose }) {
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 14, padding: 24, maxWidth: 380, width: '100%' }}>
         <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
-          Passwort ändern
+          {t('Passwort ändern')}
         </h3>
 
         {flow.step === 'request' && (
           <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, marginBottom: 20 }}>
-            {flow.isLoading ? 'Code wird gesendet…' : 'Einen Moment…'}
+            {flow.isLoading ? t('Code wird gesendet…') : t('Einen Moment…')}
           </p>
         )}
 
         {flow.step === 'code' && (
           <form onSubmit={handleSubmit}>
             <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
-              Wir haben zur Sicherheit einen Code an <strong>{email}</strong> geschickt. Gib ihn zusammen mit deinem neuen Passwort ein.
+              {withEmail(t('Wir haben zur Sicherheit einen Code an {email} geschickt. Gib ihn zusammen mit deinem neuen Passwort ein.'), <strong key="e">{email}</strong>)}
             </p>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Code</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>{t('Code')}</label>
               <input
                 autoFocus
                 type="text"
                 inputMode="numeric"
                 value={flow.code}
                 onChange={e => flow.setCode(e.target.value)}
-                placeholder="6-stelliger Code"
+                placeholder={t('6-stelliger Code')}
                 required
                 style={{ ...inputStyle, letterSpacing: '0.1em' }}
               />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Neues Passwort</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>{t('Neues Passwort')}</label>
               <input
                 type="password"
                 value={flow.password}
                 onChange={e => flow.setPassword(e.target.value)}
-                placeholder="Mindestens 8 Zeichen"
+                placeholder={t('Mindestens 8 Zeichen')}
                 required
                 minLength={8}
                 style={inputStyle}
               />
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Passwort bestätigen</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>{t('Passwort bestätigen')}</label>
               <input
                 type="password"
                 value={flow.confirm}
                 onChange={e => flow.setConfirm(e.target.value)}
-                placeholder="Passwort wiederholen"
+                placeholder={t('Passwort wiederholen')}
                 required
                 style={inputStyle}
               />
             </div>
 
             {flow.error && (
-              <p style={{ fontSize: 13, color: 'var(--color-error)', marginBottom: 16 }}>{flow.error}</p>
+              <p style={{ fontSize: 13, color: 'var(--color-error)', marginBottom: 16 }}>{t(flow.error)}</p>
             )}
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-                Abbrechen
+                {t('Abbrechen')}
               </button>
               <button type="submit" disabled={flow.isLoading} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                {flow.isLoading ? 'Speichere…' : 'Ändern'}
+                {flow.isLoading ? t('Speichere…') : t('Ändern')}
               </button>
             </div>
           </form>
         )}
 
         {flow.step === 'done' && (
-          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Passwort geändert ✓</p>
+          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>{t('Passwort geändert ✓')}</p>
         )}
 
         {flow.step === 'request' && (
           <button onClick={onClose} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-            Abbrechen
+            {t('Abbrechen')}
           </button>
         )}
       </div>
@@ -301,6 +311,7 @@ function ChangePasswordModal({ email, onClose }) {
 }
 
 function ChangeEmailModal({ currentEmail, onClose }) {
+  const { t } = useT()
   const { showToast } = useToast()
   const [newEmail, setNewEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -312,14 +323,14 @@ function ChangeEmailModal({ currentEmail, onClose }) {
     e.preventDefault()
     setError('')
     const next = newEmail.trim().toLowerCase()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) { setError('Bitte gib eine gültige E-Mail-Adresse ein.'); return }
-    if (next === (currentEmail || '').toLowerCase()) { setError('Das ist bereits deine aktuelle E-Mail-Adresse.'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) { setError(t('Bitte gib eine gültige E-Mail-Adresse ein.')); return }
+    if (next === (currentEmail || '').toLowerCase()) { setError(t('Das ist bereits deine aktuelle E-Mail-Adresse.')); return }
     setBusy(true)
     try {
       // Zur Sicherheit mit dem aktuellen Passwort bestätigen (schützt vor
       // fremdem Zugriff auf ein entsperrtes Gerät)
       const { error: authErr } = await supabase.auth.signInWithPassword({ email: currentEmail, password })
-      if (authErr) { setError('Das Passwort ist nicht korrekt.'); return }
+      if (authErr) { setError(t('Das Passwort ist nicht korrekt.')); return }
 
       const { data, error: updErr } = await supabase.auth.updateUser(
         { email: next },
@@ -328,20 +339,20 @@ function ChangeEmailModal({ currentEmail, onClose }) {
       if (updErr) {
         const msg = (updErr.message || '').toLowerCase()
         setError(msg.includes('already') || msg.includes('registered')
-          ? 'Diese E-Mail-Adresse wird bereits verwendet.'
-          : (updErr.message || 'E-Mail konnte nicht geändert werden.'))
+          ? t('Diese E-Mail-Adresse wird bereits verwendet.')
+          : (updErr.message || t('E-Mail konnte nicht geändert werden.')))
         return
       }
       if ((data?.user?.email || '').toLowerCase() === next) {
         await supabase.auth.refreshSession()
-        showToast('E-Mail-Adresse geändert ✓')
+        showToast(t('E-Mail-Adresse geändert ✓'))
         onClose()
       } else {
         // Projekt verlangt Bestätigung: Link an die neue Adresse gesendet
         setPendingEmail(next)
       }
     } catch (err) {
-      setError(err?.message || 'E-Mail konnte nicht geändert werden.')
+      setError(err?.message || t('E-Mail konnte nicht geändert werden.'))
     } finally {
       setBusy(false)
     }
@@ -353,38 +364,38 @@ function ChangeEmailModal({ currentEmail, onClose }) {
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 14, padding: 24, maxWidth: 380, width: '100%' }}>
         <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
-          E-Mail-Adresse ändern
+          {t('E-Mail-Adresse ändern')}
         </h3>
 
         {pendingEmail ? (
           <>
             <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, marginBottom: 20 }}>
-              Wir haben einen Bestätigungslink an <strong>{pendingEmail}</strong> geschickt. Die Änderung wird wirksam, sobald du ihn öffnest.
+              {withEmail(t('Wir haben einen Bestätigungslink an {email} geschickt. Die Änderung wird wirksam, sobald du ihn öffnest.'), <strong key="e">{pendingEmail}</strong>)}
             </p>
             <button onClick={onClose} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-              Okay
+              {t('Okay')}
             </button>
           </>
         ) : (
           <form onSubmit={handleSubmit}>
             <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
-              Aktuell: <strong>{currentEmail}</strong>
+              {t('Aktuell:')} <strong>{currentEmail}</strong>
             </p>
             <div style={{ marginBottom: 12 }}>
-              <label style={labelStyle}>Neue E-Mail-Adresse</label>
-              <input autoFocus type="email" autoComplete="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="name@beispiel.de" required style={inputStyle} />
+              <label style={labelStyle}>{t('Neue E-Mail-Adresse')}</label>
+              <input autoFocus type="email" autoComplete="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder={t('name@beispiel.de')} required style={inputStyle} />
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Aktuelles Passwort</label>
-              <input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Zur Bestätigung" required style={inputStyle} />
+              <label style={labelStyle}>{t('Aktuelles Passwort')}</label>
+              <input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('Zur Bestätigung')} required style={inputStyle} />
             </div>
             {error && <p style={{ fontSize: 13, color: 'var(--color-error)', marginBottom: 16 }}>{error}</p>}
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-                Abbrechen
+                {t('Abbrechen')}
               </button>
               <button type="submit" disabled={busy} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                {busy ? 'Speichere…' : 'Ändern'}
+                {busy ? t('Speichere…') : t('Ändern')}
               </button>
             </div>
           </form>
@@ -395,6 +406,7 @@ function ChangeEmailModal({ currentEmail, onClose }) {
 }
 
 export default function SettingsView() {
+  const { t } = useT()
   const { isAppAdmin } = useIsAppAdmin()
   const navigate = useNavigate()
   const { profile, updateProfile, uploadAvatar, deleteAccount, loading: profileLoading } = useProfile({ useCache: true, withStats: false })
@@ -455,7 +467,7 @@ export default function SettingsView() {
     setShowOnMap(profile.show_on_world_map ?? false)
     setLocValue(
       profile.latitude != null && profile.longitude != null
-        ? { shortName: profile.city || 'Mein Standort', lat: profile.latitude, lng: profile.longitude }
+        ? { shortName: profile.city || tr('Mein Standort'), lat: profile.latitude, lng: profile.longitude }
         : null
     )
   }, [profile])
@@ -484,10 +496,10 @@ export default function SettingsView() {
         bio_text: form.bio_text.trim() || null,
         show_bio: form.show_bio,
       })
-      showToast('Profil gespeichert ✓')
+      showToast(t('Profil gespeichert ✓'))
     } catch (e) {
-      if (e.code === '23505') setUsernameError('Dieser Username ist bereits vergeben')
-      else showToast('Fehler beim Speichern', 'error')
+      if (e.code === '23505') setUsernameError(t('Dieser Username ist bereits vergeben'))
+      else showToast(t('Fehler beim Speichern'), 'error')
     } finally {
       setSaving(false)
     }
@@ -498,10 +510,10 @@ export default function SettingsView() {
     setShowOnMap(next)
     try {
       await updateProfile({ show_on_world_map: next })
-      showToast(next ? 'Auf der Weltkarte sichtbar ✓' : 'Nicht mehr auf der Weltkarte')
+      showToast(next ? t('Auf der Weltkarte sichtbar ✓') : t('Nicht mehr auf der Weltkarte'))
     } catch {
       setShowOnMap(!next)
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     }
   }
 
@@ -512,9 +524,9 @@ export default function SettingsView() {
     setSavingLoc(true)
     try {
       await updateProfile({ latitude: loc.lat, longitude: loc.lng, city: loc.city || loc.shortName || null })
-      showToast('Standort aktualisiert ✓')
+      showToast(t('Standort aktualisiert ✓'))
     } catch {
-      showToast('Fehler beim Speichern', 'error')
+      showToast(t('Fehler beim Speichern'), 'error')
     } finally {
       setSavingLoc(false)
     }
@@ -526,9 +538,9 @@ export default function SettingsView() {
     setAvatarUploading(true)
     try {
       await uploadAvatar(file)
-      showToast('Profilbild aktualisiert ✓')
+      showToast(t('Profilbild aktualisiert ✓'))
     } catch {
-      showToast('Fehler beim Hochladen', 'error')
+      showToast(t('Fehler beim Hochladen'), 'error')
     } finally {
       setAvatarUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -539,9 +551,9 @@ export default function SettingsView() {
     setResending(true)
     try {
       await resendVerificationEmail()
-      showToast('Bestätigungs-E-Mail gesendet ✓')
+      showToast(t('Bestätigungs-E-Mail gesendet ✓'))
     } catch {
-      showToast('Fehler beim Senden', 'error')
+      showToast(t('Fehler beim Senden'), 'error')
     } finally {
       setResending(false)
     }
@@ -552,22 +564,22 @@ export default function SettingsView() {
     try {
       await deleteAccount()
     } catch {
-      showToast('Fehler beim Löschen', 'error')
+      showToast(t('Fehler beim Löschen'), 'error')
       setDeleting(false)
       setShowDelete(false)
     }
   }
 
   if (profileLoading) {
-    return <div style={{ padding: 24, color: 'var(--color-text-tertiary)' }}>Lade…</div>
+    return <div style={{ padding: 24, color: 'var(--color-text-tertiary)' }}>{t('Lade…')}</div>
   }
 
   // Maßgeblich ist der Auth-Zustand (E-Mail-Bestätigung ist im Projekt automatisch);
   // profiles.email_verified wurde nur im Callback-Flow gesetzt und blieb sonst false.
   const emailNotVerified = !!user && !user.email_confirmed_at
-  const title = section === 'profile' ? 'Profil bearbeiten'
-    : section === 'privacy' ? 'Ansicht & Datenschutz'
-    : 'Einstellungen'
+  const title = section === 'profile' ? t('Profil bearbeiten')
+    : section === 'privacy' ? t('Ansicht & Datenschutz')
+    : t('Einstellungen')
 
   function handleBack() {
     if (section !== 'hub') setSection('hub')
@@ -587,13 +599,13 @@ export default function SettingsView() {
               <MailWarning size={18} style={{ flexShrink: 0, marginTop: 2, color: 'var(--color-text-secondary)' }} />
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>
-                  E-Mail noch nicht verifiziert
+                  {t('E-Mail noch nicht verifiziert')}
                 </p>
                 <p style={{ fontSize: 12, margin: '4px 0 8px', color: 'var(--color-text-secondary)' }}>
-                  Bitte bestätige <strong>{user?.email}</strong>.
+                  {t('Bitte bestätige')} <strong>{user?.email}</strong>.
                 </p>
                 <button onClick={handleResendVerification} disabled={resending} style={{ border: 'none', background: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', cursor: 'pointer' }}>
-                  {resending ? 'Sende…' : 'Jetzt verifizieren →'}
+                  {resending ? t('Sende…') : t('Jetzt verifizieren →')}
                 </button>
               </div>
             </div>
@@ -602,19 +614,20 @@ export default function SettingsView() {
           <div style={{ padding: '20px 16px' }}>
             <MenuRow
               icon={User}
-              title="Profil bearbeiten"
+              title={t('Profil bearbeiten')}
               onClick={() => setSection('profile')}
             />
             <MenuRow
               icon={ShieldCheck}
-              title="Ansicht & Datenschutz"
+              title={t('Ansicht & Datenschutz')}
               onClick={() => setSection('privacy')}
             />
+            <LanguageSwitcher />
             {isAppAdmin && (
               <MenuRow
                 icon={Shield}
-                title="Moderation"
-                desc="Meldungen, Admin-Chat, Rechte"
+                title={t('Moderation')}
+                desc={t('Meldungen, Admin-Chat, Rechte')}
                 onClick={() => navigate('/settings/moderation')}
               />
             )}
@@ -625,7 +638,7 @@ export default function SettingsView() {
               <SettingToggle
                 icon={BookMarked}
                 title="YouVersion"
-                desc={yv.connected ? (yv.email || 'Verbunden') : 'Nicht verbunden'}
+                desc={yv.connected ? (yv.email || t('Verbunden')) : t('Nicht verbunden')}
                 checked={!!yv.connected}
                 onChange={() => yv.connected ? yv.disconnect() : yv.connect()}
               />
@@ -635,42 +648,42 @@ export default function SettingsView() {
           {/* Account */}
           <div style={{ padding: '0 16px 32px' }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>
-              Account
+              {t('Account')}
             </h3>
             <MenuRow
               icon={Mail}
-              title="E-Mail-Adresse"
+              title={t('E-Mail-Adresse')}
               desc={user?.email || '–'}
               onClick={() => setShowChangeEmail(true)}
             />
             <MenuRow
               icon={KeyRound}
-              title="Passwort ändern"
-              desc="Code per E-Mail erhalten"
+              title={t('Passwort ändern')}
+              desc={t('Code per E-Mail erhalten')}
               onClick={() => setShowChangePassword(true)}
             />
             <MenuRow
               icon={Ban}
-              title="Blockierte Nutzer"
-              desc="Blockierungen ansehen und aufheben"
+              title={t('Blockierte Nutzer')}
+              desc={t('Blockierungen ansehen und aufheben')}
               onClick={() => setShowBlocked(true)}
             />
-            <MenuRow icon={FileText} title="Nutzungsbedingungen" onClick={() => navigate(TERMS_PATH)} />
-            <MenuRow icon={Lock} title="Datenschutzerklärung" onClick={() => navigate(PRIVACY_PATH)} />
-            <MenuRow icon={FileText} title="Impressum" onClick={() => navigate(IMPRINT_PATH)} />
+            <MenuRow icon={FileText} title={t('Nutzungsbedingungen')} onClick={() => navigate(TERMS_PATH)} />
+            <MenuRow icon={Lock} title={t('Datenschutzerklärung')} onClick={() => navigate(PRIVACY_PATH)} />
+            <MenuRow icon={FileText} title={t('Impressum')} onClick={() => navigate(IMPRINT_PATH)} />
             {LEGAL.contactEmail && (
               <MenuRow
                 icon={Mail}
-                title="Kontakt & Hilfe"
+                title={t('Kontakt & Hilfe')}
                 desc={LEGAL.contactEmail}
                 onClick={() => { window.location.href = `mailto:${LEGAL.contactEmail}` }}
               />
             )}
             <button onClick={() => logout().catch(() => supabase.auth.signOut({ scope: 'local' }))} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'none', fontSize: 14, color: 'var(--color-text)', cursor: 'pointer', marginBottom: 10 }}>
-              Ausloggen
+              {t('Ausloggen')}
             </button>
             <button onClick={() => setShowDelete(true)} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: 'none', fontSize: 14, color: 'var(--color-error)', cursor: 'pointer' }}>
-              Account löschen
+              {t('Account löschen')}
             </button>
           </div>
         </>
@@ -688,7 +701,7 @@ export default function SettingsView() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={avatarUploading}
-                  aria-label="Profilbild ändern"
+                  aria-label={t('Profilbild ändern')}
                   style={{
                     position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: '50%',
                     backgroundColor: 'var(--color-accent)', color: 'white', border: '2px solid var(--color-bg)',
@@ -700,25 +713,25 @@ export default function SettingsView() {
                 <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
               </div>
               <div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>Profilbild</p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{t('Profilbild')}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                  {avatarUploading ? 'Wird hochgeladen…' : 'Tippe auf das Kamera-Symbol zum Ändern'}
+                  {avatarUploading ? t('Wird hochgeladen…') : t('Tippe auf das Kamera-Symbol zum Ändern')}
                 </p>
               </div>
             </div>
           </AnchorSection>
 
           {/* ── Basis ── */}
-          <FieldRow label="Name">
-            <input type="text" value={form.full_name} onChange={e => setField('full_name', e.target.value)} placeholder="Dein Name" style={inputStyle} />
+          <FieldRow label={t('Name')}>
+            <input type="text" value={form.full_name} onChange={e => setField('full_name', e.target.value)} placeholder={t('Dein Name')} style={inputStyle} />
           </FieldRow>
 
-          <FieldRow label="Username">
+          <FieldRow label={t('Username')}>
             <input
               type="text"
               value={form.username}
               onChange={e => setField('username', e.target.value.toLowerCase())}
-              placeholder="dein_username"
+              placeholder={t('dein_username')}
               style={{ ...inputStyle, borderColor: usernameError ? 'var(--color-error)' : 'var(--color-border)' }}
             />
             {usernameError && <p style={{ fontSize: 12, color: 'var(--color-error)', marginTop: 4 }}>{usernameError}</p>}
@@ -726,10 +739,10 @@ export default function SettingsView() {
 
           {/* ── Optionale Infos ── */}
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '8px 0 16px' }}>
-            Optionale Infos
+            {t('Optionale Infos')}
           </h3>
 
-          <FieldRow label="Geburtstag">
+          <FieldRow label={t('Geburtstag')}>
             <input
               type="date"
               value={form.birthday}
@@ -738,16 +751,16 @@ export default function SettingsView() {
             />
           </FieldRow>
 
-          <FieldRow label="Ich bin Christ/in">
+          <FieldRow label={t('Ich bin Christ/in')}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
-              <span style={{ fontSize: 14, color: 'var(--color-text)' }}>Ich bin Christ/in</span>
+              <span style={{ fontSize: 14, color: 'var(--color-text)' }}>{t('Ich bin Christ/in')}</span>
               <Toggle checked={form.is_christian === true} onChange={() => setField('is_christian', form.is_christian === true ? null : true)} />
             </div>
           </FieldRow>
 
-          <FieldRow label="Ich bin…">
+          <FieldRow label={t('Ich bin…')}>
             <div style={{ display: 'flex', gap: 10 }}>
-              {[{ key: 'brother', label: '🧑 Bruder' }, { key: 'sister', label: '👧 Schwester' }].map(opt => {
+              {[{ key: 'brother', label: t('🧑 Bruder') }, { key: 'sister', label: t('👧 Schwester') }].map(opt => {
                 const active = form.gender === opt.key
                 return (
                   <button
@@ -771,58 +784,58 @@ export default function SettingsView() {
 
           {/* ── Öffentliches Profil ── */}
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '8px 0 16px' }}>
-            Öffentliches Profil
+            {t('Öffentliches Profil')}
           </h3>
 
           <AnchorSection id="location" activeAnchor={activeAnchor}>
-            <FieldRow label="Wohnort">
+            <FieldRow label={t('Wohnort')}>
               <Suspense fallback={<div style={{ height: 44, borderRadius: 10, backgroundColor: 'var(--color-bg-secondary)' }} />}>
                 <AddressAutocomplete
                   value={locValue}
                   onChange={handleSelectLocation}
-                  placeholder="Adresse oder Ort suchen…"
+                  placeholder={t('Adresse oder Ort suchen…')}
                 />
               </Suspense>
               <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', margin: '6px 2px 0', lineHeight: 1.5 }}>
-                {savingLoc ? 'Wird gespeichert…' : 'Wird per Google-Suche automatisch erkannt und gespeichert.'}
+                {savingLoc ? t('Wird gespeichert…') : t('Wird per Google-Suche automatisch erkannt und gespeichert.')}
               </p>
-              <ToggleRow label="Öffentlich anzeigen" checked={form.show_city} onChange={() => setField('show_city', !form.show_city)} />
+              <ToggleRow label={t('Öffentlich anzeigen')} checked={form.show_city} onChange={() => setField('show_city', !form.show_city)} />
             </FieldRow>
 
             <div style={{ marginBottom: 18 }}>
               <SettingToggle
                 icon={Globe}
-                title="Auf der Weltkarte sichtbar"
-                desc="Zeigt deinen Standort für andere auf der Weltkarte."
+                title={t('Auf der Weltkarte sichtbar')}
+                desc={t('Zeigt deinen Standort für andere auf der Weltkarte.')}
                 checked={showOnMap}
                 onChange={handleToggleMap}
               />
             </div>
           </AnchorSection>
 
-          <FieldRow label="Gemeinde">
+          <FieldRow label={t('Gemeinde')}>
             <ChurchPicker value={form.church_name} onChange={v => setField('church_name', v)} inputStyle={inputStyle} />
-            <ToggleRow label="Öffentlich anzeigen" checked={form.show_church} onChange={() => setField('show_church', !form.show_church)} />
+            <ToggleRow label={t('Öffentlich anzeigen')} checked={form.show_church} onChange={() => setField('show_church', !form.show_church)} />
           </FieldRow>
 
           <AnchorSection id="bio" activeAnchor={activeAnchor}>
-            <FieldRow label="Über mich">
+            <FieldRow label={t('Über mich')}>
               <textarea
                 value={form.bio_text}
                 onChange={e => setField('bio_text', e.target.value.slice(0, 150))}
-                placeholder="Erzähl etwas über dich…"
+                placeholder={t('Erzähl etwas über dich…')}
                 rows={3}
                 style={{ ...inputStyle, resize: 'vertical', minHeight: 70 }}
               />
               <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4, textAlign: 'right' }}>
                 {form.bio_text.length}/150
               </p>
-              <ToggleRow label="Öffentlich anzeigen" checked={form.show_bio} onChange={() => setField('show_bio', !form.show_bio)} />
+              <ToggleRow label={t('Öffentlich anzeigen')} checked={form.show_bio} onChange={() => setField('show_bio', !form.show_bio)} />
             </FieldRow>
           </AnchorSection>
 
           <button onClick={handleSave} disabled={saving} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', marginTop: 8, backgroundColor: 'var(--color-accent)', color: 'white', fontSize: 15, fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
-            {saving ? 'Wird gespeichert…' : 'Änderungen speichern'}
+            {saving ? t('Wird gespeichert…') : t('Änderungen speichern')}
           </button>
         </div>
       )}
@@ -831,14 +844,14 @@ export default function SettingsView() {
       {section === 'privacy' && (
         <div style={{ padding: '20px 16px' }}>
           <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: '0 0 16px', lineHeight: 1.5 }}>
-            Weltkarte & Standort findest du jetzt unter „Profil bearbeiten".
+            {t('Weltkarte & Standort findest du jetzt unter „Profil bearbeiten".')}
           </p>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>
-            Darstellung
+            {t('Darstellung')}
           </h3>
           <SettingToggle
             icon={Moon}
-            title="Dark Mode"
+            title={t('Dark Mode')}
             checked={theme === 'dark'}
             onChange={toggleTheme}
           />

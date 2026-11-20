@@ -10,6 +10,7 @@ import { useFriendships } from '../../hooks/useFriendships'
 import { useToast } from '../../context/ToastContext'
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../../lib/googleMaps'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
+import { useT, getLang } from '../../i18n'
 
 // ─── Helpers ──────────────────────────────────────────────────
 function getInitials(name) {
@@ -54,6 +55,7 @@ function debounce(fn, ms) {
 }
 
 function PlacesAutocompleteInput({ value, onChange, types, placeholder }) {
+  const { t } = useT()
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
   const [input, setInput] = useState(value || '')
   const [suggestions, setSuggestions] = useState([])
@@ -78,7 +80,7 @@ function PlacesAutocompleteInput({ value, onChange, types, placeholder }) {
         }
         const service = new window.google.maps.places.AutocompleteService()
         service.getPlacePredictions(
-          { input: q, types, language: 'de', sessionToken: tokenRef.current },
+          { input: q, types, language: getLang(), sessionToken: tokenRef.current },
           (predictions, status) => {
             if (status !== window.google.maps.places.PlacesServiceStatus.OK || !predictions) {
               setSuggestions([])
@@ -116,7 +118,7 @@ function PlacesAutocompleteInput({ value, onChange, types, placeholder }) {
         onChange={handleChange}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder={isLoaded ? placeholder : 'Karte wird geladen…'}
+        placeholder={isLoaded ? placeholder : t('Karte wird geladen…')}
         autoFocus
         style={{
           width: '100%',
@@ -173,6 +175,7 @@ function PlacesAutocompleteInput({ value, onChange, types, placeholder }) {
 
 // ─── Friend row with 3-dot menu ───────────────────────────────
 function FriendRow({ profile, onProfile, onMessage, onRemove }) {
+  const { t } = useT()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuBtnRef = useRef(null)
 
@@ -214,7 +217,7 @@ function FriendRow({ profile, onProfile, onMessage, onRemove }) {
 
       <button
         onClick={onMessage}
-        aria-label="Nachricht schreiben"
+        aria-label={t('Nachricht schreiben')}
         style={{
           border: 'none', background: 'none', cursor: 'pointer',
           padding: 6, color: 'var(--color-accent)',
@@ -227,7 +230,7 @@ function FriendRow({ profile, onProfile, onMessage, onRemove }) {
       <button
         ref={menuBtnRef}
         onClick={() => setMenuOpen(v => !v)}
-        aria-label="Mehr"
+        aria-label={t('Mehr')}
         style={{
           border: 'none', background: 'none', cursor: 'pointer',
           padding: 6, color: 'var(--color-text-secondary)',
@@ -242,21 +245,15 @@ function FriendRow({ profile, onProfile, onMessage, onRemove }) {
           <button
             onClick={() => { setMenuOpen(false); onProfile() }}
             style={anchoredMenuItemStyle}
-          >
-            Profil öffnen
-          </button>
+          >{t('Profil öffnen')}</button>
           <button
             onClick={() => { setMenuOpen(false); onMessage() }}
             style={anchoredMenuItemStyle}
-          >
-            Nachricht schreiben
-          </button>
+          >{t('Nachricht schreiben')}</button>
           <button
             onClick={() => { setMenuOpen(false); onRemove() }}
             style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}
-          >
-            Verbindung entfernen
-          </button>
+          >{t('Verbindung entfernen')}</button>
         </AnchoredMenu>
       )}
     </div>
@@ -274,6 +271,7 @@ function menuItemStyle(color) {
 
 // ─── Main overlay ─────────────────────────────────────────────
 export default function ConnectionsOverlay({ onClose, profileUserId }) {
+  const { t } = useT()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { friends, loading, removeFriend, getFriendshipStatus, sendRequest, acceptRequest, getFriendship } = useFriendships()
@@ -383,9 +381,9 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
     setSendingId(id)
     try {
       await sendRequest(id)
-      showToast('Anfrage gesendet ✓')
+      showToast(t('Anfrage gesendet ✓'))
     } catch (e) {
-      showToast(e.message || 'Fehler', 'error')
+      showToast(e.message || t('Fehler'), 'error')
     } finally {
       setSendingId(null)
     }
@@ -395,9 +393,9 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
     setSendingId(id)
     try {
       const f = getFriendship(id)
-      if (f) { await acceptRequest(f.id); showToast('Verbunden ✓') }
+      if (f) { await acceptRequest(f.id); showToast(t('Verbunden ✓')) }
     } catch (e) {
-      showToast(e.message || 'Fehler', 'error')
+      showToast(e.message || t('Fehler'), 'error')
     } finally {
       setSendingId(null)
     }
@@ -412,14 +410,14 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
       onClose()
       navigate(`/chat/${convId}`)
     } catch {
-      showToast('Fehler beim Öffnen des Chats', 'error')
+      showToast(t('Fehler beim Öffnen des Chats'), 'error')
     }
   }
 
   async function handleRemove(friendshipId) {
-    if (!window.confirm('Verbindung wirklich entfernen?')) return
+    if (!window.confirm(t('Verbindung wirklich entfernen?'))) return
     await removeFriend(friendshipId)
-    showToast('Verbindung entfernt', 'info')
+    showToast(t('Verbindung entfernt'), 'info')
   }
 
   function handleProfile(id) {
@@ -453,7 +451,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
       >
         <button
           onClick={onClose}
-          aria-label="Zurück"
+          aria-label={t('Zurück')}
           style={{
             width: 40, height: 40,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -463,9 +461,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
         >
           <ArrowLeft size={22} />
         </button>
-        <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>
-          Geschwister ({enriched.length})
-        </h2>
+        <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>{t('Geschwister ({length})', { length: enriched.length })}</h2>
       </header>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 24px' }}>
@@ -483,7 +479,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Name oder Username suchen…"
+            placeholder={t('Name oder Username suchen…')}
             style={{
               width: '100%', padding: '11px 12px 11px 36px',
               borderRadius: 10, border: '1px solid var(--color-border)',
@@ -500,10 +496,10 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
           style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', paddingBottom: 4 }}
         >
           {[
-            { key: null,      label: <><SlidersHorizontal size={12} style={{ verticalAlign: '-1px' }} /> Alle</> },
-            { key: 'city',    label: <><MapPin size={12} style={{ verticalAlign: '-1px' }} /> {cityFilter || 'Stadt'}</> },
-            { key: 'country', label: <><Flag size={12} style={{ verticalAlign: '-1px' }} /> {countryFilter || 'Land'}</> },
-            { key: 'church',  label: <><Church size={12} style={{ verticalAlign: '-1px' }} /> {churchFilter || 'Gemeinde'}</> },
+            { key: null,      label: <><SlidersHorizontal size={12} style={{ verticalAlign: '-1px' }} />{' '}{t('Alle')}</> },
+            { key: 'city',    label: <><MapPin size={12} style={{ verticalAlign: '-1px' }} /> {cityFilter || t('Stadt')}</> },
+            { key: 'country', label: <><Flag size={12} style={{ verticalAlign: '-1px' }} /> {countryFilter || t('Land')}</> },
+            { key: 'church',  label: <><Church size={12} style={{ verticalAlign: '-1px' }} /> {churchFilter || t('Gemeinde')}</> },
           ].map(f => {
             const isOn =
               (f.key === null && !hasAnyFilter) ||
@@ -547,8 +543,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
                 color: 'var(--color-error)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
             >
-              <X size={12} /> Zurücksetzen
-            </button>
+              <X size={12} />{' '}{t('Zurücksetzen')}</button>
           )}
         </div>
 
@@ -559,7 +554,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
               value={cityFilter}
               onChange={v => setCityFilter(v)}
               types={['(cities)']}
-              placeholder="Stadt suchen…"
+              placeholder={t('Stadt suchen…')}
             />
           </div>
         )}
@@ -569,7 +564,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
               value={countryFilter}
               onChange={v => setCountryFilter(v)}
               types={['country']}
-              placeholder="Land suchen…"
+              placeholder={t('Land suchen…')}
             />
           </div>
         )}
@@ -580,7 +575,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
               type="text"
               value={churchFilter}
               onChange={e => setChurchFilter(e.target.value)}
-              placeholder="Gemeinde suchen…"
+              placeholder={t('Gemeinde suchen…')}
               style={{
                 width: '100%', padding: '10px 12px',
                 borderRadius: 10, border: '1px solid var(--color-accent)',
@@ -594,13 +589,11 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
 
         {/* List */}
         {loading && (
-          <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>
-            Lade…
-          </p>
+          <p style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>{t('Lade…')}</p>
         )}
         {!loading && filtered.length === 0 && (
           <p style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 14 }}>
-            {query || hasAnyFilter ? 'Keine Treffer' : 'Noch keine Geschwister verbunden'}
+            {query || hasAnyFilter ? t('Keine Treffer') : t('Noch keine Geschwister verbunden')}
           </p>
         )}
         {!loading && filtered.map(p => (
@@ -619,9 +612,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
             <p style={{
               fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
               color: 'var(--color-text-muted)', margin: '22px 0 4px',
-            }}>
-              Noch nicht verbunden ({filteredNotConnected.length})
-            </p>
+            }}>{t('Noch nicht verbunden ({length})', { length: filteredNotConnected.length })}</p>
             {filteredNotConnected.map(p => (
               <NotConnectedRow
                 key={p.id}
@@ -642,6 +633,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
 
 // ─── Zeile für noch nicht verbundene Geschwister ──────────────
 function NotConnectedRow({ profile, status, busy, onProfile, onConnect, onAccept }) {
+  const { t } = useT()
   const btnBase = {
     border: 'none', borderRadius: 999, padding: '8px 16px', fontSize: 13, fontWeight: 700,
     cursor: busy ? 'default' : 'pointer', flexShrink: 0,
@@ -664,14 +656,14 @@ function NotConnectedRow({ profile, status, busy, onProfile, onConnect, onAccept
       </button>
 
       {status === 'sent' ? (
-        <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 600, padding: '8px 12px' }}>Angefragt</span>
+        <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 600, padding: '8px 12px' }}>{t('Angefragt')}</span>
       ) : status === 'received' ? (
         <button onClick={onAccept} disabled={busy} style={{ ...btnBase, backgroundColor: 'var(--color-accent)', color: '#fff' }}>
-          {busy ? '…' : 'Annehmen'}
+          {busy ? '…' : t('Annehmen')}
         </button>
       ) : (
         <button onClick={onConnect} disabled={busy} style={{ ...btnBase, backgroundColor: 'var(--color-accent)', color: '#fff' }}>
-          {busy ? '…' : 'Verbinden'}
+          {busy ? '…' : t('Verbinden')}
         </button>
       )}
     </div>

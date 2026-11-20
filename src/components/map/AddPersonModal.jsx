@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { X, MapPin, ChevronDown, Check } from 'lucide-react'
+import { useT } from '../../i18n'
 
 function initials(name) {
   return (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
 export default function AddPersonModal({ onClose, onAdd, people = [], places = [] }) {
+  const { t } = useT()
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -14,9 +16,9 @@ export default function AddPersonModal({ onClose, onAdd, people = [], places = [
   const [showTargets, setShowTargets] = useState(false)
 
   const targetLabel =
-    target.type === 'me' ? 'Direkt mit mir'
-    : target.type === 'place' ? (places.find(p => p.id === target.id)?.name || 'Ort')
-    : (people.find(p => p.id === target.id)?.name || 'Person')
+    target.type === 'me' ? t('Direkt mit mir')
+    : target.type === 'place' ? (places.find(p => p.id === target.id)?.name || t('Ort'))
+    : (people.find(p => p.id === target.id)?.name || t('Person'))
 
   async function handleAdd(keepOpen) {
     if (!name.trim()) return
@@ -41,18 +43,18 @@ export default function AddPersonModal({ onClose, onAdd, people = [], places = [
     <div style={overlay}>
       <div style={modal}>
         <div style={row}>
-          <h3 style={title}>Person hinzufügen</h3>
+          <h3 style={title}>{t('Person hinzufügen')}</h3>
           <button onClick={onClose} style={closeBtn}><X size={18} /></button>
         </div>
 
         {addedCount > 0 && (
           <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-accent)', fontStyle: 'italic', marginBottom: 12 }}>
-            ✓ {addedCount} {addedCount === 1 ? 'Person' : 'Personen'} hinzugefügt
+            {addedCount === 1 ? t('✓ 1 Person hinzugefügt') : t('✓ {n} Personen hinzugefügt', { n: addedCount })}
           </p>
         )}
 
         {/* Verbinden mit */}
-        <label style={label}>Verbinden mit</label>
+        <label style={label}>{t('Verbinden mit')}</label>
         <button type="button" onClick={() => setShowTargets(v => !v)} style={{ ...input, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left', marginBottom: 8 }}>
           {target.type === 'me'
             ? <span style={{ fontSize: 16 }}>🏠</span>
@@ -66,14 +68,14 @@ export default function AddPersonModal({ onClose, onAdd, people = [], places = [
         {showTargets && (
           <div style={{ maxHeight: 220, overflowY: 'auto', border: '1.5px solid var(--color-warm-3)', borderRadius: 12, marginBottom: 8 }}>
             <TargetRow active={target.type === 'me'} onClick={() => { setTarget({ type: 'me' }); setShowTargets(false) }}
-              icon={<span style={{ fontSize: 16 }}>🏠</span>} labelText="Direkt mit mir" />
-            {places.length > 0 && <SectionLabel text="Orte" />}
+              icon={<span style={{ fontSize: 16 }}>🏠</span>} labelText={t('Direkt mit mir')} />
+            {places.length > 0 && <SectionLabel text={t('Orte')} />}
             {places.map(pl => (
               <TargetRow key={'pl-' + pl.id} active={target.type === 'place' && target.id === pl.id}
                 onClick={() => { setTarget({ type: 'place', id: pl.id }); setShowTargets(false) }}
                 icon={<MapPin size={15} color="var(--color-warm-1)" />} labelText={pl.name} />
             ))}
-            {people.length > 0 && <SectionLabel text="Personen" />}
+            {people.length > 0 && <SectionLabel text={t('Personen')} />}
             {people.map(pe => (
               <TargetRow key={'pe-' + pe.id} active={target.type === 'person' && target.id === pe.id}
                 onClick={() => { setTarget({ type: 'person', id: pe.id }); setShowTargets(false) }}
@@ -83,14 +85,14 @@ export default function AddPersonModal({ onClose, onAdd, people = [], places = [
           </div>
         )}
 
-        <label style={label}>Name</label>
+        <label style={label}>{t('Name')}</label>
         <input
           autoFocus
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd(true)}
-          placeholder="z.B. Anna Müller"
+          placeholder={t('z.B. Anna Müller')}
           style={input}
         />
 
@@ -102,14 +104,14 @@ export default function AddPersonModal({ onClose, onAdd, people = [], places = [
             disabled={!name.trim() || loading}
             style={primaryBtn(!name.trim() || loading)}
           >
-            + Weitere Person hinzufügen
+            {t('+ Weitere Person hinzufügen')}
           </button>
           <button
             onClick={() => handleAdd(false)}
             disabled={!name.trim() || loading}
             style={secondaryBtn(!name.trim() || loading)}
           >
-            Fertig
+            {t('Fertig')}
           </button>
         </div>
       </div>

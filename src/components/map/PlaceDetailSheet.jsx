@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Trash2, Search, Plus, MapPin, Check, Wand2 } from 'lucide-react'
+import { useT, tr } from '../../i18n'
 
 const PLACE_TYPES = [
   { type: 'sport',  emoji: '🏋️', label: 'Sport' },
@@ -17,7 +18,7 @@ function typeEmoji(type) {
 }
 
 function typelabel(type) {
-  return PLACE_TYPES.find(t => t.type === type)?.label || 'Ort'
+  return tr(PLACE_TYPES.find(t => t.type === type)?.label || 'Ort')
 }
 
 function debounce(fn, ms) {
@@ -25,6 +26,7 @@ function debounce(fn, ms) {
 }
 
 export default function PlaceDetailSheet({ place, people, placeConnections, onClose, onUpdate, onDelete, onConnectPeople, onDisconnectPerson, onAddPersonToPlace, onCleanup }) {
+  const { t } = useT()
   const [editing, setEditing]         = useState(false)
   const [name, setName]               = useState(place.name)
   const [type, setType]               = useState(place.type || 'place')
@@ -153,7 +155,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
               <button
                 onClick={handleCleanup}
                 disabled={cleaningUp}
-                title="Personen im Kreis anordnen"
+                title={t('Personen im Kreis anordnen')}
                 style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--color-warm-3)', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: cleaningUp ? 'default' : 'pointer', opacity: cleaningUp ? 0.6 : 1 }}
               >
                 <Wand2 size={15} color="var(--color-text-muted)" />
@@ -166,7 +168,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
               <span style={{ fontSize: 15 }}>✏️</span>
             </button>
             <button
-              onClick={() => { if (window.confirm('Ort wirklich löschen?')) { onDelete(place.id); onClose() } }}
+              onClick={() => { if (window.confirm(t('Ort wirklich löschen?'))) { onDelete(place.id); onClose() } }}
               style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid #E8C0B8', backgroundColor: 'rgba(192,57,43,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
             >
               <Trash2 size={15} color="#C0392B" />
@@ -182,23 +184,23 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
           {/* Edit panel */}
           {editing && (
             <div style={{ padding: '14px', borderRadius: 14, border: '1.5px solid var(--color-warm-1)', backgroundColor: 'rgba(74,103,65,0.04)', marginBottom: 16 }}>
-              <p style={sectionLabel}>Name</p>
+              <p style={sectionLabel}>{t('Name')}</p>
               <input value={name} onChange={e => setName(e.target.value)} style={inp} />
 
-              <p style={{ ...sectionLabel, marginTop: 12 }}>Typ</p>
+              <p style={{ ...sectionLabel, marginTop: 12 }}>{t('Typ')}</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                {PLACE_TYPES.map(t => (
+                {PLACE_TYPES.map(pt => (
                   <button
-                    key={t.type}
-                    onClick={() => setType(t.type)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 10, border: `1.5px solid ${type === t.type ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, backgroundColor: type === t.type ? 'rgba(74,103,65,0.1)' : 'transparent', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text)', fontWeight: type === t.type ? 700 : 400 }}
+                    key={pt.type}
+                    onClick={() => setType(pt.type)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 10, border: `1.5px solid ${type === pt.type ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, backgroundColor: type === pt.type ? 'rgba(74,103,65,0.1)' : 'transparent', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text)', fontWeight: type === pt.type ? 700 : 400 }}
                   >
-                    <span>{t.emoji}</span> {t.label}
+                    <span>{pt.emoji}</span> {t(pt.label)}
                   </button>
                 ))}
               </div>
 
-              <p style={sectionLabel}>Farbe</p>
+              <p style={sectionLabel}>{t('Farbe')}</p>
               <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                 {PLACE_COLORS.map(c => (
                   <button
@@ -210,8 +212,8 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
-                <button onClick={handleSaveEdit} style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Speichern</button>
+                <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>{t('Abbrechen')}</button>
+                <button onClick={handleSaveEdit} style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('Speichern')}</button>
               </div>
             </div>
           )}
@@ -219,12 +221,12 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
           {/* Connected people */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <p style={sectionLabel}>👥 Personen hier ({connectedPeople.length})</p>
+              <p style={sectionLabel}>{t('👥 Personen hier ({n})', { n: connectedPeople.length })}</p>
               <button
                 onClick={() => setShowConnectPanel(v => !v)}
                 style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
               >
-                <Plus size={12} /> Person verbinden
+                <Plus size={12} /> {t('Person verbinden')}
               </button>
             </div>
 
@@ -264,41 +266,41 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
                     onClick={() => { setShowNewPerson(true); setNewPersonName('') }}
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '10px 0', borderRadius: 10, border: '1.5px solid var(--color-warm-1)', background: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 10 }}
                   >
-                    <Plus size={14} /> Neue Person hinzufügen
+                    <Plus size={14} /> {t('Neue Person hinzufügen')}
                   </button>
                 ) : (
                   <div style={{ marginBottom: 10, padding: 10, borderRadius: 10, backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-warm-3)' }}>
                     <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 8px', lineHeight: 1.5 }}>
-                      Neue Person wird nur mit <strong>{place.name}</strong> verbunden.
+                      {t('Neue Person wird nur mit')} <strong>{place.name}</strong>{t(' verbunden.')}
                     </p>
                     <input
                       autoFocus
                       value={newPersonName}
                       onChange={e => setNewPersonName(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') handleAddNewPerson() }}
-                      placeholder="Name der Person…"
+                      placeholder={t('Name der Person…')}
                       style={{ ...inp, fontSize: 13, marginBottom: 8 }}
                     />
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => { setShowNewPerson(false); setNewPersonName('') }} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
-                      <button onClick={handleAddNewPerson} disabled={!newPersonName.trim() || addingNewPerson} style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: newPersonName.trim() && !addingNewPerson ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{addingNewPerson ? 'Wird hinzugefügt…' : 'Hinzufügen'}</button>
+                      <button onClick={() => { setShowNewPerson(false); setNewPersonName('') }} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>{t('Abbrechen')}</button>
+                      <button onClick={handleAddNewPerson} disabled={!newPersonName.trim() || addingNewPerson} style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: newPersonName.trim() && !addingNewPerson ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{addingNewPerson ? t('Wird hinzugefügt…') : t('Hinzufügen')}</button>
                     </div>
                   </div>
                 )}
 
                 <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 8px' }}>
-                  Personen auswählen{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+                  {t('Personen auswählen')}{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
                 </p>
                 <div style={{ position: 'relative', marginBottom: 8 }}>
                   <Search size={13} color="var(--color-text-light)" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
-                  <input value={personSearch} onChange={e => setPersonSearch(e.target.value)} placeholder="Name suchen…" style={{ ...inp, paddingLeft: 30, fontSize: 13 }} />
+                  <input value={personSearch} onChange={e => setPersonSearch(e.target.value)} placeholder={t('Name suchen…')} style={{ ...inp, paddingLeft: 30, fontSize: 13 }} />
                 </div>
 
                 {/* Mehrfachauswahl per Checkbox — mehrere Personen auf einmal verbinden */}
                 <div style={{ maxHeight: 180, overflowY: 'auto', marginBottom: 8 }}>
                   {filteredPeople.length === 0 && (
                     <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-light)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
-                      {personSearch ? 'Keine Personen gefunden.' : 'Alle Personen bereits verbunden.'}
+                      {personSearch ? t('Keine Personen gefunden.') : t('Alle Personen bereits verbunden.')}
                     </p>
                   )}
                   {filteredPeople.map(p => {
@@ -331,17 +333,17 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
                     <input
                       value={connectContext}
                       onChange={e => setConnectContext(e.target.value)}
-                      placeholder="Kontext (optional): z.B. Dort kennengelernt"
+                      placeholder={t('Kontext (optional): z.B. Dort kennengelernt')}
                       style={{ ...inp, fontSize: 13, marginBottom: 8 }}
                     />
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => setSelectedIds(new Set())} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>Abbrechen</button>
+                      <button onClick={() => setSelectedIds(new Set())} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, cursor: 'pointer', color: 'var(--color-text-muted)' }}>{t('Abbrechen')}</button>
                       <button
                         onClick={handleConnect}
                         disabled={connecting}
                         style={{ flex: 2, padding: '9px 0', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, cursor: connecting ? 'default' : 'pointer', opacity: connecting ? 0.7 : 1 }}
                       >
-                        {connecting ? 'Verbinde…' : `Verbinden (${selectedIds.size})`}
+                        {connecting ? t('Verbinde…') : t('Verbinden ({n})', { n: selectedIds.size })}
                       </button>
                     </div>
                   </>
@@ -353,13 +355,13 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
           {/* Notes */}
           <div style={{ marginBottom: 16 }}>
             <p style={sectionLabel}>
-              📝 Notizen
-              {savingNote && <span style={{ fontWeight: 400, color: 'var(--color-text-light)', marginLeft: 6 }}>Speichert…</span>}
+              {t('📝 Notizen')}
+              {savingNote && <span style={{ fontWeight: 400, color: 'var(--color-text-light)', marginLeft: 6 }}>{t('Speichert…')}</span>}
             </p>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="z.B. Jeden Dienstag und Donnerstag hier"
+              placeholder={t('z.B. Jeden Dienstag und Donnerstag hier')}
               rows={3}
               style={{ ...inp, resize: 'none' }}
             />
@@ -367,16 +369,16 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
 
           {/* Prayer request */}
           <div style={{ marginBottom: 16 }}>
-            <p style={sectionLabel}>🙏 Gebetsanliegen für diesen Ort</p>
+            <p style={sectionLabel}>{t('🙏 Gebetsanliegen für diesen Ort')}</p>
             <textarea
               value={prayerRequest}
               onChange={e => setPrayer(e.target.value)}
-              placeholder="Gebetsanliegen eingeben…"
+              placeholder={t('Gebetsanliegen eingeben…')}
               rows={3}
               style={{ ...inp, resize: 'none', marginBottom: 8 }}
             />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>Für die Gemeinde sichtbar</span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)' }}>{t('Für die Gemeinde sichtbar')}</span>
               <button
                 onClick={() => setPrayerPub(v => !v)}
                 style={{ width: 42, height: 24, borderRadius: 12, border: 'none', backgroundColor: prayerPublic ? 'var(--color-accent)' : 'var(--color-warm-3)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s' }}
@@ -389,8 +391,8 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
           {/* Visibility */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--color-warm-3)', backgroundColor: 'var(--color-warm-4)' }}>
             <div>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>Auf meiner öffentlichen Map sichtbar</p>
-              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>Geschwister sehen diesen Ort + verbundene Personen</p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>{t('Auf meiner öffentlichen Map sichtbar')}</p>
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>{t('Geschwister sehen diesen Ort + verbundene Personen')}</p>
             </div>
             <button
               onClick={() => setIsPublic(v => !v)}
@@ -408,6 +410,7 @@ export default function PlaceDetailSheet({ place, people, placeConnections, onCl
 
 // ─── Add Place Sheet ─────────────────────────────────────────
 export function AddPlaceSheet({ onClose, onCreate }) {
+  const { t } = useT()
   const [name, setName]   = useState('')
   const [type, setType]   = useState('place')
   const [color, setColor] = useState('#8A7060')
@@ -429,36 +432,36 @@ export function AddPlaceSheet({ onClose, onCreate }) {
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'var(--color-white)', borderRadius: '24px 24px 0 0', zIndex: 50, padding: '16px 20px', paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))', animation: 'sheetSlideUp 0.3s ease-out' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Ort hinzufügen</h3>
+          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Ort hinzufügen')}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--color-warm-4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={16} color="var(--color-text-muted)" />
           </button>
         </div>
 
-        <p style={sectionLabel}>Name *</p>
+        <p style={sectionLabel}>{t('Name *')}</p>
         <input
           autoFocus type="text" value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="z.B. Gym, Arbeit, Schule…"
+          placeholder={t('z.B. Gym, Arbeit, Schule…')}
           style={{ ...inp, marginBottom: 14 }}
           onKeyDown={e => e.key === 'Enter' && handleCreate()}
         />
 
-        <p style={sectionLabel}>Typ</p>
+        <p style={sectionLabel}>{t('Typ')}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
-          {PLACE_TYPES.map(t => (
+          {PLACE_TYPES.map(pt => (
             <button
-              key={t.type}
-              onClick={() => setType(t.type)}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 6px', borderRadius: 12, border: `1.5px solid ${type === t.type ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, backgroundColor: type === t.type ? 'rgba(74,103,65,0.08)' : 'var(--color-warm-4)', cursor: 'pointer', fontFamily: 'Lora, serif' }}
+              key={pt.type}
+              onClick={() => setType(pt.type)}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 6px', borderRadius: 12, border: `1.5px solid ${type === pt.type ? 'var(--color-warm-1)' : 'var(--color-warm-3)'}`, backgroundColor: type === pt.type ? 'rgba(74,103,65,0.08)' : 'var(--color-warm-4)', cursor: 'pointer', fontFamily: 'Lora, serif' }}
             >
-              <span style={{ fontSize: 20 }}>{t.emoji}</span>
-              <span style={{ fontSize: 11, color: 'var(--color-text)', fontWeight: type === t.type ? 700 : 400 }}>{t.label}</span>
+              <span style={{ fontSize: 20 }}>{pt.emoji}</span>
+              <span style={{ fontSize: 11, color: 'var(--color-text)', fontWeight: type === pt.type ? 700 : 400 }}>{t(pt.label)}</span>
             </button>
           ))}
         </div>
 
-        <p style={sectionLabel}>Farbe</p>
+        <p style={sectionLabel}>{t('Farbe')}</p>
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
           {PLACE_COLORS.map(c => (
             <button
@@ -474,7 +477,7 @@ export function AddPlaceSheet({ onClose, onCreate }) {
           disabled={!name.trim() || saving}
           style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', backgroundColor: name.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed' }}
         >
-          {saving ? 'Erstelle…' : 'Ort erstellen'}
+          {saving ? t('Erstelle…') : t('Ort erstellen')}
         </button>
       </div>
     </>

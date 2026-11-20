@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { buildBibleLink } from '../../lib/bibleLink'
+import { useT } from '../../i18n'
 
 const BiblePassageSheet = lazy(() => import('../discipleship/BiblePassageSheet'))
 
@@ -14,6 +15,7 @@ const BiblePassageSheet = lazy(() => import('../discipleship/BiblePassageSheet')
 // interaktiv gerendert.
 export default function BibleReferenceChip({ attachment, variant = 'block', showVerse = true, onRemove = null, openAsSheet = false }) {
   const navigate = useNavigate()
+  const { t } = useT()
   const [sheetOpen, setSheetOpen] = useState(false)
   if (!attachment) return null
 
@@ -62,7 +64,7 @@ export default function BibleReferenceChip({ attachment, variant = 'block', show
           📖 {attachment.referenceLabel}
         </Tag>
         {onRemove && (
-          <button onClick={onRemove} aria-label="Vers entfernen" className="p-1">
+          <button onClick={onRemove} aria-label={t('Vers entfernen')} className="p-1">
             <X size={14} style={{ color: 'var(--color-text-tertiary)' }} />
           </button>
         )}
@@ -92,7 +94,7 @@ export default function BibleReferenceChip({ attachment, variant = 'block', show
         )}
       </Tag>
       {onRemove && (
-        <button onClick={onRemove} aria-label="Vers entfernen" className="p-1 flex-shrink-0">
+        <button onClick={onRemove} aria-label={t('Vers entfernen')} className="p-1 flex-shrink-0">
           <X size={14} style={{ color: 'var(--color-text-tertiary)' }} />
         </button>
       )}

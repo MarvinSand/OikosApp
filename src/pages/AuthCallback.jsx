@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Cross, MailCheck, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useT } from '../i18n'
 
 export default function AuthCallback() {
+  const { t } = useT()
   const navigate = useNavigate()
   const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
 
@@ -67,8 +69,8 @@ export default function AuthCallback() {
         {status === 'loading' && (
           <>
             <div className="w-16 h-16 rounded-full border-[3px] border-warm-3 border-t-warm-1 animate-spin mx-auto mb-6" />
-            <h3 className="text-xl font-bold text-dark mb-2">E-Mail wird bestätigt…</h3>
-            <p className="text-sm text-dark-muted">Einen Moment bitte.</p>
+            <h3 className="text-xl font-bold text-dark mb-2">{t('E-Mail wird bestätigt…')}</h3>
+            <p className="text-sm text-dark-muted">{t('Einen Moment bitte.')}</p>
           </>
         )}
 
@@ -77,9 +79,9 @@ export default function AuthCallback() {
             <div className="w-20 h-20 bg-gold-light/30 rounded-full flex items-center justify-center mx-auto mb-6">
               <MailCheck size={40} className="text-gold" strokeWidth={2} />
             </div>
-            <h3 className="text-2xl font-bold text-dark mb-3">E-Mail bestätigt!</h3>
+            <h3 className="text-2xl font-bold text-dark mb-3">{t('E-Mail bestätigt!')}</h3>
             <p className="text-sm text-dark-muted leading-relaxed">
-              Dein Konto ist jetzt aktiv. Du wirst weitergeleitet…
+              {t('Dein Konto ist jetzt aktiv. Du wirst weitergeleitet…')}
             </p>
           </>
         )}
@@ -89,9 +91,9 @@ export default function AuthCallback() {
             <div className="w-20 h-20 bg-error-bg rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle size={40} className="text-error" strokeWidth={2} />
             </div>
-            <h3 className="text-2xl font-bold text-dark mb-3">Link ungültig</h3>
+            <h3 className="text-2xl font-bold text-dark mb-3">{t('Link ungültig')}</h3>
             <p className="text-sm text-dark-muted leading-relaxed mb-6">
-              Der Link ist abgelaufen oder wurde bereits verwendet. Du wirst zum Login weitergeleitet…
+              {t('Der Link ist abgelaufen oder wurde bereits verwendet. Du wirst zum Login weitergeleitet…')}
             </p>
           </>
         )}

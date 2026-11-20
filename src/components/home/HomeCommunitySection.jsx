@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Users, ChevronRight, Plus } from 'lucide-react'
 import { useCommunities } from '../../hooks/useCommunities'
+import { useT } from '../../i18n'
 
 function getInitials(name) {
   return (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -8,17 +9,15 @@ function getInitials(name) {
 
 // Macht den Community-Bereich auf Home sichtbar.
 export default function HomeCommunitySection() {
+  const { t } = useT()
   const navigate = useNavigate()
   const { myCommunities, loading } = useCommunities()
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
-          Deine Community
-        </p>
-        <button onClick={() => navigate('/friends?tab=communities')} style={{ display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600 }}>
-          Alle ansehen <ChevronRight size={14} />
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>{t('Deine Community')}</p>
+        <button onClick={() => navigate('/friends?tab=communities')} style={{ display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-warm-1)', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600 }}>{t('Alle ansehen')}{' '}<ChevronRight size={14} />
         </button>
       </div>
 
@@ -38,12 +37,8 @@ export default function HomeCommunitySection() {
             <Users size={20} color="#fff" />
           </div>
           <div style={{ flex: 1 }}>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>
-              Community beitreten
-            </p>
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
-              Finde Geschwister und betet gemeinsam
-            </p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>{t('Community beitreten')}</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{t('Finde Geschwister und betet gemeinsam')}</p>
           </div>
           <Plus size={18} color="var(--color-warm-1)" />
         </button>
@@ -69,7 +64,7 @@ export default function HomeCommunitySection() {
                   {c.name}
                 </p>
                 <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
-                  {c.memberCount} {c.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}
+                  {c.memberCount} {c.memberCount === 1 ? t('Mitglied') : t('Mitglieder')}
                 </p>
               </div>
               <ChevronRight size={18} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
