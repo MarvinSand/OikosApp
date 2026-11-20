@@ -4,7 +4,7 @@
     "target": {
       "namespace": "android_app",
       "package_name": "app.oikos.mobile",
-      "sha256_cert_fingerprints": ["SHA256_FINGERPRINT_HIER_EINTRAGEN"]
+      "sha256_cert_fingerprints": ["0E:8D:77:0D:F4:16:EF:1B:36:6B:40:D7:EB:63:86:E0:17:D6:C7:E9:02:FB:D5:D6:AE:C2:9C:28:8B:DF:47:FE"]
     }
   }
 ]

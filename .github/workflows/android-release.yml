@@ -29,9 +29,9 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
-          VITE_LEGAL_NAME: ${{ vars.VITE_LEGAL_NAME }}
-          VITE_LEGAL_ADDRESS: ${{ vars.VITE_LEGAL_ADDRESS }}
-          VITE_SUPPORT_EMAIL: ${{ vars.VITE_SUPPORT_EMAIL }}
+          VITE_LEGAL_NAME: ${{ vars.VITE_LEGAL_NAME || secrets.VITE_LEGAL_NAME }}
+          VITE_LEGAL_ADDRESS: ${{ vars.VITE_LEGAL_ADDRESS || secrets.VITE_LEGAL_ADDRESS }}
+          VITE_SUPPORT_EMAIL: ${{ vars.VITE_SUPPORT_EMAIL || secrets.VITE_SUPPORT_EMAIL }}
           VITE_PUBLIC_APP_URL: ${{ vars.VITE_PUBLIC_APP_URL }}
 
       - name: Sync Capacitor Android project
@@ -79,4 +79,4 @@ jobs:
           packageName: app.oikos.mobile
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           track: internal
-          status: completed
+          status: draft

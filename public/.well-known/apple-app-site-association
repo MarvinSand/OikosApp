@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["TEAMID.app.oikos.mobile"],
+        "appIDs": ["3A7M3VN8N3.app.oikos.mobile"],
         "components": [
           { "/": "/user/*" },
           { "/": "/community/*" },
