@@ -1,4 +1,3 @@
-import { BIBLE_LANGUAGE_TAGS } from './bibleLanguageTags'
 import { getLang, tr } from '../i18n'
 
 // Standardmäßig favorisierte Übersetzungen (ohne Netzwerk verfügbar) + Helfer
@@ -53,13 +52,20 @@ export function groupVersionsByLanguage(versions) {
 // Sprachen, die zuerst im Sprach-Schritt des VersionPickers erscheinen.
 export const PINNED_LANGUAGES = ['de', 'en', 'es', 'fr', 'it', 'pt', 'nl', 'ru', 'pl', 'tr']
 
-// Auswahlliste für den Sprach-Schritt: ALLE Sprachen des YouVersion-Katalogs
-// (bibleLanguageTags.js, generiert). Die Bibel-API filtert per
-// language_ranges[]=<code>; so muss nie der Gesamtkatalog geladen werden.
+// Auswahlliste für den Sprach-Schritt: nur bekannte Sprachen (ISO 639-1, ~90).
+// Bewusst NICHT der ganze YouVersion-Katalog – der enthält über 1200 Tags mit
+// dreistelligen Codes seltener Sprachen (aab, aai, …), die in der Liste nur
+// Rauschen sind. Die Bibel-API filtert per language_ranges[]=<code>; so muss
+// nie der Gesamtkatalog geladen werden.
+const ALL_LANGUAGE_CODES = (
+  'af am ar az be bg bn bs ca cs cy da de el en es et eu fa fi fr ga gl gu he hi hr hu hy id is it ja ka kk km kn ko ky lo lt lv mk ml mn mr ms my ne nl no pa pl pt ro ru si sk sl sq sr sv sw ta te th tl tr uk ur uz vi zh zu ' +
+  'ak ee ha ig ln lg mg ny om rw sn so st tn ts xh yo'
+).split(' ')
+
 export function languageOptions(lang = getLang()) {
   const collator = lang === 'en' ? 'en' : 'de'
   const pinned = PINNED_LANGUAGES.map(tag => ({ tag, label: languageLabel(tag, lang) }))
-  const rest = BIBLE_LANGUAGE_TAGS
+  const rest = ALL_LANGUAGE_CODES
     .filter(tag => !PINNED_LANGUAGES.includes(tag))
     .map(tag => ({ tag, label: languageLabel(tag, lang) }))
     .sort((a, b) => a.label.localeCompare(b.label, collator))

@@ -6,7 +6,6 @@ import { useChangePassword } from '../hooks/useChangePassword'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useYouVersionSignIn } from '../hooks/useYouVersionAccount'
-import { isNativeApp } from '../lib/platform'
 import { TERMS_PATH, PRIVACY_PATH } from '../lib/legal'
 import { useT } from '../i18n'
 
@@ -426,12 +425,9 @@ export default function Auth() {
               </button>
             </form>
 
-            {/* YouVersion-Login nur im Browser: In der iOS-App würde der
-                OAuth-Redirect nach capacitor://localhost zeigen (nicht bei
-                YouVersion registriert) und Safari statt der App öffnen.
-                Außerdem verlangt App-Store-Richtlinie 4.8 neben einem
-                Drittanbieter-Login zusätzlich „Mit Apple anmelden". */}
-            {!isNativeApp && (<>
+            {/* YouVersion-Login: im Browser direkt, in der App über den System-Browser
+                (siehe useYouVersionSignIn). */}
+            <>
             <div className="flex items-center gap-3 my-5">
               <div className="flex-1 h-px bg-warm-3" />
               <span className="text-xs font-medium text-dark-light">{t('oder')}</span>
@@ -452,7 +448,7 @@ export default function Auth() {
                 {t(youversionSignIn.error)}
               </div>
             )}
-            </>)}
+            </>
 
             <p className="text-xs text-dark-light text-center mt-5" style={{ lineHeight: 1.5 }}>
               {t('Mit der Nutzung von Oikos Connect akzeptierst du unsere')}{' '}

@@ -24,9 +24,9 @@ function detectLang() {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === 'de' || stored === 'en') return stored
   } catch { /* ignore */ }
-  // Ohne eigene Wahl: Gerätesprache (Deutsch → Deutsch, sonst Englisch).
-  const nav = (typeof navigator !== 'undefined' && (navigator.language || navigator.languages?.[0])) || 'de'
-  return nav.toLowerCase().startsWith('de') ? 'de' : 'en'
+  // Ohne eigene Wahl: immer Deutsch (Standardsprache der App). Englisch gibt es
+  // nur, wenn der Nutzer es in den Einstellungen ausdrücklich wählt.
+  return 'de'
 }
 
 // Aktuelle Sprache auch außerhalb von React (z. B. bibleBooks.js, Intl-Helfer).

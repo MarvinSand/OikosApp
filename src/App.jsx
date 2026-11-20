@@ -12,6 +12,7 @@ import { isNativeApp, isAppHost, isLandingOnlyHost, LANDING_HOST_PATHS, MAIN_APP
 import Auth from './pages/Auth'
 import AuthCallback from './pages/AuthCallback'
 import YouVersionCallback from './pages/YouVersionCallback'
+import YouVersionHandoff from './pages/YouVersionHandoff'
 import LegalPage from './pages/LegalPage'
 import BottomNav from './components/layout/BottomNav'
 import { useKeyboardInset } from './hooks/useKeyboardInset'
@@ -118,6 +119,32 @@ function useNativeLinkHandler() {
     }).catch(() => {})
     return () => { cancelled = true; handle?.remove() }
   }, [navigate])
+}
+
+// App-Login mit YouVersion: Der Login läuft im System-Browser; der Rückweg
+// kommt als Universal/App Link (…/join/yv-login?th=<token_hash>) in die App.
+// Hier die Anmeldung einlösen – auch wenn noch niemand eingeloggt ist.
+function NativeYouVersionReturn() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!isNativeApp) return
+    let handle
+    let cancelled = false
+    import('@capacitor/app').then(({ App: CapApp }) => {
+      CapApp.addListener('appUrlOpen', async ({ url }) => {
+        try {
+          const u = new URL(url)
+          if (u.pathname !== '/join/yv-login') return
+          const th = u.searchParams.get('th')
+          if (!th) return
+          const { error } = await supabase.auth.verifyOtp({ token_hash: th, type: 'magiclink' })
+          if (!error) navigate('/', { replace: true })
+        } catch { /* ignore */ }
+      }).then(h => { if (cancelled) h.remove(); else handle = h })
+    }).catch(() => {})
+    return () => { cancelled = true; handle?.remove() }
+  }, [navigate])
+  return null
 }
 
 function AppShellInner() {
@@ -358,6 +385,7 @@ export default function App() {
       <ToastProvider>
         <BrowserRouter>
           <AppFrame>
+            <NativeYouVersionReturn />
             <Routes>
               <Route
                 path="/auth"
@@ -377,6 +405,7 @@ export default function App() {
                   beim Sign-in/up-Flow ist beim Zurückkommen noch niemand bei
                   Oikos eingeloggt. */}
               <Route path="/auth/youversion/callback" element={<YouVersionCallback />} />
+              <Route path="/auth/youversion/handoff" element={<YouVersionHandoff />} />
               <Route path="/bible/youversion/callback" element={<YouVersionCallback />} />
               <Route path="/welcome" element={<RootGate />} />
               <Route path="/*" element={<RootGate />} />

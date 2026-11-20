@@ -32,4 +32,7 @@ export default {
   'Sprache': 'Language',
   'Sprache der App': 'App language',
   'Deutsch oder Englisch': 'German or English',
+  'Anmeldung bestätigt': 'Sign-in confirmed',
+  'Tippe auf den Knopf, um zurück in die Oikos-App zu wechseln.': 'Tap the button to return to the Oikos app.',
+  'Zurück zur App': 'Back to the app',
 }

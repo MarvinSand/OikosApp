@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookMarked, AlertCircle } from 'lucide-react'
 import { completeYouVersionLogin, completeYouVersionSignIn } from '../lib/youversion'
-import { resolveYouVersionRedirectUri } from '../hooks/useYouVersionAccount'
+import {
+  resolveYouVersionRedirectUri, YOUVERSION_FROM_APP_KEY, YOUVERSION_APP_RETURN_HOST, YOUVERSION_APP_RETURN_PATH,
+} from '../hooks/useYouVersionAccount'
 import { supabase } from '../lib/supabase'
 import { useT } from '../i18n'
 
 export default function YouVersionCallback() {
   const navigate = useNavigate()
   const { t } = useT()
-  const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
+  const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error' | 'app'
+  const [appLink, setAppLink] = useState(null)
   const [errorDetail, setErrorDetail] = useState(null)
   const [fallbackPath, setFallbackPath] = useState('/bible')
 
@@ -61,6 +64,19 @@ export default function YouVersionCallback() {
           // Keine Oikos-Session -> "signin"-Modus (Login-Bildschirm).
           setFallbackPath('/auth')
           const { tokenHash } = await completeYouVersionSignIn({ code, state, redirectUri })
+          // Login kam aus der App (die Brückenseite hat den Merker im Browser
+          // gesetzt): Anmeldung nicht hier einlösen, sondern per Link in die App holen.
+          let fromApp = false
+          try {
+            const ts = Number(localStorage.getItem(YOUVERSION_FROM_APP_KEY) || 0)
+            fromApp = ts > 0 && Date.now() - ts < 15 * 60 * 1000
+            localStorage.removeItem(YOUVERSION_FROM_APP_KEY)
+          } catch { /* ignore */ }
+          if (fromApp) {
+            setAppLink(`${YOUVERSION_APP_RETURN_HOST}${YOUVERSION_APP_RETURN_PATH}?th=${encodeURIComponent(tokenHash)}`)
+            setStatus('app')
+            return
+          }
           const { error: verifyError } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: 'magiclink',
@@ -91,6 +107,18 @@ export default function YouVersionCallback() {
           </div>
           <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>{t('YouVersion verbunden')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>{t('Du wirst weitergeleitet…')}</p>
+        </>
+      )}
+      {status === 'app' && (
+        <>
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+            <BookMarked size={36} style={{ color: 'var(--color-accent)' }} />
+          </div>
+          <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>{t('Anmeldung bestätigt')}</h1>
+          <p className="mb-6" style={{ color: 'var(--color-text-secondary)' }}>{t('Tippe auf den Knopf, um zurück in die Oikos-App zu wechseln.')}</p>
+          <a href={appLink} className="px-5 py-2.5 rounded-xl font-medium" style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}>
+            {t('Zurück zur App')}
+          </a>
         </>
       )}
       {status === 'error' && (

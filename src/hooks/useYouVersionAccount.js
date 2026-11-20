@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from './useAuth'
 import { supabase } from '../lib/supabase'
 import { startYouVersionLogin, disconnectYouVersion, startYouVersionSignIn } from '../lib/youversion'
+import { isNativeApp, PUBLIC_APP_URL } from '../lib/platform'
 
 // Muss exakt einer im YouVersion-Dashboard registrierten Callback-URL
 // entsprechen. Bewusst die AKTUELLE Origin verwenden (nicht auf eine feste
@@ -14,6 +15,9 @@ import { startYouVersionLogin, disconnectYouVersion, startYouVersionSignIn } fro
 // Callback-URL eingetragen sein - aktuell: oikosapp.net, www.oikosapp.net,
 // localhost:5173, oikos-app-tau.vercel.app (dort mit /bible/... Pfad).
 export function resolveYouVersionRedirectUri() {
+  // In der App ist die Origin capacitor://localhost (bei YouVersion nicht
+  // registriert) – dort läuft der Login im System-Browser über die App-Subdomain.
+  if (isNativeApp) return `${PUBLIC_APP_URL}/auth/youversion/callback`
   const { hostname, origin } = window.location
   if (hostname === 'oikos-app-tau.vercel.app') {
     return `${origin}/bible/youversion/callback`
@@ -23,6 +27,14 @@ export function resolveYouVersionRedirectUri() {
 
 // Route, unter der die App auf den Redirect von YouVersion wartet.
 export const YOUVERSION_CALLBACK_PATH = '/auth/youversion/callback'
+// App-Login: Brückenseite im System-Browser + Rückweg per Universal/App Link.
+export const YOUVERSION_HANDOFF_PATH = '/auth/youversion/handoff'
+export const YOUVERSION_FROM_APP_KEY = 'oikos_yv_from_app'
+// Rückkehr-Link in die App: Host + Pfadpräfix müssen in AASA/assetlinks stehen
+// (oikosconnect.net, /join). Anderer Host als die Callback-Seite, damit iOS den
+// Tipp als Universal Link öffnet und nicht in Safari bleibt.
+export const YOUVERSION_APP_RETURN_PATH = '/join/yv-login'
+export const YOUVERSION_APP_RETURN_HOST = 'https://oikosconnect.net'
 
 export function useYouVersionAccount() {
   const { user } = useAuth()
@@ -77,6 +89,16 @@ export function useYouVersionSignIn() {
     try {
       const redirectUri = resolveYouVersionRedirectUri()
       const { authorizeUrl } = await startYouVersionSignIn(redirectUri)
+      if (isNativeApp) {
+        // App: Login im System-Browser (Safari/Chrome) über eine kleine Brücken-
+        // Seite, die dort merkt, dass der Login aus der App kommt. Danach holt
+        // der Nutzer per Link die Anmeldung zurück in die App
+        // (YouVersionHandoff / YouVersionCallback / NativeYouVersionReturn).
+        // Externe https-Adressen öffnet Capacitor automatisch außerhalb der App.
+        setStarting(false)
+        window.location.href = `${PUBLIC_APP_URL}${YOUVERSION_HANDOFF_PATH}?to=${encodeURIComponent(authorizeUrl)}`
+        return
+      }
       window.location.href = authorizeUrl
     } catch (e) {
       setError(e.message)

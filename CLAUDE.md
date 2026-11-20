@@ -1,5 +1,10 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## App-Sprache & YouVersion-Login in der App (Nov. 2026)
+
+- **Sprache:** Standard ist immer Deutsch (`src/i18n/index.jsx` → `detectLang()`), Englisch nur per Wahl in den Einstellungen (`oikos_lang`, geräte-lokal). Bibel-Sprachwahl (`bibleVersionDefaults.js`) bewusst nur ~90 bekannte ISO-639-1-Sprachen – nie den ganzen YouVersion-Katalog (1262 Tags, viele dreistellige Codes wie `aab`).
+- **„Mit YouVersion anmelden“ in der nativen App:** kein Plugin nötig. Ablauf: App ruft `startYouVersionSignIn` mit Redirect `https://app.oikosconnect.net/auth/youversion/callback` (bei YouVersion registriert) → öffnet `…/auth/youversion/handoff?to=<authorizeUrl>` im System-Browser (Capacitor öffnet externe https-Adressen außerhalb der App; `/auth/*` steht bewusst NICHT in AASA/App-Links) → die Brückenseite setzt `localStorage.oikos_yv_from_app` und leitet zu YouVersion → `YouVersionCallback` löst die Anmeldung nicht im Browser ein, sondern zeigt „Zurück zur App“ → Link `https://oikosconnect.net/join/yv-login?th=<token_hash>` (anderer Host + `/join` ⇒ Universal/App Link öffnet die App) → `NativeYouVersionReturn` (App.jsx) löst per `verifyOtp` ein. Nur der Anmelden-Flow; „Verbinden“ in den Einstellungen bleibt im Web. Achtung App-Store-Richtlinie 4.8 (Drittanbieter-Login braucht eine gleichwertige datensparsame Alternative).
+
 ## Landingpage auf der Domain (Okt./Nov. 2026)
 
 - `/` zeigt **ausgeloggt im Web** `pages/Landing.jsx`; eingeloggt weiterhin die App, in der nativen App (Capacitor) wie bisher direkt `/auth`. `/welcome` zeigt die Landingpage immer. Logik: `showsLanding()` + `RootGate` in `App.jsx`.
