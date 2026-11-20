@@ -686,9 +686,13 @@ export default function Landing() {
                   <span className="lp-card-icon"><Smartphone size={22} aria-hidden="true" /></span>
                   <h3>Android</h3>
                   <p className="flex-1">Für Smartphones und Tablets, bei Google Play.</p>
-                  <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-glass">
-                    Bei Google Play laden<span className="sr-only"> (öffnet in neuem Tab)</span>
-                  </a>
+                  {PLAY_STORE_URL ? (
+                    <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-glass">
+                      Bei Google Play laden<span className="sr-only"> (öffnet in neuem Tab)</span>
+                    </a>
+                  ) : (
+                    <span className="lp-btn lp-btn-glass lp-soon" aria-disabled="true">Bald bei Google Play</span>
+                  )}
                 </div>
               </Reveal>
               <Reveal delay={180}>

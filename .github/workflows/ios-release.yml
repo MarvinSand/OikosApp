@@ -38,7 +38,7 @@ jobs:
           VITE_LEGAL_ADDRESS: ${{ vars.VITE_LEGAL_ADDRESS || secrets.VITE_LEGAL_ADDRESS }}
           VITE_SUPPORT_EMAIL: ${{ vars.VITE_SUPPORT_EMAIL || secrets.VITE_SUPPORT_EMAIL }}
           # Öffentliche Web-Adresse für geteilte Links/E-Mail-Bestätigungen
-          # aus der App (Default: https://oikosapp.net)
+          # aus der App (Default: https://app.oikosconnect.net)
           VITE_PUBLIC_APP_URL: ${{ vars.VITE_PUBLIC_APP_URL }}
 
       - name: Sync Capacitor iOS project
