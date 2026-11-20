@@ -55,14 +55,19 @@ const Landing = lazy(loadLanding)
 // Deshalb den Home-Chunk sofort beim Import anstoßen (er lädt parallel zur
 // Session-Prüfung; `lazy` greift danach auf den Modul-Cache zu) und die
 // übrigen Haupt-Tabs nachziehen, sobald der Browser Leerlauf hat.
-import('./pages/Home')
-if (typeof window !== 'undefined' && !isNativeApp && window.location.pathname === '/' && !isAppHost && (isLandingOnlyHost || !getCurrentUser())) loadLanding()
+// Landingpage-Besuch (ausgeloggt/Marketing-Domain): weder Home noch die übrigen
+// App-Tabs vorladen – sie würden auf Handys mit schlechtem Netz die Bandbreite
+// für Hero-Bild und Landing-Chunk wegnehmen und werden dort nicht gebraucht.
+// Die Auth-Seite lädt beim Tippen auf „Anmelden“ nach.
+const landingVisit = typeof window !== 'undefined' && !isNativeApp && window.location.pathname === '/' && !isAppHost && (isLandingOnlyHost || !getCurrentUser())
+if (landingVisit) loadLanding()
+else import('./pages/Home')
 
 const idle = typeof requestIdleCallback === 'function'
   ? requestIdleCallback
   : (cb) => setTimeout(cb, 1500)
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && !landingVisit) {
   window.addEventListener('load', () => {
     idle(() => {
       // Alle Bottom-Nav-Ziele vorladen – sonst beginnt der Chunk erst beim Tap

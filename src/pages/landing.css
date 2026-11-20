@@ -712,3 +712,31 @@
     background: radial-gradient(ellipse 65% 50% at 50% 52%, rgba(5, 10, 24, 0.38), rgba(5, 10, 24, 0) 100%);
   }
 }
+
+/* ── Spar-Modus (langsames Netz / schwaches Gerät / Datensparmodus) ─────────
+ * Gesetzt von Landing.jsx (`lp-lite`, siehe lib/perf.js). Entfernt die teuren
+ * Effekte: Filmkorn, Aurora-Blur, Glas-Unschärfe (Panels bekommen stattdessen
+ * eine deckendere Fläche), Ken-Burns, Dauer-Animationen und GPU-Layer. */
+.lp.lp-lite .lp-grain,
+.lp.lp-lite .lp-aurora { display: none; }
+.lp.lp-lite *,
+.lp.lp-lite *::before,
+.lp.lp-lite *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; will-change: auto !important; }
+.lp.lp-lite .lp-hero-media img { animation: none; }
+.lp.lp-lite .lp-phone-3d::after,
+.lp.lp-lite .lp-p3d-halo { display: none; }
+.lp.lp-lite .lp-p3d-float,
+.lp.lp-lite .lp-p3d-card,
+.lp.lp-lite .lp-pin,
+.lp.lp-lite .lp-pin::before,
+.lp.lp-lite .lp-pin::after { animation: none !important; }
+.lp.lp-lite .lp-btn-glass,
+.lp.lp-lite .lp-header.is-scrolled,
+.lp.lp-lite .lp-photo-tag,
+.lp.lp-lite .lp-layers,
+.lp.lp-lite .lp-chipcard,
+.lp.lp-lite .lp-prayer-head,
+.lp.lp-lite .lp-prayer-stats li,
+.lp.lp-lite .lp-prayer .lp-pillar { background-color: rgba(8, 14, 32, 0.94); }
+.lp.lp-lite .lp-marquee-track,
+.lp.lp-lite [class*="lp-marq"] { animation-duration: 90s; }

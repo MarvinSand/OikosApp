@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { HandHeart } from 'lucide-react'
+import { canvasDpr, FRAME_GAP } from '../../lib/perf'
 
 // Oikos-Motion-Graphic „Gebet vermehrt sich“: Dein Umfeld als Kreis (wie die
 // Oikos Map der App). Wer für jemanden betet, schickt einen Lichtstrahl nach
@@ -228,7 +229,7 @@ export default function PrayerField({ className = '', backdrop = null }) {
     function resize() {
       const r = wrap.getBoundingClientRect()
       w = Math.max(1, Math.round(r.width)); h = Math.max(1, Math.round(r.height))
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      dpr = canvasDpr()
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr)
       snapCamera()
       draw(0)
@@ -524,6 +525,7 @@ export default function PrayerField({ className = '', backdrop = null }) {
     function loop(now) {
       raf = 0
       if (!running) return
+      if (FRAME_GAP && now - last < FRAME_GAP) { raf = requestAnimationFrame(loop); return }
       const dt = Math.min(0.05, (now - last) / 1000 || 0)
       last = now
       step(dt)

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { canvasDpr, FRAME_GAP } from '../../lib/perf'
 import {
   LAND, LAND_EU, BORDERS, COASTS, BORDERS_EU, COASTS_EU,
 } from '../../lib/worldGeo'
@@ -432,7 +433,7 @@ export default function NetworkGlobe({ stage = null, className = '', fit = 'hero
       const r = wrap.getBoundingClientRect()
       w = Math.max(1, Math.round(r.width))
       h = Math.max(1, Math.round(r.height))
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      dpr = canvasDpr()
       canvas.width = Math.round(w * dpr)
       canvas.height = Math.round(h * dpr)
       draw(performance.now(), 0)
@@ -733,6 +734,7 @@ export default function NetworkGlobe({ stage = null, className = '', fit = 'hero
     function loop(now) {
       raf = 0
       if (!running) return
+      if (FRAME_GAP && now - last < FRAME_GAP) { raf = requestAnimationFrame(loop); return }
       const dt = Math.min(0.05, (now - last) / 1000 || 0)
       last = now
       draw(now, dt)

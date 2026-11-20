@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { PLAY_STORE_URL, APP_STORE_URL } from '../lib/stores'
 import { appUrl, isLandingOnlyHost } from '../lib/platform'
+import { isLite } from '../lib/perf'
 import Phone3D from '../components/landing/Phone3D'
 import Tilt from '../components/landing/Tilt'
 import './landing.css'
@@ -155,34 +156,62 @@ function Reveal({ children, className = '', delay = 0, as: Tag = 'div' }) {
 function BgVideo({ name, className = '', when = 'wide' }) {
   const ref = useRef(null)
   const [ok, setOk] = useState(false)
+  const [near, setNear] = useState(false)
+  const [vis, setVis] = useState(false)
 
   useEffect(() => {
     const wide = window.matchMedia?.('(min-width: 768px)').matches
-    if ((when === 'wide' ? wide : !wide) && !reduceMotion() && !navigator.connection?.saveData) setOk(true)
+    if (!isLite && (when === 'wide' ? wide : !wide) && !reduceMotion() && !navigator.connection?.saveData) setOk(true)
   }, [])
+  // Datei erst anfordern, wenn der Abschnitt fast sichtbar ist (spart auf dem
+  // Handy ~300 kB beim Start); danach nur abspielen, solange sichtbar.
   useEffect(() => {
     const v = ref.current
     if (!ok || !v) return
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) v.play().catch(() => {}); else v.pause() }, { threshold: 0.15 })
+    const io = new IntersectionObserver(([e]) => {
+      setVis(e.isIntersecting)
+      if (e.isIntersecting) setNear(true)
+    }, { threshold: 0.01, rootMargin: '300px' })
     io.observe(v)
     return () => io.disconnect()
   }, [ok])
+  // play() erst, wenn `src` im DOM steht (nach dem Re-Render durch setNear)
+  useEffect(() => {
+    const v = ref.current
+    if (!v || !near) return
+    if (vis) v.play().catch(() => {}); else v.pause()
+  }, [vis, near])
 
   if (!ok) return null
   return (
     <video
       ref={ref}
       className={`lp-bgvideo ${className}`}
-      src={`${VID}${name}.mp4`}
+      src={near ? `${VID}${name}.mp4` : undefined}
       muted
       loop
       playsInline
-      preload="metadata"
+      preload="none"
       aria-hidden="true"
       tabIndex={-1}
       onError={() => setOk(false)}
     />
   )
+}
+
+// Rendert die (schweren) Kinder erst, wenn der Platzhalter in die Nähe des
+// Bildschirms kommt – Globus/Gebets-Animation laden so weder Code noch
+// Geodaten, bevor man dort ankommt.
+function NearView({ children, className = '', rootMargin = '600px' }) {
+  const ref = useRef(null)
+  const [on, setOn] = useState(() => typeof IntersectionObserver === 'undefined')
+  useEffect(() => {
+    if (on || !ref.current) return
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setOn(true); io.disconnect() } }, { rootMargin })
+    io.observe(ref.current)
+    return () => io.disconnect()
+  }, [on, rootMargin])
+  return on ? children : <div ref={ref} className={className} />
 }
 
 function Photo({ name, alt, ratio = 'p', sizes = '(min-width: 900px) 360px, 80vw', eager = false }) {
@@ -288,7 +317,7 @@ export default function Landing() {
   const unmagnet = (e) => { e.currentTarget.style.setProperty('--mx', '0px'); e.currentTarget.style.setProperty('--my', '0px') }
 
   return (
-    <div ref={rootRef} className="lp h-full w-full overflow-y-auto overflow-x-hidden">
+    <div ref={rootRef} className={`lp h-full w-full overflow-y-auto overflow-x-hidden ${isLite ? 'lp-lite' : ''}`}>
       <div className="lp-progress" aria-hidden="true" />
       <div className="lp-grain" aria-hidden="true" />
       <a href="#main" className="lp-skip" onClick={(e) => { e.preventDefault(); scrollToId('main') }}>
@@ -421,6 +450,7 @@ export default function Landing() {
             </Reveal>
 
             <Reveal delay={100} className="mt-10">
+              <NearView className="lp-prayer-stage">
               <Suspense fallback={<div className="lp-prayer-stage" />}>
                 <PrayerField
                   className="lp-prayer-field"
@@ -432,6 +462,7 @@ export default function Landing() {
                   )}
                 />
               </Suspense>
+              </NearView>
             </Reveal>
 
             <div className="lp-oikos-grid">
@@ -509,9 +540,11 @@ export default function Landing() {
                 <Reveal delay={80} className="lp-discover-map">
                   <div className="lp-globe">
                     <div className="lp-globe-glow" aria-hidden="true" />
+                    <NearView className="w-full h-full">
                     <Suspense fallback={<div className="w-full h-full" />}>
                       <NetworkGlobe fit="box" className="relative w-full h-full" kinds={focusKind ? { sibling: false, event: false, gemeinde: false, [focusKind]: true } : kinds} />
                     </Suspense>
+                    </NearView>
                     <div className="lp-layers" role="group" aria-label="Ebenen der Weltkarte">
                       {LAYERS.map(({ key, icon: Icon, label }) => (
                         <button

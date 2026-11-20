@@ -51,11 +51,36 @@ function preloadLandingRoute() {
   }
 }
 
+// Die Landingpage ist ein eigener Lazy-Chunk. Ohne Hinweis holt ihn der Browser
+// erst, nachdem das Entry-Bundle ausgeführt wurde (ein Round-Trip mehr – auf
+// 3G/4G spürbar). Ausgeloggte Besucher auf „/“ bekommen ihn deshalb schon
+// parallel zum Entry; eingeloggte (Supabase-Session im localStorage), die App-
+// Subdomain und die native App (hostname localhost) laden nichts extra.
+function preloadLandingChunk() {
+  return {
+    name: 'preload-landing-chunk',
+    enforce: 'post',
+    transformIndexHtml(html, ctx) {
+      if (!ctx.bundle) return []
+      // (facadeModuleId ist hier null, weil Landing.jsx den Chunk mit seinen
+      // exklusiven Modulen teilt → über den Chunk-Namen finden)
+      const chunk = Object.values(ctx.bundle).find(c => c.type === 'chunk' && c.name === 'Landing')
+      if (!chunk) return []
+      const files = [{ rel: 'modulepreload', href: `/${chunk.fileName}` }]
+      for (const css of chunk.viteMetadata?.importedCss || []) files.push({ rel: 'preload', as: 'style', href: `/${css}` })
+      const code = `(function(){try{var h=location.hostname;if(location.pathname!=='/'||h==='localhost'||h==='app.oikosconnect.net')return;`
+        + `for(var i=0;i<localStorage.length;i++){if(/^sb-.*-auth-token$/.test(localStorage.key(i)))return}`
+        + `${JSON.stringify(files)}.forEach(function(f){var l=document.createElement('link');l.rel=f.rel;if(f.as)l.as=f.as;l.crossOrigin='';l.href=f.href;document.head.appendChild(l)})}catch(e){}})()`
+      return [{ tag: 'script', children: code, injectTo: 'head-prepend' }]
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react(), supabasePreconnect(env), preloadLandingRoute()],
+    plugins: [react(), supabasePreconnect(env), preloadLandingRoute(), preloadLandingChunk()],
     build: {
       rollupOptions: {
         output: {

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isLite } from '../../lib/perf'
 
 // 3D-Handy für die Landingpage: reagiert auf Maus/Neigung (CSS-3D), zeigt
 // echte App-Screens und lässt Glas-Karten in unterschiedlicher Tiefe
@@ -11,11 +12,16 @@ import { useEffect, useRef } from 'react'
 
 export default function Phone3D({ screens, active = 0, cards = [], className = '', tiltMax = 14 }) {
   const stageRef = useRef(null)
+  // Nur die gezeigte und die nächste Ansicht laden (bisher alle 5 sofort →
+  // auf schwachem Netz konkurrierten sie mit dem Hero-Bild); besuchte bleiben.
+  const seen = useRef(new Set())
+  seen.current.add(active)
+  seen.current.add((active + 1) % screens.length)
 
   useEffect(() => {
     const el = stageRef.current
     if (!el) return
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    if (isLite || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
     let raf = 0
     let tx = 0, ty = 0, cx = 0, cy = 0
     let inside = false
@@ -70,13 +76,13 @@ export default function Phone3D({ screens, active = 0, cards = [], className = '
               {screens.map((s, i) => (
                 <img
                   key={s.src}
-                  src={s.src}
+                  src={seen.current.has(i) ? s.src : undefined}
                   alt={i === active ? s.alt : ''}
                   aria-hidden={i !== active}
                   className={i === active ? 'is-active' : ''}
                   width="720"
                   height="1657"
-                  loading={i === 0 ? 'eager' : 'lazy'}
+                  loading={i === active ? 'eager' : 'lazy'}
                   decoding="async"
                 />
               ))}
