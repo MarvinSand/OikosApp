@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
   ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, Globe,
   HandHeart, HeartHandshake, Home, MessageCircle, Monitor, Network, Newspaper, Route,
@@ -20,12 +20,82 @@ import './landing.css'
 
 // Auf der reinen Landing-Domain (oikosconnect.net) liegt die App auf app.oikosconnect.net:
 // Links zu Login/Registrierung werden dort zu echten Links auf die Subdomain.
+//
+// „Anmelden“ (genau `/auth`, ohne Registrierung) fragt zuerst, ob man lieber die
+// iOS-App aus dem App Store nutzen will (LoginPrompt); wer „Web-App“ wählt,
+// wird 30 Tage lang nicht mehr gefragt. Auf Android erscheint die Frage nicht
+// (der App Store ist dort nutzlos), ebenso ohne App-Store-Link.
+const LoginPromptCtx = createContext(null)
+const SKIP_KEY = 'oikos-landing-web-login'
+const SKIP_MS = 30 * 24 * 3600 * 1000
+const isAndroid = () => typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+function skipPrompt() {
+  try { return Date.now() - Number(localStorage.getItem(SKIP_KEY) || 0) < SKIP_MS } catch { return false }
+}
+function rememberWebChoice() {
+  try { localStorage.setItem(SKIP_KEY, String(Date.now())) } catch { /* ignore */ }
+}
+
 function Link({ to, ...props }) {
-  if (typeof to === 'string' && to.startsWith('/auth')) {
-    const href = appUrl(to)
-    if (href !== to) return <a href={href} {...props} />
+  const ask = useContext(LoginPromptCtx)
+  const isLogin = to === '/auth'
+  const href = typeof to === 'string' && to.startsWith('/auth') ? appUrl(to) : to
+  const onClick = (e) => {
+    props.onClick?.(e)
+    if (!isLogin || !ask || !APP_STORE_URL || isAndroid() || skipPrompt()) return
+    if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    e.preventDefault()
+    ask(href)
   }
-  return <RouterLink to={to === '/welcome' && isLandingOnlyHost ? '/' : to} {...props} />
+  if (typeof to === 'string' && to.startsWith('/auth') && href !== to) return <a {...props} href={href} onClick={onClick} />
+  return <RouterLink {...props} to={to === '/welcome' && isLandingOnlyHost ? '/' : to} onClick={onClick} />
+}
+
+// Hinweis-Dialog vor dem Login: App Store oder Web-App
+function LoginPrompt({ href, onClose }) {
+  const navigate = useNavigate()
+  const primaryRef = useRef(null)
+
+  useEffect(() => {
+    const prev = document.activeElement
+    primaryRef.current?.focus()
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'Tab') {
+        const f = [...document.querySelectorAll('.lp-dialog a, .lp-dialog button')]
+        if (!f.length) return
+        const first = f[0], last = f[f.length - 1]
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('keydown', onKey); prev?.focus?.() }
+  }, [onClose])
+
+  const goWeb = () => {
+    rememberWebChoice()
+    onClose()
+    if (/^https?:/.test(href)) window.location.assign(href)
+    else navigate(href)
+  }
+
+  return (
+    <div className="lp-dialog-backdrop" onClick={onClose}>
+      <div className="lp-dialog" role="dialog" aria-modal="true" aria-labelledby="lp-dialog-title" onClick={(e) => e.stopPropagation()}>
+        <img src="/landing/icon.webp" alt="" width="56" height="56" className="lp-dialog-icon" />
+        <h2 id="lp-dialog-title">Oikos Connect gibt es jetzt im App Store</h2>
+        <p>Die App ist da: schneller, mit Benachrichtigungen und Gebets-Erinnerungen. Möchtest du sie nutzen oder in der Web-App weitermachen?</p>
+        <div className="lp-dialog-actions">
+          <a ref={primaryRef} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-primary" onClick={onClose}>
+            Im App Store laden<span className="sr-only"> (öffnet in neuem Tab)</span>
+          </a>
+          <button type="button" className="lp-btn lp-btn-glass" onClick={goWeb}>In der Web-App weitermachen</button>
+        </div>
+        <button type="button" className="lp-dialog-close" onClick={onClose}>Schließen</button>
+      </div>
+    </div>
+  )
 }
 
 // Schwere Teile (Weltkugel mit Länderdaten, Gebets-Animation) als eigene Chunks
@@ -243,6 +313,8 @@ export default function Landing() {
   const manifestRef = useRef(null)
   const showcaseRef = useRef(null)
   const [scrolled, setScrolled] = useState(false)
+  const [loginHref, setLoginHref] = useState(null)
+  const closeLogin = useCallback(() => setLoginHref(null), [])
   const [kinds, setKinds] = useState({ sibling: true, event: true, gemeinde: true })
   const [focusKind, setFocusKind] = useState(null)
   const [heroScreen, setHeroScreen] = useState(0)
@@ -317,6 +389,7 @@ export default function Landing() {
   const unmagnet = (e) => { e.currentTarget.style.setProperty('--mx', '0px'); e.currentTarget.style.setProperty('--my', '0px') }
 
   return (
+    <LoginPromptCtx.Provider value={setLoginHref}>
     <div ref={rootRef} className={`lp h-full w-full overflow-y-auto overflow-x-hidden ${isLite ? 'lp-lite' : ''}`}>
       <div className="lp-progress" aria-hidden="true" />
       <div className="lp-grain" aria-hidden="true" />
@@ -748,6 +821,11 @@ export default function Landing() {
             <img src="/landing/icon.webp" alt="" width="28" height="28" className="rounded-lg" />
             <span className="text-sm" style={{ color: 'var(--muted)' }}>© {new Date().getFullYear()} Oikos Connect · Kostenlos &amp; werbefrei</span>
           </div>
+          {APP_STORE_URL && (
+            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-glass lp-btn-sm">
+              <Smartphone size={18} aria-hidden="true" /> Im App Store laden<span className="sr-only"> (öffnet in neuem Tab)</span>
+            </a>
+          )}
           <nav aria-label="Rechtliches" className="flex flex-wrap justify-center gap-x-6">
             <Link to="/impressum" className="lp-footlink">Impressum</Link>
             <Link to="/privacy" className="lp-footlink">Datenschutz</Link>
@@ -757,6 +835,8 @@ export default function Landing() {
           </nav>
         </div>
       </footer>
+      {loginHref && <LoginPrompt href={loginHref} onClose={closeLogin} />}
     </div>
+    </LoginPromptCtx.Provider>
   )
 }
