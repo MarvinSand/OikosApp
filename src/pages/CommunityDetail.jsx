@@ -1201,6 +1201,14 @@ function SettingsSheet({
         ) : (
           <div className="mb-6">
             <p className="font-serif text-[15px] text-dark-muted italic">{t('Nur Administratoren können die Einstellungen dieser Community bearbeiten.')}</p>
+            {/* Öffentliche / „Mit Anfrage“-Communities: jedes Mitglied darf den QR-Code teilen */}
+            {community.is_public && (
+              <button
+                onClick={() => setShowQr(true)}
+                className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border border-warm-3 text-dark font-serif font-bold text-[14px] mt-4"
+              >
+                <QrCode size={16} />{' '}{t('QR-Code teilen')}</button>
+            )}
           </div>
         )}
 
@@ -1299,6 +1307,7 @@ export default function CommunityDetail() {
   const [showMembers, setShowMembers] = useState(false)
   const [joining, setJoining] = useState(false)
   const [showRequestSheet, setShowRequestSheet] = useState(false)
+  const [showShareQr, setShowShareQr] = useState(false)
   const [requestSent, setRequestSent] = useState(false)
   
   const messagesEndRef = useRef(null)
@@ -1510,6 +1519,12 @@ export default function CommunityDetail() {
               <ArrowLeft size={20} color={hasBanner ? '#fff' : 'var(--color-text)'} />
             </button>
             {isMember ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {community.is_public && (
+                  <button onClick={() => setShowShareQr(true)} aria-label={t('QR-Code teilen')} style={hasBanner ? glassBtn : plainHeaderBtn}>
+                    <QrCode size={19} color={hasBanner ? '#fff' : 'var(--color-text)'} />
+                  </button>
+                )}
               <button onClick={() => setShowSettings(true)} aria-label={t('Einstellungen')} style={{ ...(hasBanner ? glassBtn : plainHeaderBtn), position: 'relative' }}>
                 <Settings size={19} color={hasBanner ? '#fff' : 'var(--color-text)'} />
                 {isAdmin && joinRequests.length > 0 && (
@@ -1523,6 +1538,7 @@ export default function CommunityDetail() {
                   </span>
                 )}
               </button>
+              </div>
             ) : <span />}
           </div>
         </div>
@@ -1789,6 +1805,9 @@ export default function CommunityDetail() {
           onRoleChange={handleRoleChange}
           onRemove={removeMember}
         />
+      )}
+      {showShareQr && (
+        <QrShareSheet title={community.name} subtitle={t('Öffentliche Community')} url={communityLink(community)} onClose={() => setShowShareQr(false)} />
       )}
       {showRequestSheet && (
         <Suspense fallback={null}>
