@@ -693,6 +693,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
                 community={c}
                 members={previews[c.id] || []}
                 variant="discover"
+                onOpen={() => navigate(`/community/${c.id}`)}
                 onJoin={handleJoinPublic}
                 joining={joiningId === c.id}
                 requested={requestedIds.has(c.id)}

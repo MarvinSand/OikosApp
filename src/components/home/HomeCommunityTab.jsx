@@ -177,6 +177,7 @@ export default function HomeCommunityTab() {
                 community={c}
                 members={previews[c.id] || []}
                 variant="discover"
+                onOpen={() => navigate(`/community/${c.id}`)}
                 onJoin={handleJoin}
                 joining={joining === c.id}
                 requested={requestedIds.has(c.id)}

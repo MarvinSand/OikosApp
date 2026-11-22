@@ -72,22 +72,29 @@ export function useCommunityDetail(communityId) {
     setCommunity(communityData)
     setPosts(postsResult.data || [])
 
-    // Fetch members' profiles manually to avoid nested join implicit failures
+    // Mitglied? Die eigene Zeile ist per RLS immer lesbar; Nicht-Mitglieder
+    // (öffentliche Community per QR/Entdecken) sehen nur Bio + Mitglieder.
+    const isMember = (membersData || []).some(m => m.user_id === user.id)
+
     let finalMembers = []
-    if (membersData && membersData.length > 0) {
+    if (!isMember) {
+      const { data: pub } = await supabase.rpc('get_community_members_public', { p_community_id: communityId })
+      finalMembers = (pub || []).map(r => ({
+        id: r.id, community_id: communityId, user_id: r.user_id, role: r.role, joined_at: r.joined_at,
+        profile: { id: r.user_id, username: r.username, full_name: r.full_name, avatar_url: r.avatar_url, is_christian: r.is_christian, bio: r.bio },
+      }))
+    } else if (membersData && membersData.length > 0) {
       const userIds = membersData.map(m => m.user_id)
       const { data: profs, error: profErr } = await supabase
         .from('profiles')
-        .select('id, username, full_name, is_christian, gender, bio')
+        .select('id, username, full_name, avatar_url, is_christian, gender, bio')
         .in('id', userIds)
-      
+
       if (profErr) console.error('Error fetching profiles for members:', profErr)
 
       const profMap = {}
       if (profs) profs.forEach(p => { profMap[p.id] = p })
       finalMembers = membersData.map(m => ({ ...m, profile: profMap[m.user_id] }))
-    } else if (membersData === null) {
-      console.error('membersData returned null. Error from db might be suppressed by Promise.all.')
     }
 
     setMembers(finalMembers)
@@ -129,6 +136,12 @@ export function useCommunityDetail(communityId) {
       const rsvpMap = {}
       for (const r of (rsvpData || [])) rsvpMap[r.event_id] = r.status
       setMyRsvps(rsvpMap)
+    }
+
+    if (!isMember) {
+      setConversationId(null)
+      setLoading(false)
+      return
     }
 
     let resolvedConvId = convData?.id || null

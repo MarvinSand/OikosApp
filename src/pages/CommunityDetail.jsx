@@ -29,6 +29,7 @@ import AdminContentMenuItems from '../components/moderation/AdminContentMenuItem
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import { useT, tr, getLang } from '../i18n'
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
+const RequestJoinSheet = lazy(() => import('../components/community/CommunitySheets').then(m => ({ default: m.RequestJoinSheet })))
 
 // ─── Shared header styles ─────────────────────────────────────
 const glassBtn = {
@@ -1274,7 +1275,7 @@ export default function CommunityDetail() {
 
   const {
     community, members, myMembership, isAdmin, isOwner, adminCount,
-    loading, conversationId, changeRole, removeMember,
+    loading, conversationId, reload, changeRole, removeMember,
     posts, createPost, deletePost, togglePinPost,
     events, myRsvps, createEvent, deleteEvent, rsvpEvent,
     updateCommunity, joinRequests, respondToJoinRequest,
@@ -1296,6 +1297,9 @@ export default function CommunityDetail() {
   const [showPastEvents, setShowPastEvents] = useState(false)
   const [selectedMember, setSelectedMember] = useState(null)
   const [showMembers, setShowMembers] = useState(false)
+  const [joining, setJoining] = useState(false)
+  const [showRequestSheet, setShowRequestSheet] = useState(false)
+  const [requestSent, setRequestSent] = useState(false)
   
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
@@ -1382,6 +1386,19 @@ export default function CommunityDetail() {
     }
   }
 
+  // Nicht-Mitglied: offene Community direkt betreten, sonst Anfrage senden.
+  async function handleJoinFromGate() {
+    if (community?.join_mode === 'request') { setShowRequestSheet(true); return }
+    setJoining(true)
+    const { error } = await supabase
+      .from('community_members')
+      .insert({ community_id: id, user_id: user.id, role: 'member' })
+    setJoining(false)
+    if (error) { showToast(t('Fehler beim Beitreten'), 'error'); return }
+    showToast(t('Willkommen in {name}!', { name: community.name }))
+    await reload()
+  }
+
   async function handleRespondJoinRequest(requestId, approve, note = null) {
     try {
       await respondToJoinRequest(requestId, approve, note)
@@ -1463,6 +1480,10 @@ export default function CommunityDetail() {
   const memberPreview = members.map(m => ({ avatar_url: m.profile?.avatar_url || null, full_name: m.profile?.full_name || m.profile?.username })).slice(0, 6)
   const isAdminRole = myMembership?.role === 'admin'
   const hasBanner = !!community.banner_url
+  const isMember = !!myMembership
+  const shownTab = isMember ? activeTab : null
+  const requestPending = requestSent || joinRequests.some(r => r.user_id === user?.id)
+  const needsRequest = community.join_mode === 'request'
 
   return (
     <div className="flex flex-col bg-bg relative md:max-w-2xl md:mx-auto md:w-full" style={{ height: '100%', paddingBottom: 'var(--bottom-nav-h, 64px)' }}>
@@ -1488,19 +1509,21 @@ export default function CommunityDetail() {
             <button onClick={() => navigate(-1)} aria-label={t('Zurück')} style={hasBanner ? glassBtn : plainHeaderBtn}>
               <ArrowLeft size={20} color={hasBanner ? '#fff' : 'var(--color-text)'} />
             </button>
-            <button onClick={() => setShowSettings(true)} aria-label={t('Einstellungen')} style={{ ...(hasBanner ? glassBtn : plainHeaderBtn), position: 'relative' }}>
-              <Settings size={19} color={hasBanner ? '#fff' : 'var(--color-text)'} />
-              {isAdmin && joinRequests.length > 0 && (
-                <span style={{
-                  position: 'absolute', top: 2, right: 2, minWidth: 15, height: 15, padding: '0 3px',
-                  borderRadius: 999, backgroundColor: 'var(--color-accent)', color: '#fff',
-                  fontSize: 9.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '1.5px solid var(--color-bg)',
-                }}>
-                  {joinRequests.length}
-                </span>
-              )}
-            </button>
+            {isMember ? (
+              <button onClick={() => setShowSettings(true)} aria-label={t('Einstellungen')} style={{ ...(hasBanner ? glassBtn : plainHeaderBtn), position: 'relative' }}>
+                <Settings size={19} color={hasBanner ? '#fff' : 'var(--color-text)'} />
+                {isAdmin && joinRequests.length > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 2, right: 2, minWidth: 15, height: 15, padding: '0 3px',
+                    borderRadius: 999, backgroundColor: 'var(--color-accent)', color: '#fff',
+                    fontSize: 9.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1.5px solid var(--color-bg)',
+                  }}>
+                    {joinRequests.length}
+                  </span>
+                )}
+              </button>
+            ) : <span />}
           </div>
         </div>
 
@@ -1538,7 +1561,7 @@ export default function CommunityDetail() {
               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{members.length}</span>
             </button>
             <span style={metaChip}>
-              {community.is_public ? <><Globe size={12} />{' '}{t('Öffentlich')}</> : <><Lock size={12} />{' '}{t('Privat')}</>}
+              {!community.is_public ? <><Lock size={12} />{' '}{t('Privat')}</> : needsRequest ? <><Globe size={12} />{' '}{t('Mit Anfrage')}</> : <><Globe size={12} />{' '}{t('Öffentlich')}</>}
             </span>
             {isAdminRole && (
               <span style={{ ...metaChip, color: 'var(--color-gold-text)', backgroundColor: 'var(--color-gold-light)', borderColor: 'var(--color-accent)' }}>
@@ -1549,18 +1572,43 @@ export default function CommunityDetail() {
 
         {/* Tab-Navigation (Premium-Segmented) */}
         <div style={{ padding: '14px 16px 12px' }}>
-          <SegmentedTabs tabs={tabs} active={activeTab} onSelect={setActiveTab} stacked />
+          {isMember && <SegmentedTabs tabs={tabs} active={activeTab} onSelect={setActiveTab} stacked />}
         </div>
       </div>
 
       {/* ── Main Content ─────────────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
+        {/* Nicht-Mitglied: Chat & Co. gesperrt, stattdessen Beitreten */}
+        {!isMember && (
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '28px 24px' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', backgroundColor: 'var(--color-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+              <Lock size={24} color="var(--color-text-muted)" />
+            </div>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{t('Chat und Inhalte sind nur für Mitglieder')}</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 18px', lineHeight: 1.5 }}>
+              {needsRequest ? t('Sende eine Beitrittsanfrage – die Admins entscheiden darüber.') : t('Tritt bei, um den Chat, die Pinnwand und alle Inhalte zu sehen.')}
+            </p>
+            <button
+              onClick={handleJoinFromGate}
+              disabled={joining || requestPending}
+              style={{
+                padding: '12px 28px', borderRadius: 999, border: 'none', fontFamily: 'Lora, serif', fontSize: 14.5, fontWeight: 700,
+                backgroundColor: requestPending ? 'var(--color-bg-secondary)' : 'var(--color-accent)',
+                color: requestPending ? 'var(--color-text-secondary)' : '#fff',
+                cursor: (joining || requestPending) ? 'default' : 'pointer', opacity: joining ? 0.6 : 1,
+              }}
+            >
+              {joining ? '…' : requestPending ? t('Angefragt') : needsRequest ? t('Anfrage senden') : t('Beitreten')}
+            </button>
+          </div>
+        )}
+
         {/* Tab content */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: isMember ? 'flex' : 'none', flexDirection: 'column' }}>
 
           {/* CHAT tab */}
-          {activeTab === 'chat' && (
+          {shownTab === 'chat' && (
             <>
               <div ref={messagesContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 8px' }}>
                 {chatLoading && messages.length === 0 && (
@@ -1599,7 +1647,7 @@ export default function CommunityDetail() {
           )}
 
           {/* PINNWAND tab */}
-          {activeTab === 'board' && (
+          {shownTab === 'board' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
               {isAdmin && (
                 <button
@@ -1628,7 +1676,7 @@ export default function CommunityDetail() {
           )}
 
           {/* EVENTS tab */}
-          {activeTab === 'events' && (
+          {shownTab === 'events' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
               {isAdmin && (
                 <button
@@ -1664,12 +1712,12 @@ export default function CommunityDetail() {
           )}
 
           {/* MELDUNGEN tab (community admins) */}
-          {activeTab === 'reports' && isAdmin && (
+          {shownTab === 'reports' && isAdmin && (
             <CommunityReportsTab communityId={community.id} />
           )}
 
           {/* GEBETE tab */}
-          {activeTab === 'prayers' && (
+          {shownTab === 'prayers' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <h4 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{t('Gebetsanliegen')}</h4>
@@ -1695,7 +1743,7 @@ export default function CommunityDetail() {
           )}
 
           {/* FRAGEN tab */}
-          {activeTab === 'questions' && isGemeinde && (
+          {shownTab === 'questions' && isGemeinde && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
               {questions.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 16px' }}>
@@ -1741,6 +1789,15 @@ export default function CommunityDetail() {
           onRoleChange={handleRoleChange}
           onRemove={removeMember}
         />
+      )}
+      {showRequestSheet && (
+        <Suspense fallback={null}>
+          <RequestJoinSheet
+            community={community}
+            onClose={() => setShowRequestSheet(false)}
+            onSent={() => setRequestSent(true)}
+          />
+        </Suspense>
       )}
       {showCreateEvent && (
         <CreateEventForm onClose={() => setShowCreateEvent(false)} onSubmit={createEvent} />

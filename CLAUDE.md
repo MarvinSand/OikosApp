@@ -7,6 +7,10 @@
 - `capacitor.config.json` → `PushNotifications.presentationOptions` (sonst zeigt iOS Pushes im Vordergrund nicht an). `send-push` löscht Tokens nur bei 410 bzw. 400 `BadDeviceToken`/`Unregistered` (vorher bei jedem 400 – ein Konfigurationsfehler hätte alle Tokens vernichtet).
 - Nach dem Release prüfen: `select count(*) from device_tokens` (soll Richtung Nutzerzahl wachsen). Edge Function `send-push` neu deployen.
 
+## Community-Vorschau für Nicht-Mitglieder (Nov. 2026, phase97)
+
+- QR-Code/Link (`/community/:id`) und Tippen auf eine Karte unter „Entdecken“ öffnen `CommunityDetail` auch für Nicht-Mitglieder öffentlicher Communities: Bio + Mitglieder (RPC `get_community_members_public`, RLS verbirgt `community_members`), statt Chat/Tabs ein Beitreten-Block (offen → Insert, „Mit Anfrage“ → `RequestJoinSheet`, danach „Angefragt“). `useCommunityDetail` legt für Nicht-Mitglieder keine Konversation/`conversation_members`-Zeile an. Private Communities bleiben „Nicht gefunden“. Direkter Insert in `community_members` geht per RLS nur bei `join_mode='open'`.
+
 ## App-Sprache & YouVersion-Login in der App (Nov. 2026)
 
 - **Sprache:** Standard ist immer Deutsch (`src/i18n/index.jsx` → `detectLang()`), Englisch nur per Wahl in den Einstellungen (`oikos_lang`, geräte-lokal). Bibel-Sprachwahl (`bibleVersionDefaults.js`) bewusst nur ~90 bekannte ISO-639-1-Sprachen – nie den ganzen YouVersion-Katalog (1262 Tags, viele dreistellige Codes wie `aab`).
