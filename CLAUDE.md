@@ -1,5 +1,12 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Push-Benachrichtigungen (Nov. 2026)
+
+- Befund live: Backend ok (Trigger `on_notification_push_dispatch`, Vault-Secret, `send-push` + APNs-Key, Test mit Fake-Token → Apple antwortet `BadDeviceToken`, also gültige Auth), aber nur 1 von 20 Konten hatte ein Token → Registrierung am Gerät war die Lücke (App-Store-1.0-Builds ohne AppDelegate-Weiterleitung des Tokens).
+- `nativePush.js` registriert bei **jedem Start und jedem Zurückkehren in die App** (`appStateChange`) neu (Upsert) → nach einem Update/nachträglich erteilter Erlaubnis kommt das Token ohne Neuanmeldung. Ablehnungs-Hinweis nur einmal pro Gerät.
+- `capacitor.config.json` → `PushNotifications.presentationOptions` (sonst zeigt iOS Pushes im Vordergrund nicht an). `send-push` löscht Tokens nur bei 410 bzw. 400 `BadDeviceToken`/`Unregistered` (vorher bei jedem 400 – ein Konfigurationsfehler hätte alle Tokens vernichtet).
+- Nach dem Release prüfen: `select count(*) from device_tokens` (soll Richtung Nutzerzahl wachsen). Edge Function `send-push` neu deployen.
+
 ## App-Sprache & YouVersion-Login in der App (Nov. 2026)
 
 - **Sprache:** Standard ist immer Deutsch (`src/i18n/index.jsx` → `detectLang()`), Englisch nur per Wahl in den Einstellungen (`oikos_lang`, geräte-lokal). Bibel-Sprachwahl (`bibleVersionDefaults.js`) bewusst nur ~90 bekannte ISO-639-1-Sprachen – nie den ganzen YouVersion-Katalog (1262 Tags, viele dreistellige Codes wie `aab`).

@@ -149,10 +149,14 @@ Deno.serve(async (req) => {
       body: payload,
     })
 
-    // 410 Gone = das Gerät hat die App deinstalliert; Apple verlangt, solche
-    // Tokens nicht weiter zu bespielen.
-    if (res.status === 410 || res.status === 400) {
-      await fetch(`${SUPABASE_URL}/rest/v1/device_tokens?token=eq.${token}`, {
+    // Nur Tokens löschen, die Apple wirklich als tot meldet (410 = App
+    // deinstalliert, 400 BadDeviceToken / 410 Unregistered). Andere 400er
+    // (BadTopic, PayloadEmpty …) sind Konfigurations-/Payload-Fehler – dort
+    // würden sonst ALLE gültigen Tokens still gelöscht.
+    const text = res.ok ? '' : await res.text()
+    const dead = res.status === 410 || (res.status === 400 && /BadDeviceToken|Unregistered/.test(text))
+    if (dead) {
+      await fetch(`${SUPABASE_URL}/rest/v1/device_tokens?token=eq.${encodeURIComponent(token)}`, {
         method: 'DELETE',
         headers: {
           apikey: SERVICE_ROLE_KEY,
@@ -161,7 +165,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    return { status: res.status, body: res.ok ? null : await res.text() }
+    return { status: res.status, body: res.ok ? null : text }
   }))
 
   return Response.json({ sent: results.filter(r => r.status === 200).length, results })
