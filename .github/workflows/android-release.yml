@@ -59,7 +59,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           # Jeder Play-Upload braucht eine höhere Versionsnummer als der vorherige
           ANDROID_VERSION_CODE: ${{ github.run_number }}
-          ANDROID_VERSION_NAME: "1.1.${{ github.run_number }}"
+          ANDROID_VERSION_NAME: "1.2.${{ github.run_number }}"
         run: ./gradlew bundleRelease --no-daemon
 
       - name: Upload App Bundle as artifact
