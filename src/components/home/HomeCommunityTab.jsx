@@ -15,6 +15,7 @@ import { useT } from '../../i18n'
 // mit – soll erst laden, wenn der Nutzer tatsächlich "Erstellen" tippt.
 const CreateCommunitySheet = lazy(() => import('../community/CommunitySheets').then(m => ({ default: m.CreateCommunitySheet })))
 const JoinCommunityModal = lazy(() => import('../community/CommunitySheets').then(m => ({ default: m.JoinCommunityModal })))
+const RequestJoinSheet = lazy(() => import('../community/CommunitySheets').then(m => ({ default: m.RequestJoinSheet })))
 
 const sectionLabel = {
   fontFamily: 'Lora, serif', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)',
@@ -31,12 +32,14 @@ export default function HomeCommunityTab() {
   const { myCommunities, loading } = useCommunities()
   // Öffentliche Communities: sofort aus dem Cache, parallel zu den eigenen
   // laden (früher erst NACH useCommunities, dann noch ein zweiter Request).
-  const [cachedPublic] = useState(() => readCache(user?.id, 'homePublicCommunities'))
+  const [cachedPublic] = useState(() => readCache(user?.id, 'homePublicCommunitiesFull'))
   const [allPublic, setAllPublic] = useState(cachedPublic ?? [])
   const [loadingPublic, setLoadingPublic] = useState(!cachedPublic)
   const [joining, setJoining] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
+  const [requestTarget, setRequestTarget] = useState(null)
+  const [requestedIds, setRequestedIds] = useState(new Set())
 
   const myIds = new Set(myCommunities.map(c => c.id))
   const publicCommunities = allPublic.filter(c => !myIds.has(c.id)).slice(0, 6)
@@ -49,19 +52,38 @@ export default function HomeCommunityTab() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const { data, error } = await supabase.rpc('get_public_communities', { p_limit: 20 })
+      const { data, error } = await supabase.rpc('get_public_communities_full', { p_limit: 20 })
       if (cancelled) return
       if (!error) {
         const list = (data || []).map(({ member_count, ...c }) => ({ ...c, memberCount: Number(member_count) }))
         setAllPublic(list)
-        writeCache(user?.id, 'homePublicCommunities', list)
+        writeCache(user?.id, 'homePublicCommunitiesFull', list)
       }
       setLoadingPublic(false)
     })()
     return () => { cancelled = true }
   }, [user?.id])
 
+  // Eigene offene Anfragen → Button zeigt „Angefragt“ (auch nach Neustart).
+  const requestIdsKey = publicCommunities.filter(c => c.join_mode === 'request').map(c => c.id).join(',')
+  useEffect(() => {
+    if (!user || !requestIdsKey) return
+    supabase
+      .from('community_join_requests')
+      .select('community_id')
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .in('community_id', requestIdsKey.split(','))
+      .then(({ data }) => { if (data) setRequestedIds(new Set(data.map(r => r.community_id))) })
+  }, [user?.id, requestIdsKey])
+
   async function handleJoin(community) {
+    // „Mit Anfrage“-Communities: nie direkt eintragen (RLS lehnt das ab),
+    // sondern Anfrage an die Admins schicken.
+    if (community.join_mode === 'request') {
+      setRequestTarget(community)
+      return
+    }
     setJoining(community.id)
     const { error } = await supabase
       .from('community_members')
@@ -157,6 +179,7 @@ export default function HomeCommunityTab() {
                 variant="discover"
                 onJoin={handleJoin}
                 joining={joining === c.id}
+                requested={requestedIds.has(c.id)}
               />
             ))}
           </div>
@@ -166,6 +189,13 @@ export default function HomeCommunityTab() {
       <Suspense fallback={null}>
         {showCreate && <CreateCommunitySheet onClose={() => setShowCreate(false)} />}
         {showJoin && <JoinCommunityModal onClose={() => setShowJoin(false)} />}
+        {requestTarget && (
+          <RequestJoinSheet
+            community={requestTarget}
+            onClose={() => setRequestTarget(null)}
+            onSent={(id) => setRequestedIds(prev => new Set(prev).add(id))}
+          />
+        )}
       </Suspense>
     </div>
   )
