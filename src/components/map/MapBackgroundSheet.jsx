@@ -45,7 +45,9 @@ export function mapBackgroundStyle(map) {
   return { ...vars, backgroundColor: map.bg_color }
 }
 
-export default function MapBackgroundSheet({ map, updateMap, onClose }) {
+// Farb-/Foto-Auswahl (auch in den Map-Einstellungen eingebettet).
+// Änderungen werden sofort gespeichert.
+export function MapBackgroundControls({ map, updateMap }) {
   const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -107,6 +109,84 @@ export default function MapBackgroundSheet({ map, updateMap, onClose }) {
   const hasBg = !!(map.bg_color || map.bg_image_url)
 
   return (
+    <div>
+    <p style={label}>{t('Farbe')}</p>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 18 }}>
+      {SWATCHES.map(c => {
+        const active = !map.bg_image_url && map.bg_color?.toLowerCase() === c.toLowerCase()
+        return (
+          <button
+            key={c}
+            onClick={() => pickColor(c)}
+            aria-label={c}
+            style={{
+              width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', padding: 0,
+              backgroundColor: c,
+              border: active ? '3px solid var(--color-accent)' : '1.5px solid rgba(128,128,128,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            {active && <Check size={16} color={isDark(c) ? '#fff' : '#111'} />}
+          </button>
+        )
+      })}
+      {/* Eigene Farbe */}
+      <label
+        style={{
+          width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', overflow: 'hidden', position: 'relative',
+          border: '1.5px solid rgba(128,128,128,0.4)',
+          background: 'conic-gradient(#f66, #fc6, #6f6, #6cf, #96f, #f6c, #f66)',
+        }}
+        title={t('Eigene Farbe')}
+      >
+        <input
+          type="color"
+          value={map.bg_color || '#ffffff'}
+          onChange={e => pickColor(e.target.value.toUpperCase())}
+          style={{ position: 'absolute', inset: -8, width: 60, height: 60, opacity: 0, cursor: 'pointer' }}
+        />
+      </label>
+    </div>
+
+    <p style={label}>{t('Eigenes Foto')}</p>
+    <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
+    <div style={{ display: 'flex', gap: 10 }}>
+      <button
+        onClick={() => fileRef.current?.click()}
+        disabled={busy}
+        style={{
+          flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', cursor: busy ? 'default' : 'pointer',
+          backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)',
+          fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, opacity: busy ? 0.6 : 1,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}
+      >
+        <ImagePlus size={16} /> {busy ? t('Lädt…') : map.bg_image_url ? t('Foto ändern') : t('Foto auswählen')}
+      </button>
+      {hasBg && (
+        <button
+          onClick={reset}
+          disabled={busy}
+          style={{
+            padding: '12px 14px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none',
+            cursor: busy ? 'default' : 'pointer', color: 'var(--color-text-muted)',
+            fontFamily: 'Lora, serif', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <Trash2 size={15} /> {t('Zurücksetzen')}
+        </button>
+      )}
+    </div>
+    <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
+      {t('Das Foto wird automatisch verkleinert, damit die Karte flüssig bleibt. Wer deine Map sehen darf, sieht auch den Hintergrund.')}
+    </p>
+    </div>
+  )
+}
+
+export default function MapBackgroundSheet({ map, updateMap, onClose }) {
+  const { t } = useT()
+  return (
     <>
       {/* Kein Abdunkeln – so sieht man den neuen Hintergrund sofort */}
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
@@ -127,77 +207,7 @@ export default function MapBackgroundSheet({ map, updateMap, onClose }) {
             <X size={18} />
           </button>
         </div>
-
-        <p style={label}>{t('Farbe')}</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 18 }}>
-          {SWATCHES.map(c => {
-            const active = !map.bg_image_url && map.bg_color?.toLowerCase() === c.toLowerCase()
-            return (
-              <button
-                key={c}
-                onClick={() => pickColor(c)}
-                aria-label={c}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', padding: 0,
-                  backgroundColor: c,
-                  border: active ? '3px solid var(--color-accent)' : '1.5px solid rgba(128,128,128,0.4)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                {active && <Check size={16} color={isDark(c) ? '#fff' : '#111'} />}
-              </button>
-            )
-          })}
-          {/* Eigene Farbe */}
-          <label
-            style={{
-              width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', overflow: 'hidden', position: 'relative',
-              border: '1.5px solid rgba(128,128,128,0.4)',
-              background: 'conic-gradient(#f66, #fc6, #6f6, #6cf, #96f, #f6c, #f66)',
-            }}
-            title={t('Eigene Farbe')}
-          >
-            <input
-              type="color"
-              value={map.bg_color || '#ffffff'}
-              onChange={e => pickColor(e.target.value.toUpperCase())}
-              style={{ position: 'absolute', inset: -8, width: 60, height: 60, opacity: 0, cursor: 'pointer' }}
-            />
-          </label>
-        </div>
-
-        <p style={label}>{t('Eigenes Foto')}</p>
-        <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={busy}
-            style={{
-              flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', cursor: busy ? 'default' : 'pointer',
-              backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)',
-              fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, opacity: busy ? 0.6 : 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}
-          >
-            <ImagePlus size={16} /> {busy ? t('Lädt…') : map.bg_image_url ? t('Foto ändern') : t('Foto auswählen')}
-          </button>
-          {hasBg && (
-            <button
-              onClick={reset}
-              disabled={busy}
-              style={{
-                padding: '12px 14px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none',
-                cursor: busy ? 'default' : 'pointer', color: 'var(--color-text-muted)',
-                fontFamily: 'Lora, serif', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              <Trash2 size={15} /> {t('Zurücksetzen')}
-            </button>
-          )}
-        </div>
-        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
-          {t('Das Foto wird automatisch verkleinert, damit die Karte flüssig bleibt. Wer deine Map sehen darf, sieht auch den Hintergrund.')}
-        </p>
+        <MapBackgroundControls map={map} updateMap={updateMap} />
       </div>
     </>
   )

@@ -794,7 +794,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                 </button>
                 <div className="w-[1px] bg-warm-3" />
                 </>)}
-                {activeMap && (<>
+                {activeMap && isSiblingsMap && (<>
                 <button
                   onClick={() => { setShowMapMenu(false); setShowBackground(true) }}
                   className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors flex items-center justify-center gap-1.5"

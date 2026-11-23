@@ -4,6 +4,7 @@ import { useFriendships } from '../../hooks/useFriendships'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useToast } from '../../context/ToastContext'
 import { useT } from '../../i18n'
+import { MapBackgroundControls } from './MapBackgroundSheet'
 
 const VISIBILITY_OPTIONS = [
   { value: 'private',          icon: '🔒', label: 'Nur ich' },
@@ -103,6 +104,12 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
           onChange={e => setName(e.target.value)}
           style={inp}
         />
+
+        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '20px 0' }} />
+
+        {/* Hintergrund (wird sofort gespeichert) */}
+        <p style={sectionLabel}>{t('Hintergrund')}</p>
+        <MapBackgroundControls map={map} updateMap={updateMap} />
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '20px 0' }} />
 
