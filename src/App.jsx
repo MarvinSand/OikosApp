@@ -45,6 +45,8 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const NotificationSettingsView = lazy(() => import('./pages/NotificationSettingsView'))
 const ModerationView = lazy(() => import('./pages/ModerationView'))
 const BibleView = lazy(() => import('./pages/BibleView'))
+const WegView = lazy(() => import('./pages/WegView'))
+const WegStudyView = lazy(() => import('./pages/WegStudyView'))
 // Öffentliche Startseite (nur Web, ausgeloggt) – eigener Chunk, damit die App
 // selbst nichts davon mitlädt
 const loadLanding = () => import('./pages/Landing')
@@ -160,6 +162,7 @@ function AppShellInner() {
     location.pathname.startsWith('/map/') ||
     location.pathname.startsWith('/chat/') ||
     location.pathname.startsWith('/community/') ||
+    location.pathname.startsWith('/weg/') ||
     isPrayerFeedRoute(location.pathname, location.search)
 
   return (
@@ -187,6 +190,8 @@ function AppShellInner() {
           <Route path="/prayer/stats" element={<PrayerStatsView />} />
           <Route path="/prayer/:id" element={<PrayerDetailView />} />
           <Route path="/bible" element={<BibleView />} />
+          <Route path="/weg" element={<WegView />} />
+          <Route path="/weg/:studyId" element={<WegStudyView />} />
           <Route path="/feed/post/:id" element={<FeedPostView />} />
           <Route path="/feed/saved" element={<SavedPostsView />} />
           <Route path="/feed/comment/:id" element={<CommentDetailView />} />

@@ -1,5 +1,13 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## „Der Weg“ – Bibelstudien-Tab (Nov. 2026, Branch `feature/juengerschaft-weg`)
+
+- Route `/weg` (Übersicht in vier Stationen: Entdecken · Wurzeln schlagen · Nachfolgen · Jünger machen) und `/weg/:studyId` (Vollbild-Ablauf, in `isFullScreenRoute`). Der Nav-Tab „Bibel“ heißt jetzt „Der Weg“ (`/weg` + `/bible` aktiv); `WegBibleSwitch` (Umschalter oben) verbindet beide Seiten.
+- **Inhalte sind Daten**, kein Code: `src/lib/weg/prodigal.js` (Studie 1, ausführlich) und `content.js` (Studien 2–14, Kopf/Herz/Hand) → `index.js` baut daraus die Schritte (`intro`, `read`, `choice`, `text`, `cards`, `reveal`, `prayer`, `more`). Neue Studie = ein Eintrag in `content.js`. Texte sind **Entwürfe** und müssen mit den Glaubensgeschwistern geprüft werden.
+- Bibelstellen im Text: `[[Römer 2,4]]` bzw. `[[Label|Stelle]]` → blau, antippbar, öffnet `discipleship/BiblePassageSheet` („Kontext ansehen“). Stellen müssen für `parseGermanReference` lesbar sein (voller Buchname, Bindestrich, `5. Mose` wird nicht erkannt). Der Studientext ist über den Chip oben im Player immer erreichbar.
+- **Fortschritt/Antworten nur lokal** (`useWegProgress` → swrCache, pro Nutzer). Bewusst keine DB-Tabelle, bis Mentoring (Antworten teilen) kommt – dann Migration + RLS anlegen und prüfen, dass sie live existiert.
+- UI-Texte über `t()`, Englisch in `i18n/en.weg.js`; Studieninhalte vorerst nur Deutsch.
+
 ## App-Sprache & YouVersion-Login in der App (Nov. 2026)
 
 - **Sprache:** Standard ist immer Deutsch (`src/i18n/index.jsx` → `detectLang()`), Englisch nur per Wahl in den Einstellungen (`oikos_lang`, geräte-lokal). Bibel-Sprachwahl (`bibleVersionDefaults.js`) bewusst nur ~90 bekannte ISO-639-1-Sprachen – nie den ganzen YouVersion-Katalog (1262 Tags, viele dreistellige Codes wie `aab`).

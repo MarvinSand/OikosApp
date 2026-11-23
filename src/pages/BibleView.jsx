@@ -24,6 +24,7 @@ import BookChapterPicker from '../components/bible/BookChapterPicker'
 import VersePickerSheet from '../components/bible/VersePickerSheet'
 import VersionPicker from '../components/bible/VersionPicker'
 import VisibilityPicker, { VISIBILITY_OPTIONS } from '../components/common/VisibilityPicker'
+import WegBibleSwitch from '../components/weg/WegBibleSwitch'
 
 const BIBLE_ID_STORAGE_KEY = 'oikos_bible_version_id'
 
@@ -284,6 +285,7 @@ export default function BibleView() {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
       {/* Header */}
       <div className="sticky top-0 z-20 px-4 pt-4 pb-3" style={{ backgroundColor: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+        <div className="mb-3"><WegBibleSwitch active="bible" /></div>
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
             <BookMarked size={20} style={{ color: 'var(--color-accent)' }} /> {t('Bibel')}

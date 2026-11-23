@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, HandHeart, Globe, BookOpen, User } from 'lucide-react'
+import { Home, HandHeart, Globe, Compass, User } from 'lucide-react'
 import { useT } from '../../i18n'
 
 // Instagram-artige Tab-Leiste: nur Icons, halbtransparentes „Glas" über dem
@@ -10,7 +10,7 @@ const tabs = [
   { path: '/',         icon: Home,      label: 'Home',      match: ['/'] },
   { path: '/prayers',  icon: HandHeart, label: 'For You',   match: ['/friends', '/prayer', '/prayers'] },
   { path: '/worldmap', icon: Globe,     label: 'Weltkarte', match: ['/worldmap'] },
-  { path: '/bible',    icon: BookOpen,  label: 'Bibel',     match: ['/bible'] },
+  { path: '/weg',      icon: Compass,   label: 'Der Weg',   match: ['/weg', '/bible'] },
   { path: '/profile',  icon: User,      label: 'Profil',    match: ['/profile'] },
 ]
 
