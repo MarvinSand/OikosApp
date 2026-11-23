@@ -107,12 +107,6 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
 
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '20px 0' }} />
 
-        {/* Hintergrund (wird sofort gespeichert) */}
-        <p style={sectionLabel}>{t('Hintergrund')}</p>
-        <MapBackgroundControls map={map} updateMap={updateMap} />
-
-        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '20px 0' }} />
-
         {/* Sichtbarkeit */}
         <p style={sectionLabel}>{t('Sichtbarkeit')}</p>
         <label style={lbl}>{t('Wer kann diese Map sehen?')}</label>
@@ -212,6 +206,11 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
         >
           {saving ? t('Speichere…') : t('Speichern')}
         </button>
+
+        {/* Hintergrund (wird sofort gespeichert, unabhängig vom Speichern-Knopf) */}
+        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '24px 0 16px' }} />
+        <p style={sectionLabel}>{t('Hintergrund')}</p>
+        <MapBackgroundControls map={map} updateMap={updateMap} />
 
         {/* Danger Zone – Map löschen */}
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '24px 0 16px' }} />
