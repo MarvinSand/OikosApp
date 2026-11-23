@@ -1,5 +1,8 @@
 // Englische Übersetzungen (Karte, Profil, Weltkarte, Personen). Schlüssel = deutscher Originaltext.
 export default {
+  "Hier sind {n} Einträge": "{n} entries here",
+  "Sie liegen am selben Ort oder direkt nebeneinander.": "They are at the same place or right next to each other.",
+  "Aus deinem Oikos": "From your Oikos",
   "Direkt mit mir": "Directly with me",
   "Ort": "Place",
   "✓ 1 Person hinzugefügt": "✓ 1 person added",
