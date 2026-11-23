@@ -33,6 +33,7 @@ import { verseAttachmentFromRow } from '../lib/bibleLink'
 import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 import ModerationSheet from '../components/common/ModerationSheet'
 import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
+import ModerationHiddenNotice from '../components/moderation/ModerationHiddenNotice'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import { useBlocks } from '../hooks/useBlocks'
@@ -1045,6 +1046,9 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
 
   return (
     <FeedCardFrame threadLineAfter={threadLineAfter}>
+      <div style={{ padding: '10px 16px 0' }}>
+        <ModerationHiddenNotice contentType="feed_post" contentId={post.id} hiddenAt={post.moderation_hidden_at} />
+      </div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${post.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>

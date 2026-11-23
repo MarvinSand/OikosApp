@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
 export const COMMENT_SELECT = `
-  id, post_id, parent_id, author_id, body, like_count, repost_count, bookmark_count, created_at,
+  id, post_id, parent_id, author_id, body, like_count, repost_count, bookmark_count, created_at, moderation_hidden_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 

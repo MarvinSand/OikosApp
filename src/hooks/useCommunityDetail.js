@@ -41,7 +41,7 @@ export function useCommunityDetail(communityId) {
         .maybeSingle(),
       supabase
         .from('community_posts')
-        .select('id, title, content, is_pinned, created_at, author_id, profiles:author_id(id, username, full_name, is_christian)')
+        .select('id, title, content, is_pinned, created_at, author_id, moderation_hidden_at, profiles:author_id(id, username, full_name, is_christian)')
         .eq('community_id', communityId)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
@@ -258,7 +258,7 @@ export function useCommunityDetail(communityId) {
     const { data, error } = await supabase
       .from('community_posts')
       .insert({ community_id: communityId, author_id: user.id, title: title || null, content, is_pinned })
-      .select('id, title, content, is_pinned, created_at, author_id, profiles:author_id(id, username, full_name, is_christian)')
+      .select('id, title, content, is_pinned, created_at, author_id, moderation_hidden_at, profiles:author_id(id, username, full_name, is_christian)')
       .single()
 
     if (!error && data) {

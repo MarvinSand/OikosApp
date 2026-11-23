@@ -8,6 +8,7 @@ const POST_SELECT = `
   bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end,
   is_public, visibility_mode,
   visibility_user_ids, excluded_user_ids, view_count, bookmark_count, created_at,
+  moderation_hidden_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 

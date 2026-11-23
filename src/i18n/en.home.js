@@ -1,5 +1,6 @@
 // Englische Übersetzungen (home). Schlüssel = deutscher Originaltext.
 export default {
+  'Versteckt – für andere nicht sichtbar': 'Hidden – not visible to others',
   'Gruppengebet': 'Group prayer',
   'Aktuelles': 'Latest',
   'Community': 'Community',

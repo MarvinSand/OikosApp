@@ -26,6 +26,7 @@ import { compressImage } from '../lib/image'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import ModerationSheet from '../components/common/ModerationSheet'
 import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
+import ModerationHiddenNotice from '../components/moderation/ModerationHiddenNotice'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import { useT, tr, getLang } from '../i18n'
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
@@ -346,6 +347,7 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
       boxShadow: '0 1px 4px rgba(58,46,36,0.06)',
       position: 'relative',
     }}>
+      <ModerationHiddenNotice contentType="community_post" contentId={post.id} hiddenAt={post.moderation_hidden_at} show={isAppAdmin || isAdmin} />
       {isPinned && (
         <div style={{ position: 'absolute', top: 10, right: 44, display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 600, color: 'var(--color-gold-text)', backgroundColor: 'rgba(201,168,76,0.15)', padding: '2px 7px', borderRadius: 20 }}>{t('📌 Angepinnt')}</span>
