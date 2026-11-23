@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense, useRef } from 'react'
-import { Plus, ArrowLeft, ChevronDown,SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin, Wand2 } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { Plus, ArrowLeft, ChevronDown,SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin, Wand2, Palette } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useT } from '../i18n'
 import { useOikosMaps } from '../hooks/useOikosMaps'
@@ -16,6 +16,7 @@ import NewMapModal from '../components/map/NewMapModal'
 import AddPersonModal from '../components/map/AddPersonModal'
 const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
+import MapBackgroundSheet, { mapBackgroundStyle } from '../components/map/MapBackgroundSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
 import OverlayMapPeopleSheet from '../components/map/OverlayMapPeopleSheet'
 import MapPreviewSheet from '../components/map/MapPreviewSheet'
@@ -452,6 +453,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showAddPlace, setShowAddPlace] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showBackground, setShowBackground] = useState(false)
   const [showGenerationen, setShowGenerationen] = useState(false)
   const [showColorFilter, setShowColorFilter] = useState(false)
   const cleanupBtnRef = useRef(null)
@@ -792,6 +794,15 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                 </button>
                 <div className="w-[1px] bg-warm-3" />
                 </>)}
+                {activeMap && (<>
+                <button
+                  onClick={() => { setShowMapMenu(false); setShowBackground(true) }}
+                  className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Palette size={13} /> {t('Hintergrund')}
+                </button>
+                <div className="w-[1px] bg-warm-3" />
+                </>)}
                 <button
                   onClick={() => { setShowMapMenu(false); setShowNewMap(true) }}
                   className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-warm-1 font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
@@ -804,7 +815,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       )}
 
       {/* Canvas (OIKOS mode only) */}
-      <div style={{ flex: 1, minHeight: 0, display: activeTab === 'oikos' ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', padding: 8, overflow: 'hidden', position: 'relative', touchAction: 'none', overscrollBehavior: 'none' }}>
+      <div style={{ flex: 1, minHeight: 0, display: activeTab === 'oikos' ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', padding: 8, overflow: 'hidden', position: 'relative', touchAction: 'none', overscrollBehavior: 'none', ...mapBackgroundStyle(activeMap) }}>
         {!activeMap ? (
           <div style={{ textAlign: 'center', padding: 32 }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 17, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 24, lineHeight: 1.6 }}>
@@ -895,6 +906,9 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       {/* Modals & Sheets */}
       {showNewMap && (
         <NewMapModal onClose={() => setShowNewMap(false)} onCreate={createMap} />
+      )}
+      {showBackground && activeMap && (
+        <MapBackgroundSheet map={activeMap} updateMap={updateMap} onClose={() => setShowBackground(false)} />
       )}
       {showSettings && activeMap && (
         <MapSettingsSheet map={activeMap} updateMap={updateMap} deleteMap={deleteMap} onClose={() => setShowSettings(false)} />
