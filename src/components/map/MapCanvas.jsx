@@ -57,6 +57,7 @@ export default function MapCanvas({
   onDisconnectPlacePerson,
   readOnly = false,
   connectionMode = false,
+  bannerTop = 114,
   hiddenColors,
   ownerDisconnectedIds = new Set(),
   resetOverlaySignal,
@@ -1515,7 +1516,7 @@ export default function MapCanvas({
         <div style={{
           // unterhalb der Menüleiste (54px + ~50px Höhe) – bei 72 lag der
           // „Aktiv"-Hinweis zur Hälfte dahinter
-          position: 'absolute', top: 114, left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', top: bannerTop, left: '50%', transform: 'translateX(-50%)',
           zIndex: 10,
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
         }}>
