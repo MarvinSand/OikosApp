@@ -281,6 +281,32 @@ function PrivacyBanner({ onClose, hasLocation, onSetLocation }) {
   )
 }
 
+// Verteilt Einträge mit (fast) gleicher Koordinate auf einen kleinen Ring
+// (~15–40 m), damit beim Hineinzoomen alle einzeln sichtbar/anklickbar sind.
+// Gibt pro Eintrag { lat, lng } zurück (gleiche Reihenfolge wie die Eingabe).
+function spreadOverlappingPositions(items) {
+  const groups = new Map()
+  items.forEach((it, i) => {
+    const key = `${it.latitude.toFixed(5)},${it.longitude.toFixed(5)}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(i)
+  })
+  const out = items.map(it => ({ lat: it.latitude, lng: it.longitude }))
+  groups.forEach(idxs => {
+    const n = idxs.length
+    if (n < 2) return
+    const radiusM = 15 + 5 * (n - 2)
+    idxs.forEach((itemIdx, k) => {
+      const base = items[itemIdx]
+      const angle = (2 * Math.PI * k) / n - Math.PI / 2
+      const dLat = (radiusM * Math.cos(angle)) / 111320
+      const dLng = (radiusM * Math.sin(angle)) / (111320 * Math.max(0.2, Math.cos((base.latitude * Math.PI) / 180)))
+      out[itemIdx] = { lat: base.latitude + dLat, lng: base.longitude + dLng }
+    })
+  })
+  return out
+}
+
 // ─── Combined pin clusterer (Personen + Events in einem Cluster) ─────────────
 // Events bekommen höheren zIndex → übertrumpfen Personen-Pins bei Überlappung.
 // Das Cluster-Icon zeigt an, ob nur Personen, nur Events oder beides drin sind.
@@ -319,11 +345,28 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
       return
     }
 
-    const userMarkers = showUsers ? users.map(u => {
+    // Pins mit (nahezu) identischer Position (z. B. mehrere Personen im selben
+    // Haus) würden beim Hineinzoomen exakt übereinander liegen – man sähe nur
+    // einen. Darum werden sie nur für die Anzeige auf einen kleinen Ring
+    // verteilt (Klick liefert weiterhin das Original-Objekt).
+    const userList = showUsers ? users : []
+    const actList = showEvents ? activities : []
+    const gemeindeList = showGemeinden ? gemeinden : []
+    const oikosList = showOikosPeople ? (oikosPeople || []) : []
+    const spread = spreadOverlappingPositions(
+      [...userList, ...actList, ...gemeindeList, ...oikosList]
+    )
+    const spreadFor = (offset) => (i) => spread[offset + i]
+    const userPos = spreadFor(0)
+    const actPos = spreadFor(userList.length)
+    const gemeindePos = spreadFor(userList.length + actList.length)
+    const oikosPos = spreadFor(userList.length + actList.length + gemeindeList.length)
+
+    const userMarkers = showUsers ? users.map((u, i) => {
       const content = buildUserPinElement(u, { isOwn: false, zoom: zoomRef.current })
       content.dataset.pinType = 'user'
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
-        position: { lat: u.latitude, lng: u.longitude },
+        position: userPos(i),
         content,
         zIndex: 10,
         gmpClickable: true,
@@ -332,11 +375,11 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
       return marker
     }) : []
 
-    const actMarkers = showEvents ? activities.map(a => {
+    const actMarkers = showEvents ? activities.map((a, i) => {
       const content = buildActivityPinElement(a.activity_emoji, a.participants || [], { zoom: zoomRef.current })
       content.dataset.pinType = 'activity'
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
-        position: { lat: a.latitude, lng: a.longitude },
+        position: actPos(i),
         content,
         zIndex: 50,   // Events immer über Personen
         gmpClickable: true,
@@ -345,11 +388,11 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
       return marker
     }) : []
 
-    const gemeindeMarkers = showGemeinden ? gemeinden.map(g => {
+    const gemeindeMarkers = showGemeinden ? gemeinden.map((g, i) => {
       const content = buildGemeindePinElement(g, { zoom: zoomRef.current })
       content.dataset.pinType = 'gemeinde'
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
-        position: { lat: g.latitude, lng: g.longitude },
+        position: gemeindePos(i),
         content,
         zIndex: 30,
         gmpClickable: true,
@@ -358,11 +401,11 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
       return marker
     }) : []
 
-    const oikosMarkers = showOikosPeople ? (oikosPeople || []).map(p => {
+    const oikosMarkers = showOikosPeople ? oikosList.map((p, i) => {
       const content = buildOikosPersonPinElement(p, { zoom: zoomRef.current })
       content.dataset.pinType = 'oikos-person'
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
-        position: { lat: p.latitude, lng: p.longitude },
+        position: oikosPos(i),
         content,
         zIndex: 20,
         gmpClickable: true,
