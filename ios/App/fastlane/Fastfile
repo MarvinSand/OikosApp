@@ -36,9 +36,10 @@ platform :ios do
       targets: ["App"]
     )
 
+    build_number = (ENV["BUILD_NUMBER"] || latest_testflight_build_number(api_key: api_key) + 1).to_s
     increment_build_number(
       xcodeproj: "App.xcodeproj",
-      build_number: ENV["BUILD_NUMBER"] || latest_testflight_build_number(api_key: api_key) + 1
+      build_number: build_number
     )
 
     build_app(
@@ -52,9 +53,42 @@ platform :ios do
       }
     )
 
+    submit = ENV["SUBMIT_FOR_REVIEW"] == "true"
+
+    # Beim direkten Einreichen muss der Build fertig verarbeitet sein, bevor er
+    # der App-Store-Version zugeordnet werden kann.
     upload_to_testflight(
       api_key: api_key,
-      skip_waiting_for_build_processing: true
+      skip_waiting_for_build_processing: !submit
     )
+
+    if submit
+      version = get_version_number(xcodeproj: "App.xcodeproj", target: "App")
+      # „Was ist neu“: Workflow-Eingabe, sonst die Datei fastlane/whats_new.txt
+      whats_new = ENV["WHATS_NEW"].to_s.strip
+      whats_new = File.read(File.join(__dir__, "whats_new.txt")).strip if whats_new.empty?
+      UI.user_error!("'Was ist neu' fehlt (fastlane/whats_new.txt).") if whats_new.empty?
+
+      # Legt die App-Store-Version an (falls es noch keine bearbeitbare gibt),
+      # trägt „Was ist neu“ ein, wählt den neuen Build und reicht zur Prüfung
+      # ein. Veröffentlichung nach der Freigabe bleibt manuell.
+      upload_to_app_store(
+        api_key: api_key,
+        app_identifier: ENV["APP_IDENTIFIER"],
+        app_version: version,
+        build_number: build_number,
+        skip_binary_upload: true,
+        skip_screenshots: true,
+        release_notes: { "default" => whats_new },
+        submit_for_review: true,
+        automatic_release: false,
+        force: true,
+        run_precheck_before_submit: false,
+        precheck_include_in_app_purchases: false,
+        submission_information: {
+          add_id_info_uses_idfa: false
+        }
+      )
+    end
   end
 end
