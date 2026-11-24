@@ -28,6 +28,7 @@ import ModerationSheet from '../components/common/ModerationSheet'
 import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
 import ModerationHiddenNotice from '../components/moderation/ModerationHiddenNotice'
 import AdminHighlightMenuItem from '../components/moderation/AdminHighlightMenuItem'
+import { useModerationDeleted } from '../lib/moderationState'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import { useT, tr, getLang } from '../i18n'
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
@@ -373,10 +374,13 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin, canHigh
   const [showModeration, setShowModeration] = useState(false)
   const menuBtnRef = useRef(null)
   const { isAppAdmin } = useIsAppAdmin()
+  const moderationDeleted = useModerationDeleted('community_post', post.id)
   const name = post.profiles?.full_name || post.profiles?.username || tr('Unbekannt')
   const isPinned = post.is_pinned
   const isOwn = post.author_id === currentUserId
   const longContent = post.content && post.content.length > 200
+
+  if (moderationDeleted) return null
 
   return (
     <div style={{

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Flag, MessageSquare, Search, Shield, EyeOff, Trash2,
-  CheckCircle2, XCircle, AlertTriangle, Ban, UserPlus, UserMinus, RefreshCw,
+  CheckCircle2, XCircle, AlertTriangle, Ban, UserPlus, UserMinus, RefreshCw, Eye,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -39,7 +39,10 @@ export default function ModerationView() {
   const { isAppAdmin, loading: adminLoading } = useIsAppAdmin()
   const { showToast } = useToast()
 
-  const [tab, setTab] = useState('reports') // reports | admins | chat
+  const [tab, setTab] = useState('reports') // reports | hidden | admins | chat
+  const [hiddenItems, setHiddenItems] = useState([])
+  const [hiddenLoading, setHiddenLoading] = useState(false)
+  const [hiddenBusyKey, setHiddenBusyKey] = useState(null)
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
@@ -66,6 +69,48 @@ export default function ModerationView() {
     else setReports(data || [])
     setLoading(false)
   }, [showToast])
+
+  // Versteckte (noch nicht gelöschte) Inhalte aus allen Bereichen
+  const loadHidden = useCallback(async () => {
+    setHiddenLoading(true)
+    const base = (q) => q.not('moderation_hidden_at', 'is', null).is('moderation_deleted_at', null)
+      .order('moderation_hidden_at', { ascending: false }).limit(50)
+    const [posts, comments, prayers, cposts, cevents] = await Promise.all([
+      base(supabase.from('feed_posts').select('id, title, body, moderation_hidden_at, profiles:author_id(full_name, username)')),
+      base(supabase.from('feed_comments').select('id, body, moderation_hidden_at, profiles:author_id(full_name, username)')),
+      base(supabase.from('personal_prayer_requests').select('id, title, description, moderation_hidden_at, profiles!owner_id(full_name, username)')),
+      base(supabase.from('community_posts').select('id, title, content, moderation_hidden_at, profiles:author_id(full_name, username)')),
+      base(supabase.from('community_events').select('id, title, description, moderation_hidden_at')),
+    ])
+    const items = [
+      ...(posts.data || []).map(r => ({ type: 'feed_post', label: tr('Beitrag'), id: r.id, text: [r.title, r.body].filter(Boolean).join(' – '), at: r.moderation_hidden_at, author: r.profiles })),
+      ...(comments.data || []).map(r => ({ type: 'feed_comment', label: tr('Kommentar'), id: r.id, text: r.body, at: r.moderation_hidden_at, author: r.profiles })),
+      ...(prayers.data || []).map(r => ({ type: 'personal_prayer_request', label: tr('Gebet'), id: r.id, text: [r.title, r.description].filter(Boolean).join(' – '), at: r.moderation_hidden_at, author: r.profiles })),
+      ...(cposts.data || []).map(r => ({ type: 'community_post', label: tr('Community-Beitrag'), id: r.id, text: [r.title, r.content].filter(Boolean).join(' – '), at: r.moderation_hidden_at, author: r.profiles })),
+      ...(cevents.data || []).map(r => ({ type: 'community_event', label: tr('Termin'), id: r.id, text: [r.title, r.description].filter(Boolean).join(' – '), at: r.moderation_hidden_at, author: null })),
+    ].sort((a, b) => (b.at || '').localeCompare(a.at || ''))
+    setHiddenItems(items)
+    setHiddenLoading(false)
+  }, [])
+
+  async function restoreHidden(item) {
+    setHiddenBusyKey(`${item.type}:${item.id}`)
+    const { error } = await supabase.rpc('moderation_restore_content', { p_content_type: item.type, p_content_id: item.id, p_note: null })
+    setHiddenBusyKey(null)
+    if (error) { showToast(t('Wiederherstellen fehlgeschlagen'), 'error'); return }
+    showToast(t('Beitrag wieder sichtbar'))
+    setHiddenItems(prev => prev.filter(i => !(i.type === item.type && i.id === item.id)))
+  }
+
+  async function deleteHidden(item) {
+    if (!window.confirm(t('Beitrag endgültig löschen? Er ist danach für niemanden mehr sichtbar.'))) return
+    setHiddenBusyKey(`${item.type}:${item.id}`)
+    const { error } = await supabase.rpc('moderation_soft_delete_content', { p_content_type: item.type, p_content_id: item.id, p_note: null })
+    setHiddenBusyKey(null)
+    if (error) { showToast(t('Löschen fehlgeschlagen'), 'error'); return }
+    showToast(t('Beitrag endgültig gelöscht'))
+    setHiddenItems(prev => prev.filter(i => !(i.type === item.type && i.id === item.id)))
+  }
 
   const loadAdmins = useCallback(async () => {
     const { data } = await supabase
@@ -95,7 +140,8 @@ export default function ModerationView() {
 
   useEffect(() => {
     if (tab === 'chat' && isAppAdmin) loadChat()
-  }, [tab, isAppAdmin, loadChat])
+    if (tab === 'hidden' && isAppAdmin) loadHidden()
+  }, [tab, isAppAdmin, loadChat, loadHidden])
 
   async function loadPreview(group) {
     setPreview({ group, body: null, loading: true })
@@ -243,6 +289,7 @@ export default function ModerationView() {
       <div style={{ display: 'flex', gap: 4, padding: '8px 12px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-white)' }}>
         {[
           { k: 'reports', label: t('Meldungen ({openCount})', { openCount }), icon: Flag },
+          { k: 'hidden', label: t('Versteckt'), icon: EyeOff },
           { k: 'admins', label: t('Admins'), icon: Shield },
           { k: 'chat', label: t('Admin-Chat'), icon: MessageSquare },
         ].map(t => (
@@ -286,6 +333,47 @@ export default function ModerationView() {
               </div>
             </button>
           ))
+        )}
+
+        {tab === 'hidden' && (
+          hiddenLoading ? <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>{t('Laden…')}</p>
+          : hiddenItems.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>{t('Keine versteckten Beiträge.')}</p>
+          : (
+            <>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>{t('Versteckt – für andere nicht sichtbar')}</p>
+              {hiddenItems.map(item => {
+                const key = `${item.type}:${item.id}`
+                const authorName = item.author?.full_name || item.author?.username
+                return (
+                  <div key={key} style={{ marginBottom: 10, padding: 14, borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-white)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                      <EyeOff size={13} /> {item.label}{authorName ? ` · ${authorName}` : ''}
+                    </div>
+                    <p style={{ fontSize: 14, color: 'var(--color-text)', margin: '6px 0', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-wrap' }}>{item.text || '—'}</p>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 10 }}>
+                      {t('Versteckt am {time}', { time: new Date(item.at).toLocaleString(getLang() === 'en' ? 'en-US' : 'de-DE') })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        disabled={hiddenBusyKey === key}
+                        onClick={() => restoreHidden(item)}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 0', borderRadius: 10, border: '1.5px solid var(--color-border)', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}
+                      >
+                        <Eye size={14} /> {t('Wiederherstellen')}
+                      </button>
+                      <button
+                        disabled={hiddenBusyKey === key}
+                        onClick={() => deleteHidden(item)}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 0', borderRadius: 10, border: 'none', background: 'var(--color-error)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#fff' }}
+                      >
+                        <Trash2 size={14} /> {t('Beitrag endgültig löschen')}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </>
+          )
         )}
 
         {tab === 'admins' && (

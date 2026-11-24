@@ -5,6 +5,7 @@ import { useSyncExternalStore } from 'react'
 // Ausnahme für App-Admins) – ohne diesen Stand sähe der Beitrag direkt nach
 // „Verstecken“ unverändert aus. Schlüssel: `${contentType}:${contentId}`.
 const overrides = new Map()
+const deleted = new Set()
 const listeners = new Set()
 
 function subscribe(cb) {
@@ -15,6 +16,17 @@ function subscribe(cb) {
 export function setModerationHidden(contentType, contentId, hidden) {
   overrides.set(`${contentType}:${contentId}`, hidden ? new Date().toISOString() : null)
   listeners.forEach(cb => cb())
+}
+
+// Von der Moderation endgültig gelöscht → Karte sofort ausblenden
+export function setModerationDeleted(contentType, contentId) {
+  deleted.add(`${contentType}:${contentId}`)
+  listeners.forEach(cb => cb())
+}
+
+export function useModerationDeleted(contentType, contentId) {
+  const key = `${contentType}:${contentId}`
+  return useSyncExternalStore(subscribe, () => deleted.has(key), () => false)
 }
 
 /** Wirksamer Zeitstempel: lokale Aktion (falls vorhanden), sonst Serverwert. */

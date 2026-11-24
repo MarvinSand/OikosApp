@@ -1,5 +1,14 @@
 // Englische Übersetzungen (home). Schlüssel = deutscher Originaltext.
 export default {
+  'Beitrag endgültig löschen? Er ist danach für niemanden mehr sichtbar.': 'Delete post permanently? It will no longer be visible to anyone.',
+  'Beitrag endgültig löschen': 'Delete post permanently',
+  'Beitrag endgültig gelöscht': 'Post permanently deleted',
+  'Löschen fehlgeschlagen': 'Delete failed',
+  'Keine versteckten Beiträge.': 'No hidden posts.',
+  'Versteckt': 'Hidden',
+  'Versteckt am {time}': 'Hidden on {time}',
+  'Community-Beitrag': 'Community post',
+  'Termin': 'Appointment',
   'Gesendet am {time}': 'Sent {time}',
   'Anhängen': 'Attach',
   'In Aktuelles anzeigen (Moderation)': 'Show in Latest (moderation)',

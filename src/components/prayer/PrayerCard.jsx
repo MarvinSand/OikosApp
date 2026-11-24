@@ -18,6 +18,7 @@ import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
 import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
 import ModerationHiddenNotice from '../moderation/ModerationHiddenNotice'
 import AdminHighlightMenuItem from '../moderation/AdminHighlightMenuItem'
+import { useModerationDeleted } from '../../lib/moderationState'
 import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 import {
   timeAgo, formatLastPrayed, getInitials, authorName as displayName, KIND_OIKOS,
@@ -186,6 +187,7 @@ export default function PrayerCard({
   const menuBtnRef = useRef(null)
   const [showModeration, setShowModeration] = useState(false)
   const { isAppAdmin } = useIsAppAdmin()
+  const moderationDeleted = useModerationDeleted('personal_prayer_request', prayer.id)
   const [showEdit, setShowEdit] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [confetti, setConfetti] = useState(false)
@@ -222,6 +224,8 @@ export default function PrayerCard({
     await onToggleAnswered?.(prayer)
     showToast(isAnswered ? t('Als offen markiert') : t('🎉 Als erhört markiert!'))
   }
+
+  if (moderationDeleted) return null
 
   return (
     <>

@@ -35,6 +35,7 @@ import ModerationSheet from '../components/common/ModerationSheet'
 import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
 import ModerationHiddenNotice from '../components/moderation/ModerationHiddenNotice'
 import AdminHighlightMenuItem from '../components/moderation/AdminHighlightMenuItem'
+import { useModerationDeleted } from '../lib/moderationState'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import { useBlocks } from '../hooks/useBlocks'
@@ -1025,6 +1026,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   const [showModeration, setShowModeration] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const { isBlocked } = useBlocks()
+  const moderationDeleted = useModerationDeleted('feed_post', post.id)
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
   const TypeIcon = cfg.icon
   // Klares Kategorie-Badge aus dem echten category-Feld (Frage, Bibelstelle, …)
@@ -1044,6 +1046,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   // Nach dem Blockieren sofort ausblenden (serverseitig filtert ab dem
   // nächsten Laden ohnehin RLS)
   if (!isOwn && isBlocked(post.author_id)) return null
+  if (moderationDeleted) return null
 
   return (
     <FeedCardFrame threadLineAfter={threadLineAfter}>

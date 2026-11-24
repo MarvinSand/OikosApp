@@ -9,6 +9,7 @@ import ModerationSheet from '../common/ModerationSheet'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
 import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
 import ModerationHiddenNotice from '../moderation/ModerationHiddenNotice'
+import { useModerationDeleted } from '../../lib/moderationState'
 import { useBlocks } from '../../hooks/useBlocks'
 import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 import { useT, tr, getLang } from '../../i18n'
@@ -57,6 +58,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const [showShareSheet, setShowShareSheet] = useState(false)
   const { isBlocked } = useBlocks()
+  const moderationDeleted = useModerationDeleted('feed_comment', comment.id)
   const isOwn = comment.author_id === currentUserId
   const author = comment.profiles
 
@@ -66,6 +68,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
   const repostCount = (comment.reposts || []).length
 
   if (!isOwn && isBlocked(comment.author_id)) return null
+  if (moderationDeleted) return null
 
   return (
     <FeedCardFrame threadLineBefore={threadLineBefore} threadLineAfter={threadLineAfter}>
