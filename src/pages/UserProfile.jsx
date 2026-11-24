@@ -100,7 +100,10 @@ export default function UserProfile() {
   const [showModeration, setShowModeration] = useState(false)
   const { isBlocked, unblock, loading: blocksLoading } = useBlocks()
   const { prefs: prefsHook, updatePref } = useNotificationPrefs(targetId)
-  const prefs = bootMeta?.notif_prefs
+  // Bootstrap-Schnappschuss ist nur der Startwert – eigene Änderungen
+  // (prefOverrides) haben Vorrang, sonst bliebe der Schalter stehen.
+  const [prefOverrides, setPrefOverrides] = useState({})
+  const basePrefs = bootMeta?.notif_prefs
     ? {
         notify_prayer_requests: bootMeta.notif_prefs.notify_prayer_requests ?? true,
         notify_feed_posts: bootMeta.notif_prefs.notify_feed_posts ?? false,
@@ -109,6 +112,13 @@ export default function UserProfile() {
         notify_storyline_entries: bootMeta.notif_prefs.notify_storyline_entries ?? false,
       }
     : prefsHook
+  useEffect(() => { setPrefOverrides({}) }, [targetId])
+  const prefs = { ...basePrefs, ...prefOverrides }
+  function togglePref(field) {
+    const value = !prefs[field]
+    setPrefOverrides(o => ({ ...o, [field]: value }))
+    updatePref(field, value)
+  }
   const birthdayBannerKey = `birthday_banner_${targetId}_${new Date().toDateString()}`
   const [bannerDismissed, setBannerDismissed] = useState(() => !!localStorage.getItem(birthdayBannerKey))
 
@@ -603,7 +613,7 @@ export default function UserProfile() {
                   <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 2px' }}>{t(label)}</p>
                   <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0 }}>{t(desc)}</p>
                 </div>
-                <button onClick={() => updatePref(field, !prefs[field])} style={{ width: 44, height: 26, borderRadius: 13, border: 'none', backgroundColor: prefs[field] ? 'var(--color-accent)' : 'var(--color-border)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}>
+                <button onClick={() => togglePref(field)} style={{ width: 44, height: 26, borderRadius: 13, border: 'none', backgroundColor: prefs[field] ? 'var(--color-accent)' : 'var(--color-border)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}>
                   <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: prefs[field] ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                 </button>
               </div>

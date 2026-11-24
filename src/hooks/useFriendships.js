@@ -37,7 +37,7 @@ export function useFriendships() {
     const otherIds = raw.map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id)
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, username, full_name, is_christian')
+      .select('id, username, full_name, is_christian, avatar_url')
       .in('id', [...new Set(otherIds)])
 
     const pm = Object.fromEntries((profiles || []).map(p => [p.id, p]))
@@ -81,7 +81,7 @@ export function useFriendships() {
     const safe = query.trim().replace(/[,()%*\\"]/g, ' ')
     const { data } = await supabase
       .from('profiles')
-      .select('id, username, full_name, is_christian')
+      .select('id, username, full_name, is_christian, avatar_url')
       .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`)
       .neq('id', user.id)
       .limit(10)
