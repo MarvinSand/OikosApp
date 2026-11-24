@@ -16,6 +16,7 @@ import AddressAutocomplete from '../common/AddressAutocomplete'
 import AdvancedMarker from './AdvancedMarker'
 import { RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
 import CustomDatesEditor, { datesToIso } from './CustomDatesEditor'
+import EventImagesEditor from './EventImagesEditor'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -174,6 +175,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     customEmoji: '🎉',
     customTitle: '',
     description: '',
+    image_urls: [],
     location_name: '',
     latitude: null,
     longitude: null,
@@ -340,6 +342,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
       activity_type: form.category,
       activity_emoji: resolvedEmoji,
       description: form.description.trim() || null,
+      image_urls: form.image_urls,
       location_name: (form.location_name.trim() || locationLabel || null),
       latitude: form.latitude,
       longitude: form.longitude,
@@ -616,6 +619,10 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               rows={4}
               style={{ ...inp, resize: 'vertical' }}
             />
+            <p style={{ fontSize: 11.5, color: C.textTer, margin: '6px 0 0' }}>
+              {t('Links (z. B. https://…) werden automatisch anklickbar.')}
+            </p>
+            <EventImagesEditor urls={form.image_urls} onChange={v => set('image_urls', v)} C={C} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24 }}>
               <button style={backBtn} onClick={() => setStep('category')}>{t('← Zurück')}</button>
               <button style={nextBtn(true)} onClick={() => setStep('when')}>{t('Weiter')}</button>

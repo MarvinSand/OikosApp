@@ -9,6 +9,8 @@ import { useT, getLang } from '../../i18n'
 
 const locale = () => (getLang() === 'en' ? 'en-US' : 'de-DE')
 import CustomDatesEditor, { datesToIso } from './CustomDatesEditor'
+import EventImagesEditor from './EventImagesEditor'
+import LinkifiedText from '../common/LinkifiedText'
 import { customDates, nextOccurrence, formatRecurrenceLabel, isRecurring, RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
 
 const C = {
@@ -264,8 +266,30 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
           {/* Beschreibung – direkt unter Name + Sichtbarkeit */}
           {activity.description && (
             <p style={{ fontSize: 13.5, color: C.text, lineHeight: 1.6, margin: '0 0 14px' }}>
-              {activity.description}
+              <LinkifiedText text={activity.description} linkColor={C.accentDark} />
             </p>
+          )}
+          {Array.isArray(activity.image_urls) && activity.image_urls.length > 0 && (
+            <div style={{
+              display: 'grid', gap: 8, margin: '0 0 14px',
+              gridTemplateColumns: activity.image_urls.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+            }}>
+              {activity.image_urls.map(url => (
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                  <img
+                    src={url}
+                    alt=""
+                    loading="lazy"
+                    style={{
+                      width: '100%', borderRadius: 12, display: 'block', background: C.bgSec,
+                      aspectRatio: activity.image_urls.length === 1 ? 'auto' : '1 / 1',
+                      maxHeight: activity.image_urls.length === 1 ? 320 : undefined,
+                      objectFit: activity.image_urls.length === 1 ? 'contain' : 'cover',
+                    }}
+                  />
+                </a>
+              ))}
+            </div>
           )}
 
           {/* Meta */}
@@ -430,6 +454,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
   const [title, setTitle] = useState(activity.title || '')
   const [emoji, setEmoji] = useState(activity.activity_emoji || '📍')
   const [description, setDescription] = useState(activity.description || '')
+  const [imageUrls, setImageUrls] = useState(activity.image_urls || [])
   const [startsAt, setStartsAt] = useState(toLocalInput(activity.starts_at))
   const [endsAt, setEndsAt] = useState(toLocalInput(activity.ends_at))
   const [recurrenceFreq, setRecurrenceFreq] = useState(activity.recurrence_freq || null)
@@ -464,6 +489,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
       title: title.trim(),
       activity_emoji: emoji || '📍',
       description: description.trim() || null,
+      image_urls: imageUrls,
       starts_at: startsAt ? new Date(startsAt).toISOString() : null,
       ends_at: endsAt ? new Date(endsAt).toISOString() : null,
       recurrence_freq: recurrenceFreq || null,
@@ -524,7 +550,9 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
         </div>
 
         <label style={lblS}>{t('Infos')}</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder={t('Was sollten andere wissen?')} style={{ ...inpS, resize: 'vertical', marginBottom: 14 }} />
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder={t('Was sollten andere wissen?')} style={{ ...inpS, resize: 'vertical' }} />
+        <p style={{ fontSize: 11.5, color: C.textTer, margin: '6px 0 0' }}>{t('Links (z. B. https://…) werden automatisch anklickbar.')}</p>
+        <div style={{ marginBottom: 14 }}><EventImagesEditor urls={imageUrls} onChange={setImageUrls} C={C} /></div>
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
           <div style={{ flex: 1 }}>

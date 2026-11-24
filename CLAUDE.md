@@ -3,6 +3,7 @@
 ## Events mit einzelnen Terminen (Nov. 2026, phase104)
 
 - Wiederholung „Einzelne Termine“ (`recurrence_freq='custom'`): `starts_at` = erster Termin, `world_map_activities.recurrence_dates timestamptz[]` = weitere Termine; Dauer je Termin = `ends_at − starts_at`. Das Event (Chat, Teilnehmer) bleibt, im Bearbeiten-Sheet kommen nur Termine hinzu/fallen weg (`CustomDatesEditor.jsx`). `nextOccurrence`/`customDates` in `lib/recurrence.js`; `expires_at` = letzter Termin + Dauer + 1 h (`computeExpiresAt`). `get_home_highlights()` liefert `recurrence_dates` mit. **`phase104_event_custom_dates.sql` im SQL-Editor ausführen** (Spalte, Constraint, RPC), sonst scheitert das Speichern.
+- **Bilder & Links in der Event-Beschreibung (phase105, live eingespielt):** `world_map_activities.image_urls text[]` (max. 4, Upload beim Auswählen über `EventImagesEditor.jsx` in den Bucket `feed-photos`, Pfad `<user>/events/…`); Links werden per `components/common/LinkifiedText.jsx` anklickbar. Anzeige im Event-Sheet; Home-Highlights zeigen weiter nur Text.
 
 ## Push-Einstellungen, Vorschläge & Overlay-Header (Nov. 2026, phase103)
 

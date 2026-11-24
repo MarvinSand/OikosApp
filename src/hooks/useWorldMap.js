@@ -136,6 +136,7 @@ export function useWorldMap() {
         author_id: user.id,
         title: data.title,
         description: data.description || null,
+        image_urls: Array.isArray(data.image_urls) && data.image_urls.length > 0 ? data.image_urls : null,
         activity_type: data.activity_type,
         activity_emoji: data.activity_emoji || '📍',
         latitude: data.latitude,
