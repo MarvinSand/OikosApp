@@ -549,28 +549,13 @@ export default function Landing() {
         </section>
 
         {/* ── Weltweit ─────────────────────────────────────── */}
-        <section id="weltweit" className="lp-world-sec scroll-mt-16" aria-labelledby="world-title">
-          <div className="lp-band lp-band-earth">
-            <picture className="lp-band-media">
-              <img src={`${IMG}earth-2200.webp`} srcSet={`${IMG}earth-1200.webp 1200w, ${IMG}earth-2200.webp 2200w`} sizes="100vw" alt="" loading="lazy" decoding="async" />
-            </picture>
-            <BgVideo name="earth" className="lp-band-video" />
-            <div className="lp-wrap">
-              <Reveal className="max-w-2xl">
-                <p className="lp-eyebrow">Weltweit verbunden</p>
-                <h2 id="world-title" className="lp-h2 mt-5">
-                  Eine Familie <span className="lp-gold">über alle Grenzen.</span>
-                </h2>
-              </Reveal>
-            </div>
-          </div>
-
+        <section id="weltweit" className="lp-world-sec scroll-mt-16" aria-labelledby="discover-title">
           <div id="themen" className="lp-section lp-discover scroll-mt-16" aria-labelledby="discover-title">
             <div className="lp-wrap">
               <Reveal className="max-w-3xl">
-                <p className="lp-eyebrow">Alles, was Reich Gottes bewegt</p>
+                <p className="lp-eyebrow">Weltweit verbunden</p>
                 <h2 id="discover-title" className="lp-h2 mt-5">
-                  Entdecke, wer in deiner Nähe glaubt. <span className="lp-gold">Sechs Wege, Menschen zu verbinden.</span>
+                  Eine Familie über alle Grenzen. <span className="lp-gold">Entdecke, wer in deiner Nähe glaubt.</span>
                 </h2>
               </Reveal>
 
