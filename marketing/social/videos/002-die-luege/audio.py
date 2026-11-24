@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Musikbett + Soundeffekte für Video 002 (rein per Code → audio.wav). Zeiten passen zu scene.html."""
 import wave, subprocess, numpy as np
-SR = 44100; DUR = 82.4
+SR = 44100; DUR = 100.6
 N = int(SR * DUR); t = np.arange(N) / SR
 rng = np.random.default_rng(11)
 L = np.zeros(N); R = np.zeros(N)
@@ -89,19 +89,24 @@ for k, m in enumerate((72, 76, 79, 84, 88, 91)): ting(35.0 + k * .09, f(m), .3) 
 for k in range(8): add(noise(.12, 18), 37.3 + k * .12, .25)                            # Treppe bröckelt
 for k in range(12): pop(39.9 + k * .07, 600 + 80 * (k % 5), .3)                         # Konfetti
 ting(40.0, 2093, .3); ting(47.5, 1568, .3)
-whoosh(57.6, .42, True); whoosh(64.2, .42, True); whoosh(74.2, .42, True)
-for k, a in enumerate((59.4, 61.5, 62.8)): pop(a, 420 - 40 * k, .4)                   # leere Kreise erscheinen
-thud(64.45, 1.1, 55); ting(64.75, 1568, .4); ting(64.85, 2093, .4)                      # Oikos Connect Reveal
-for a in (67.4, 69.6, 71.0, 72.3): pop(a, 800, .35); whoosh(a - .1, .25, True)           # Funktionen wechseln
-ting(74.6, 1568, .35); ting(74.75, 2093, .35); ting(74.9, 2637, .3)                     # Endkarte
-for k in range(10): pop(74.7 + k * .07, 600 + 70 * (k % 5), .25)
+for c in (57.6, 65.4, 73.8, 82.7, 93.0): whoosh(c, .42, True)
+x = tt(1.4); add(np.sin(2 * np.pi * np.cumsum(520 * np.exp(-x * 1.1)) / SR) * np.exp(-x * 1.8) * .5, 62.6, .3)   # Baum welkt
+for k, m in enumerate((72, 76, 79, 84)): ting(69.8 + k * .12, f(m), .3)                                     # Himmel auf Erden
+for a in (68.5, 70.0, 70.9): pop(a, 700 + 100 * (a % 3), .3)
+for k, a in enumerate((77.9, 80.0, 81.3)): pop(a, 420 - 40 * k, .4)                                         # leere Kreise
+thud(82.95, 1.1, 55); ting(83.25, 1568, .4); ting(83.35, 2093, .4)                                          # Reveal
+for a in (85.9, 88.15, 89.55, 91.0): pop(a, 800, .35); whoosh(a - .1, .25, True)                             # Funktionen
+ting(93.4, 1568, .35); ting(93.55, 2093, .35); ting(93.7, 2637, .3)                                          # Endkarte
+for k in range(10): pop(93.5 + k * .07, 600 + 70 * (k % 5), .25)
 ting(47.5, 1568, .3)
-chord(57.8, [45, 52, 57, 60, 64], 6.8, .12, .6); chord(64.4, [48, 55, 60, 64, 67, 72], 10, .17, .4); chord(74.4, [53, 60, 65, 69, 72], 8, .17, .4)
+chord(57.8, [45, 52, 57, 60, 64], 7.8, .13, .6); chord(65.6, [48, 55, 60, 64, 67, 72], 8.4, .17, .4)
+chord(74.0, [45, 52, 57, 60, 64], 8.9, .12, .6); chord(82.9, [48, 55, 60, 64, 67, 72], 10.3, .17, .4); chord(93.2, [53, 60, 65, 69, 72], 8, .17, .4)
 
 # ── Sprecher (Arthur, Eleven v4): Startzeiten + Tempo passend zu den Szenen ──
 VOICE = {1: (0.15, 1.06), 2: (5.3, 1), 3: (10.9, 1), 4: (15.4, 1), 5: (18.0, 1), 6: (21.2, 1.1), 7: (25.6, 1), 8: (28.5, 1), 9: (30.7, 1),
          10: (33.8, 1), 11: (35.3, 1), 12: (37.5, 1), 13: (40.8, 1), 14: (42.8, 1.12), 15: (47.4, 1), 16: (49.95, 1), 17: (52.3, 1),
-         18: (54.5, 1), 19: (58.0, 1.05), 20: (64.5, 1), 21: (67.5, 1.05), 22: (74.4, 1.05)}
+         18: (54.5, 1), 23: (58.0, 1.05), 24: (62.5, 1), 25: (65.9, 1.06), 26: (74.2, 1), 19: (76.6, 1.05), 20: (83.0, 1),
+         27: (86.0, 1.05), 22: (93.3, 1.05)}
 V = np.zeros(N)
 for n, (at, tempo) in VOICE.items():
     raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', f'voice/{n:02d}.wav', '-filter:a', f'atempo={tempo}', '-f', 'f32le', '-ar', str(SR), '-ac', '1', '-'], capture_output=True, check=True).stdout

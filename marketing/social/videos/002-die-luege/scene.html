@@ -12,7 +12,7 @@
 /* ══════════════ Comic-Stickman-Video · reiner Canvas-Code ══════════════
    Ablauf (62 s):  A Hook 0–5 · B Die Lüge 5–15 · C Das Problem 15–25 · D Twist 25–37 · E Geschenk 37–47 · F Ziel + App 47–62
    Verse: Lutherbibel 1912 (gemeinfrei, Schreibweise modernisiert). */
-const W = 1080, H = 1920, TOTAL = 81, TWIST = 25
+const W = 1080, H = 1920, TOTAL = 100, TWIST = 25
 const cv = document.getElementById('c'), ctx = cv.getContext('2d')
 const INK = '#14110f', CREAM = '#fff3d6', YEL = '#ffd83d', RED = '#e63946', GOLD = '#ffb703', SKY = '#4cc3ff', GREEN = '#17a34a'
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
@@ -210,7 +210,9 @@ function bgFill(t) {
   else if (t < 37) { const k = ease((t - 35) / 1.6), g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, `rgb(${lerp(23, 255, k)},${lerp(18, 207, k)},${lerp(58, 107, k)})`); g.addColorStop(1, `rgb(${lerp(91, 255, k)},${lerp(42, 138, k)},${lerp(82, 76, k)})`); ctx.fillStyle = g; ctx.fillRect(-60, -60, W + 120, H + 120) }
   else if (t < 47) fl('#fff0c9')
   else if (t < 57.8) { fl(YEL); ctx.globalAlpha = .09; burst(540, 700, t, INK); ctx.globalAlpha = 1 }
-  else if (t < 64.4) fl(CREAM)
+  else if (t < 65.6) fl('#d8f0ff')
+  else if (t < 74.0) { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8fd3ff'); g.addColorStop(.75, '#fff3d6'); ctx.fillStyle = g; ctx.fillRect(-60, -60, W + 120, H + 120); ctx.globalAlpha = .1; ctx.drawImage(HF, 0, 0); ctx.globalAlpha = 1 }
+  else if (t < 82.9) fl(CREAM)
   else { fl(YEL); ctx.globalAlpha = .09; burst(540, 800, t, INK); ctx.globalAlpha = 1 }
 }
 
@@ -364,43 +366,94 @@ function phoneDraw(py, idx, mix) {
 function appIcon(x, y, size, k) { ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.rotate((1 - k) * -.3); ctx.beginPath(); ctx.roundRect(-size / 2, -size / 2, size, size, size * .23); ctx.save(); ctx.clip(); ctx.drawImage(ICON, -size / 2, -size / 2, size, size); ctx.restore(); ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.stroke(); ctx.restore() }
 function outlined(text, x, y, font, fill, lw, a = 1) { ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = font; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.strokeStyle = INK; ctx.strokeText(text, x, y); ctx.fillStyle = fill; ctx.fillText(text, x, y); ctx.restore() }
 function pill(text, x, y, k) { ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.font = '800 38px Inter'; const tw = ctx.measureText(text).width + 90; rr(-tw / 2 + 8, -44 + 8, tw, 88, 44, INK, null); rr(-tw / 2, -44, tw, 88, 44, '#fff', INK, 8); ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 0, 3); ctx.restore() }
+function groundStrip(col = '#d9c9a3') { ctx.fillStyle = col; ctx.fillRect(-20, 1560, W + 40, 400); ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(-20, 1560); ctx.lineTo(W + 20, 1560); ctx.stroke() }
+function aura(x, y, r, a) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(255,214,102,${a})`); g.addColorStop(1, 'rgba(255,214,102,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, 2 * r, 2 * r) }
+function heartFig(x, y, sc, col = RED, a = 1) { ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.scale(sc, sc); ctx.beginPath(); ctx.moveTo(0, 20); ctx.bezierCurveTo(-46, -12, -26, -44, 0, -20); ctx.bezierCurveTo(26, -44, 46, -12, 0, 20); ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.stroke(); ctx.restore() }
+function cloud(x, y, s) { ctx.save(); ctx.translate(x, y); ctx.scale(s, s); const c = [[-70, 10, 55], [0, -12, 70], [75, 12, 52], [10, 24, 60]]; ctx.strokeStyle = INK; ctx.lineWidth = 20; c.forEach(([cx0, cy0, r]) => { ctx.beginPath(); ctx.arc(cx0, cy0, r, 0, 6.3); ctx.stroke() }); ctx.fillStyle = '#fff'; c.forEach(([cx0, cy0, r]) => { ctx.beginPath(); ctx.arc(cx0, cy0, r, 0, 6.3); ctx.fill() }); ctx.restore() }
+function backpack(x, y, s, rot = .12) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s); rr(-48, -66, 96, 132, 22, '#b45f3c', INK, 9); rr(-30, 6, 60, 40, 10, '#d98b5f', INK, 6); ctx.restore() }
+
+// Nachfolge-Übergang: Baum des Glaubens (57.8–65.6)
+function sceneTree(t) {
+  groundStrip('#8fd16a')
+  const u = t - 57.8, k = ease((u - .1) / 1.0), wither = ease((t - 62.7) / 1.1)
+  const th = 470 * k
+  ctx.save(); ctx.translate(540, 1560)
+  ctx.fillStyle = '#a8703b'; ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.lineJoin = 'round'
+  ctx.beginPath(); ctx.moveTo(-52, 0); ctx.lineTo(-34, -th); ctx.lineTo(34, -th); ctx.lineTo(52, 0); ctx.closePath(); ctx.fill(); ctx.stroke()
+  const col = `rgb(${Math.round(lerp(104, 168, wither))},${Math.round(lerp(196, 140, wither))},${Math.round(lerp(84, 98, wither))})`
+  const cr = [[-120, -th - 40, 125], [120, -th - 40, 125], [0, -th - 120, 155], [-70, -th + 30, 115], [80, -th + 30, 115]]
+  ctx.strokeStyle = INK; ctx.lineWidth = 20; cr.forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r * k, 0, 6.3); ctx.stroke() })
+  ctx.fillStyle = col; cr.forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r * k, 0, 6.3); ctx.fill() })
+  if (k > .8) { rr(-120, -250, 240, 84, 12, '#f2d398', INK, 7); ctx.fillStyle = INK; ctx.font = '800 44px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('GLAUBE', 0, -206) }
+  ctx.restore()
+  if (wither > 0) for (let i = 0; i < 16; i++) { const p = clamp((t - 62.8 - i * .1) / 2.2); if (p <= 0) continue; const x = 540 + (h(i) - .5) * 520 + Math.sin(p * 8 + i) * 40, y = 760 + p * 800; ctx.save(); ctx.translate(x, y); ctx.rotate(p * 6 + i); ctx.fillStyle = '#9b7a45'; ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, 18, 9, 0, 0, 6.3); ctx.fill(); ctx.stroke(); ctx.restore() }
+  caption('Gerettet aus *Gnade.* Und dann?', 58.1, 62.3, t, { y: 330, size: 88 })
+  verse('Der Glaube ohne Werke ist tot.', 'Jakobus 2,26', 62.5, 65.3, t, { y: 530 })
+}
+// Jesus verkörpern: Himmel auf Erden (65.6–74.0)
+function sceneHeaven(t) {
+  const u = t - 65.6
+  cloud(170, 760, 1.0 + Math.sin(t * .5) * .03); cloud(560, 840, .8); cloud(150, 1010, .7)
+  const heavenK = ease((t - 69.8) / 1.0)
+  if (heavenK > 0) { ctx.save(); ctx.globalAlpha = .3 * heavenK; ctx.fillStyle = '#ffe28a'; ctx.beginPath(); ctx.moveTo(840, 740); ctx.lineTo(980, 740); ctx.lineTo(760, 1560); ctx.lineTo(260, 1560); ctx.closePath(); ctx.fill(); ctx.restore() }
+  sunFig(880, 700, 92, t, ease(u / .5))
+  groundStrip('#8fd16a')
+  for (let i = 0; i < 12; i++) { const k = eob((t - 69.9 - i * .12) / .3); if (k <= 0) continue; const x = 60 + i * 90, hgt = 70 + (i % 3) * 22; ctx.save(); ctx.translate(x, 1560); ctx.scale(k, k); ctx.strokeStyle = INK; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -hgt); ctx.stroke()
+    ctx.fillStyle = [RED, GOLD, '#ff7ab6', SKY][i % 4]; for (let p = 0; p < 5; p++) { ctx.beginPath(); ctx.arc(Math.cos(p * 1.257) * 17, -hgt + Math.sin(p * 1.257) * 17, 13, 0, 6.3); ctx.fill(); ctx.stroke() } ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(0, -hgt, 11, 0, 6.3); ctx.fill(); ctx.stroke(); ctx.restore() }
+  const HIP = 1560 - 200 * .85
+  const tx = t < 67.9 ? lerp(-120, 410, eio((t - 66.0) / 1.9)) : 410
+  const walking = t > 66.0 && t < 67.9
+  const helped = t > 68.5
+  // Nachbar mit schwerem Rucksack
+  figure(720, HIP, .85, helped ? { face: 'joy', aA: [Math.PI - .5, .2], aB: [-Math.PI + .5, -.2], lA: [.3, 0], lB: [-.3, 0] } : { face: 'sad', lean: .22, aA: [.15, .2], aB: [-.1, .4] })
+  const bk = ease((t - 68.2) / .8), bx = lerp(720 - 52, tx - 52, bk), by = HIP - 185 * (1 - 0) + lerp(10, 0, bk)
+  backpack(bx, by - 6, .85, lerp(.35, -.1, bk))
+  if (t > 68.4) aura(tx, HIP - 150, 300, .45 * ease((t - 68.4) / .8))
+  figure(tx, HIP + (t > 68.5 ? Math.abs(Math.sin((t - 68.5) * 4)) * -6 : 0), .85, walking ? POSE.walk(t * 9, { face: 'smile' }) : { face: 'smile', aA: [.4, .2], aB: [-1.0, -.5] })
+  if (heavenK > 0) for (let i = 0; i < 5; i++) { const p = ((t - 70) * .3 + i * .2) % 1; heartFig(565 + Math.sin(p * 6 + i) * 70, 1180 - p * 420, .7 + i * .05, i % 2 ? RED : '#ff7ab6', Math.sin(p * Math.PI) * heavenK) }
+  caption('Lebe wie *Jesus.*', 66.1, 69.6, t, { y: 330, size: 100 })
+  caption('Himmel auf *Erden.*', 69.8, 73.8, t, { y: 330, size: 100 })
+}
+const CT = { prob: 74.0, reveal: 82.9, feat: 85.9, end: 93.2 }
 function ctaProblem(t) {
-  ctx.fillStyle = '#d9c9a3'; ctx.fillRect(-20, 1560, W + 40, 400); ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(-20, 1560); ctx.lineTo(W + 20, 1560); ctx.stroke()
-  caption('Christ, aber *allein?*', 58.1, 64.2, t, { y: 330, size: 100 })
-  const spots = [[190, 1010, 'Gemeinde?', 59.4], [890, 1010, 'Hauskreis?', 61.5], [540, 830, 'Beten?', 62.8]]
+  groundStrip()
+  caption('Das schaffst du nicht *allein.*', 74.1, 76.3, t, { y: 330, size: 92 })
+  caption('Christ, aber *allein?*', 76.5, 82.7, t, { y: 330, size: 100 })
+  const spots = [[190, 1010, 'Gemeinde?', 77.9], [890, 1010, 'Hauskreis?', 80.0], [540, 830, 'Beten?', 81.3]]
   spots.forEach(([x, y, lab, t0]) => { const k = eob((t - t0) / .35); if (k <= 0) return
     ctx.save(); ctx.translate(x, y + Math.sin(t * 2 + x) * 6); ctx.scale(k, k); ctx.setLineDash([16, 14]); ctx.strokeStyle = INK; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(0, 0, 100, 0, 6.3); ctx.stroke(); ctx.setLineDash([])
     ctx.fillStyle = 'rgba(20,17,15,.12)'; ctx.fill(); ctx.font = '800 110px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText('?', 0, 6); ctx.font = '700 52px Caveat'; ctx.fillText(lab, 0, 150); ctx.restore() })
   figure(540, 1400, .9, { face: 'sad', lean: .08, tilt: .1, aA: [.2, .3], aB: [-.2, -.3] })
 }
 function ctaApp(t) {
-  if (t < 67.4) {
-    caption('Genau *dafür:*', 64.6, 67.2, t, { y: 330, size: 100 })
-    appIcon(540, 880, 300, eob((t - 64.7) / .5))
-    const a = ease((t - 65.2) / .4); outlined('Oikos Connect', 540, 1130, '800 112px Inter', '#fff', 22, a)
-    outlined('Die App für Christen', 540, 1240, '700 52px Inter', '#fff', 12, ease((t - 65.8) / .4))
+  if (t < CT.feat) {
+    caption('Genau *dafür:*', 83.1, 85.7, t, { y: 330, size: 100 })
+    appIcon(540, 880, 300, eob((t - 83.2) / .5))
+    outlined('Oikos Connect', 540, 1130, '800 112px Inter', '#fff', 22, ease((t - 83.7) / .4))
+    outlined('Die App für Christen', 540, 1240, '700 52px Inter', '#fff', 12, ease((t - 84.3) / .4))
     return
   }
-  const feats = [[67.4, 'Christen in *deiner Nähe*'], [69.6, 'Gemeinsam *beten*'], [71.0, '*Bibel* lesen'], [72.3, '*Hauskreis* & Gemeinde']]
+  const feats = [[85.9, 'Christen in *deiner Nähe*'], [88.15, 'Gemeinsam *beten*'], [89.55, '*Bibel* lesen'], [91.0, 'Gemeinsam *Jesus* folgen']]
   let fi = 0; feats.forEach((f, i) => { if (t >= f[0]) fi = i })
   const nextT = fi < 3 ? feats[fi + 1][0] : 99, mix = fi < 3 ? clamp((t - (nextT - .35)) / .35) : 0
-  const py = lerp(2000, 940, ease((t - 67.4) / .7))
-  phoneDraw(py, fi, mix)
-  feats.forEach(([t0, txt], i) => caption(txt, t0 + .05, (i < 3 ? feats[i + 1][0] : 74.2) - .05, t, { y: 330, size: 92 }))
+  phoneDraw(lerp(2000, 940, ease((t - CT.feat) / .7)), fi, mix)
+  feats.forEach(([t0, txt], i) => caption(txt, t0 + .05, (i < 3 ? feats[i + 1][0] : 93.1) - .05, t, { y: 330, size: 92 }))
 }
 function ctaEnd(t) {
-  const u = t - 74.4
+  const u = t - CT.end
   appIcon(540, 520, 192, eob(u / .5)); outlined('Oikos Connect', 540, 690, '800 84px Inter', '#fff', 16, ease((u - .3) / .3))
   outlined('Kostenlos · Werbefrei · für Christen', 540, 765, '700 38px Inter', '#fff', 9, ease((u - .4) / .3))
   const bk = eob((u - .6) / .4); if (bk > 0) pill('Jetzt im App Store', 540, 870, bk * (1 + .03 * Math.sin(t * 6)))
   outlined('Link in der Bio ↓', 540, 975, '700 56px Caveat', GOLD, 10, ease((u - 1.0) / .4))
-  phoneDraw(lerp(2000, 1060, ease((u - .8) / .8)), 1, 0)
-  confetti(t, 74.6)
+  phoneDraw(lerp(2000, 1060, ease((u - .8) / .8)), 3, 0)
+  confetti(t, CT.end + .2)
 }
 function sceneF(t) {
-  if (t >= 74.4) return ctaEnd(t)
-  if (t >= 64.4) return ctaApp(t)
-  if (t >= 57.8) return ctaProblem(t)
+  if (t >= CT.end) return ctaEnd(t)
+  if (t >= CT.reveal) return ctaApp(t)
+  if (t >= CT.prob) return ctaProblem(t)
+  if (t >= 65.6) return sceneHeaven(t)
+  if (t >= 57.8) return sceneTree(t)
   ctx.fillStyle = '#e8b923'; ctx.fillRect(-20, 1560, W + 40, 400); ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(-20, 1560); ctx.lineTo(W + 20, 1560); ctx.stroke()
   const bob = Math.abs(Math.sin(t * 4.2)) * 40
   figure(400, 1360 - (t > 47.6 ? bob : 0), .95, t > 47.6 ? POSE.cheer(t * 8) : { face: 'smile' })
@@ -415,13 +468,13 @@ function sceneF(t) {
 }
 
 /* ══════════════ Übergänge, Schütteln, Fortschritt ══════════════ */
-const WIPES = [5, 15, 30.2, 37, 47, 57.8, 64.4, 74.4]
+const WIPES = [5, 15, 30.2, 37, 47, 57.8, 65.6, 74.0, 82.9, 93.2]
 function wipes(t) {
   WIPES.forEach(c => { const p = (t - (c - .22)) / .44; if (p <= 0 || p >= 1) return
     const cx0 = lerp(-760, W + 760, p); ctx.save(); ctx.translate(cx0, H / 2); ctx.transform(1, 0, -.35, 1, 0, 0)
     ctx.fillStyle = INK; ctx.fillRect(-720, -H, 1440, H * 2); ctx.fillStyle = YEL; ctx.fillRect(-760, -H, 40, H * 2); ctx.fillRect(720, -H, 40, H * 2); ctx.restore() })
 }
-const SHAKES = [[.15, .45, 22], [13.5, .5, 18], [16.55, .4, 14], [25.0, .6, 26], [32.9, .6, 30], [35.0, .4, 14], [11.1, .25, 8], [12.3, .25, 8], [64.45, .4, 12]]
+const SHAKES = [[.15, .45, 22], [13.5, .5, 18], [16.55, .4, 14], [25.0, .6, 26], [32.9, .6, 30], [35.0, .4, 14], [11.1, .25, 8], [12.3, .25, 8], [82.95, .4, 12]]
 function shake(t) { let x = 0, y = 0; SHAKES.forEach(([s, d, a]) => { const u = t - s; if (u > 0 && u < d) { const k = 1 - u / d; x += Math.sin(u * 95) * a * k; y += Math.cos(u * 83) * a * k * .7 } }); return [x, y] }
 function progress(t) {
   const x0 = 80, x1 = W - 80, y = 196
