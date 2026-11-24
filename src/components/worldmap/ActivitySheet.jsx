@@ -8,7 +8,8 @@ import { useToast } from '../../context/ToastContext'
 import { useT, getLang } from '../../i18n'
 
 const locale = () => (getLang() === 'en' ? 'en-US' : 'de-DE')
-import { nextOccurrence, formatRecurrenceLabel, isRecurring, RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
+import CustomDatesEditor, { datesToIso } from './CustomDatesEditor'
+import { customDates, nextOccurrence, formatRecurrenceLabel, isRecurring, RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -153,6 +154,9 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
     : activity.ends_at
   const timeRange = formatRange(displayStart, displayEnd)
   const recurrenceLabel = formatRecurrenceLabel(activity)
+  const upcomingDates = activity.recurrence_freq === 'custom'
+    ? customDates(activity).filter(d => d >= new Date()).slice(0, 6)
+    : []
 
   async function handleToggleJoin() {
     setJoining(true)
@@ -291,6 +295,13 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
                 </p>
               </div>
             )}
+            {activity.recurrence_freq === 'custom' && upcomingDates.length > 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 25 }}>
+                {upcomingDates.map(d => (
+                  <p key={d.getTime()} style={{ fontSize: 12.5, color: C.textSec, margin: 0 }}>{formatDateTime(d.toISOString())}</p>
+                ))}
+              </div>
+            )}
             {activity.location_name && (
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <MapPin size={15} color={C.textSec} style={{ flexShrink: 0 }} />
@@ -425,11 +436,12 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
   const [recurrenceInterval, setRecurrenceInterval] = useState(activity.recurrence_interval || 1)
   const [recurrenceWeekdays, setRecurrenceWeekdays] = useState(activity.recurrence_weekdays || [])
   const [recurrenceEndDate, setRecurrenceEndDate] = useState(activity.recurrence_end_date || '')
+  const [recurrenceDates, setRecurrenceDates] = useState(() => (activity.recurrence_dates || []).map(toLocalInput))
   const [saving, setSaving] = useState(false)
 
   function selectRecurrenceFreq(key) {
     if (!key) {
-      setRecurrenceFreq(null); setRecurrenceInterval(1); setRecurrenceWeekdays([]); setRecurrenceEndDate('')
+      setRecurrenceFreq(null); setRecurrenceInterval(1); setRecurrenceWeekdays([]); setRecurrenceEndDate(''); setRecurrenceDates([])
       return
     }
     setRecurrenceFreq(key)
@@ -455,9 +467,10 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
       starts_at: startsAt ? new Date(startsAt).toISOString() : null,
       ends_at: endsAt ? new Date(endsAt).toISOString() : null,
       recurrence_freq: recurrenceFreq || null,
-      recurrence_interval: recurrenceFreq ? (Number(recurrenceInterval) || 1) : null,
+      recurrence_interval: recurrenceFreq && recurrenceFreq !== 'custom' ? (Number(recurrenceInterval) || 1) : null,
       recurrence_weekdays: recurrenceFreq === 'weekly' ? recurrenceWeekdays : null,
-      recurrence_end_date: recurrenceFreq ? (recurrenceEndDate || null) : null,
+      recurrence_end_date: recurrenceFreq && recurrenceFreq !== 'custom' ? (recurrenceEndDate || null) : null,
+      recurrence_dates: recurrenceFreq === 'custom' ? datesToIso(recurrenceDates) : null,
     })
     setSaving(false)
     if (ok !== false) onCancel()
@@ -525,7 +538,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
         </div>
 
         <label style={lblS}>{t('Wiederholung')}</label>
-        <div className="hide-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: recurrenceFreq ? 10 : 20 }}>
+        <div className="hide-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: recurrenceFreq && recurrenceFreq !== 'custom' ? 10 : 20 }}>
           {RECURRENCE_FREQ_OPTIONS.map(opt => {
             const active = recurrenceFreq === opt.key
             return (
@@ -546,7 +559,19 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
           })}
         </div>
 
-        {recurrenceFreq && (
+        {recurrenceFreq === 'custom' && (
+          <div style={{ marginBottom: 20, marginTop: -10 }}>
+            <CustomDatesEditor
+              dates={recurrenceDates}
+              onChange={setRecurrenceDates}
+              startsAt={startsAt}
+              C={C}
+              inputStyle={inpS}
+            />
+          </div>
+        )}
+
+        {recurrenceFreq && recurrenceFreq !== 'custom' && (
           <div style={{ marginBottom: 20, padding: 12, borderRadius: 12, background: C.bgSec, border: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 13, color: C.text }}>{t('Alle ')}</span>

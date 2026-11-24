@@ -53,7 +53,7 @@ export default function HighlightComposerSheet({ onClose, onCreated, preset = nu
       if (step === 'event') {
         const { data } = await supabase
           .from('world_map_activities')
-          .select('id, title, activity_emoji, location_name, starts_at, recurrence_freq, recurrence_interval, recurrence_weekdays, recurrence_end_date')
+          .select('id, title, activity_emoji, location_name, starts_at, recurrence_freq, recurrence_interval, recurrence_weekdays, recurrence_end_date, recurrence_dates')
           .eq('is_public', true)
           .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
           .order('starts_at', { ascending: true, nullsFirst: false })

@@ -1,5 +1,9 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Events mit einzelnen Terminen (Nov. 2026, phase104)
+
+- Wiederholung „Einzelne Termine“ (`recurrence_freq='custom'`): `starts_at` = erster Termin, `world_map_activities.recurrence_dates timestamptz[]` = weitere Termine; Dauer je Termin = `ends_at − starts_at`. Das Event (Chat, Teilnehmer) bleibt, im Bearbeiten-Sheet kommen nur Termine hinzu/fallen weg (`CustomDatesEditor.jsx`). `nextOccurrence`/`customDates` in `lib/recurrence.js`; `expires_at` = letzter Termin + Dauer + 1 h (`computeExpiresAt`). `get_home_highlights()` liefert `recurrence_dates` mit. **`phase104_event_custom_dates.sql` im SQL-Editor ausführen** (Spalte, Constraint, RPC), sonst scheitert das Speichern.
+
 ## Push-Einstellungen, Vorschläge & Overlay-Header (Nov. 2026, phase103)
 
 - **Push-Befund live (24.11.):** Nur 3 von 22 Konten hatten ein Token; die meisten Benachrichtigungen gingen an Konten ohne Token (App-Store-Build ohne AppDelegate-Weiterleitung → erst mit 1.3 kommt das Token an). Ein echter Push an ein frisch registriertes Token lief über `api.push.apple.com` mit 200. Alte `BadDeviceToken`-Fehler = veraltete Tokens. `send-push` probiert bei `BadDeviceToken` jetzt zusätzlich die andere APNs-Umgebung (Sandbox ↔ Produktion), bevor das Token gelöscht wird, und liefert `host` im Ergebnis (`net._http_response` prüfen).

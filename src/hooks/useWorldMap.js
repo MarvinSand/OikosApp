@@ -21,6 +21,16 @@ export function haversine(lat1, lon1, lat2, lon2) {
 // Enddatum der Serie läuft die Karten-Sichtbarkeit an diesem Tag aus.
 // Einmalige Events verschwinden wie bisher kurz nach ihrem Ende.
 function computeExpiresAt(data) {
+  // Einzelne Termine: läuft nach dem letzten Termin (+ Dauer bzw. 3 h) ab
+  if (data.recurrence_freq === 'custom') {
+    const starts = [data.starts_at, ...(data.recurrence_dates || [])]
+      .filter(Boolean).map(d => new Date(d).getTime()).filter(n => !isNaN(n))
+    if (!starts.length) return null
+    const dur = data.starts_at && data.ends_at
+      ? new Date(data.ends_at).getTime() - new Date(data.starts_at).getTime()
+      : 3 * 60 * 60 * 1000
+    return new Date(Math.max(...starts) + Math.max(dur, 0) + 60 * 60 * 1000).toISOString()
+  }
   if (data.recurrence_freq) {
     return data.recurrence_end_date
       ? new Date(`${data.recurrence_end_date}T23:59:59`).toISOString()
@@ -140,11 +150,14 @@ export function useWorldMap() {
           : [],
         is_public: visibility === 'public',
         recurrence_freq: data.recurrence_freq || null,
-        recurrence_interval: data.recurrence_freq ? (Number(data.recurrence_interval) || 1) : null,
+        recurrence_interval: data.recurrence_freq && data.recurrence_freq !== 'custom' ? (Number(data.recurrence_interval) || 1) : null,
         recurrence_weekdays: data.recurrence_freq === 'weekly' && Array.isArray(data.recurrence_weekdays) && data.recurrence_weekdays.length > 0
           ? data.recurrence_weekdays
           : null,
-        recurrence_end_date: data.recurrence_freq ? (data.recurrence_end_date || null) : null,
+        recurrence_end_date: data.recurrence_freq && data.recurrence_freq !== 'custom' ? (data.recurrence_end_date || null) : null,
+        recurrence_dates: data.recurrence_freq === 'custom' && Array.isArray(data.recurrence_dates) && data.recurrence_dates.length > 0
+          ? data.recurrence_dates
+          : null,
         expires_at: data.expires_at || computeExpiresAt(data),
       })
       .select(`
@@ -233,7 +246,7 @@ export function useWorldMap() {
   async function updateActivity(activityId, updates) {
     const patch = { ...updates }
     // Ablaufzeit neu berechnen, wenn sich Zeiten oder Wiederholung ändern
-    const RECOMPUTE_KEYS = ['ends_at', 'starts_at', 'recurrence_freq', 'recurrence_end_date']
+    const RECOMPUTE_KEYS = ['ends_at', 'starts_at', 'recurrence_freq', 'recurrence_end_date', 'recurrence_dates']
     if (RECOMPUTE_KEYS.some(k => k in updates)) {
       const current = activities.find(a => a.id === activityId) || {}
       patch.expires_at = computeExpiresAt({ ...current, ...updates })

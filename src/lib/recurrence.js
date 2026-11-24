@@ -10,6 +10,7 @@ export const RECURRENCE_FREQ_OPTIONS = [
   { key: 'weekly',  get label() { return tr('Wöchentlich') } },
   { key: 'monthly', get label() { return tr('Monatlich') } },
   { key: 'yearly',  get label() { return tr('Jährlich') } },
+  { key: 'custom',  get label() { return tr('Einzelne Termine') } },
 ]
 
 // value = JS Date.getDay() (0 = Sonntag … 6 = Samstag), Anzeige Montag-first
@@ -39,6 +40,16 @@ export function intervalUnitLabel(freq, interval) {
 
 export function isRecurring(activity) {
   return !!activity?.recurrence_freq
+}
+
+// Alle Starttermine einer 'custom'-Serie (Anker + weitere), aufsteigend, ohne Duplikate
+export function customDates(activity) {
+  const list = [activity?.starts_at, ...(Array.isArray(activity?.recurrence_dates) ? activity.recurrence_dates : [])]
+    .filter(Boolean)
+    .map(d => new Date(d))
+    .filter(d => !isNaN(d))
+    .sort((a, b) => a - b)
+  return list.filter((d, i) => i === 0 || d.getTime() !== list[i - 1].getTime())
 }
 
 function addDays(date, n) {
@@ -82,6 +93,11 @@ export function nextOccurrence(activity, from = new Date()) {
   const anchor = new Date(activity.starts_at)
   if (!activity.recurrence_freq) return anchor
 
+  // Einzelne Termine: erster Termin ab `from` (null, wenn alle vorbei sind)
+  if (activity.recurrence_freq === 'custom') {
+    return customDates(activity).find(d => d >= from) || null
+  }
+
   const interval = Math.max(1, Number(activity.recurrence_interval) || 1)
   const endDate = activity.recurrence_end_date ? new Date(`${activity.recurrence_end_date}T23:59:59`) : null
   const within = (d) => !endDate || d <= endDate
@@ -124,6 +140,11 @@ export function formatRecurrenceLabel(activity) {
   if (!activity?.recurrence_freq) return null
   const interval = Math.max(1, Number(activity.recurrence_interval) || 1)
   const freq = activity.recurrence_freq
+
+  if (freq === 'custom') {
+    const n = customDates(activity).length
+    return n <= 1 ? tr('Einzelne Termine') : tr('{n} Termine', { n })
+  }
 
   if (freq === 'weekly' && Array.isArray(activity.recurrence_weekdays) && activity.recurrence_weekdays.length > 0) {
     const days = [...activity.recurrence_weekdays]

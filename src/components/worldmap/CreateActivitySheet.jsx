@@ -15,6 +15,7 @@ import {
 import AddressAutocomplete from '../common/AddressAutocomplete'
 import AdvancedMarker from './AdvancedMarker'
 import { RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
+import CustomDatesEditor, { datesToIso } from './CustomDatesEditor'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -182,6 +183,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     recurrence_interval: 1,
     recurrence_weekdays: [],
     recurrence_end_date: '',
+    recurrence_dates: [],
   })
   const [locTab, setLocTab] = useState('gps')
   const [locationLabel, setLocationLabel] = useState('')
@@ -214,7 +216,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
 
   function selectRecurrenceFreq(key) {
     setForm(f => {
-      if (!key) return { ...f, recurrence_freq: null, recurrence_interval: 1, recurrence_weekdays: [], recurrence_end_date: '' }
+      if (!key) return { ...f, recurrence_freq: null, recurrence_interval: 1, recurrence_weekdays: [], recurrence_end_date: '', recurrence_dates: [] }
       const next = { ...f, recurrence_freq: key }
       // Beim ersten Wechsel zu "Wöchentlich" den Starttag als Vorschlag setzen
       if (key === 'weekly' && f.recurrence_weekdays.length === 0 && f.starts_at) {
@@ -347,9 +349,10 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
       community_ids: form.visibility_mode === 'communities' ? form.community_ids : [],
       visibility_user_ids: form.visibility_mode === 'specific' ? form.visibility_user_ids : [],
       recurrence_freq: form.recurrence_freq || null,
-      recurrence_interval: form.recurrence_freq ? (Number(form.recurrence_interval) || 1) : null,
+      recurrence_interval: form.recurrence_freq && form.recurrence_freq !== 'custom' ? (Number(form.recurrence_interval) || 1) : null,
       recurrence_weekdays: form.recurrence_freq === 'weekly' ? form.recurrence_weekdays : null,
-      recurrence_end_date: form.recurrence_freq ? (form.recurrence_end_date || null) : null,
+      recurrence_end_date: form.recurrence_freq && form.recurrence_freq !== 'custom' ? (form.recurrence_end_date || null) : null,
+      recurrence_dates: form.recurrence_freq === 'custom' ? datesToIso(form.recurrence_dates) : null,
     })
     setSubmitting(false)
   }
@@ -670,7 +673,17 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
               })}
             </div>
 
-            {form.recurrence_freq && (
+            {form.recurrence_freq === 'custom' && (
+              <CustomDatesEditor
+                dates={form.recurrence_dates}
+                onChange={v => set('recurrence_dates', v)}
+                startsAt={form.starts_at}
+                C={C}
+                inputStyle={inp}
+              />
+            )}
+
+            {form.recurrence_freq && form.recurrence_freq !== 'custom' && (
               <div style={{ marginTop: 10, padding: 12, borderRadius: 12, background: C.bgSec, border: `1px solid ${C.border}` }}>
                 {/* Intervall */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
