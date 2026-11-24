@@ -472,7 +472,7 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin, canHigh
 }
 
 // ─── Create Announcement Sheet (Admin) ───────────────────────
-function CreateAnnouncementSheet({ onClose, onSubmit }) {
+function CreateAnnouncementSheet({ onClose, onSubmit, canPin = false }) {
   const { t } = useT()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -482,7 +482,7 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
   async function handleSubmit() {
     if (!content.trim()) return
     setSaving(true)
-    await onSubmit({ title: title.trim() || null, content: content.trim(), is_pinned: isPinned })
+    await onSubmit({ title: title.trim() || null, content: content.trim(), is_pinned: canPin && isPinned })
     setSaving(false)
     onClose()
   }
@@ -508,6 +508,7 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
         />
         <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', textAlign: 'right', marginTop: 2 }}>{content.length}/1000</p>
 
+        {canPin && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, padding: '10px 12px', borderRadius: 12, backgroundColor: 'var(--color-warm-4)', border: '1px solid var(--color-warm-3)' }}>
           <div>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 1px' }}>{t('📌 Anpinnen')}</p>
@@ -520,6 +521,7 @@ function CreateAnnouncementSheet({ onClose, onSubmit }) {
             <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: isPinned ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
           </button>
         </div>
+        )}
 
         <button
           onClick={handleSubmit}
@@ -1800,7 +1802,7 @@ export default function CommunityDetail() {
           {/* PINNWAND tab */}
           {shownTab === 'board' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
-              {isAdmin && (
+              {isMember && (
                 <button
                   onClick={() => setShowCreatePost(true)}
                   style={{ width: '100%', padding: '12px 0', borderRadius: 14, border: 'none', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 16, boxShadow: '0 2px 8px rgba(175,138,100,0.3)' }}
@@ -1829,7 +1831,7 @@ export default function CommunityDetail() {
           {/* EVENTS tab */}
           {shownTab === 'events' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px' }}>
-              {isAdmin && (
+              {isMember && (
                 <button
                   onClick={() => setShowCreateEvent(true)}
                   style={{ width: '100%', padding: '11px 0', borderRadius: 12, border: '1.5px dashed var(--color-warm-3)', background: 'none', fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-warm-1)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}
@@ -1957,7 +1959,7 @@ export default function CommunityDetail() {
         <CreateEventForm onClose={() => setShowCreateEvent(false)} onSubmit={createEvent} />
       )}
       {showCreatePost && (
-        <CreateAnnouncementSheet onClose={() => setShowCreatePost(false)} onSubmit={createPost} />
+        <CreateAnnouncementSheet onClose={() => setShowCreatePost(false)} onSubmit={createPost} canPin={isAdmin} />
       )}
       {showAddPrayer && (
         <AddPrayerSheet onClose={() => setShowAddPrayer(false)} onSubmit={handleAddPrayer} />
