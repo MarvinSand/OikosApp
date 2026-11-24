@@ -1,5 +1,6 @@
 // Englische Übersetzungen (home). Schlüssel = deutscher Originaltext.
 export default {
+  'wiederkehrend': 'recurring',
   'Aktuelles aus OIKOS': 'Latest from OIKOS',
   'Wichtig': 'Important',
   'Gebet im Fokus': 'Prayer in focus',

@@ -65,7 +65,9 @@ as $$
           'id', h.id, 'kind', 'event', 'note', h.body, 'is_important', h.is_important,
           'created_at', h.created_at, 'activity_id', a.id, 'title', a.title,
           'emoji', a.activity_emoji, 'location_name', a.location_name,
-          'starts_at', a.starts_at, 'description', a.description)
+          'starts_at', a.starts_at, 'ends_at', a.ends_at, 'description', a.description,
+          'recurrence_freq', a.recurrence_freq, 'recurrence_interval', a.recurrence_interval,
+          'recurrence_weekdays', a.recurrence_weekdays, 'recurrence_end_date', a.recurrence_end_date)
         when 'prayer' then jsonb_build_object(
           'id', h.id, 'kind', 'prayer', 'note', h.body, 'is_important', h.is_important,
           'created_at', h.created_at, 'prayer_id', p.id, 'title', p.title,

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../context/ToastContext'
 import { useT, getLang } from '../../i18n'
+import { isRecurring, nextOccurrence } from '../../lib/recurrence'
 
 // Kleines Moderator-Fenster für den Aktuelles-Tab: „Was möchte ich anzeigen?“
 // → Update/Info, Weltkarten-Event hervorheben oder Gebet hervorheben.
@@ -51,15 +52,21 @@ export default function HighlightComposerSheet({ onClose, onCreated }) {
       if (step === 'event') {
         const { data } = await supabase
           .from('world_map_activities')
-          .select('id, title, activity_emoji, location_name, starts_at')
+          .select('id, title, activity_emoji, location_name, starts_at, recurrence_freq, recurrence_interval, recurrence_weekdays, recurrence_end_date')
           .eq('is_public', true)
           .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
           .order('starts_at', { ascending: true, nullsFirst: false })
           .limit(40)
-        rows = (data || []).map(a => ({
-          id: a.id, emoji: a.activity_emoji || '📅', title: a.title,
-          sub: [a.starts_at ? new Date(a.starts_at).toLocaleDateString(getLang() === 'en' ? 'en-US' : 'de-DE', { day: 'numeric', month: 'short' }) : null, a.location_name].filter(Boolean).join(' · '),
-        }))
+        rows = (data || [])
+          // beendete Serien weglassen, bei Serien den nächsten Termin zeigen
+          .filter(a => !isRecurring(a) || nextOccurrence(a))
+          .map(a => {
+            const when = isRecurring(a) ? nextOccurrence(a) : (a.starts_at ? new Date(a.starts_at) : null)
+            return {
+              id: a.id, emoji: a.activity_emoji || '📅', title: a.title,
+              sub: [when ? when.toLocaleDateString(getLang() === 'en' ? 'en-US' : 'de-DE', { day: 'numeric', month: 'short' }) : null, a.location_name].filter(Boolean).join(' · '),
+            }
+          })
       } else {
         const { data } = await supabase
           .from('personal_prayer_requests')

@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext'
 import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 import { useHomeHighlights } from '../../hooks/useHomeHighlights'
 import { useT, getLang } from '../../i18n'
+import { isRecurring, nextOccurrence } from '../../lib/recurrence'
 import HighlightComposerSheet from './HighlightComposerSheet'
 
 function fmtDate(iso) {
@@ -63,7 +64,7 @@ export default function HomeHighlights() {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {items.map(item => (
+        {items.filter(item => !(item.kind === 'event' && isRecurring(item) && !nextOccurrence(item))).map(item => (
           <HighlightCard key={item.id} item={item} isAdmin={isAppAdmin} onRemove={() => remove(item)} navigate={navigate} />
         ))}
       </div>
@@ -107,6 +108,9 @@ function HighlightCard({ item, isAdmin, onRemove, navigate }) {
   }
 
   if (item.kind === 'event') {
+    // Wiederkehrende Events: nächster Termin statt des Anker-Starttermins
+    const next = isRecurring(item) ? nextOccurrence(item) : null
+    const dateIso = isRecurring(item) ? (next ? next.toISOString() : null) : item.starts_at
     return (
       <div style={base}>
         {removeBtn}
@@ -120,7 +124,7 @@ function HighlightCard({ item, isAdmin, onRemove, navigate }) {
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ ...titleStyle, marginBottom: 2 }}>{item.title}</p>
-            {item.starts_at && <p style={{ fontFamily: 'Lora, serif', fontSize: 12.5, color: 'var(--color-text-secondary)', margin: 0 }}>{fmtDate(item.starts_at)}</p>}
+            {dateIso && <p style={{ fontFamily: 'Lora, serif', fontSize: 12.5, color: 'var(--color-text-secondary)', margin: 0 }}>{fmtDate(dateIso)}{isRecurring(item) ? ` · ${t('wiederkehrend')}` : ''}</p>}
             {item.location_name && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 12.5, color: 'var(--color-text-muted)', margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <MapPin size={11} /> {item.location_name}
