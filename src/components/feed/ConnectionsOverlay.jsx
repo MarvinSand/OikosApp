@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { useJsApiLoader } from '@react-google-maps/api'
 import { useNavigate } from 'react-router-dom'
+import { useSwipeBack } from '../../hooks/useSwipeBack'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useFriendships } from '../../hooks/useFriendships'
@@ -15,7 +16,10 @@ import { useT, getLang } from '../../i18n'
 // ─── Helpers ──────────────────────────────────────────────────
 function getInitials(name) {
   if (!name) return '?'
-  return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const letters = name.trim().split(/\s+/)
+    .map(w => Array.from(w).find(ch => /[\p{L}\p{N}]/u.test(ch)) || '')
+    .join('')
+  return Array.from(letters).slice(0, 2).join('').toUpperCase() || '?'
 }
 
 function Avatar({ profile, size = 44 }) {
@@ -277,6 +281,8 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
   const { friends, loading, removeFriend, getFriendshipStatus, sendRequest, acceptRequest, getFriendship } = useFriendships()
   const { showToast } = useToast()
 
+  const rootRef = useRef(null)
+  useSwipeBack(rootRef, onClose)
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState(null) // 'city'|'country'|'church'|null
   const [cityFilter, setCityFilter] = useState('')
@@ -427,6 +433,7 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
 
   return (
     <div
+      ref={rootRef}
       style={{
         position: 'fixed',
         top: 0, bottom: 0, left: '50%',
@@ -443,7 +450,11 @@ export default function ConnectionsOverlay({ onClose, profileUserId }) {
       <header
         style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          height: 52, padding: '0 8px',
+          // Overlay ist fixed → Safe-Area selbst berücksichtigen, sonst liegt der Pfeil unter der Statusleiste
+          boxSizing: 'content-box',
+          height: 52,
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingLeft: 8, paddingRight: 8,
           borderBottom: '1px solid var(--color-border)',
           backgroundColor: 'var(--color-bg)',
           flexShrink: 0,

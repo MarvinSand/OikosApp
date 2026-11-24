@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useSwipeBack } from '../../hooks/useSwipeBack'
 import { ArrowLeft, Search } from 'lucide-react'
 import { useT, tr } from '../../i18n'
 
@@ -49,6 +50,8 @@ function ItemAvatar({ avatarUrl, name, size = 44 }) {
 export default function ProfileListOverlay({ title, items, onClose, onSelect, emptyText = tr('Keine Einträge') }) {
   const { t } = useT()
   const [query, setQuery] = useState('')
+  const rootRef = useRef(null)
+  useSwipeBack(rootRef, onClose)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -61,6 +64,7 @@ export default function ProfileListOverlay({ title, items, onClose, onSelect, em
 
   return (
     <div
+      ref={rootRef}
       style={{
         position: 'fixed',
         top: 0, bottom: 0, left: '50%',
