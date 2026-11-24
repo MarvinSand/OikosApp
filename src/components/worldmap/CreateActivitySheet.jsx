@@ -15,8 +15,9 @@ import {
 import AddressAutocomplete from '../common/AddressAutocomplete'
 import AdvancedMarker from './AdvancedMarker'
 import { RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
-import CustomDatesEditor, { datesToIso } from './CustomDatesEditor'
+import CustomDatesEditor, { datesToIso, hasInvalidSlot } from './CustomDatesEditor'
 import EventImagesEditor from './EventImagesEditor'
+import DescriptionField from './DescriptionField'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -326,6 +327,9 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     if (form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)) {
       showToast(t('Ende muss nach dem Start liegen'), 'error'); return
     }
+    if (form.recurrence_freq === 'custom' && hasInvalidSlot(form.recurrence_dates)) {
+      showToast(t('Ende muss nach dem Start liegen'), 'error'); return
+    }
     if (!form.latitude || !form.longitude) { showToast(t('Bitte Standort setzen'), 'error'); return }
     if (form.visibility_mode === 'communities' && form.community_ids.length === 0) {
       showToast(t('Bitte mindestens eine Gemeinde wählen'), 'error'); return
@@ -612,16 +616,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
         {step === 'info' && (
           <div>
             <label style={lbl}>{t('Infos (optional)')}</label>
-            <textarea
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
-              placeholder={t('Was sollten andere wissen?')}
-              rows={4}
-              style={{ ...inp, resize: 'vertical' }}
-            />
-            <p style={{ fontSize: 11.5, color: C.textTer, margin: '6px 0 0' }}>
-              {t('Links (z. B. https://…) werden automatisch anklickbar.')}
-            </p>
+            <DescriptionField value={form.description} onChange={v => set('description', v)} rows={4} C={C} inputStyle={inp} />
             <EventImagesEditor urls={form.image_urls} onChange={v => set('image_urls', v)} C={C} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24 }}>
               <button style={backBtn} onClick={() => setStep('category')}>{t('← Zurück')}</button>
@@ -685,6 +680,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
                 dates={form.recurrence_dates}
                 onChange={v => set('recurrence_dates', v)}
                 startsAt={form.starts_at}
+                endsAt={form.ends_at}
                 C={C}
                 inputStyle={inp}
               />

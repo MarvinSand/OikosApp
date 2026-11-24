@@ -8,10 +8,11 @@ import { useToast } from '../../context/ToastContext'
 import { useT, getLang } from '../../i18n'
 
 const locale = () => (getLang() === 'en' ? 'en-US' : 'de-DE')
-import CustomDatesEditor, { datesToIso } from './CustomDatesEditor'
+import CustomDatesEditor, { datesToIso, hasInvalidSlot } from './CustomDatesEditor'
 import EventImagesEditor from './EventImagesEditor'
+import DescriptionField from './DescriptionField'
 import LinkifiedText from '../common/LinkifiedText'
-import { customDates, nextOccurrence, formatRecurrenceLabel, isRecurring, RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
+import { customSlots, nextOccurrenceRange, formatRecurrenceLabel, isRecurring, RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -145,19 +146,14 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
   // vergangenen) Anker-Starttermins anzeigen, mit gleicher Dauer wie ursprünglich.
   const { isAppAdmin } = useIsAppAdmin()
   const recurring = isRecurring(activity)
-  const nextDate = recurring ? nextOccurrence(activity) : null
-  const seriesEnded = recurring && !nextDate
-  const durationMs = activity.starts_at && activity.ends_at
-    ? new Date(activity.ends_at).getTime() - new Date(activity.starts_at).getTime()
-    : null
-  const displayStart = recurring ? (nextDate ? nextDate.toISOString() : null) : activity.starts_at
-  const displayEnd = recurring
-    ? (nextDate && durationMs != null ? new Date(nextDate.getTime() + durationMs).toISOString() : null)
-    : activity.ends_at
+  const nextRange = recurring ? nextOccurrenceRange(activity) : null
+  const seriesEnded = recurring && !nextRange
+  const displayStart = recurring ? (nextRange ? nextRange.start.toISOString() : null) : activity.starts_at
+  const displayEnd = recurring ? (nextRange?.end ? nextRange.end.toISOString() : null) : activity.ends_at
   const timeRange = formatRange(displayStart, displayEnd)
   const recurrenceLabel = formatRecurrenceLabel(activity)
   const upcomingDates = activity.recurrence_freq === 'custom'
-    ? customDates(activity).filter(d => d >= new Date()).slice(0, 6)
+    ? customSlots(activity).filter(s => s.start >= new Date()).slice(0, 6)
     : []
 
   async function handleToggleJoin() {
@@ -321,8 +317,10 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
             )}
             {activity.recurrence_freq === 'custom' && upcomingDates.length > 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 25 }}>
-                {upcomingDates.map(d => (
-                  <p key={d.getTime()} style={{ fontSize: 12.5, color: C.textSec, margin: 0 }}>{formatDateTime(d.toISOString())}</p>
+                {upcomingDates.map(s => (
+                  <p key={s.start.getTime()} style={{ fontSize: 12.5, color: C.textSec, margin: 0 }}>
+                    {formatRange(s.start.toISOString(), s.end ? s.end.toISOString() : null)}
+                  </p>
                 ))}
               </div>
             )}
@@ -461,7 +459,11 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
   const [recurrenceInterval, setRecurrenceInterval] = useState(activity.recurrence_interval || 1)
   const [recurrenceWeekdays, setRecurrenceWeekdays] = useState(activity.recurrence_weekdays || [])
   const [recurrenceEndDate, setRecurrenceEndDate] = useState(activity.recurrence_end_date || '')
-  const [recurrenceDates, setRecurrenceDates] = useState(() => (activity.recurrence_dates || []).map(toLocalInput))
+  const [recurrenceDates, setRecurrenceDates] = useState(() => (activity.recurrence_dates || []).map(d => (
+    typeof d === 'object' && d
+      ? { start: toLocalInput(d.start), end: toLocalInput(d.end) }
+      : { start: toLocalInput(d), end: '' }
+  )))
   const [saving, setSaving] = useState(false)
 
   function selectRecurrenceFreq(key) {
@@ -482,6 +484,9 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
   async function handleSave() {
     if (!title.trim()) { showToast(t('Bitte eine Überschrift angeben'), 'error'); return }
     if (endsAt && startsAt && new Date(endsAt) <= new Date(startsAt)) {
+      showToast(t('Ende muss nach dem Start liegen'), 'error'); return
+    }
+    if (recurrenceFreq === 'custom' && hasInvalidSlot(recurrenceDates)) {
       showToast(t('Ende muss nach dem Start liegen'), 'error'); return
     }
     setSaving(true)
@@ -550,8 +555,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
         </div>
 
         <label style={lblS}>{t('Infos')}</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder={t('Was sollten andere wissen?')} style={{ ...inpS, resize: 'vertical' }} />
-        <p style={{ fontSize: 11.5, color: C.textTer, margin: '6px 0 0' }}>{t('Links (z. B. https://…) werden automatisch anklickbar.')}</p>
+        <DescriptionField value={description} onChange={setDescription} rows={3} C={C} inputStyle={inpS} />
         <div style={{ marginBottom: 14 }}><EventImagesEditor urls={imageUrls} onChange={setImageUrls} C={C} /></div>
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
@@ -593,6 +597,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
               dates={recurrenceDates}
               onChange={setRecurrenceDates}
               startsAt={startsAt}
+              endsAt={endsAt}
               C={C}
               inputStyle={inpS}
             />

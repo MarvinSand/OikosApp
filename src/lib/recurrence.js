@@ -42,14 +42,44 @@ export function isRecurring(activity) {
   return !!activity?.recurrence_freq
 }
 
-// Alle Starttermine einer 'custom'-Serie (Anker + weitere), aufsteigend, ohne Duplikate
+// Alle Termine einer 'custom'-Serie (Anker + weitere) als { start, end } (Date, end evtl. null),
+// aufsteigend, ohne Duplikate. recurrence_dates = [{start, end}] (ältere Daten: nur Strings).
+export function customSlots(activity) {
+  const toDate = (v) => { if (!v) return null; const d = new Date(v); return isNaN(d) ? null : d }
+  const anchorStart = toDate(activity?.starts_at)
+  const anchorDur = anchorStart && activity?.ends_at ? new Date(activity.ends_at) - anchorStart : null
+  const extra = (Array.isArray(activity?.recurrence_dates) ? activity.recurrence_dates : []).map(item => {
+    const start = toDate(typeof item === 'object' && item ? item.start : item)
+    if (!start) return null
+    const explicit = typeof item === 'object' && item ? toDate(item.end) : null
+    const end = explicit || (anchorDur > 0 ? new Date(start.getTime() + anchorDur) : null)
+    return { start, end }
+  })
+  const list = [
+    anchorStart ? { start: anchorStart, end: toDate(activity.ends_at) } : null,
+    ...extra,
+  ].filter(Boolean).sort((a, b) => a.start - b.start)
+  return list.filter((s, i) => i === 0 || s.start.getTime() !== list[i - 1].start.getTime())
+}
+
+// Alle Starttermine einer 'custom'-Serie
 export function customDates(activity) {
-  const list = [activity?.starts_at, ...(Array.isArray(activity?.recurrence_dates) ? activity.recurrence_dates : [])]
-    .filter(Boolean)
-    .map(d => new Date(d))
-    .filter(d => !isNaN(d))
-    .sort((a, b) => a - b)
-  return list.filter((d, i) => i === 0 || d.getTime() !== list[i - 1].getTime())
+  return customSlots(activity).map(s => s.start)
+}
+
+// Nächster Termin mit Ende: { start, end }. Bei Serien (täglich …) gilt die Dauer des
+// Anker-Termins, bei 'custom' das eigene Ende des Termins. null = Serie beendet.
+export function nextOccurrenceRange(activity, from = new Date()) {
+  const start = nextOccurrence(activity, from)
+  if (!start) return null
+  if (activity.recurrence_freq === 'custom') {
+    const slot = customSlots(activity).find(s => s.start.getTime() === start.getTime())
+    return { start, end: slot?.end || null }
+  }
+  const dur = activity.starts_at && activity.ends_at
+    ? new Date(activity.ends_at).getTime() - new Date(activity.starts_at).getTime()
+    : null
+  return { start, end: dur > 0 ? new Date(start.getTime() + dur) : null }
 }
 
 function addDays(date, n) {

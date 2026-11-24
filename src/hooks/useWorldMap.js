@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { readCache, writeCache } from '../lib/swrCache'
 import { syncRegionGroupsFromCoords } from '../lib/regionGroups'
+import { customSlots } from '../lib/recurrence'
 
 export function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371
@@ -23,13 +24,10 @@ export function haversine(lat1, lon1, lat2, lon2) {
 function computeExpiresAt(data) {
   // Einzelne Termine: läuft nach dem letzten Termin (+ Dauer bzw. 3 h) ab
   if (data.recurrence_freq === 'custom') {
-    const starts = [data.starts_at, ...(data.recurrence_dates || [])]
-      .filter(Boolean).map(d => new Date(d).getTime()).filter(n => !isNaN(n))
-    if (!starts.length) return null
-    const dur = data.starts_at && data.ends_at
-      ? new Date(data.ends_at).getTime() - new Date(data.starts_at).getTime()
-      : 3 * 60 * 60 * 1000
-    return new Date(Math.max(...starts) + Math.max(dur, 0) + 60 * 60 * 1000).toISOString()
+    const slots = customSlots(data)
+    if (!slots.length) return null
+    const lastEnd = Math.max(...slots.map(s => (s.end ? s.end.getTime() : s.start.getTime() + 3 * 60 * 60 * 1000)))
+    return new Date(lastEnd + 60 * 60 * 1000).toISOString()
   }
   if (data.recurrence_freq) {
     return data.recurrence_end_date
