@@ -16,6 +16,7 @@ import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp, publicOrigin } from '../lib/platform'
 import { Avatar } from '../components/profile/ProfileTabs'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
+import { syncRegionGroups, syncRegionGroupsFromCoords } from '../lib/regionGroups'
 import ChurchPicker from '../components/common/ChurchPicker'
 import LanguageSwitcher from '../components/common/LanguageSwitcher'
 import { useT, tr } from '../i18n'
@@ -510,6 +511,9 @@ export default function SettingsView() {
     setShowOnMap(next)
     try {
       await updateProfile({ show_on_world_map: next })
+      if (next && profile?.latitude != null && profile?.longitude != null) {
+        syncRegionGroupsFromCoords(profile.latitude, profile.longitude).catch(() => {})
+      }
       showToast(next ? t('Auf der Weltkarte sichtbar ✓') : t('Nicht mehr auf der Weltkarte'))
     } catch {
       setShowOnMap(!next)
@@ -524,6 +528,7 @@ export default function SettingsView() {
     setSavingLoc(true)
     try {
       await updateProfile({ latitude: loc.lat, longitude: loc.lng, city: loc.city || loc.shortName || null })
+      syncRegionGroups({ country: loc.country, countryCode: loc.countryCode, state: loc.state, stateCode: loc.stateCode }).catch(() => {})
       showToast(t('Standort aktualisiert ✓'))
     } catch {
       showToast(t('Fehler beim Speichern'), 'error')

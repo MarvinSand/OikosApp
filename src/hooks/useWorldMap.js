@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { readCache, writeCache } from '../lib/swrCache'
+import { syncRegionGroupsFromCoords } from '../lib/regionGroups'
 
 export function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371
@@ -261,6 +262,11 @@ export function useWorldMap() {
       .eq('id', user.id)
     if (!error) {
       setMyProfile(prev => ({ ...prev, show_on_world_map: showOnMap }))
+      // Auf der Weltkarte sichtbar + Standort → automatisch in die Gruppen von
+      // Land und Bundesland (best effort, Fehler stören das Speichern nicht)
+      if (showOnMap && myProfile?.latitude != null && myProfile?.longitude != null) {
+        syncRegionGroupsFromCoords(myProfile.latitude, myProfile.longitude).catch(() => {})
+      }
     }
     return !error
   }

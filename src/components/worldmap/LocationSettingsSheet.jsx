@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 const AddressAutocomplete = lazy(() => import('../common/AddressAutocomplete'))
 import { useToast } from '../../context/ToastContext'
 import { useT } from '../../i18n'
+import { syncRegionGroups } from '../../lib/regionGroups'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -110,6 +111,10 @@ export default function LocationSettingsSheet({ myProfile, updateLocationSetting
       country: loc.country || null,
     })
     setSavingAddr(false)
+    // Land/Bundesland der neuen Adresse → automatische Regions-Gruppen
+    if (ok) {
+      syncRegionGroups({ country: loc.country, countryCode: loc.countryCode, state: loc.state, stateCode: loc.stateCode }).catch(() => {})
+    }
     showToast(ok ? t('Adresse gespeichert ✓') : t('Fehler beim Speichern'), ok ? 'success' : 'error')
   }
 

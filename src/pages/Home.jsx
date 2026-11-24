@@ -5,6 +5,7 @@ import { usePrayerGoals } from '../hooks/usePrayerGoals'
 import SwipePager from '../components/layout/SwipePager'
 import TopPrayerToday from '../components/home/TopPrayerToday'
 import WelcomeBanner from '../components/home/WelcomeBanner'
+import HomeHighlights from '../components/home/HomeHighlights'
 import ProfileCompletionCard from '../components/home/ProfileCompletionCard'
 import GoalCard from '../components/prayer/GoalCard'
 import GuidedPrayerMode from '../components/prayer/GuidedPrayerMode'
@@ -99,6 +100,9 @@ export default function Home() {
           paneClassName="mobile-nav-padding"
           renderPane={i => i === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 16px 0' }}>
+              {/* Von Moderatoren gesetzt: Updates, hervorgehobene Events & Gebete */}
+              <HomeHighlights />
+
               {/* Profil-Fortschritt (verschwindet, sobald das Profil vollständig ist) */}
               <ProfileCompletionCard />
 

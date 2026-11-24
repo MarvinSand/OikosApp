@@ -41,6 +41,7 @@ export function parseGeocoderResult(result) {
     get('neighborhood') ||
     ''
   const state = get('administrative_area_level_1')
+  const stateCode = getShort('administrative_area_level_1')
   const country = get('country')
   const countryCode = getShort('country').toUpperCase()
   const postcode = get('postal_code')
@@ -61,6 +62,8 @@ export function parseGeocoderResult(result) {
     city,
     country,
     countryCode,
+    state,
+    stateCode,
     district,
     street,
     postcode,
@@ -90,6 +93,25 @@ export async function fetchPlaceDetails(placeId) {
     const { results } = await geocoder.geocode({ placeId })
     if (!results || results.length === 0) return null
     return parseGeocoderResult(results[0])
+  } catch {
+    return null
+  }
+}
+
+// lat/lng → { country, countryCode, state, stateCode } (für die automatischen
+// Regions-Gruppen). null, wenn der Geocoder (noch) nicht geladen ist.
+export async function reverseGeocodeRegion(lat, lng) {
+  const geocoder = getGeocoder()
+  if (!geocoder) return null
+  try {
+    const { results } = await geocoder.geocode({ location: { lat, lng } })
+    if (!results || results.length === 0) return null
+    const parsed = results.map(parseGeocoderResult)
+    const withCountry = parsed.find(p => p.countryCode)
+    if (!withCountry) return null
+    const state = withCountry.state || parsed.find(p => p.state)?.state || ''
+    const stateCode = withCountry.stateCode || parsed.find(p => p.stateCode)?.stateCode || ''
+    return { country: withCountry.country, countryCode: withCountry.countryCode, state, stateCode }
   } catch {
     return null
   }

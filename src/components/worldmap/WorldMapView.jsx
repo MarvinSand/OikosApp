@@ -18,6 +18,7 @@ import LocationSettingsSheet from './LocationSettingsSheet'
 import OikosPersonPinSheet from './OikosPersonPinSheet'
 import ClusterListSheet from './ClusterListSheet'
 import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
+import { ensureRegionGroups } from '../../lib/regionGroups'
 
 // ─── Palette (Phase 27: schwarz/weiß + babyblauer Akzent) ──
 const C = {
@@ -678,6 +679,30 @@ export default function WorldMapView({ onNavigateToProfile }) {
     setSearchParams(prev => { prev.delete('focus'); return prev }, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, visibleUsers, loading, map])
+
+  // Deep-Link aus „Aktuelles“: ?activity=<id> → Event auf der Karte öffnen
+  useEffect(() => {
+    const aid = searchParams.get('activity')
+    if (!aid || loading || !map) return
+    const target = activities.find(a => a.id === aid)
+    if (target) {
+      focusOn(target.latitude, target.longitude)
+      setSelectedActivity(target)
+    } else {
+      showToast(t('Dieses Event ist auf der Karte nicht sichtbar'))
+    }
+    setSearchParams(prev => { prev.delete('activity'); return prev }, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, activities, loading, map])
+
+  // Einmaliger Nachtrag: Wer schon mit Standort auf der Weltkarte steht, aber
+  // noch in keiner Gruppe von Land/Bundesland ist, wird hier eingetragen.
+  const regionCheckedRef = useRef(false)
+  useEffect(() => {
+    if (regionCheckedRef.current || !isLoaded || loading || !myProfile) return
+    regionCheckedRef.current = true
+    ensureRegionGroups(myProfile).catch(() => {})
+  }, [isLoaded, loading, myProfile])
 
   // Deep-Link aus Benachrichtigungen: ?gemeinde=<id> → Pin-Sheet der Gemeinde
   // öffnen (z. B. „Deine Frage wurde beantwortet“ für Nicht-Mitglieder).
