@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Musikbett + Soundeffekte für Video 002 (rein per Code → audio.wav). Zeiten passen zu scene.html."""
-import wave, numpy as np
-SR = 44100; DUR = 62.6
+import wave, subprocess, numpy as np
+SR = 44100; DUR = 82.4
 N = int(SR * DUR); t = np.arange(N) / SR
 rng = np.random.default_rng(11)
 L = np.zeros(N); R = np.zeros(N)
@@ -89,7 +89,29 @@ for k, m in enumerate((72, 76, 79, 84, 88, 91)): ting(35.0 + k * .09, f(m), .3) 
 for k in range(8): add(noise(.12, 18), 37.3 + k * .12, .25)                            # Treppe bröckelt
 for k in range(12): pop(39.9 + k * .07, 600 + 80 * (k % 5), .3)                         # Konfetti
 ting(40.0, 2093, .3); ting(47.5, 1568, .3)
-ting(57.3, 1568, .35); ting(57.7, 2093, .35); pop(58.0, 500, .35)
+whoosh(57.6, .42, True); whoosh(64.2, .42, True); whoosh(74.2, .42, True)
+for k, a in enumerate((59.4, 61.5, 62.8)): pop(a, 420 - 40 * k, .4)                   # leere Kreise erscheinen
+thud(64.45, 1.1, 55); ting(64.75, 1568, .4); ting(64.85, 2093, .4)                      # Oikos Connect Reveal
+for a in (67.4, 69.6, 71.0, 72.3): pop(a, 800, .35); whoosh(a - .1, .25, True)           # Funktionen wechseln
+ting(74.6, 1568, .35); ting(74.75, 2093, .35); ting(74.9, 2637, .3)                     # Endkarte
+for k in range(10): pop(74.7 + k * .07, 600 + 70 * (k % 5), .25)
+ting(47.5, 1568, .3)
+chord(57.8, [45, 52, 57, 60, 64], 6.8, .12, .6); chord(64.4, [48, 55, 60, 64, 67, 72], 10, .17, .4); chord(74.4, [53, 60, 65, 69, 72], 8, .17, .4)
+
+# ── Sprecher (Arthur, Eleven v4): Startzeiten + Tempo passend zu den Szenen ──
+VOICE = {1: (0.15, 1.06), 2: (5.3, 1), 3: (10.9, 1), 4: (15.4, 1), 5: (18.0, 1), 6: (21.2, 1.1), 7: (25.6, 1), 8: (28.5, 1), 9: (30.7, 1),
+         10: (33.8, 1), 11: (35.3, 1), 12: (37.5, 1), 13: (40.8, 1), 14: (42.8, 1.12), 15: (47.4, 1), 16: (49.95, 1), 17: (52.3, 1),
+         18: (54.5, 1), 19: (58.0, 1.05), 20: (64.5, 1), 21: (67.5, 1.05), 22: (74.4, 1.05)}
+V = np.zeros(N)
+for n, (at, tempo) in VOICE.items():
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', f'voice/{n:02d}.wav', '-filter:a', f'atempo={tempo}', '-f', 'f32le', '-ar', str(SR), '-ac', '1', '-'], capture_output=True, check=True).stdout
+    x = np.frombuffer(raw, dtype='<f4').astype(np.float64); i = int(at * SR)
+    fi = int(.01 * SR); x[:fi] *= np.linspace(0, 1, fi); x[-fi:] *= np.linspace(1, 0, fi)
+    V[i:i + len(x)] += x[: N - i]
+# Ducking: Musik/Effekte werden beim Sprechen um ~7 dB leiser
+env = np.convolve(np.abs(V) > .02, np.ones(int(.25 * SR)) / int(.25 * SR), mode='same'); env = np.convolve(env, np.ones(int(.12 * SR)) / int(.12 * SR), mode='same')
+duck = 1 - .55 * np.clip(env * 1.5, 0, 1)
+L *= duck; R *= duck
 
 # ── Hall, Fades, Normalisierung ──
 def reverb(x, taps):
@@ -97,8 +119,12 @@ def reverb(x, taps):
     for d, g in taps: n = int(SR * d); y[n:] += g * x[:-n]
     return y
 L = reverb(L, [(.07, .3), (.13, .22), (.23, .16), (.37, .1)]); R = reverb(R, [(.08, .3), (.15, .22), (.25, .16), (.41, .1)])
+pkm = max(abs(L).max(), abs(R).max()); L = L / pkm * .5; R = R / pkm * .5
+Vr = V + .12 * np.concatenate([np.zeros(int(.09 * SR)), V[:-int(.09 * SR)]])
+Vr = np.tanh(Vr * 1.6) * .85 / np.tanh(1.6) * 1.0
+L += Vr; R += Vr
 fade = np.clip((DUR - t) / 1.2, 0, 1) * np.clip(t / .05, 0, 1); L *= fade; R *= fade
-pk = max(abs(L).max(), abs(R).max()); g = .6 / pk; st = np.stack([L * g, R * g], 1)
+pk = max(abs(L).max(), abs(R).max()); g = .9 / pk; st = np.stack([L * g, R * g], 1)
 with wave.open('audio.wav', 'wb') as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes((np.clip(st, -1, 1) * 32767).astype('<i2').tobytes())
 print('audio.wav', DUR)

@@ -12,7 +12,7 @@
 /* ══════════════ Comic-Stickman-Video · reiner Canvas-Code ══════════════
    Ablauf (62 s):  A Hook 0–5 · B Die Lüge 5–15 · C Das Problem 15–25 · D Twist 25–37 · E Geschenk 37–47 · F Ziel + App 47–62
    Verse: Lutherbibel 1912 (gemeinfrei, Schreibweise modernisiert). */
-const W = 1080, H = 1920, TOTAL = 62, TWIST = 25
+const W = 1080, H = 1920, TOTAL = 81, TWIST = 25
 const cv = document.getElementById('c'), ctx = cv.getContext('2d')
 const INK = '#14110f', CREAM = '#fff3d6', YEL = '#ffd83d', RED = '#e63946', GOLD = '#ffb703', SKY = '#4cc3ff', GREEN = '#17a34a'
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
@@ -26,7 +26,7 @@ const J = (i, amp) => (h(i * 1.7 + BOIL * 13.1) - .5) * 2 * amp
 
 const img = src => { const i = new Image(); i.src = src; return i }
 const ICON = img('../../brand/app-icon.png')
-const SHOTS = ['01-oikos-map', '03-gebete', '08-bibel'].map(n => img(`../../assets/screens/${n}.png`))
+const SHOTS = ['02-weltkarte', '03-gebete', '08-bibel', '06-communities'].map(n => img(`../../assets/screens/${n}.png`))
 
 /* ── Halftone-Hintergrund (einmal vorgerendert) ── */
 const HF = document.createElement('canvas'); HF.width = W; HF.height = H
@@ -209,7 +209,9 @@ function bgFill(t) {
     for (let i = 0; i < 40; i++) { ctx.fillStyle = `rgba(255,255,255,${.3 + .4 * Math.sin(t * 2 + i)})`; ctx.beginPath(); ctx.arc(h(i) * W, h(i + 50) * 900, 2 + h(i + 9) * 3, 0, 6.3); ctx.fill() } }
   else if (t < 37) { const k = ease((t - 35) / 1.6), g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, `rgb(${lerp(23, 255, k)},${lerp(18, 207, k)},${lerp(58, 107, k)})`); g.addColorStop(1, `rgb(${lerp(91, 255, k)},${lerp(42, 138, k)},${lerp(82, 76, k)})`); ctx.fillStyle = g; ctx.fillRect(-60, -60, W + 120, H + 120) }
   else if (t < 47) fl('#fff0c9')
-  else { fl(YEL); ctx.globalAlpha = .09; burst(540, 700, t, INK); ctx.globalAlpha = 1 }
+  else if (t < 57.8) { fl(YEL); ctx.globalAlpha = .09; burst(540, 700, t, INK); ctx.globalAlpha = 1 }
+  else if (t < 64.4) fl(CREAM)
+  else { fl(YEL); ctx.globalAlpha = .09; burst(540, 800, t, INK); ctx.globalAlpha = 1 }
 }
 
 /* ══════════════ Szenen ══════════════ */
@@ -347,46 +349,79 @@ function sceneE(t) {
   bill(190, 1180, .26, -.14, { stamp: 1, amountSize: 120 })
   confetti(t, 39.9)
   caption('Du musst nichts mehr *leisten.*', 37.3, 40.35, t, { y: 330, size: 86 })
-  caption('Gnade ist ein *Geschenk.*', 40.7, 43.1, t, { y: 330, size: 92 })
-  verse('Aus Gnade seid ihr selig geworden durch den Glauben… Gottes Gabe ist es.', 'Epheser 2,8', 43.3, 46.8, t, { y: 330 + 220 })
+  caption('Gnade ist ein *Geschenk.*', 40.7, 42.8, t, { y: 330, size: 92 })
+  verse('Aus Gnade seid ihr selig geworden durch den Glauben… Gottes Gabe ist es.', 'Epheser 2,8', 42.9, 46.7, t, { y: 330 + 220 })
 }
-// F · Ziel + App
-function sceneF(t) {
-  if (t < 57.2) {
-    const sy = 1430, bob = Math.abs(Math.sin(t * 4.2)) * 40
-    ctx.fillStyle = '#e8b923'; ctx.fillRect(-20, 1560, W + 40, 400); ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(-20, 1560); ctx.lineTo(W + 20, 1560); ctx.stroke()
-    figure(400, 1360 - (t > 47.6 ? bob : 0), .95, t > 47.6 ? POSE.cheer(t * 8) : { face: 'smile' })
-    figure(710, 1330, .88, { face: 'smile', aA: [.3, .3], aB: [-2.2, -.2], lean: -.04 }, { robe: true, halo: true })
-    confetti(t, 47.5)
+// F · Ziel + App-Call-to-Action (Zeiten passen zu Arthurs Sätzen, siehe audio.py)
+function phoneDraw(py, idx, mix) {
+  const pw = 500, ph = 1085, a = Math.floor(idx), b = Math.min(SHOTS.length - 1, a + 1)
+  ctx.save(); ctx.translate(540, py + ph / 2); ctx.rotate(-.03); ctx.translate(-pw / 2, -ph / 2)
+  rr(14, 14, pw, ph, 64, INK, null); rr(0, 0, pw, ph, 64, '#0b0b0f', INK, 10)
+  ctx.save(); ctx.beginPath(); ctx.roundRect(14, 14, pw - 28, ph - 28, 52); ctx.clip()
+  ctx.drawImage(SHOTS[a], 14, 14, pw - 28, (pw - 28) * 2.17); if (mix > 0 && b !== a) { ctx.globalAlpha = mix; ctx.drawImage(SHOTS[b], 14, 14, pw - 28, (pw - 28) * 2.17) }
+  ctx.restore(); ctx.restore()
+}
+function appIcon(x, y, size, k) { ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.rotate((1 - k) * -.3); ctx.beginPath(); ctx.roundRect(-size / 2, -size / 2, size, size, size * .23); ctx.save(); ctx.clip(); ctx.drawImage(ICON, -size / 2, -size / 2, size, size); ctx.restore(); ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.stroke(); ctx.restore() }
+function outlined(text, x, y, font, fill, lw, a = 1) { ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = font; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.strokeStyle = INK; ctx.strokeText(text, x, y); ctx.fillStyle = fill; ctx.fillText(text, x, y); ctx.restore() }
+function pill(text, x, y, k) { ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.font = '800 38px Inter'; const tw = ctx.measureText(text).width + 90; rr(-tw / 2 + 8, -44 + 8, tw, 88, 44, INK, null); rr(-tw / 2, -44, tw, 88, 44, '#fff', INK, 8); ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 0, 3); ctx.restore() }
+function ctaProblem(t) {
+  ctx.fillStyle = '#d9c9a3'; ctx.fillRect(-20, 1560, W + 40, 400); ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(-20, 1560); ctx.lineTo(W + 20, 1560); ctx.stroke()
+  caption('Christ, aber *allein?*', 58.1, 64.2, t, { y: 330, size: 100 })
+  const spots = [[190, 1010, 'Gemeinde?', 59.4], [890, 1010, 'Hauskreis?', 61.5], [540, 830, 'Beten?', 62.8]]
+  spots.forEach(([x, y, lab, t0]) => { const k = eob((t - t0) / .35); if (k <= 0) return
+    ctx.save(); ctx.translate(x, y + Math.sin(t * 2 + x) * 6); ctx.scale(k, k); ctx.setLineDash([16, 14]); ctx.strokeStyle = INK; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(0, 0, 100, 0, 6.3); ctx.stroke(); ctx.setLineDash([])
+    ctx.fillStyle = 'rgba(20,17,15,.12)'; ctx.fill(); ctx.font = '800 110px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText('?', 0, 6); ctx.font = '700 52px Caveat'; ctx.fillText(lab, 0, 150); ctx.restore() })
+  figure(540, 1400, .9, { face: 'sad', lean: .08, tilt: .1, aA: [.2, .3], aB: [-.2, -.3] })
+}
+function ctaApp(t) {
+  if (t < 67.4) {
+    caption('Genau *dafür:*', 64.6, 67.2, t, { y: 330, size: 100 })
+    appIcon(540, 880, 300, eob((t - 64.7) / .5))
+    const a = ease((t - 65.2) / .4); outlined('Oikos Connect', 540, 1130, '800 112px Inter', '#fff', 22, a)
+    outlined('Die App für Christen', 540, 1240, '700 52px Inter', '#fff', 12, ease((t - 65.8) / .4))
+    return
   }
+  const feats = [[67.4, 'Christen in *deiner Nähe*'], [69.6, 'Gemeinsam *beten*'], [71.0, '*Bibel* lesen'], [72.3, '*Hauskreis* & Gemeinde']]
+  let fi = 0; feats.forEach((f, i) => { if (t >= f[0]) fi = i })
+  const nextT = fi < 3 ? feats[fi + 1][0] : 99, mix = fi < 3 ? clamp((t - (nextT - .35)) / .35) : 0
+  const py = lerp(2000, 940, ease((t - 67.4) / .7))
+  phoneDraw(py, fi, mix)
+  feats.forEach(([t0, txt], i) => caption(txt, t0 + .05, (i < 3 ? feats[i + 1][0] : 74.2) - .05, t, { y: 330, size: 92 }))
+}
+function ctaEnd(t) {
+  const u = t - 74.4
+  appIcon(540, 520, 192, eob(u / .5)); outlined('Oikos Connect', 540, 690, '800 84px Inter', '#fff', 16, ease((u - .3) / .3))
+  outlined('Kostenlos · Werbefrei · für Christen', 540, 765, '700 38px Inter', '#fff', 9, ease((u - .4) / .3))
+  const bk = eob((u - .6) / .4); if (bk > 0) pill('Jetzt im App Store', 540, 870, bk * (1 + .03 * Math.sin(t * 6)))
+  outlined('Link in der Bio ↓', 540, 975, '700 56px Caveat', GOLD, 10, ease((u - 1.0) / .4))
+  phoneDraw(lerp(2000, 1060, ease((u - .8) / .8)), 1, 0)
+  confetti(t, 74.6)
+}
+function sceneF(t) {
+  if (t >= 74.4) return ctaEnd(t)
+  if (t >= 64.4) return ctaApp(t)
+  if (t >= 57.8) return ctaProblem(t)
+  ctx.fillStyle = '#e8b923'; ctx.fillRect(-20, 1560, W + 40, 400); ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(-20, 1560); ctx.lineTo(W + 20, 1560); ctx.stroke()
+  const bob = Math.abs(Math.sin(t * 4.2)) * 40
+  figure(400, 1360 - (t > 47.6 ? bob : 0), .95, t > 47.6 ? POSE.cheer(t * 8) : { face: 'smile' })
+  figure(710, 1330, .88, { face: 'smile', aA: [.3, .3], aB: [-2.2, -.2], lean: -.04 }, { robe: true, halo: true })
+  confetti(t, 47.5)
   caption('Du musst *nicht* gut genug sein.', 47.2, 49.7, t, { y: 330, size: 94 })
   caption('*Er* war es. Für dich.', 49.9, 52.0, t, { y: 330, size: 88, emph: RED })
-  caption('Dein Schritt: *ein Satz.*', 52.2, 57.0, t, { y: 330, size: 80 })
-  if (t > 53.2 && t < 57.2) { const k = eob((t - 53.2) / .35), a = 1 - clamp((t - 57.0) / .2); ctx.save(); ctx.globalAlpha = a; ctx.translate(540, 900); ctx.scale(k, k)
+  caption('Dein Schritt: *ein Satz.*', 52.2, 57.6, t, { y: 330, size: 80 })
+  if (t > 54.4 && t < 57.9) { const k = eob((t - 54.4) / .35), a = 1 - clamp((t - 57.6) / .2); ctx.save(); ctx.globalAlpha = a; ctx.translate(540, 900); ctx.scale(k, k)
     ctx.font = 'italic 600 70px Lora'; const lines = wrap('„Jesus, ich nehme dein Geschenk an.“', 760), bh = lines.length * 90 + 70
     rr(-440 + 14, -bh / 2 + 14, 880, bh, 30, INK, null); rr(-440, -bh / 2, 880, bh, 30, '#fff', INK, 9); ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; lines.forEach((l, i) => ctx.fillText(l, 0, -bh / 2 + 58 + i * 90)); ctx.restore() }
-  if (t > 57.2) {
-    const u = t - 57.2, k = eob(u / .5)
-    ctx.save(); ctx.translate(540, 520); ctx.scale(k, k); ctx.rotate((1 - k) * -.3); ctx.beginPath(); ctx.roundRect(-96, -96, 192, 192, 44); ctx.save(); ctx.clip(); ctx.drawImage(ICON, -96, -96, 192, 192); ctx.restore(); ctx.strokeStyle = INK; ctx.lineWidth = 9; ctx.stroke(); ctx.restore()
-    ctx.save(); ctx.globalAlpha = ease((u - .3) / .3); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '800 84px Inter'; ctx.lineWidth = 16; ctx.lineJoin = 'round'; ctx.strokeStyle = INK; ctx.strokeText('Oikos Connect', 540, 690); ctx.fillStyle = '#fff'; ctx.fillText('Oikos Connect', 540, 690)
-    ctx.font = '700 40px Inter'; ctx.lineWidth = 9; ctx.strokeText('Bibel · Gebet · Geschwister · kostenlos', 540, 765); ctx.fillStyle = '#fff'; ctx.fillText('Bibel · Gebet · Geschwister · kostenlos', 540, 765); ctx.restore()
-    const bk = eob((u - .7) / .4); if (bk > 0) { ctx.save(); ctx.translate(540, 870); ctx.scale(bk, bk); ctx.font = '800 38px Inter'; const tx = 'Jetzt im App Store'; const tw = ctx.measureText(tx).width + 90; rr(-tw / 2 + 8, -44 + 8, tw, 88, 44, INK, null); rr(-tw / 2, -44, tw, 88, 44, '#fff', INK, 8); ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(tx, 0, 3); ctx.restore() }
-    // Handy
-    const pk = ease((u - 1.0) / .8), pw = 500, ph = 1085, py = lerp(2000, 1010, pk)
-    ctx.save(); ctx.translate(540, py + ph / 2); ctx.rotate(-.03); ctx.translate(-pw / 2, -ph / 2)
-    rr(14, 14, pw, ph, 64, INK, null); rr(0, 0, pw, ph, 64, '#0b0b0f', INK, 10)
-    const si = clamp(Math.floor(u / 1.6), 0, 2); ctx.save(); ctx.beginPath(); ctx.roundRect(14, 14, pw - 28, ph - 28, 52); ctx.clip(); ctx.drawImage(SHOTS[si], 14, 14, pw - 28, (pw - 28) * 2.17); ctx.restore(); ctx.restore()
-  }
 }
 
 /* ══════════════ Übergänge, Schütteln, Fortschritt ══════════════ */
-const WIPES = [5, 15, 30.2, 37, 47]
+const WIPES = [5, 15, 30.2, 37, 47, 57.8, 64.4, 74.4]
 function wipes(t) {
   WIPES.forEach(c => { const p = (t - (c - .22)) / .44; if (p <= 0 || p >= 1) return
     const cx0 = lerp(-760, W + 760, p); ctx.save(); ctx.translate(cx0, H / 2); ctx.transform(1, 0, -.35, 1, 0, 0)
     ctx.fillStyle = INK; ctx.fillRect(-720, -H, 1440, H * 2); ctx.fillStyle = YEL; ctx.fillRect(-760, -H, 40, H * 2); ctx.fillRect(720, -H, 40, H * 2); ctx.restore() })
 }
-const SHAKES = [[.15, .45, 22], [13.5, .5, 18], [16.55, .4, 14], [25.0, .6, 26], [32.9, .6, 30], [35.0, .4, 14], [11.1, .25, 8], [12.3, .25, 8]]
+const SHAKES = [[.15, .45, 22], [13.5, .5, 18], [16.55, .4, 14], [25.0, .6, 26], [32.9, .6, 30], [35.0, .4, 14], [11.1, .25, 8], [12.3, .25, 8], [64.45, .4, 12]]
 function shake(t) { let x = 0, y = 0; SHAKES.forEach(([s, d, a]) => { const u = t - s; if (u > 0 && u < d) { const k = 1 - u / d; x += Math.sin(u * 95) * a * k; y += Math.cos(u * 83) * a * k * .7 } }); return [x, y] }
 function progress(t) {
   const x0 = 80, x1 = W - 80, y = 196
