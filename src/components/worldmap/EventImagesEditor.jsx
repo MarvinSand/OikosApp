@@ -26,7 +26,7 @@ export default function EventImagesEditor({ urls, onChange, C }) {
     const added = []
     for (const file of files) {
       try {
-        const { blob, contentType, ext } = await compressImage(file, 1280, 0.8)
+        const { blob, contentType, ext } = await compressImage(file, 1080, 0.8)
         const path = `${user.id}/events/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
         const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType, upsert: false, cacheControl: '31536000' })
         if (error) throw error

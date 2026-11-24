@@ -1,5 +1,9 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Dauerregel: Bilder immer komprimieren
+
+**Jeder Bild-Upload** (Avatar, Feed, Chat, Community, Events, Karten-Hintergrund, alles Neue) läuft vor `storage.upload` durch `compressImage()` aus `src/lib/image.js` (Richtwerte: Avatare/Community-Logo 400 px, alles andere max. 1080 px, Qualität 0,6–0,8, WebP/JPEG). Nie Originaldateien hochladen – Speicher/DB sollen klein und die App schnell bleiben. Bei neuen Upload-Stellen immer mitprüfen (`grep -rn "\.upload(" src`). Stand Nov. 2026: alle 7 Upload-Stellen komprimieren.
+
 ## Events mit einzelnen Terminen (Nov. 2026, phase104)
 
 - Wiederholung „Einzelne Termine“ (`recurrence_freq='custom'`): `starts_at` = erster Termin, `world_map_activities.recurrence_dates timestamptz[]` = weitere Termine; Dauer je Termin = `ends_at − starts_at`. Das Event (Chat, Teilnehmer) bleibt, im Bearbeiten-Sheet kommen nur Termine hinzu/fallen weg (`CustomDatesEditor.jsx`). `nextOccurrence`/`customDates` in `lib/recurrence.js`; `expires_at` = letzter Termin + Dauer + 1 h (`computeExpiresAt`). `get_home_highlights()` liefert `recurrence_dates` mit. **`phase104_event_custom_dates.sql` im SQL-Editor ausführen** (Spalte, Constraint, RPC), sonst scheitert das Speichern.
