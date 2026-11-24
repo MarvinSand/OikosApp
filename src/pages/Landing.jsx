@@ -541,11 +541,6 @@ export default function Landing() {
                 <h2 id="world-title" className="lp-h2 mt-5">
                   Eine Familie <span className="lp-gold">über alle Grenzen.</span>
                 </h2>
-                <ul className="lp-worldchips" aria-label="Beispiele aus aller Welt">
-                  {[['🙏', 'Frankfurt', 'Gebetsabend'], ['🎵', 'Nairobi', 'Lobpreis'], ['📖', 'Seoul', 'Morgengebet'], ['🏠', 'São Paulo', 'Hauskreis']].map(([e, city, what]) => (
-                    <li key={city} className="lp-chipcard"><Pin emoji={e} /><span><b>{city}</b><i>{what}</i></span></li>
-                  ))}
-                </ul>
               </Reveal>
             </div>
           </div>

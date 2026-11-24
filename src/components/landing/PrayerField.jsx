@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { HandHeart } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { canvasDpr, FRAME_GAP } from '../../lib/perf'
 
 // Oikos-Motion-Graphic „Gebet vermehrt sich“: Dein Umfeld als Kreis (wie die
@@ -46,9 +45,6 @@ export default function PrayerField({ className = '', backdrop = null }) {
   const wrapRef = useRef(null)
   const canvasRef = useRef(null)
   const apiRef = useRef({ pray: () => {}, reset: () => {} })
-  const [stats, setStats] = useState({ prayers: 0, saved: 0, reached: 0, gen: 1 })
-
-  const pray = useCallback(() => apiRef.current.pray(), [])
 
   useEffect(() => {
     const wrap = wrapRef.current
@@ -66,7 +62,6 @@ export default function PrayerField({ className = '', backdrop = null }) {
     let idc = 0
     const cam = { x: 0, y: 0, s: 0.7 }
     const stars = Array.from({ length: 80 }, () => ({ x: Math.random(), y: Math.random() * 0.55, r: rand(0.4, 1.3), p: Math.random() * 6 }))
-    let shown = { prayers: -1, saved: -1, reached: -1, gen: -1 }
 
     function makeNode(o) {
       return { id: idc++, name: '', c: '#fff', gen: 1, parent: null, x: 0, y: 0, vx: 0, vy: 0, fixed: false, state: 'open', prayers: 0, born: t, glow: 0, pulse: 0, saveT: -9, sx: 0, sy: 0, sr: 0, ...o }
@@ -233,16 +228,6 @@ export default function PrayerField({ className = '', backdrop = null }) {
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr)
       snapCamera()
       draw(0)
-    }
-
-    function updateStats() {
-      const saved = nodes.filter(n => n.gen > 0 && n.state === 'saved').length
-      const reached = nodes.length - 1
-      const gen = Math.max(1, ...nodes.map(n => n.gen))
-      if (shown.prayers !== prayers || shown.saved !== saved || shown.reached !== reached || shown.gen !== gen) {
-        shown = { prayers, saved, reached, gen }
-        setStats({ prayers, saved, reached, gen })
-      }
     }
 
     function pick(x, y) {
@@ -519,7 +504,6 @@ export default function PrayerField({ className = '', backdrop = null }) {
         fade -= dt * 1.5
         if (fade <= 0) { init(); snapCamera(); fade = 0.001; resetting = false }
       } else if (fade < 1) fade = Math.min(1, fade + dt * 1.4)
-      updateStats()
     }
 
     function loop(now) {
@@ -548,7 +532,7 @@ export default function PrayerField({ className = '', backdrop = null }) {
       nodes.slice().forEach(n => { if (n.gen === 1 && n.state === 'saved') spawnKids(n) })
       nodes.filter(n => n.gen === 2).slice(0, 3).forEach(n => { n.state = 'saved'; n.saveT = -5; spawnKids(n) })
       for (let i = 0; i < 300; i++) simulate(1 / 60)
-      snapCamera(); updateStats(); draw(0)
+      snapCamera(); draw(0)
       apiRef.current.reset = () => {}
     }
 
@@ -573,17 +557,6 @@ export default function PrayerField({ className = '', backdrop = null }) {
           aria-label="Animation: Dein Umfeld als Kreis aus Menschen. Wenn für jemanden gebetet wird, steigt ein Lichtstrahl in den Himmel. Kommt ein Mensch zum Glauben, wird er golden und sein eigenes Umfeld wächst um ihn herum. So entstehen Generation für Generation immer mehr Menschen, für die gebetet wird. Symbolische Darstellung."
         />
       </div>
-      <div className="lp-prayer-bar">
-        <button type="button" className="lp-btn lp-btn-primary lp-btn-sm" onClick={pray}>
-          <HandHeart size={18} aria-hidden="true" /> Für jemanden beten
-        </button>
-      </div>
-      <ul className="lp-prayer-stats" aria-live="polite">
-        <li><b>{stats.prayers}</b> {stats.prayers === 1 ? 'Gebet' : 'Gebete'}</li>
-        <li className="is-gold"><b>{stats.saved}</b> {stats.saved === 1 ? 'Mensch hat' : 'Menschen haben'} Jesus kennengelernt</li>
-        <li><b>{stats.reached}</b> Menschen im Umfeld</li>
-        <li><b>{stats.gen}</b>. Generation</li>
-      </ul>
     </div>
   )
 }
