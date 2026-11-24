@@ -136,24 +136,39 @@ Deno.serve(async (req) => {
     type: notification.type,
   })
 
+  const send = (host: string, token: string) => fetch(`https://${host}/3/device/${token}`, {
+    method: 'POST',
+    headers: {
+      authorization: `bearer ${jwt}`,
+      'apns-topic': APNS_BUNDLE_ID,
+      'apns-push-type': 'alert',
+      'apns-priority': '10',
+      'content-type': 'application/json',
+    },
+    body: payload,
+  })
+  const OTHER_HOST = APNS_HOST.includes('sandbox') ? 'api.push.apple.com' : 'api.sandbox.push.apple.com'
+
   const results = await Promise.all(tokens.map(async ({ token }) => {
-    const res = await fetch(`https://${APNS_HOST}/3/device/${token}`, {
-      method: 'POST',
-      headers: {
-        authorization: `bearer ${jwt}`,
-        'apns-topic': APNS_BUNDLE_ID,
-        'apns-push-type': 'alert',
-        'apns-priority': '10',
-        'content-type': 'application/json',
-      },
-      body: payload,
-    })
+    let host = APNS_HOST
+    let res = await send(host, token)
+    let text = res.ok ? '' : await res.text()
+
+    // „BadDeviceToken“ heißt meist: Token stammt aus der anderen APNs-Umgebung
+    // (Sandbox ↔ Produktion). Erst die andere Umgebung probieren, bevor das
+    // Token als tot gilt – sonst werden gültige Tokens gelöscht und der Push
+    // kommt nie an.
+    if (res.status === 400 && /BadDeviceToken/.test(text)) {
+      const retry = await send(OTHER_HOST, token)
+      const retryText = retry.ok ? '' : await retry.text()
+      if (retry.ok) { host = OTHER_HOST; res = retry; text = '' }
+      else text = `${text} | ${OTHER_HOST}: ${retryText}`
+    }
 
     // Nur Tokens löschen, die Apple wirklich als tot meldet (410 = App
     // deinstalliert, 400 BadDeviceToken / 410 Unregistered). Andere 400er
     // (BadTopic, PayloadEmpty …) sind Konfigurations-/Payload-Fehler – dort
     // würden sonst ALLE gültigen Tokens still gelöscht.
-    const text = res.ok ? '' : await res.text()
     const dead = res.status === 410 || (res.status === 400 && /BadDeviceToken|Unregistered/.test(text))
     if (dead) {
       await fetch(`${SUPABASE_URL}/rest/v1/device_tokens?token=eq.${encodeURIComponent(token)}`, {
@@ -165,7 +180,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    return { status: res.status, body: res.ok ? null : text }
+    return { status: res.status, host, body: res.ok ? null : text }
   }))
 
   return Response.json({ sent: results.filter(r => r.status === 200).length, results })

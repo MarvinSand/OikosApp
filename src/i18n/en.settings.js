@@ -187,8 +187,8 @@ export default {
 
   // ── Benachrichtigungen ──
   'Benachrichtigungs-Einstellungen': 'Notification settings',
-  'Per E-Mail benachrichtigen': 'Notify by email',
-  'Zusätzlich zur Benachrichtigung in der App auch per E-Mail informiert werden.': 'Also get informed by email in addition to the notification in the app.',
+  'Push-Benachrichtigungen': 'Push notifications',
+  'Standardmäßig sind alle an. Schalte ab, was dich nicht aufs Handy erreichen soll.': 'All are on by default. Turn off whatever should not reach your phone.',
   'Von wem bekomme ich was': 'Who sends me what',
   'Tippe auf eine Person, um die Einstellungen für sie anzupassen.': 'Tap a person to adjust the settings for them.',
   'Noch keine Geschwister verbunden.': 'No brothers or sisters connected yet.',

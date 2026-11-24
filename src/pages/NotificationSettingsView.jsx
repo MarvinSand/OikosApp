@@ -1,16 +1,19 @@
 import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/layout/PageHeader'
-import { ArrowLeft, Mail } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { useFriendships } from '../hooks/useFriendships'
 import { useAllNotificationPrefs } from '../hooks/useAllNotificationPrefs'
-import { useEmailNotificationPrefs } from '../hooks/useEmailNotificationPrefs'
+import { usePushNotificationPrefs } from '../hooks/usePushNotificationPrefs'
 import { NOTIFICATION_PREF_FIELDS } from '../lib/notificationPrefFields'
 import { NOTIFICATION_TYPE_META } from '../lib/notificationTypeMeta'
 import { useT } from '../i18n'
 
 function getInitials(name) {
   if (!name) return '?'
-  return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const letters = name.trim().split(/\s+/)
+    .map(w => Array.from(w).find(ch => /[\p{L}\p{N}]/u.test(ch)) || '')
+    .join('')
+  return Array.from(letters).slice(0, 2).join('').toUpperCase() || '?'
 }
 
 function Avatar({ name, size = 44 }) {
@@ -28,16 +31,16 @@ function Avatar({ name, size = 44 }) {
   )
 }
 
-// Wird für die E-Mail-Sektion angeboten: alle Typen, die tatsächlich beim
+// Wird für die Push-Sektion angeboten: alle Typen, die tatsächlich beim
 // Empfänger landen (Freundschaftsanfragen, Gebete, Erinnerungen, …).
-const EMAILABLE_TYPES = Object.keys(NOTIFICATION_TYPE_META)
+const PUSH_TYPES = Object.keys(NOTIFICATION_TYPE_META)
 
 export default function NotificationSettingsView() {
   const navigate = useNavigate()
   const { t } = useT()
   const { friends, loading: friendsLoading } = useFriendships()
   const { getPrefs, loading: prefsLoading } = useAllNotificationPrefs()
-  const { emailTypes, loading: emailLoading, toggleType } = useEmailNotificationPrefs()
+  const { disabledTypes, loading: pushLoading, setTypeEnabled } = usePushNotificationPrefs()
 
   const loading = friendsLoading || prefsLoading
 
@@ -46,21 +49,21 @@ export default function NotificationSettingsView() {
       {/* Header */}
       <PageHeader title={t('Benachrichtigungs-Einstellungen')} />
 
-      {/* Per E-Mail benachrichtigen */}
+      {/* Push-Benachrichtigungen */}
       <div className="px-4 pt-5">
         <div className="flex items-center gap-2 mb-1">
-          <Mail size={15} color="var(--color-accent)" />
+          <Bell size={15} color="var(--color-accent)" />
           <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            {t('Per E-Mail benachrichtigen')}
+            {t('Push-Benachrichtigungen')}
           </p>
         </div>
         <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>
-          {t('Zusätzlich zur Benachrichtigung in der App auch per E-Mail informiert werden.')}
+          {t('Standardmäßig sind alle an. Schalte ab, was dich nicht aufs Handy erreichen soll.')}
         </p>
         <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderRadius: 12, padding: '2px 14px' }}>
-          {EMAILABLE_TYPES.map(type => {
+          {PUSH_TYPES.map(type => {
             const meta = NOTIFICATION_TYPE_META[type]
-            const enabled = emailTypes.includes(type)
+            const enabled = !disabledTypes.includes(type)
             return (
               <div key={type} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid var(--color-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -68,8 +71,8 @@ export default function NotificationSettingsView() {
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text)' }}>{meta.label}</span>
                 </div>
                 <button
-                  disabled={emailLoading}
-                  onClick={() => toggleType(type, !enabled)}
+                  disabled={pushLoading}
+                  onClick={() => setTypeEnabled(type, !enabled)}
                   style={{ width: 40, height: 24, borderRadius: 12, border: 'none', backgroundColor: enabled ? 'var(--color-accent)' : 'var(--color-border)', cursor: 'pointer', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}
                 >
                   <div style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: 3, left: enabled ? 19 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />

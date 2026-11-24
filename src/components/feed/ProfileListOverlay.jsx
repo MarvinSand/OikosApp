@@ -4,7 +4,11 @@ import { useT, tr } from '../../i18n'
 
 function getInitials(name) {
   if (!name) return '?'
-  return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  // Emoji/Flaggen (z. B. „🇩🇪 Deutschland“) überspringen – w[0] würde sonst eine halbe Surrogate liefern
+  const letters = name.trim().split(/\s+/)
+    .map(w => Array.from(w).find(ch => /[\p{L}\p{N}]/u.test(ch)) || '')
+    .join('')
+  return Array.from(letters).slice(0, 2).join('').toUpperCase() || '?'
 }
 
 function ItemAvatar({ avatarUrl, name, size = 44 }) {
@@ -75,8 +79,11 @@ export default function ProfileListOverlay({ title, items, onClose, onSelect, em
           display: 'flex',
           alignItems: 'center',
           gap: 8,
+          // Overlay ist fixed (Viewport-Koordinaten) → Safe-Area selbst berücksichtigen
+          boxSizing: 'content-box',
           height: 52,
-          padding: '0 8px',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingLeft: 8, paddingRight: 8,
           borderBottom: '1px solid var(--color-border)',
           backgroundColor: 'var(--color-bg)',
           flexShrink: 0,
