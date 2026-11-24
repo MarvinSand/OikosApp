@@ -1,5 +1,17 @@
 // Englische Übersetzungen (Karte, Profil, Weltkarte, Personen). Schlüssel = deutscher Originaltext.
 export default {
+  "Hintergrund": "Background",
+  "Eigene Farbe": "Custom color",
+  "Eigenes Foto": "Your own photo",
+  "Foto auswählen": "Choose photo",
+  "Foto ändern": "Change photo",
+  "Zurücksetzen": "Reset",
+  "Hintergrund aktualisiert ✓": "Background updated ✓",
+  "Hintergrund zurückgesetzt": "Background reset",
+  "Das Foto wird automatisch verkleinert, damit die Karte flüssig bleibt. Wer deine Map sehen darf, sieht auch den Hintergrund.": "The photo is shrunk automatically so the map stays smooth. Anyone who can see your map also sees the background.",
+  "Hier sind {n} Einträge": "{n} entries here",
+  "Sie liegen am selben Ort oder direkt nebeneinander.": "They are at the same place or right next to each other.",
+  "Aus deinem Oikos": "From your Oikos",
   "Direkt mit mir": "Directly with me",
   "Ort": "Place",
   "✓ 1 Person hinzugefügt": "✓ 1 person added",

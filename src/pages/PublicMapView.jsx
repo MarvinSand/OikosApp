@@ -7,6 +7,7 @@ import { useSiblingsNetwork } from '../hooks/useSiblingsNetwork'
 import { useSiblingsCommunities } from '../hooks/useSiblingsCommunities'
 import SiblingsToggles, { loadSiblingsView, saveSiblingsView, siblingsMapTitle } from '../components/map/SiblingsToggles'
 import MapCanvas from '../components/map/MapCanvas'
+import { mapBackgroundStyle } from '../components/map/MapBackgroundSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
 import OverlayMapPeopleSheet from '../components/map/OverlayMapPeopleSheet'
 import OverlayPlaceSheet from '../components/map/OverlayPlaceSheet'
@@ -89,7 +90,7 @@ export default function PublicMapView() {
         <div style={{ width: 36 }} />
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: 8, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 0, padding: 8, overflow: 'hidden', position: 'relative', ...mapBackgroundStyle(map) }}>
         <MapCanvas
           userName={ownerName}
           people={people}

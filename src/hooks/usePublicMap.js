@@ -45,7 +45,7 @@ export function usePublicMap(userId, mapId) {
     const [{ data: mapData }, { data: peopleData }, { data: connData }, { data: placesData }, { data: ownerProfile }] = await Promise.all([
       supabase
         .from('oikos_maps')
-        .select('id, name, visibility, visibility_user_ids, visibility_community_id, user_id, kind')
+        .select('id, name, visibility, visibility_user_ids, visibility_community_id, user_id, kind, bg_color, bg_image_url')
         .eq('id', mapId)
         .eq('user_id', userId)
         .single(),

@@ -11,7 +11,7 @@ export const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
   bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end,
   is_public, visibility_mode,
-  visibility_user_ids, excluded_user_ids, view_count, bookmark_count, created_at, updated_at,
+  visibility_user_ids, excluded_user_ids, view_count, bookmark_count, created_at, updated_at, moderation_hidden_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
 
@@ -235,7 +235,7 @@ export function useFeed(filter = 'all') {
     const { data, error } = await supabase
       .from('feed_comments')
       .insert({ post_id: postId, author_id: user.id, body, parent_id: parentId || null })
-      .select('id, post_id, parent_id, author_id, body, created_at, profiles:author_id(id, full_name, username, avatar_url)')
+      .select('id, post_id, parent_id, author_id, body, created_at, moderation_hidden_at, profiles:author_id(id, full_name, username, avatar_url)')
       .single()
     if (!error) {
       setPosts(prev => prev.map(p =>

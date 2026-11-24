@@ -7,6 +7,14 @@ on:
         description: 'Provisioning-Profil neu erzeugen (nach neuer Capability, z. B. Associated Domains)'
         type: boolean
         default: false
+      submit_for_review:
+        description: 'Nach dem Upload direkt zur App-Store-Prüfung einreichen (wartet auf die Build-Verarbeitung)'
+        type: boolean
+        default: false
+      whats_new:
+        description: '„Was ist neu“ (leer = Text aus ios/App/fastlane/whats_new.txt)'
+        type: string
+        default: ''
 
 jobs:
   build-and-upload:
@@ -65,5 +73,7 @@ jobs:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_FORCE: ${{ inputs.renew_profile && 'true' || 'false' }}
+          SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review && 'true' || 'false' }}
+          WHATS_NEW: ${{ inputs.whats_new }}
           CI: true
         run: fastlane beta

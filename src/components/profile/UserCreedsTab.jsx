@@ -39,11 +39,12 @@ export default function UserCreedsTab({ userId, displayName }) {
     setLoading(true)
     const { data } = await supabase
       .from('creeds')
-      .select('id, title, user_id, created_at, updated_at, creed_comments(count)')
+      .select('id, title, user_id, created_at, updated_at, profiles:user_id (username, full_name), creed_comments(count)')
       .eq('user_id', userId)
       .eq('visibility', 'public')
       .order('updated_at', { ascending: false })
-    setCreeds(data || [])
+    // Falls das Profil-Embed fehlt: Anzeigename der besuchten Person nutzen.
+    setCreeds((data || []).map(c => c.profiles?.full_name || c.profiles?.username || !displayName ? c : { ...c, profiles: { full_name: displayName } }))
     const counts = {}
     for (const c of data || []) counts[c.id] = c.creed_comments?.[0]?.count || 0
     setCommentCounts(counts)

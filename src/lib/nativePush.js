@@ -17,6 +17,7 @@ export function isNativePushAvailable() {
 // stillschweigend fehlschlagendes Registrieren auf einem TestFlight-Gerät
 // überhaupt zu bemerken – deshalb ein sichtbarer Toast statt nur Konsole.
 const FIRST_REGISTRATION_KEY = 'oikos_push_registered_once'
+const DENIED_HINT_KEY = 'oikos_push_denied_hint'
 
 // Token dieses Geräts (für die Abmeldung beim Logout)
 let currentToken = null
@@ -55,13 +56,39 @@ export async function registerForPush(userId, { onOpen, showToast } = {}) {
 
   const { PushNotifications } = await import('@capacitor/push-notifications')
 
-  let permission = await PushNotifications.checkPermissions()
-  if (permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale') {
-    permission = await PushNotifications.requestPermissions()
-  }
-  if (permission.receive !== 'granted') {
-    showToast?.('Push-Berechtigung nicht erteilt – Benachrichtigungen bleiben aus. Kann in den iOS-Einstellungen für Oikos Connect nachträglich erlaubt werden.', 'info')
-    return () => {}
+  // Berechtigung prüfen/erfragen und (erneut) bei APNs registrieren. Läuft bei
+  // jedem Start UND bei jeder Rückkehr in die App: Nach einem Update bzw. wenn
+  // der Nutzer Push erst später in den iOS-Einstellungen erlaubt, kommt so
+  // automatisch ein frisches Token an – ohne Neuanmeldung. Apple liefert das
+  // Token bei jedem register() erneut, storeToken() ist ein Upsert.
+  let registering = false
+  const ensureRegistered = async (interactive) => {
+    if (registering) return
+    registering = true
+    try {
+      let permission = await PushNotifications.checkPermissions()
+      if (interactive && (permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale')) {
+        permission = await PushNotifications.requestPermissions()
+      }
+      if (permission.receive !== 'granted') {
+        // Hinweis nur einmal pro Gerät – nicht bei jedem Start/Resume.
+        if (interactive && permission.receive === 'denied') {
+          try {
+            if (!localStorage.getItem(DENIED_HINT_KEY)) {
+              localStorage.setItem(DENIED_HINT_KEY, '1')
+              showToast?.('Push-Benachrichtigungen sind aus. Du kannst sie in den iOS-Einstellungen → Mitteilungen → Oikos Connect aktivieren.', 'info')
+            }
+          } catch { /* nicht kritisch */ }
+        }
+        return
+      }
+      try { localStorage.removeItem(DENIED_HINT_KEY) } catch { /* nicht kritisch */ }
+      await PushNotifications.register()
+    } catch (e) {
+      showToast?.(`Push-Registrierung fehlgeschlagen: ${e?.message || 'unbekannter Fehler'}`, 'error')
+    } finally {
+      registering = false
+    }
   }
 
   const handles = await Promise.all([
@@ -79,9 +106,21 @@ export async function registerForPush(userId, { onOpen, showToast } = {}) {
     }),
   ])
 
-  await PushNotifications.register()
+  // Beim Zurückkehren in die App still nachregistrieren (ohne Dialog).
+  let appHandle = null
+  try {
+    const { App } = await import('@capacitor/app')
+    appHandle = await App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) ensureRegistered(false)
+    })
+  } catch { /* @capacitor/app nicht verfügbar – dann nur beim Start */ }
 
-  return () => { for (const h of handles) h.remove() }
+  await ensureRegistered(true)
+
+  return () => {
+    for (const h of handles) h.remove()
+    appHandle?.remove()
+  }
 }
 
 // Beim Logout das Token dieses Geräts entfernen, damit der nächste Nutzer

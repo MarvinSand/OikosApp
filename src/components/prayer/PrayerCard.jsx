@@ -16,6 +16,9 @@ import BibleReferenceChip from '../bible/BibleReferenceChip'
 import ModerationSheet from '../common/ModerationSheet'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
 import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
+import ModerationHiddenNotice from '../moderation/ModerationHiddenNotice'
+import AdminHighlightMenuItem from '../moderation/AdminHighlightMenuItem'
+import { useModerationDeleted } from '../../lib/moderationState'
 import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 import {
   timeAgo, formatLastPrayed, getInitials, authorName as displayName, KIND_OIKOS,
@@ -184,6 +187,7 @@ export default function PrayerCard({
   const menuBtnRef = useRef(null)
   const [showModeration, setShowModeration] = useState(false)
   const { isAppAdmin } = useIsAppAdmin()
+  const moderationDeleted = useModerationDeleted('personal_prayer_request', prayer.id)
   const [showEdit, setShowEdit] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [confetti, setConfetti] = useState(false)
@@ -221,6 +225,8 @@ export default function PrayerCard({
     showToast(isAnswered ? t('Als offen markiert') : t('🎉 Als erhört markiert!'))
   }
 
+  if (moderationDeleted) return null
+
   return (
     <>
       <Confetti show={confetti} />
@@ -234,6 +240,9 @@ export default function PrayerCard({
           marginBottom: 2,
         }}
       >
+        {prayer.kind !== KIND_OIKOS && (
+          <ModerationHiddenNotice contentType="personal_prayer_request" contentId={prayer.id} hiddenAt={prayer.raw?.moderation_hidden_at} />
+        )}
         {/* Kopf: Avatar + Name + Zeit + Menü */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
           {prayer.ownerId ? (
@@ -450,15 +459,18 @@ export default function PrayerCard({
                       <Trash2 size={15} />{' '}{t('Löschen')}</button>
                   </>
                 )}
+                {prayer.kind !== KIND_OIKOS && prayer.visibility === 'public' && (
+                  <AdminHighlightMenuItem kind="prayer" refId={prayer.id} label={prayer.title} onClose={() => setShowMenu(false)} />
+                )}
                 {!isOwner && prayer.ownerId && (
                   <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
                     <Flag size={15} />{' '}{t('Melden / Blockieren')}</button>
                 )}
-                {isAppAdmin && !isOwner && (
+                {isAppAdmin && !isOwner && prayer.kind !== KIND_OIKOS && (
                   <AdminContentMenuItems
-                    contentType={prayer.kind === KIND_OIKOS ? 'prayer_request' : 'personal_prayer_request'}
+                    contentType="personal_prayer_request"
                     contentId={prayer.id}
-                    hiddenAt={prayer.moderation_hidden_at || prayer.moderationHiddenAt}
+                    hiddenAt={prayer.raw?.moderation_hidden_at}
                     onClose={() => setShowMenu(false)}
                   />
                 )}

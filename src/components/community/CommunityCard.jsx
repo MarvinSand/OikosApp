@@ -124,5 +124,15 @@ export default function CommunityCard({
       </button>
     )
   }
-  return <div style={cardStyle}>{body}</div>
+  // Entdecken: Karte antippen öffnet die Community-Vorschau (Bio + Mitglieder),
+  // der Button rechts tritt bei / sendet die Anfrage.
+  return (
+    <div
+      style={{ ...cardStyle, cursor: onOpen ? 'pointer' : 'default' }}
+      onClick={onOpen ? () => onOpen(community) : undefined}
+      role={onOpen ? 'button' : undefined}
+    >
+      {body}
+    </div>
+  )
 }

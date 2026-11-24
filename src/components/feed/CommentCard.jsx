@@ -8,6 +8,8 @@ import FeedCardFrame, { CONTENT_INSET } from './FeedCardFrame'
 import ModerationSheet from '../common/ModerationSheet'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
 import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
+import ModerationHiddenNotice from '../moderation/ModerationHiddenNotice'
+import { useModerationDeleted } from '../../lib/moderationState'
 import { useBlocks } from '../../hooks/useBlocks'
 import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 import { useT, tr, getLang } from '../../i18n'
@@ -56,6 +58,7 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const [showShareSheet, setShowShareSheet] = useState(false)
   const { isBlocked } = useBlocks()
+  const moderationDeleted = useModerationDeleted('feed_comment', comment.id)
   const isOwn = comment.author_id === currentUserId
   const author = comment.profiles
 
@@ -65,9 +68,13 @@ export default function CommentCard({ comment, currentUserId, onLike, onRepost, 
   const repostCount = (comment.reposts || []).length
 
   if (!isOwn && isBlocked(comment.author_id)) return null
+  if (moderationDeleted) return null
 
   return (
     <FeedCardFrame threadLineBefore={threadLineBefore} threadLineAfter={threadLineAfter}>
+      <div style={{ padding: '10px 16px 0' }}>
+        <ModerationHiddenNotice contentType="feed_comment" contentId={comment.id} hiddenAt={comment.moderation_hidden_at} />
+      </div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${comment.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>

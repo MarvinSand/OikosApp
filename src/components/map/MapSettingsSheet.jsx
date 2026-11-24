@@ -4,6 +4,7 @@ import { useFriendships } from '../../hooks/useFriendships'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useToast } from '../../context/ToastContext'
 import { useT } from '../../i18n'
+import { MapBackgroundControls } from './MapBackgroundSheet'
 
 const VISIBILITY_OPTIONS = [
   { value: 'private',          icon: '🔒', label: 'Nur ich' },
@@ -205,6 +206,11 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
         >
           {saving ? t('Speichere…') : t('Speichern')}
         </button>
+
+        {/* Hintergrund (wird sofort gespeichert, unabhängig vom Speichern-Knopf) */}
+        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '24px 0 16px' }} />
+        <p style={sectionLabel}>{t('Hintergrund')}</p>
+        <MapBackgroundControls map={map} updateMap={updateMap} />
 
         {/* Danger Zone – Map löschen */}
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '24px 0 16px' }} />

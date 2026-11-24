@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader, Polyline } from '@react-google-maps/api'
-import { MarkerClusterer } from '@googlemaps/markerclusterer'
+import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer'
 import { Plus, Navigation, Settings } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorldMap, haversine } from '../../hooks/useWorldMap'
@@ -16,7 +16,10 @@ import CreateActivitySheet from './CreateActivitySheet'
 import GemeindePinSheet from './GemeindePinSheet'
 import LocationSettingsSheet from './LocationSettingsSheet'
 import OikosPersonPinSheet from './OikosPersonPinSheet'
+import ClusterListSheet from './ClusterListSheet'
 import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
+import { ensureRegionGroups, assistRegionBackfill } from '../../lib/regionGroups'
+import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 
 // ─── Palette (Phase 27: schwarz/weiß + babyblauer Akzent) ──
 const C = {
@@ -284,8 +287,10 @@ function PrivacyBanner({ onClose, hasLocation, onSetLocation }) {
 // ─── Combined pin clusterer (Personen + Events in einem Cluster) ─────────────
 // Events bekommen höheren zIndex → übertrumpfen Personen-Pins bei Überlappung.
 // Das Cluster-Icon zeigt an, ob nur Personen, nur Events oder beides drin sind.
-function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, onUserClick, onActivityClick, onGemeindeClick, onOikosPersonClick, showUsers, showEvents, showGemeinden, showOikosPeople, zoom }) {
+function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, onUserClick, onActivityClick, onGemeindeClick, onOikosPersonClick, onClusterList, showUsers, showEvents, showGemeinden, showOikosPeople, zoom }) {
   const clustererRef = useRef(null)
+  const onClusterListRef = useRef(onClusterList)
+  onClusterListRef.current = onClusterList
   const allMarkersRef = useRef([])
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
@@ -328,6 +333,7 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
         zIndex: 10,
         gmpClickable: true,
       })
+      marker.__pin = { type: 'user', data: u }
       marker.addListener('gmp-click', () => onUserClick(u))
       return marker
     }) : []
@@ -341,6 +347,7 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
         zIndex: 50,   // Events immer über Personen
         gmpClickable: true,
       })
+      marker.__pin = { type: 'activity', data: a }
       marker.addListener('gmp-click', () => onActivityClick(a))
       return marker
     }) : []
@@ -354,6 +361,7 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
         zIndex: 30,
         gmpClickable: true,
       })
+      marker.__pin = { type: 'gemeinde', data: g }
       marker.addListener('gmp-click', () => onGemeindeClick(g))
       return marker
     }) : []
@@ -367,6 +375,7 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
         zIndex: 20,
         gmpClickable: true,
       })
+      marker.__pin = { type: 'oikos-person', data: p }
       marker.addListener('gmp-click', () => onOikosPersonClick(p))
       return marker
     }) : []
@@ -377,6 +386,22 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
     const clusterer = new MarkerClusterer({
       map,
       markers: allMarkers,
+      // Cluster bleiben bis in die höchste Zoomstufe bestehen, damit Pins am
+      // selben Ort (z. B. gleiches Haus) nicht übereinander „verschwinden".
+      algorithm: new SuperClusterAlgorithm({ maxZoom: 21, radius: 60 }),
+      // Zu nah beieinander (oder schon stark hineingezoomt): statt weiter zu
+      // zoomen die Liste der enthaltenen Pins öffnen.
+      onClusterClick: (_event, cluster, clusterMap) => {
+        const b = cluster.bounds
+        const spanKm = b
+          ? haversine(b.getSouthWest().lat(), b.getSouthWest().lng(), b.getNorthEast().lat(), b.getNorthEast().lng())
+          : 0
+        if (spanKm < 0.04 || (clusterMap.getZoom() ?? 0) >= 17) {
+          const items = (cluster.markers || []).map(m => m.__pin).filter(Boolean)
+          if (items.length) { onClusterListRef.current?.(items); return }
+        }
+        if (b) clusterMap.fitBounds(b, 80)
+      },
       renderer: {
         render: ({ count, position, markers }) => {
           const kinds = new Set(markers.map(m => m.content?.dataset?.pinType).filter(Boolean))
@@ -448,6 +473,8 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(false)
   const [showLocationSettings, setShowLocationSettings] = useState(false)
   const [selectedOikosPerson, setSelectedOikosPerson] = useState(null)
+  // Pins, die zu nah beieinander liegen → Listen-Sheet
+  const [clusterItems, setClusterItems] = useState(null)
   const oikosSource = useOikosWorldMapSource({ enabled: false })
   // Zwei unabhängige Ebenen – beide können gleichzeitig aktiv sein.
   // ?layer=siblings (z.B. von "Auf der Map suchen") → nur Geschwister, keine Events.
@@ -654,6 +681,40 @@ export default function WorldMapView({ onNavigateToProfile }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, visibleUsers, loading, map])
 
+  // Deep-Link aus „Aktuelles“: ?activity=<id> → Event auf der Karte öffnen
+  useEffect(() => {
+    const aid = searchParams.get('activity')
+    if (!aid || loading || !map) return
+    const target = activities.find(a => a.id === aid)
+    if (target) {
+      focusOn(target.latitude, target.longitude)
+      setSelectedActivity(target)
+    } else {
+      showToast(t('Dieses Event ist auf der Karte nicht sichtbar'))
+    }
+    setSearchParams(prev => { prev.delete('activity'); return prev }, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, activities, loading, map])
+
+  // Einmaliger Nachtrag: Wer schon mit Standort auf der Weltkarte steht, aber
+  // noch in keiner Gruppe von Land/Bundesland ist, wird hier eingetragen.
+  const regionCheckedRef = useRef(false)
+  useEffect(() => {
+    if (regionCheckedRef.current || !isLoaded || loading || !myProfile) return
+    regionCheckedRef.current = true
+    ensureRegionGroups(myProfile).catch(() => {})
+  }, [isLoaded, loading, myProfile])
+
+  // App-Admins tragen zusätzlich die anderen sichtbaren Nutzer nach, die noch
+  // in keiner Regions-Gruppe sind (deren Geräte öffnen die Weltkarte oft nie).
+  const { isAppAdmin } = useIsAppAdmin()
+  const regionAssistRef = useRef(false)
+  useEffect(() => {
+    if (regionAssistRef.current || !isAppAdmin || !isLoaded || loading || visibleUsers.length === 0) return
+    regionAssistRef.current = true
+    assistRegionBackfill(visibleUsers).catch(() => {})
+  }, [isAppAdmin, isLoaded, loading, visibleUsers])
+
   // Deep-Link aus Benachrichtigungen: ?gemeinde=<id> → Pin-Sheet der Gemeinde
   // öffnen (z. B. „Deine Frage wurde beantwortet“ für Nicht-Mitglieder).
   useEffect(() => {
@@ -680,6 +741,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
     onActivityClick: handleActivityClick,
     onGemeindeClick: handleGemeindeClick,
     onOikosPersonClick: handleOikosPersonClick,
+    onClusterList: setClusterItems,
     showUsers: showGeschwister && isLoaded,
     showEvents: showEvents && isLoaded,
     showGemeinden: showGemeinden && isLoaded,
@@ -938,6 +1000,19 @@ export default function WorldMapView({ onNavigateToProfile }) {
           updateLocationSettings={updateLocationSettings}
           updateLocationVisibility={updateLocationVisibility}
           onClose={() => setShowLocationSettings(false)}
+        />
+      )}
+      {clusterItems && (
+        <ClusterListSheet
+          items={clusterItems}
+          onClose={() => setClusterItems(null)}
+          onSelect={(item) => {
+            setClusterItems(null)
+            if (item.type === 'user') setSelectedUser(item.data)
+            else if (item.type === 'activity') setSelectedActivity(item.data)
+            else if (item.type === 'gemeinde') setSelectedGemeinde(item.data)
+            else if (item.type === 'oikos-person') setSelectedOikosPerson(item.data)
+          }}
         />
       )}
       {selectedOikosPerson && (

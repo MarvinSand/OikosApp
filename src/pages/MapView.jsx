@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense, useRef } from 'react'
-import { Plus, ArrowLeft, ChevronDown,SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin, Wand2 } from 'lucide-react' // eslint-disable-line no-unused-vars
+import { Plus, ArrowLeft, ChevronDown,SlidersHorizontal, Layers, X, Link, Filter, MapPin, User, HandHeart, Pin, Wand2, Palette } from 'lucide-react' // eslint-disable-line no-unused-vars
 import { useAuth } from '../hooks/useAuth'
 import { useT } from '../i18n'
 import { useOikosMaps } from '../hooks/useOikosMaps'
@@ -16,6 +16,7 @@ import NewMapModal from '../components/map/NewMapModal'
 import AddPersonModal from '../components/map/AddPersonModal'
 const PersonDetailSheet = lazy(() => import('../components/map/PersonDetailSheet'))
 import MapSettingsSheet from '../components/map/MapSettingsSheet'
+import MapBackgroundSheet, { mapBackgroundStyle } from '../components/map/MapBackgroundSheet'
 import OverlayPersonSheet from '../components/map/OverlayPersonSheet'
 import OverlayMapPeopleSheet from '../components/map/OverlayMapPeopleSheet'
 import MapPreviewSheet from '../components/map/MapPreviewSheet'
@@ -39,13 +40,13 @@ const COLOR_FILTER_OPTIONS = [
   { label: 'Standard', hex: '#E8E4DC' },
 ]
 
-function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
+function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose, top = 112 }) {
   const { t } = useT()
   const allVisible = hiddenColors.size === 0
   return (
     <div style={{
       position: 'absolute',
-      top: 112, right: 16,
+      top, right: 16,
       width: 200,
       backgroundColor: 'var(--color-white)',
       borderRadius: 16,
@@ -98,7 +99,7 @@ function ColorFilterPanel({ hiddenColors, onToggle, onShowAll, onClose }) {
 }
 
 // ─── Generationen-Ansicht Panel ───────────────────────────────
-function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
+function GenerationenPanel({ persons, onUpdateOverlay, onClose, top = 112 }) {
   const { t } = useT()
   const [busyIds, setBusyIds] = useState(new Set())
   // { [personId]: { maps: [{id, name}], loading: bool } }
@@ -190,7 +191,7 @@ function GenerationenPanel({ persons, onUpdateOverlay, onClose }) {
   return (
     <div style={{
       position: 'absolute',
-      top: 112, right: 16,
+      top, right: 16,
       width: 264,
       backgroundColor: 'var(--color-white)',
       borderRadius: 16,
@@ -452,6 +453,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showAddPlace, setShowAddPlace] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showBackground, setShowBackground] = useState(false)
   const [showGenerationen, setShowGenerationen] = useState(false)
   const [showColorFilter, setShowColorFilter] = useState(false)
   const cleanupBtnRef = useRef(null)
@@ -555,6 +557,11 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
     ? linkedProfiles[selectedPerson.linked_user_id] || null
     : null
 
+  // Ohne Oikos/Weltkarte-Umschalter (eigene Map aus dem Profil) sitzt die Leiste
+  // ganz oben – sonst bleibt über ihr 46 px Leerraum. Alles darunter rückt mit.
+  const barTop = hideWorldMapToggle ? 8 : 54
+  const shiftUp = 54 - barTop
+
   if (loading) {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg)' }}>
@@ -594,7 +601,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       )}
 
       {/* Header Island (OIKOS mode only) */}
-      <div className="tour-map-header absolute top-[54px] sm:top-[54px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-surface border border-warm-3 px-4 py-2.5 flex items-center justify-between z-30 shadow-glass rounded-2xl" style={{ display: activeTab === 'oikos' ? undefined : 'none' }}>
+      <div className="tour-map-header absolute left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-surface border border-warm-3 px-4 py-2.5 flex items-center justify-between z-30 shadow-glass rounded-2xl" style={{ top: barTop, display: activeTab === 'oikos' ? undefined : 'none' }}>
         {/* Eigene Map (aus dem Profil geöffnet): klarer Zurück-Pfeil zum Profil */}
         {hideWorldMapToggle && (
           <button
@@ -732,8 +739,8 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           onClick={startMapPrayerMode}
           disabled={loadingPrayerMode}
           aria-label={t('Gebetsmodus starten')}
-          className="absolute top-[114px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border-none px-4 py-2 font-serif text-[13px] font-semibold text-white cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-60"
-          style={{ backgroundColor: '#5AC8FA' }}
+          className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border-none px-4 py-2 font-serif text-[13px] font-semibold text-white cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-60"
+          style={{ top: 114 - shiftUp, backgroundColor: '#5AC8FA' }}
         >
           <HandHeart size={16} /> {loadingPrayerMode ? t('Lädt…') : t('Gebetsmodus')}
         </button>
@@ -756,7 +763,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       {showMapMenu && activeTab === 'oikos' && (
         <>
           <div onClick={() => setShowMapMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-          <div className="absolute top-[110px] left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-paper rounded-2xl z-30 shadow-glass border border-warm-3 overflow-hidden">
+          <div style={{ top: 110 - shiftUp }} className="absolute left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[calc(100%-2rem)] md:max-w-2xl bg-paper rounded-2xl z-30 shadow-glass border border-warm-3 overflow-hidden">
             {maps.map((m) => (
               <button
                 key={m.id}
@@ -792,6 +799,15 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
                 </button>
                 <div className="w-[1px] bg-warm-3" />
                 </>)}
+                {activeMap && isSiblingsMap && (<>
+                <button
+                  onClick={() => { setShowMapMenu(false); setShowBackground(true) }}
+                  className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-dark-muted font-medium cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Palette size={13} /> {t('Hintergrund')}
+                </button>
+                <div className="w-[1px] bg-warm-3" />
+                </>)}
                 <button
                   onClick={() => { setShowMapMenu(false); setShowNewMap(true) }}
                   className="flex-1 py-3 border-none bg-transparent hover:bg-black/5 font-serif text-[13px] text-warm-1 font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
@@ -804,7 +820,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       )}
 
       {/* Canvas (OIKOS mode only) */}
-      <div style={{ flex: 1, minHeight: 0, display: activeTab === 'oikos' ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', padding: 8, overflow: 'hidden', position: 'relative', touchAction: 'none', overscrollBehavior: 'none' }}>
+      <div style={{ flex: 1, minHeight: 0, display: activeTab === 'oikos' ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', padding: 8, overflow: 'hidden', position: 'relative', touchAction: 'none', overscrollBehavior: 'none', ...mapBackgroundStyle(activeMap) }}>
         {!activeMap ? (
           <div style={{ textAlign: 'center', padding: 32 }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 17, color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 24, lineHeight: 1.6 }}>
@@ -831,6 +847,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
           <>
             <MapCanvas
               key={activeMapId}
+              bannerTop={114 - shiftUp}
               userName={userName}
               people={people}
               connections={canvasConnections}
@@ -869,6 +886,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             />
             {showColorFilter && (
               <ColorFilterPanel
+                top={112 - shiftUp}
                 hiddenColors={hiddenColors}
                 onToggle={(hex) => setHiddenColors(prev => {
                   const next = new Set(prev)
@@ -882,6 +900,7 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
             )}
             {showGenerationen && (
               <GenerationenPanel
+                top={112 - shiftUp}
                 persons={people.filter(p => p.linked_user_id)}
                 onUpdateOverlay={updatePersonOverlay}
                 onClose={() => setShowGenerationen(false)}
@@ -895,6 +914,9 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
       {/* Modals & Sheets */}
       {showNewMap && (
         <NewMapModal onClose={() => setShowNewMap(false)} onCreate={createMap} />
+      )}
+      {showBackground && activeMap && (
+        <MapBackgroundSheet map={activeMap} updateMap={updateMap} onClose={() => setShowBackground(false)} />
       )}
       {showSettings && activeMap && (
         <MapSettingsSheet map={activeMap} updateMap={updateMap} deleteMap={deleteMap} onClose={() => setShowSettings(false)} />

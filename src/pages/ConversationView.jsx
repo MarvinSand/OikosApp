@@ -760,7 +760,7 @@ function DaySeparator({ label }) {
 }
 
 // ─── Prayer Attachment Sheet ──────────────────────────────────
-function PrayerAttachSheet({ onClose, onSelect }) {
+export function PrayerAttachSheet({ onClose, onSelect }) {
   const { t } = useT()
   const { user } = useAuth()
   const [items, setItems] = useState([])
@@ -843,7 +843,7 @@ function PrayerAttachSheet({ onClose, onSelect }) {
 }
 
 // ─── Bible Verse Modal ────────────────────────────────────────
-function BibleVerseModal({ onClose, onSend }) {
+export function BibleVerseModal({ onClose, onSend }) {
   const { t } = useT()
   const [reference, setReference] = useState('')
   const [verseText, setVerseText] = useState('')

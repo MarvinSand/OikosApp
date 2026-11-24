@@ -33,6 +33,9 @@ import { verseAttachmentFromRow } from '../lib/bibleLink'
 import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 import ModerationSheet from '../components/common/ModerationSheet'
 import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
+import ModerationHiddenNotice from '../components/moderation/ModerationHiddenNotice'
+import AdminHighlightMenuItem from '../components/moderation/AdminHighlightMenuItem'
+import { useModerationDeleted } from '../lib/moderationState'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import { useBlocks } from '../hooks/useBlocks'
@@ -693,6 +696,7 @@ function CommunitiesTab({ onCreateOpen, onJoinOpen }) {
                 community={c}
                 members={previews[c.id] || []}
                 variant="discover"
+                onOpen={() => navigate(`/community/${c.id}`)}
                 onJoin={handleJoinPublic}
                 joining={joiningId === c.id}
                 requested={requestedIds.has(c.id)}
@@ -1022,6 +1026,7 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   const [showModeration, setShowModeration] = useState(false)
   const [showSaveSheet, setShowSaveSheet] = useState(false)
   const { isBlocked } = useBlocks()
+  const moderationDeleted = useModerationDeleted('feed_post', post.id)
   const cfg = TYPE_CONFIG[post.type] || TYPE_CONFIG.text
   const TypeIcon = cfg.icon
   // Klares Kategorie-Badge aus dem echten category-Feld (Frage, Bibelstelle, …)
@@ -1041,9 +1046,13 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
   // Nach dem Blockieren sofort ausblenden (serverseitig filtert ab dem
   // nächsten Laden ohnehin RLS)
   if (!isOwn && isBlocked(post.author_id)) return null
+  if (moderationDeleted) return null
 
   return (
     <FeedCardFrame threadLineAfter={threadLineAfter}>
+      <div style={{ padding: '10px 16px 0' }}>
+        <ModerationHiddenNotice contentType="feed_post" contentId={post.id} hiddenAt={post.moderation_hidden_at} />
+      </div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
         <button onClick={() => navigate(`/user/${post.author_id}`)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
@@ -1089,6 +1098,9 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
                       onDone={() => { /* parent may refetch */ }}
                     />
                   )}
+                  {post.is_public !== false && (
+                    <AdminHighlightMenuItem kind="post" refId={post.id} label={post.title || post.body} onClose={() => setShowMenu(false)} />
+                  )}
                 </AnchoredMenu>
               )}
             </>
@@ -1109,6 +1121,9 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
               </button>
               {showMenu && (
                 <AnchoredMenu anchorRef={postMenuBtnRef} onClose={() => setShowMenu(false)} minWidth={130}>
+                  {post.is_public !== false && (
+                    <AdminHighlightMenuItem kind="post" refId={post.id} label={post.title || post.body} onClose={() => setShowMenu(false)} />
+                  )}
                   <button
                     onClick={() => { setShowMenu(false); onDelete?.(post.id) }}
                     style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
