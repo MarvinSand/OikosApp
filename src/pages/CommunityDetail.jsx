@@ -707,9 +707,18 @@ function AddPrayerSheet({ onClose, onSubmit }) {
 // ─── Beitrittsanfrage im Chat ─────────────────────────────────
 // Admins nehmen an oder lehnen ab (Ablehnung optional mit Text); alle
 // Mitglieder sehen den Stand. Status kommt live aus community_join_requests.
+function formatDateTime(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleString(getLang() === 'en' ? 'en-US' : 'de-DE', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  })
+}
+
 function JoinRequestCard({ msg, isAdmin, onDecide }) {
   const { t } = useT()
+  const { user } = useAuth()
   const [req, setReq] = useState(null)
+  const [deciderName, setDeciderName] = useState('')
   const [declining, setDeclining] = useState(false)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -720,19 +729,29 @@ function JoinRequestCard({ msg, isAdmin, onDecide }) {
     let active = true
     supabase
       .from('community_join_requests')
-      .select('id, status, message, decision_note')
+      .select('id, status, message, decision_note, created_at, decided_by, decided_at')
       .eq('id', msg.join_request_id)
       .maybeSingle()
       .then(({ data }) => { if (active) setReq(data) })
     return () => { active = false }
   }, [msg.join_request_id])
 
+  // Wer die Anfrage entschieden hat (Name nachladen)
+  const deciderId = req?.decided_by
+  useEffect(() => {
+    if (!deciderId) { setDeciderName(''); return }
+    let active = true
+    supabase.from('profiles').select('full_name, username').eq('id', deciderId).maybeSingle()
+      .then(({ data }) => { if (active) setDeciderName(data?.full_name || data?.username || '') })
+    return () => { active = false }
+  }, [deciderId])
+
   async function decide(approve) {
     setBusy(true)
     const ok = await onDecide(msg.join_request_id, approve, approve ? null : note.trim() || null)
     setBusy(false)
     if (ok) {
-      setReq(r => ({ ...(r || {}), status: approve ? 'approved' : 'declined', decision_note: approve ? null : note.trim() || null }))
+      setReq(r => ({ ...(r || {}), status: approve ? 'approved' : 'declined', decision_note: approve ? null : note.trim() || null, decided_by: user?.id, decided_at: new Date().toISOString() }))
       setDeclining(false)
     }
   }
@@ -744,6 +763,7 @@ function JoinRequestCard({ msg, isAdmin, onDecide }) {
       <div style={{ width: '88%', backgroundColor: 'var(--color-white)', border: '1.5px solid var(--color-warm-3)', borderRadius: 16, padding: '12px 14px' }}>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-accent)', margin: '0 0 4px' }}>{t('🙋 Beitrittsanfrage')}</p>
         <p style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('{name} möchte beitreten', { name })}</p>
+        <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: '2px 0 0' }}>{t('Gesendet am {time}', { time: formatDateTime(req?.created_at || msg.created_at) })}</p>
         {text && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-secondary)', margin: '6px 0 0', lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</p>}
 
         {status === 'pending' && isAdmin && !declining && (
@@ -765,11 +785,23 @@ function JoinRequestCard({ msg, isAdmin, onDecide }) {
           <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-muted)', margin: '8px 0 0' }}>{t('Wartet auf Entscheidung der Admins')}</p>
         )}
         {status === 'approved' && (
-          <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', margin: '8px 0 0' }}>{t('✓ Angenommen')}</p>
+          <div style={{ margin: '8px 0 0' }}>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', margin: 0 }}>{t('✓ Angenommen')}</p>
+            {(deciderName || req?.decided_at) && (
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: '2px 0 0' }}>
+                {deciderName ? t('von {name}', { name: deciderName }) : ''}{deciderName && req?.decided_at ? ' · ' : ''}{req?.decided_at ? formatDateTime(req.decided_at) : ''}
+              </p>
+            )}
+          </div>
         )}
         {status === 'declined' && (
           <div style={{ margin: '8px 0 0' }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 600, color: '#C0392B', margin: 0 }}>{t('✕ Abgelehnt')}</p>
+            {(deciderName || req?.decided_at) && (
+              <p style={{ fontFamily: 'Lora, serif', fontSize: 11, color: 'var(--color-text-light)', margin: '2px 0 0' }}>
+                {deciderName ? t('von {name}', { name: deciderName }) : ''}{deciderName && req?.decided_at ? ' · ' : ''}{req?.decided_at ? formatDateTime(req.decided_at) : ''}
+              </p>
+            )}
             {req?.decision_note && <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-secondary)', margin: '3px 0 0', fontStyle: 'italic' }}>„{req.decision_note}“</p>}
           </div>
         )}

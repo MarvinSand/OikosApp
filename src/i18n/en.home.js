@@ -1,5 +1,6 @@
 // Englische Übersetzungen (home). Schlüssel = deutscher Originaltext.
 export default {
+  'Gesendet am {time}': 'Sent {time}',
   'Anhängen': 'Attach',
   'In Aktuelles anzeigen (Moderation)': 'Show in Latest (moderation)',
   'Beitrag ansehen': 'View post',
