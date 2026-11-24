@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Post 001 · Launch – Oikos Connect</title>
+<link rel="stylesheet" href="../../brand/brand.css">
+<script src="../../brand/icons.js"></script>
+<script src="../../brand/deck.js"></script>
+<style>
+  /* ═════════ Slide 1 · Hook ═════════ */
+  .s1 .shade { background: linear-gradient(180deg, rgba(5,10,24,.82) 0%, rgba(5,10,24,.5) 30%, rgba(5,10,24,0) 50%, rgba(5,10,24,0) 70%, rgba(5,10,24,.7) 100%); }
+  .s1 .content { position: absolute; left: var(--pad-x); right: var(--pad-x); top: 178px; }
+  .s1 .h1 { margin-top: 30px; font-size: 88px; }
+  [data-f="tt"] .s1 .content { top: 300px; }
+  [data-f="tt"] .s1 .h1 { font-size: 104px; margin-top: 36px; }
+
+  /* ═════════ Slide 2 · Was ist Oikos? ═════════ */
+  .s2 .bg img { object-position: center bottom; }
+  .s2 .shade { background:
+      linear-gradient(180deg, rgba(5,10,24,.7) 0%, rgba(5,10,24,.25) 32%, rgba(5,10,24,0) 42%, rgba(5,10,24,0) 60%, rgba(5,10,24,.78) 74%, rgba(5,10,24,.96) 90%, rgba(5,10,24,.98) 100%); }
+  .s2 .top { position: absolute; left: var(--pad-x); right: var(--pad-x); top: 150px; text-align: center; }
+  .s2 .greek { font-family: 'Greek Serif', var(--serif); font-weight: 500; font-size: 176px; line-height: 1.05; margin-top: 6px; }
+  .s2 .greek span { background: linear-gradient(100deg, var(--gold-light), var(--gold) 45%, var(--gold-2)); -webkit-background-clip: text; background-clip: text; color: transparent; padding: 0 .06em; }
+  .s2 .means { font-family: var(--serif); font-style: italic; font-size: 34px; color: var(--muted); margin-top: -2px; }
+  .s2 .means b { font-style: normal; color: var(--text); font-weight: 600; }
+  .s2 .bottom { position: absolute; left: var(--pad-x); right: var(--pad-x); bottom: 70px; text-align: center; }
+  .s2 .bottom .h2 { font-size: 52px; line-height: 1.12; }
+  .s2 .bottom .lead { margin-bottom: 22px; font-size: 29px; color: #d6deec; text-shadow: 0 2px 18px rgba(3,8,22,.9); }
+  .s2 .bottom .h2 { text-shadow: 0 2px 24px rgba(3,8,22,.8); }
+  .s2 .chips { display: flex; justify-content: center; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+  .s2 .chips .pill { height: 50px; font-size: 20px; padding: 0 20px; }
+  .s2 .chips .pill i { color: var(--gold); font-size: 22px; }
+  [data-f="tt"] .s2 .top { top: 290px; }
+  [data-f="tt"] .s2 .greek { font-size: 190px; }
+  [data-f="tt"] .s2 .means { font-size: 40px; }
+  [data-f="tt"] .s2 .bottom { bottom: auto; top: 640px; }
+  [data-f="tt"] .s2 .bottom .h2 { font-size: 60px; }
+  [data-f="tt"] .s2 .bottom .lead { font-size: 33px; }
+  [data-f="tt"] .s2 .shade { background:
+      linear-gradient(180deg, rgba(5,10,24,.8) 0%, rgba(5,10,24,.55) 38%, rgba(5,10,24,.5) 46%, rgba(5,10,24,0) 56%, rgba(5,10,24,0) 76%, rgba(5,10,24,.55) 100%); }
+
+  /* ═════════ Feature-Slides: gemeinsamer Hintergrund ═════════ */
+  .feat .bg img { object-position: center bottom; opacity: .95; }
+  .feat .shade { background: linear-gradient(180deg, rgba(5,10,24,.55) 0%, rgba(5,10,24,0) 40%); }
+  .feat .copy { position: absolute; z-index: 5; left: var(--pad-x); right: var(--pad-x); top: 168px; }
+  .feat .copy .h2 { margin-top: 22px; }
+  .feat .copy .lead { margin-top: 22px; }
+  [data-f="tt"] .feat .copy { top: 290px; }
+  [data-f="tt"] .feat .copy .h2 { margin-top: 28px; }
+  [data-f="tt"] .feat .copy .lead { margin-top: 26px; }
+
+  /* Slide 3 · Oikos Map (IG: Text links, Handy rechts) */
+  .s3 .copy { right: auto; width: 500px; top: 200px; }
+  .s3 .copy .h2 { font-size: 66px; }
+  .s3 .copy .lead { font-size: 28px; }
+  .s3 .phone { --pw: 462px; right: 60px; top: 190px; transform: rotate(3deg); }
+  .s3 .glow.gold { width: 700px; height: 700px; right: -120px; top: 420px; }
+  .s3 .glow.sky { width: 520px; height: 520px; left: -160px; top: 760px; opacity: .6; }
+  .s3 .f1 { left: 64px; top: 800px; }
+  .s3 .f2 { left: 236px; top: 960px; }
+  [data-f="tt"] .s3 .copy { width: auto; right: var(--pad-x); top: 290px; }
+  [data-f="tt"] .s3 .copy .h2 { font-size: var(--h2); }
+  [data-f="tt"] .s3 .copy .lead { font-size: var(--lead); }
+  [data-f="tt"] .s3 .phone { --pw: 600px; right: auto; left: 240px; top: 840px; transform: rotate(2deg); }
+  [data-f="tt"] .s3 .f1 { left: 56px; top: 1010px; }
+  [data-f="tt"] .s3 .f2 { left: 586px; top: 742px; }
+  [data-f="tt"] .s3 .glow.gold { width: 900px; height: 900px; right: -100px; top: 900px; }
+
+  /* Slide 4 · Gebete */
+  .s4 .phone { --pw: 540px; left: 270px; top: 490px; }
+  .s4 .glow.sky { width: 760px; height: 760px; left: 160px; top: 600px; }
+  .s4 .glow.gold { width: 500px; height: 500px; left: -200px; top: 980px; opacity: .7; }
+  .s4 .f1 { left: 52px; top: 870px; }
+  .s4 .f2 { right: 40px; top: 655px; }
+  [data-f="tt"] .s4 .phone { --pw: 620px; left: 230px; top: 800px; }
+  [data-f="tt"] .s4 .f1 { left: 48px; top: 1250px; }
+  [data-f="tt"] .s4 .f2 { right: auto; left: 600px; top: 960px; }
+  [data-f="tt"] .s4 .glow.sky { width: 900px; height: 900px; left: 100px; top: 900px; }
+
+  /* Slide 5 · Menschen begleiten (IG: Handy links, Text rechts) */
+  .s5 .copy { left: auto; right: var(--pad-x); width: 470px; top: 210px; }
+  .s5 .copy .h2 { font-size: 64px; }
+  .s5 .copy .lead { font-size: 28px; }
+  .s5 .phone { --pw: 446px; left: 60px; top: 196px; transform: rotate(-3deg); }
+  .s5 .glow.gold { width: 700px; height: 700px; left: -160px; top: 380px; }
+  .s5 .story { right: 52px; top: 800px; width: 470px; position: absolute; z-index: 6; padding: 28px 30px; background: linear-gradient(160deg, rgba(16,26,54,.82), rgba(16,26,54,.62)); }
+  .story .t { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .story .t i { color: var(--gold); font-size: 26px; }
+  .story ol { list-style: none; margin-top: 18px; position: relative; }
+  .story ol::before { content: ''; position: absolute; left: 9px; top: 12px; bottom: 14px; width: 2px; background: linear-gradient(180deg, rgba(90,200,250,.6), var(--gold)); }
+  .story li { position: relative; padding-left: 40px; font-size: 21px; line-height: 1.3; color: var(--muted); }
+  .story li + li { margin-top: 16px; }
+  .story li::before { content: ''; position: absolute; left: 1px; top: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink-2); border: 2px solid var(--sky); }
+  .story li.done::before { background: var(--sky); }
+  .story li.hi { color: var(--text); font-weight: 600; }
+  .story li.hi::before { background: var(--gold); border-color: var(--gold-light); box-shadow: 0 0 16px var(--gold); }
+  .story li small { display: block; font-size: 17px; color: rgba(255,255,255,.5); font-weight: 500; margin-top: 2px; }
+  [data-f="tt"] .s5 .copy { left: var(--pad-x); width: auto; top: 290px; }
+  [data-f="tt"] .s5 .copy .h2 { font-size: var(--h2); }
+  [data-f="tt"] .s5 .copy .lead { font-size: var(--lead); }
+  [data-f="tt"] .s5 .phone { --pw: 600px; left: 70px; top: 840px; transform: rotate(-2deg); }
+  [data-f="tt"] .s5 .story { right: 44px; top: 1040px; width: 520px; }
+  [data-f="tt"] .s5 .glow.gold { width: 900px; height: 900px; left: -100px; top: 900px; }
+
+  /* Slide 6 · Weltkarte */
+  .s6 .bg img { opacity: 1; object-position: center bottom; }
+  .s6 .shade { background: linear-gradient(180deg, rgba(5,10,24,.35) 0%, rgba(5,10,24,0) 35%, rgba(5,10,24,.25) 100%); }
+  .s6 .phone { --pw: 500px; left: 290px; top: 570px; transform: rotate(-4deg); }
+  .s6 .c1 { position: absolute; z-index: 6; left: 70px; top: 760px; }
+  .s6 .c2 { position: absolute; z-index: 6; right: 56px; top: 890px; }
+  .s6 .c3 { position: absolute; z-index: 6; left: 110px; top: 1060px; }
+  .s6 .pill.sky { height: 64px; font-size: 24px; padding: 0 28px; box-shadow: 0 14px 40px rgba(0,0,0,.45), 0 0 0 4px rgba(90,200,250,.25); }
+  .s6 .pill.sky i { font-size: 26px; }
+  [data-f="tt"] .s6 .phone { --pw: 620px; left: 230px; top: 820px; transform: rotate(-3deg); }
+  [data-f="tt"] .s6 .c1 { left: 56px; top: 1000px; }
+  [data-f="tt"] .s6 .c2 { right: auto; left: 640px; top: 1170px; }
+  [data-f="tt"] .s6 .c3 { left: 80px; top: 1340px; }
+
+  /* Slide 7 · Communities & Chats */
+  .s7 .p1 { --pw: 440px; left: 84px; top: 540px; transform: rotate(-7deg); z-index: 4; }
+  .s7 .p2 { --pw: 440px; right: 84px; top: 600px; transform: rotate(6deg); z-index: 5; }
+  .s7 .glow.gold { width: 760px; height: 760px; left: 160px; top: 640px; }
+  .s7 .bubble { position: absolute; z-index: 7; left: 250px; top: 1060px; padding: 16px 26px 16px 16px; display: flex; gap: 14px; align-items: center; border-radius: 30px 30px 30px 8px; background: linear-gradient(160deg, rgba(18,30,60,.92), rgba(14,24,50,.86)); }
+  .bubble .av { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 21px; flex: none; box-shadow: 0 0 0 3px rgba(255,255,255,.16); }
+  .bubble .who { font-size: 18px; font-weight: 700; color: var(--sky); }
+  .bubble .msg { font-size: 23px; margin-top: 4px; line-height: 1.3; }
+  [data-f="tt"] .s7 .p1 { --pw: 500px; left: 60px; top: 880px; }
+  [data-f="tt"] .s7 .p2 { --pw: 500px; right: 60px; top: 940px; }
+  [data-f="tt"] .s7 .bubble { left: 150px; top: 1360px; }
+  [data-f="tt"] .s7 .glow.gold { width: 900px; height: 900px; left: 90px; top: 900px; }
+
+  /* Slide 8 · Und noch mehr (Bento) */
+  .s8 .grid { position: absolute; z-index: 5; left: 56px; right: 56px; top: 440px; bottom: 62px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 22px; }
+  .tile { position: relative; overflow: hidden; padding: 28px 28px 0; display: flex; flex-direction: column; }
+  .tile .ti { display: flex; align-items: center; gap: 12px; font-size: 27px; font-weight: 700; letter-spacing: -0.01em; }
+  .tile .ti i { width: 46px; height: 46px; border-radius: 14px; background: rgba(246,193,119,.16); color: var(--gold); font-size: 24px; }
+  .tile .ts { font-size: 20px; color: var(--muted); margin-top: 10px; line-height: 1.35; }
+  .tile .shot { background-color: #000; margin: auto auto 0; width: 86%; flex: 1; min-height: 0; margin-top: 20px; border-radius: 26px 26px 0 0; border: 6px solid #12151c; border-bottom: 0; background-size: 100% auto; background-repeat: no-repeat; box-shadow: 0 -10px 40px rgba(0,0,0,.4); }
+  .s8 .copy .h2 { font-size: 68px; }
+  [data-f="tt"] .s8 .grid { top: 740px; bottom: 430px; left: 60px; right: 60px; }
+  [data-f="tt"] .s8 .copy .h2 { font-size: var(--h2); }
+
+  /* Slide 9 · Werte */
+  .s9 .bg img { transform-origin: 50% 0; transform: translateY(-210px) scale(1.16); }
+  .s9 .shade { background: linear-gradient(180deg, rgba(5,10,24,.7) 0%, rgba(5,10,24,.15) 34%, rgba(5,10,24,0) 46%, rgba(5,10,24,.6) 64%, rgba(5,10,24,.92) 100%); }
+  .s9 .rows { position: absolute; z-index: 5; left: 56px; right: 56px; bottom: 62px; display: flex; flex-direction: column; gap: 16px; }
+  .row { display: flex; gap: 22px; align-items: center; padding: 24px 28px; background: linear-gradient(160deg, rgba(12,20,44,.72), rgba(12,20,44,.5)); }
+  .row .ic { width: 64px; height: 64px; flex: none; border-radius: 20px; display: grid; place-items: center; background: rgba(246,193,119,.15); color: var(--gold); }
+  .row .ic svg { width: 32px; height: 32px; }
+  .row .t { font-size: 26px; font-weight: 700; }
+  .row .s { font-size: 21px; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+  [data-f="tt"] .s9 { --copy-top: 290px; }
+  [data-f="tt"] .s9 .rows { bottom: auto; top: 700px; left: 60px; right: 60px; }
+  [data-f="tt"] .s9 .shade { background: linear-gradient(180deg, rgba(5,10,24,.78) 0%, rgba(5,10,24,.55) 40%, rgba(5,10,24,.1) 60%, rgba(5,10,24,0) 75%, rgba(5,10,24,.55) 100%); }
+  [data-f="tt"] .s9 .bg img { object-position: center bottom; transform: none; }
+
+  /* ═════════ Slide 10 · CTA ═════════ */
+  .s10 .shade { background: linear-gradient(180deg, rgba(5,10,24,.7) 0%, rgba(5,10,24,.25) 34%, rgba(5,10,24,0) 52%, rgba(5,10,24,0) 70%, rgba(5,10,24,.75) 100%); }
+  .s10 .content { position: absolute; left: var(--pad-x); right: var(--pad-x); top: 168px; text-align: center; }
+  .s10 .hand { font-size: 44px; transform: rotate(-2deg); display: inline-block; }
+  .s10 .h1 { font-size: 100px; margin-top: 14px; }
+  .s10 .lead { margin-top: 22px; color: #dbe3f1; }
+  .s10 .ctas { position: absolute; z-index: 10; left: var(--pad-x); right: var(--pad-x); bottom: 64px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .s10 .ctas .row1 { display: flex; gap: 14px; }
+  .s10 .pill.gold, .s10 .pill.glassy { height: 72px; font-size: 26px; padding: 0 34px; }
+  .s10 .pill.gold i { font-size: 28px; }
+  .s10 .avail { display: flex; gap: 22px; font-size: 20px; font-weight: 600; color: rgba(255,255,255,.82); }
+  .s10 .avail span { display: inline-flex; align-items: center; gap: 8px; }
+  .s10 .avail i { color: var(--gold); font-size: 22px; }
+  .s10 .share { font-family: var(--hand); font-weight: 700; font-size: 36px; color: var(--gold-light); }
+  [data-f="tt"] .s10 .content { top: 300px; }
+  [data-f="tt"] .s10 .h1 { font-size: 112px; }
+  [data-f="tt"] .s10 .hand { font-size: 50px; }
+  [data-f="tt"] .s10 .ctas { bottom: auto; top: 800px; }
+  [data-f="tt"] .s10 .shade { background: linear-gradient(180deg, rgba(5,10,24,.75) 0%, rgba(5,10,24,.35) 30%, rgba(5,10,24,.2) 50%, rgba(5,10,24,0) 62%, rgba(5,10,24,.5) 100%); }
+
+  [data-f="tt"] .foot { bottom: 440px; }
+</style>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · HOOK ─────────────────────────────────────────── -->
+<section class="slide s1">
+  <div class="bg"><img data-src="../../assets/photos/hook-woman-{r}.jpg" alt=""></div>
+  <div class="shade"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="content">
+    <span class="pill"><span class="dot"></span>Neu · Jetzt im App Store</span>
+    <h1 class="h1 shadow-text">Was, wenn dein Gebet eine <em>Bewegung</em> startet?</h1>
+  </div>
+  <footer class="foot">
+    <span>oikosconnect.net</span>
+    <span class="swipe">Wisch weiter <i data-icon="arrow-right" data-stroke="2.4"></i></span>
+  </footer>
+  <div class="grain"></div>
+</section>
+
+<!-- 2 · WAS IST OIKOS ────────────────────────────────── -->
+<section class="slide s2">
+  <div class="bg"><img data-src="../../assets/photos/oikos-houses-{r}.jpg" alt=""></div>
+  <div class="shade"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="top">
+    <span class="eyebrow center">Was ist Oikos?</span>
+    <div class="greek"><span>οἶκος</span></div>
+    <p class="means">griechisch für <b>„Haus“</b></p>
+  </div>
+  <div class="bottom">
+    <p class="lead">Die Menschen, die zu deinem Leben gehören:</p>
+    <h2 class="h2">Menschen, die Gott dir ganz bewusst <em>anvertraut</em> hat.</h2>
+    <div class="chips">
+      <span class="pill"><i data-icon="heart"></i>Familie</span>
+      <span class="pill"><i data-icon="users"></i>Freunde</span>
+      <span class="pill"><i data-icon="briefcase"></i>Kollegen</span>
+      <span class="pill"><i data-icon="house"></i>Nachbarn</span>
+    </div>
+  </div>
+  <div class="grain"></div>
+</section>
+
+<!-- 3 · OIKOS MAP ────────────────────────────────────── -->
+<section class="slide feat s3">
+  <div class="bg"><img src="../../assets/photos/dawn-sky-916.jpg" alt=""></div>
+  <div class="shade"></div>
+  <div class="glow gold"></div><div class="glow sky"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="copy">
+    <span class="eyebrow"><span class="num">01</span>Oikos Map</span>
+    <h2 class="h2">Behalte im Blick, <em>wer zu dir gehört.</em></h2>
+    <p class="lead">Halte die Menschen deines Umfelds fest – mit <b>Namen, Anliegen und ihrer Geschichte.</b></p>
+  </div>
+  <div class="phone"><div class="screen"><img src="../../assets/screens/01-oikos-map.png" alt=""></div></div>
+  <div class="float glass f1">
+    <span class="av" style="background:linear-gradient(135deg,#f472b6,#db2777)">L</span>
+    <div><div class="t">Lisa · Kollegin</div><div class="s"><span class="emoji">🙏</span> Prüfung am Freitag</div></div>
+  </div>
+  <div class="float glass f2">
+    <span class="ic gold"><i data-icon="bell"></i></span>
+    <div><div class="t">Für Tom beten?</div><div class="s">Seit 12 Tagen kein Gebet</div></div>
+  </div>
+  <div class="grain"></div>
+</section>
+
+<!-- 4 · GEBETE ───────────────────────────────────────── -->
+<section class="slide feat s4">
+  <div class="bg"><img src="../../assets/photos/dawn-sky-916.jpg" alt=""></div>
+  <div class="shade"></div>
+  <div class="glow sky"></div><div class="glow gold"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="copy">
+    <span class="eyebrow"><span class="num">02</span>Gebet</span>
+    <h2 class="h2">Bete gezielt. <em>Mit Namen.</em></h2>
+    <p class="lead">Teile Anliegen, bete mit – und lass dich im <b>Gebetsmodus</b> Person für Person durch deine Liste führen.</p>
+  </div>
+  <div class="phone"><div class="screen"><img src="../../assets/screens/03-gebete.png" alt=""></div></div>
+  <div class="float glass f1">
+    <span class="ic gold"><span class="emoji" style="font-size:28px">🙏</span></span>
+    <div><div class="t">9 Personen beten mit</div><div class="s">14 Gebete · zuletzt vor 2 Std.</div></div>
+  </div>
+  <div class="float glass f2">
+    <span class="ic"><i data-icon="play"></i></span>
+    <div><div class="t">Gebetsmodus</div><div class="s">Eine Person nach der anderen</div></div>
+  </div>
+  <div class="grain"></div>
+</section>
+
+<!-- 5 · MENSCHEN BEGLEITEN ───────────────────────────── -->
+<section class="slide feat s5">
+  <div class="bg"><img src="../../assets/photos/dawn-sky-916.jpg" alt=""></div>
+  <div class="shade"></div>
+  <div class="glow gold"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="copy">
+    <span class="eyebrow"><span class="num">03</span>Menschen begleiten</span>
+    <h2 class="h2">Begleite Menschen <em>auf ihrem Weg.</em></h2>
+    <p class="lead">Anliegen, Story-Line und Impact-Stufen: Halte fest, <b>was Gott in ihrem Leben tut.</b></p>
+  </div>
+  <div class="phone"><div class="screen"><img src="../../assets/screens/05-menschen-begleiten.png" alt=""></div></div>
+  <div class="story glass">
+    <div class="t"><i data-icon="route"></i>Story-Line · Ben</div>
+    <ol>
+      <li class="done">Erstes Gespräch über Glauben<small>März</small></li>
+      <li class="done">Kam mit zum Hauskreis<small>Juni</small></li>
+      <li class="hi">Möchte mehr über Jesus wissen <span class="emoji">✨</span><small>Oktober</small></li>
+    </ol>
+  </div>
+  <div class="grain"></div>
+</section>
+
+<!-- 6 · WELTKARTE ────────────────────────────────────── -->
+<section class="slide feat s6">
+  <div class="bg"><img data-src="../../assets/photos/europe-night-{r}.jpg" alt=""></div>
+  <div class="shade"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="copy">
+    <span class="eyebrow"><span class="num">04</span>Weltkarte</span>
+    <h2 class="h2 shadow-text">Finde Geschwister <em>in deiner Nähe.</em></h2>
+    <p class="lead shadow-text">Gemeinden, Hauskreise, Bibelstudien und Events auf einer Karte. <b>Deinen Standort steuerst du selbst.</b></p>
+  </div>
+  <div class="phone"><div class="screen"><img src="../../assets/screens/02-weltkarte.png" alt=""></div></div>
+  <span class="pill sky c1"><i data-icon="users"></i>Geschwister</span>
+  <span class="pill sky c2"><i data-icon="calendar-days"></i>Events</span>
+  <span class="pill sky c3"><i data-icon="house"></i>Gemeinden</span>
+  <div class="grain"></div>
+</section>
+
+<!-- 7 · COMMUNITIES & CHATS ──────────────────────────── -->
+<section class="slide feat s7">
+  <div class="bg"><img src="../../assets/photos/dawn-sky-916.jpg" alt=""></div>
+  <div class="shade"></div>
+  <div class="glow gold"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="copy">
+    <span class="eyebrow"><span class="num">05</span>Communities &amp; Chats</span>
+    <h2 class="h2">Gemeinsam <em>statt allein.</em></h2>
+    <p class="lead">Hauskreise und Gemeinden mit eigenem Chat, Gebetsanliegen und Events – <b>verbunden auch unter der Woche.</b></p>
+  </div>
+  <div class="phone p1"><div class="screen"><img src="../../assets/screens/06-communities.png" alt=""></div></div>
+  <div class="phone p2"><div class="screen"><img src="../../assets/screens/09-chats.png" alt=""></div></div>
+  <div class="bubble glass">
+    <span class="av" style="background:linear-gradient(135deg,#fb923c,#e11d48)">L</span>
+    <div><div class="who">Lena · Hauskreis Bornheim</div>
+    <div class="msg">Bis Freitag beim Lobpreisabend! <span class="emoji">🙌</span></div></div>
+  </div>
+  <div class="grain"></div>
+</section>
+
+<!-- 8 · UND NOCH MEHR ────────────────────────────────── -->
+<section class="slide feat s8">
+  <div class="bg"><img src="../../assets/photos/dawn-sky-916.jpg" alt=""></div>
+  <div class="shade"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="copy">
+    <span class="eyebrow">Und noch mehr</span>
+    <h2 class="h2">Alles für deinen <em>Glaubensalltag.</em></h2>
+  </div>
+  <div class="grid">
+    <div class="tile glass">
+      <div class="ti"><i data-icon="book-open"></i>Bibel</div>
+      <div class="ts">Lesen, Verse markieren, Notizen machen</div>
+      <div class="shot" data-bgimg="../../assets/screens/crops/08-bibel-psalm23.png" style="background-position: 0 0"></div>
+    </div>
+    <div class="tile glass">
+      <div class="ti"><i data-icon="newspaper"></i>Feed</div>
+      <div class="ts">Zeugnisse, Bibelverse &amp; Ermutigung teilen</div>
+      <div class="shot" data-bgimg="../../assets/screens/04-feed.png" style="background-position: 0 12%"></div>
+    </div>
+    <div class="tile glass">
+      <div class="ti"><i data-icon="scroll-text"></i>Bekenntnisse</div>
+      <div class="ts">Gottes Wahrheit laut aussprechen</div>
+      <div class="shot" data-bgimg="../../assets/screens/07-bekenntnisse.png" style="background-position: 0 57%"></div>
+    </div>
+    <div class="tile glass">
+      <div class="ti"><i data-icon="flame"></i>Gebetsziele</div>
+      <div class="ts">Gebet des Tages &amp; gemeinsame Ziele</div>
+      <div class="shot" data-bgimg="../../assets/screens/10-startseite.png" style="background-position: 0 63%"></div>
+    </div>
+  </div>
+  <div class="grain"></div>
+</section>
+
+<!-- 9 · WERTE ────────────────────────────────────────── -->
+<section class="slide s9">
+  <div class="bg"><img data-src="../../assets/photos/morning-bible-{r}.jpg" alt=""></div>
+  <div class="shade"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="copy feat-copy" style="position:absolute;z-index:5;left:var(--pad-x);right:var(--pad-x);top:var(--copy-top,168px)">
+    <span class="eyebrow">Worauf du dich verlassen kannst</span>
+    <h2 class="h2 shadow-text" style="margin-top:22px">Ein Ort, an dem du <em>aufatmen</em> kannst.</h2>
+  </div>
+  <div class="rows">
+    <div class="row glass"><span class="ic"><i data-icon="sparkles"></i></span><div><div class="t">Kostenlos &amp; werbefrei</div><div class="s">Keine Werbung, kein Verkauf deiner Daten.</div></div></div>
+    <div class="row glass"><span class="ic"><i data-icon="shield-check"></i></span><div><div class="t">Du entscheidest</div><div class="s">Bei jedem Gebet, Beitrag und Standort bestimmst du, wer ihn sieht.</div></div></div>
+    <div class="row glass"><span class="ic"><i data-icon="heart-handshake"></i></span><div><div class="t">Ein geschützter Raum</div><div class="s">Klare Regeln. Melden und Blockieren sind überall möglich.</div></div></div>
+  </div>
+  <div class="grain"></div>
+</section>
+
+<!-- 10 · CTA ─────────────────────────────────────────── -->
+<section class="slide s10">
+  <div class="bg"><img data-src="../../assets/photos/family-hill-{r}.jpg" alt=""></div>
+  <div class="shade"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="content">
+    <span class="hand">One Family. One Mission. One Oikos.</span>
+    <h1 class="h1 shadow-text">Werde Teil der <em>Familie.</em></h1>
+    <p class="lead shadow-text">Oikos Connect ist <b>kostenlos</b> – lade die App jetzt herunter.</p>
+  </div>
+  <div class="ctas">
+    <div class="row1">
+      <span class="pill gold"><i data-icon="download" data-stroke="2.4"></i>Jetzt im App Store</span>
+      <span class="pill glassy pill"><i data-icon="link"></i>Link in Bio</span>
+    </div>
+    <div class="avail">
+      <span><i data-icon="smartphone"></i>iPhone</span>
+      <span><i data-icon="monitor"></i>Web-App</span>
+      <span><i data-icon="smartphone"></i>Android – bald</span>
+    </div>
+    <div class="share">Schick das jemandem, mit dem du betest <span class="emoji" style="font-size:30px">🙏</span></div>
+  </div>
+  <div class="grain"></div>
+</section>
+
+</main>
+</body>
+</html>

@@ -1,5 +1,11 @@
 # CLAUDE.md – Lessons Learned & Dev Notes
 
+## Social-Media-Posts (Nov. 2026)
+
+- System unter `marketing/social/` (Anleitung: `marketing/social/README.md`): pro Post eine `posts/NNN-name/slides.html` mit Bausteinen aus `brand/brand.css` (Look der Landingpage), Renderer `node marketing/social/render.cjs <post>` → Instagram 1080×1350 + TikTok 1080×1920 als JPG plus Kontaktbogen. Captions/Hashtags/Alt-Texte in `caption.md`.
+- Fotos mit Higgsfield (`gpt_image_2_6`, high, 2k, je 4:5 und 9:16), echte App-Screens als CSS-iPhone-Mockup (`assets/screens/`, aus `app-store-screenshots/` per `tools/crop_screens.py`). Higgsfield-Downloads gehen nur in der Cloud-Umgebung „oikosapp“; Roh-PNGs (`assets/raw/`) nicht committen.
+- Post 001 (Launch, 10 Slides) ist fertig. TikTok-Sicherheitszonen beachten (oben 150, unten 400, rechts 130 px). Keine nachgebauten Store-Logos; Elberfelder-„Jehova“-Zeilen nicht in Screen-Ausschnitte.
+
 ## Aktuelles-Highlights & automatische Regions-Gruppen (Nov. 2026, phase99)
 
 - **Nachtrag (phase100):** „In Aktuelles anzeigen“ steht im ⋯-Menü (nur Moderatoren) von Feed-Beiträgen, Community-Beiträgen (öffentliche Communities), Gebeten und im Event-Sheet (`AdminHighlightMenuItem`, Overlay-Host `components/common/GlobalHosts.jsx` in `App.jsx`, Stores `lib/highlightComposer.js`/`lib/regionNotice.js`). Highlight-Arten: `update|event|prayer|post|community_post`. **„Nur Ort“ auf der Weltkarte:** `profiles.city_lat/city_lng` (Stadtmitte vom Geocoder, per RPC `set_my_city_center`) – `get_world_map_users()` zeigt Nutzer mit Präzision „city“ exakt dort, alle aus einem Ort liegen übereinander und werden als Cluster mit Listen-Sheet gezeigt. Bestehende Nutzer ergänzt ein App-Admin beim Öffnen der Weltkarte (`assistRegionBackfill` → `admin_users_missing_region`/`admin_apply_user_region`), jeder Nutzer sich selbst (`ensureRegionGroups`). `join_region_groups` liefert `groups[{id,name,is_new}]` → Pop-up „Willkommen in deiner Region“. **Community-Chat** hat das Plus-Menü (Gebet/Bibelvers/Foto): `PrayerAttachSheet`/`BibleVerseModal` werden aus `ConversationView` exportiert und lazy geladen; Fotos in Gruppen immer als normale (nicht „einmal ansehen“) Fotos.
