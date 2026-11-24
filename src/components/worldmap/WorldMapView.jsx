@@ -18,7 +18,8 @@ import LocationSettingsSheet from './LocationSettingsSheet'
 import OikosPersonPinSheet from './OikosPersonPinSheet'
 import ClusterListSheet from './ClusterListSheet'
 import MapDrawer, { DRAWER_PEEK } from './MapDrawer'
-import { ensureRegionGroups } from '../../lib/regionGroups'
+import { ensureRegionGroups, assistRegionBackfill } from '../../lib/regionGroups'
+import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 
 // ─── Palette (Phase 27: schwarz/weiß + babyblauer Akzent) ──
 const C = {
@@ -703,6 +704,16 @@ export default function WorldMapView({ onNavigateToProfile }) {
     regionCheckedRef.current = true
     ensureRegionGroups(myProfile).catch(() => {})
   }, [isLoaded, loading, myProfile])
+
+  // App-Admins tragen zusätzlich die anderen sichtbaren Nutzer nach, die noch
+  // in keiner Regions-Gruppe sind (deren Geräte öffnen die Weltkarte oft nie).
+  const { isAppAdmin } = useIsAppAdmin()
+  const regionAssistRef = useRef(false)
+  useEffect(() => {
+    if (regionAssistRef.current || !isAppAdmin || !isLoaded || loading || visibleUsers.length === 0) return
+    regionAssistRef.current = true
+    assistRegionBackfill(visibleUsers).catch(() => {})
+  }, [isAppAdmin, isLoaded, loading, visibleUsers])
 
   // Deep-Link aus Benachrichtigungen: ?gemeinde=<id> → Pin-Sheet der Gemeinde
   // öffnen (z. B. „Deine Frage wurde beantwortet“ für Nicht-Mitglieder).

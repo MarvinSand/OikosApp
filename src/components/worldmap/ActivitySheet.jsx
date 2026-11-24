@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { X, Calendar, Clock, MapPin, Users, Trash2, Pencil, MessageCircle, ChevronRight, Check, Repeat } from 'lucide-react'
+import { X, Calendar, Clock, MapPin, Users, Trash2, Pencil, MessageCircle, ChevronRight, Check, Repeat, Megaphone } from 'lucide-react'
+import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
+import { openHighlightComposer } from '../../lib/highlightComposer'
 import { useToast } from '../../context/ToastContext'
 import { useT, getLang } from '../../i18n'
 
@@ -138,6 +140,7 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
 
   // Bei wiederkehrenden Events den nächsten Termin statt des (evtl. längst
   // vergangenen) Anker-Starttermins anzeigen, mit gleicher Dauer wie ursprünglich.
+  const { isAppAdmin } = useIsAppAdmin()
   const recurring = isRecurring(activity)
   const nextDate = recurring ? nextOccurrence(activity) : null
   const seriesEnded = recurring && !nextDate
@@ -228,6 +231,16 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
               </p>
             </div>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              {isAppAdmin && activity.is_public !== false && (
+                <button
+                  onClick={() => openHighlightComposer({ kind: 'event', refId: activity.id, label: activity.title })}
+                  aria-label={t('In Aktuelles anzeigen')}
+                  title={t('In Aktuelles anzeigen')}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.accentDark, padding: 6, display: 'flex', borderRadius: 8 }}
+                >
+                  <Megaphone size={18} />
+                </button>
+              )}
               {isOwner && onEdit && (
                 <button onClick={() => setEditing(true)} aria-label={t('Event bearbeiten')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.accentDark, padding: 6, display: 'flex', borderRadius: 8 }}>
                   <Pencil size={18} />

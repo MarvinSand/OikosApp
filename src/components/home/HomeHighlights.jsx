@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, X, MapPin, CalendarDays, HandHeart, Megaphone } from 'lucide-react'
+import { Plus, X, MapPin, CalendarDays, HandHeart, Megaphone, FileText } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
@@ -135,6 +135,34 @@ function HighlightCard({ item, isAdmin, onRemove, navigate }) {
         {item.note && <p style={{ ...textStyle, margin: '10px 0 0' }}>{item.note}</p>}
         <button onClick={() => navigate(`/worldmap?activity=${item.activity_id}`)} style={ctaStyle}>
           {t('Auf der Weltkarte ansehen')}
+        </button>
+      </div>
+    )
+  }
+
+  if (item.kind === 'post' || item.kind === 'community_post') {
+    const isCommunity = item.kind === 'community_post'
+    return (
+      <div style={base}>
+        {removeBtn}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: 'var(--color-accent-dark)' }}>
+          <FileText size={13} />
+          <span style={kindLabel}>{isCommunity ? item.community_name : t('Beitrag')}</span>
+        </div>
+        {item.title && <p style={titleStyle}>{item.title}</p>}
+        {item.description && (
+          <p style={{ ...textStyle, margin: item.title ? 0 : '0 24px 0 0', display: '-webkit-box', WebkitLineClamp: 6, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.description}</p>
+        )}
+        {item.photo_url && (
+          <img src={item.photo_url} alt="" loading="lazy" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, marginTop: 10 }} />
+        )}
+        {item.author_name && <p style={{ fontFamily: 'Lora, serif', fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0' }}>{item.author_name}</p>}
+        {item.note && <p style={{ ...textStyle, margin: '8px 0 0' }}>{item.note}</p>}
+        <button
+          onClick={() => navigate(isCommunity ? `/community/${item.community_id}` : `/feed/post/${item.post_id}`)}
+          style={ctaStyle}
+        >
+          {isCommunity ? t('Zur Community') : t('Beitrag ansehen')}
         </button>
       </div>
     )

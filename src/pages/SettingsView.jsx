@@ -16,7 +16,7 @@ import { useYouVersionAccount } from '../hooks/useYouVersionAccount'
 import { isNativeApp, publicOrigin } from '../lib/platform'
 import { Avatar } from '../components/profile/ProfileTabs'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
-import { syncRegionGroups, syncRegionGroupsFromCoords } from '../lib/regionGroups'
+import { syncRegionGroupsFromCoords } from '../lib/regionGroups'
 import ChurchPicker from '../components/common/ChurchPicker'
 import LanguageSwitcher from '../components/common/LanguageSwitcher'
 import { useT, tr } from '../i18n'
@@ -528,7 +528,7 @@ export default function SettingsView() {
     setSavingLoc(true)
     try {
       await updateProfile({ latitude: loc.lat, longitude: loc.lng, city: loc.city || loc.shortName || null })
-      syncRegionGroups({ country: loc.country, countryCode: loc.countryCode, state: loc.state, stateCode: loc.stateCode }).catch(() => {})
+      syncRegionGroupsFromCoords(loc.lat, loc.lng).catch(() => {})
       showToast(t('Standort aktualisiert ✓'))
     } catch {
       showToast(t('Fehler beim Speichern'), 'error')

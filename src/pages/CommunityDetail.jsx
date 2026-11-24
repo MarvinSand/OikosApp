@@ -27,9 +27,13 @@ import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/Anchor
 import ModerationSheet from '../components/common/ModerationSheet'
 import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
 import ModerationHiddenNotice from '../components/moderation/ModerationHiddenNotice'
+import AdminHighlightMenuItem from '../components/moderation/AdminHighlightMenuItem'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import { useT, tr, getLang } from '../i18n'
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
+// Teilen-Sheets aus dem 1:1-Chat (Gebetsanliegen, Bibelvers) – erst beim Öffnen laden
+const PrayerAttachSheet = lazy(() => import('./ConversationView').then(m => ({ default: m.PrayerAttachSheet })))
+const BibleVerseModal = lazy(() => import('./ConversationView').then(m => ({ default: m.BibleVerseModal })))
 const RequestJoinSheet = lazy(() => import('../components/community/CommunitySheets').then(m => ({ default: m.RequestJoinSheet })))
 
 // ─── Shared header styles ─────────────────────────────────────
@@ -120,7 +124,7 @@ function DaySeparator({ label }) {
 }
 
 // ─── Message Bubble ───────────────────────────────────────────
-function MessageBubble({ msg, isOwn }) {
+function MessageBubble({ msg, isOwn, photoUrl, onViewPhoto }) {
   const { t } = useT()
   const navigate = useNavigate()
   if (msg.is_deleted) {
@@ -166,6 +170,19 @@ function MessageBubble({ msg, isOwn }) {
               >{t('Öffnen')}</button>
             )}
           </div>
+        ) : msg.type === 'photo' ? (
+          msg.is_view_once ? (
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13.5, fontStyle: 'italic', color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)', margin: 0 }}>{t('📷 Foto · einmal ansehen')}</p>
+          ) : photoUrl?.(msg.image_path) ? (
+            <img
+              src={photoUrl(msg.image_path)}
+              alt={t('Foto')}
+              onClick={() => onViewPhoto?.(photoUrl(msg.image_path))}
+              style={{ maxWidth: 220, width: '100%', borderRadius: 12, display: 'block', cursor: 'pointer' }}
+            />
+          ) : (
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 13.5, fontStyle: 'italic', margin: 0 }}>{t('📷 Foto nicht verfügbar')}</p>
+          )
         ) : msg.type === 'bible_verse' ? (
           <div>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700, color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)', margin: '0 0 3px' }}>📖 {msg.bible_verse_reference}</p>
@@ -185,9 +202,10 @@ function MessageBubble({ msg, isOwn }) {
 }
 
 // ─── Input Bar ────────────────────────────────────────────────
-function InputBar({ onSend }) {
+function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhoto }) {
   const { t } = useT()
   const [text, setText] = useState('')
+  const [showAttach, setShowAttach] = useState(false)
   const textareaRef = useRef(null)
 
   function handleSend() {
@@ -208,17 +226,40 @@ function InputBar({ onSend }) {
     el.style.height = Math.min(el.scrollHeight, 110) + 'px'
   }
 
+  const attachBtn = {
+    flex: 1, padding: '10px 8px', borderRadius: 12, border: '1.5px solid var(--color-warm-3)',
+    backgroundColor: 'var(--color-bg-secondary)', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 500,
+    color: 'var(--color-text)', cursor: 'pointer', textAlign: 'center',
+  }
+
   return (
+    <div style={{ backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)', flexShrink: 0, width: '100%' }}>
+      {/* Anhang-Menü wie im Chat: Gebet, Bibelvers, Foto */}
+      {showAttach && (
+        <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--color-warm-3)', display: 'flex', gap: 10 }}>
+          <button onClick={() => { setShowAttach(false); onOpenPrayer?.() }} style={attachBtn}>{t('🙏 Gebetsanliegen teilen')}</button>
+          <button onClick={() => { setShowAttach(false); onOpenVerse?.() }} style={attachBtn}>{t('📖 Bibelvers teilen')}</button>
+          <button onClick={() => { setShowAttach(false); onOpenPhoto?.() }} style={attachBtn}>{t('📷 Foto senden')}</button>
+        </div>
+      )}
     <div style={{
-      backgroundColor: 'var(--color-white)',
-      borderTop: '1px solid var(--color-warm-3)',
       padding: '10px 14px',
       display: 'flex',
       alignItems: 'flex-end',
       gap: 10,
-      flexShrink: 0,
-      width: '100%',
     }}>
+      <button
+        onClick={() => setShowAttach(v => !v)}
+        aria-label={t('Anhängen')}
+        style={{
+          width: 38, height: 38, borderRadius: '50%', border: 'none', flexShrink: 0,
+          backgroundColor: showAttach ? 'var(--color-warm-1)' : 'var(--color-warm-4)',
+          color: showAttach ? 'var(--color-bg)' : 'var(--color-warm-1)',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <Plus size={18} />
+      </button>
       <textarea
         ref={textareaRef}
         value={text}
@@ -235,6 +276,7 @@ function InputBar({ onSend }) {
       >
         <SendHorizontal size={18} />
       </button>
+    </div>
     </div>
   )
 }
@@ -324,7 +366,7 @@ function CommunityReportsTab({ communityId }) {
   )
 }
 
-function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
+function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin, canHighlight = false }) {
   const { t } = useT()
   const [showFull, setShowFull] = useState(false)
   const [openMenu, setOpenMenu] = useState(false)
@@ -387,6 +429,9 @@ function PostCard({ post, currentUserId, isAdmin, onDelete, onTogglePin }) {
                   onClick={() => { setOpenMenu(false); setShowModeration(true) }}
                   style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}
                 >{t('Melden')}</button>
+              )}
+              {canHighlight && (
+                <AdminHighlightMenuItem kind="community_post" refId={post.id} label={post.title || post.content} onClose={() => setOpenMenu(false)} />
               )}
               {(isAppAdmin || isAdmin) && !isOwn && (
                 <AdminContentMenuItems
@@ -1291,7 +1336,17 @@ export default function CommunityDetail() {
     updateCommunity, joinRequests, respondToJoinRequest,
     questions, answerQuestion,
   } = useCommunityDetail(id)
-  const { messages, loading: chatLoading, sendMessage, deleteMessage, updateMessage } = useChat(conversationId)
+  const {
+    messages, loading: chatLoading, sendMessage, deleteMessage, updateMessage,
+    sendPrayerRequest, sendBibleVerse, sendPhoto, photoUrl,
+  } = useChat(conversationId)
+  // Anhänge im Chat (Gebet / Bibelvers / Foto)
+  const [showPrayerSheet, setShowPrayerSheet] = useState(false)
+  const [showVerseSheet, setShowVerseSheet] = useState(false)
+  const [photoDraft, setPhotoDraft] = useState(null) // { file, url }
+  const [photoSending, setPhotoSending] = useState(false)
+  const [viewerUrl, setViewerUrl] = useState(null)
+  const photoInputRef = useRef(null)
   const { prayers, loading: prayersLoading, createPrayer, reload: reloadPrayers } = useCommunityPrayers(id, conversationId)
 
   // Deep-Link aus Benachrichtigungen: /community/:id?tab=questions|events
@@ -1341,6 +1396,47 @@ export default function CommunityDetail() {
     isAtBottomRef.current = true
     await sendMessage(text)
     setTimeout(() => scrollContainerToBottom(messagesContainerRef.current, 'smooth'), 50)
+  }
+
+  function scrollChatDown() {
+    isAtBottomRef.current = true
+    setTimeout(() => scrollContainerToBottom(messagesContainerRef.current, 'smooth'), 50)
+  }
+
+  async function handleSendPrayer(item) {
+    setShowPrayerSheet(false)
+    await sendPrayerRequest(item.id, item.title, item.description, true)
+    scrollChatDown()
+  }
+
+  async function handleSendVerse(reference, verseText) {
+    await sendBibleVerse(reference, verseText)
+    scrollChatDown()
+  }
+
+  function handlePhotoPick(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPhotoDraft({ file, url: URL.createObjectURL(file) })
+  }
+
+  function cancelPhotoDraft() {
+    if (photoSending) return
+    if (photoDraft) URL.revokeObjectURL(photoDraft.url)
+    setPhotoDraft(null)
+  }
+
+  async function confirmSendPhoto() {
+    if (!photoDraft || photoSending) return
+    setPhotoSending(true)
+    // In Gruppen immer als normales Foto (kein „einmal ansehen“)
+    const res = await sendPhoto(photoDraft.file, { viewOnce: false })
+    if (res?.error) showToast(t('Foto konnte nicht gesendet werden'), 'error')
+    URL.revokeObjectURL(photoDraft.url)
+    setPhotoDraft(null)
+    setPhotoSending(false)
+    scrollChatDown()
   }
 
   async function handleRoleChange(userId, role) {
@@ -1654,13 +1750,18 @@ export default function CommunityDetail() {
                       {showDay && <DaySeparator label={formatDaySeparator(msg.created_at)} />}
                       {msg.type === 'join_request'
                         ? <JoinRequestCard msg={msg} isAdmin={isAdmin} onDecide={handleRespondJoinRequest} />
-                        : <MessageBubble msg={msg} isOwn={isOwn} />}
+                        : <MessageBubble msg={msg} isOwn={isOwn} photoUrl={photoUrl} onViewPhoto={setViewerUrl} />}
                     </div>
                   )
                 })}
                 <div ref={messagesEndRef} />
               </div>
-              <InputBar onSend={handleSend} />
+              <InputBar
+                onSend={handleSend}
+                onOpenPrayer={() => setShowPrayerSheet(true)}
+                onOpenVerse={() => setShowVerseSheet(true)}
+                onOpenPhoto={() => photoInputRef.current?.click()}
+              />
             </>
           )}
 
@@ -1677,7 +1778,7 @@ export default function CommunityDetail() {
 
               {/* Pinned posts */}
               {posts.filter(p => p.is_pinned).map(p => (
-                <PostCard key={p.id} post={p} currentUserId={user.id} isAdmin={isAdmin} onDelete={handleDeletePost} onTogglePin={togglePinPost} />
+                <PostCard key={p.id} post={p} currentUserId={user.id} isAdmin={isAdmin} onDelete={handleDeletePost} onTogglePin={togglePinPost} canHighlight={!!community?.is_public} />
               ))}
 
               {/* Normal posts */}
@@ -1688,7 +1789,7 @@ export default function CommunityDetail() {
                 </div>
               )}
               {posts.filter(p => !p.is_pinned).map(p => (
-                <PostCard key={p.id} post={p} currentUserId={user.id} isAdmin={isAdmin} onDelete={handleDeletePost} onTogglePin={togglePinPost} />
+                <PostCard key={p.id} post={p} currentUserId={user.id} isAdmin={isAdmin} onDelete={handleDeletePost} onTogglePin={togglePinPost} canHighlight={!!community?.is_public} />
               ))}
             </div>
           )}
@@ -1828,6 +1929,38 @@ export default function CommunityDetail() {
       )}
       {showAddPrayer && (
         <AddPrayerSheet onClose={() => setShowAddPrayer(false)} onSubmit={handleAddPrayer} />
+      )}
+
+      {/* Chat-Anhänge: Datei-Feld, Foto-Vorschau, Gebet-/Bibelvers-Sheets, Foto-Ansicht */}
+      <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoPick} style={{ display: 'none' }} />
+      {showPrayerSheet && (
+        <Suspense fallback={null}>
+          <PrayerAttachSheet onClose={() => setShowPrayerSheet(false)} onSelect={handleSendPrayer} />
+        </Suspense>
+      )}
+      {showVerseSheet && (
+        <Suspense fallback={null}>
+          <BibleVerseModal onClose={() => setShowVerseSheet(false)} onSend={handleSendVerse} />
+        </Suspense>
+      )}
+      {photoDraft && (
+        <div onClick={cancelPhotoDraft} style={{ position: 'fixed', inset: 0, zIndex: 210, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: 'var(--color-bg)', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '16px 16px calc(16px + env(safe-area-inset-bottom, 0px))', boxShadow: '0 -8px 32px rgba(0,0,0,0.25)' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-warm-3)', margin: '0 auto 14px' }} />
+            <img src={photoDraft.url} alt={t('Vorschau')} style={{ width: '100%', maxHeight: '46vh', objectFit: 'contain', borderRadius: 14, backgroundColor: 'var(--color-bg-secondary)' }} />
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button onClick={cancelPhotoDraft} disabled={photoSending} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid var(--color-warm-3)', background: 'none', cursor: 'pointer', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)' }}>{t('Abbrechen')}</button>
+              <button onClick={confirmSendPhoto} disabled={photoSending} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', cursor: photoSending ? 'default' : 'pointer', backgroundColor: 'var(--color-warm-1)', color: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, opacity: photoSending ? 0.6 : 1 }}>
+                {photoSending ? t('Sende…') : t('Senden')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {viewerUrl && (
+        <div onClick={() => setViewerUrl(null)} style={{ position: 'fixed', inset: 0, zIndex: 220, backgroundColor: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <img src={viewerUrl} alt={t('Foto')} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />
+        </div>
       )}
 
       <style>{'\n        @keyframes spin { to { transform: rotate(360deg); } }\n        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }\n        @keyframes sheetSlideUp { from{transform:translateX(-50%) translateY(100%)} to{transform:translateX(-50%) translateY(0)} }\n      '}</style>

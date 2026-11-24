@@ -17,6 +17,7 @@ import ModerationSheet from '../common/ModerationSheet'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
 import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
 import ModerationHiddenNotice from '../moderation/ModerationHiddenNotice'
+import AdminHighlightMenuItem from '../moderation/AdminHighlightMenuItem'
 import { useIsAppAdmin } from '../../hooks/useIsAppAdmin'
 import {
   timeAgo, formatLastPrayed, getInitials, authorName as displayName, KIND_OIKOS,
@@ -453,6 +454,9 @@ export default function PrayerCard({
                     <button onClick={() => { setShowMenu(false); onDelete?.(prayer) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>
                       <Trash2 size={15} />{' '}{t('Löschen')}</button>
                   </>
+                )}
+                {prayer.kind !== KIND_OIKOS && prayer.visibility === 'public' && (
+                  <AdminHighlightMenuItem kind="prayer" refId={prayer.id} label={prayer.title} onClose={() => setShowMenu(false)} />
                 )}
                 {!isOwner && prayer.ownerId && (
                   <button onClick={() => { setShowMenu(false); setShowModeration(true) }} style={{ ...anchoredMenuItemStyle, color: 'var(--color-error)' }}>

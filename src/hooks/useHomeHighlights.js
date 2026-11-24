@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { readCache, writeCache } from '../lib/swrCache'
+import { HIGHLIGHTS_CHANGED_EVENT } from '../lib/highlightComposer'
 
 // Von Moderatoren gesetzte Highlights im Aktuelles-Tab (Updates, hervor-
 // gehobene Weltkarten-Events und Gebete). Liest über die RPC
@@ -21,6 +22,12 @@ export function useHomeHighlights() {
   }, [user?.id])
 
   useEffect(() => { load() }, [load])
+
+  // Moderator hat irgendwo (⋯-Menü) etwas hervorgehoben → neu laden
+  useEffect(() => {
+    window.addEventListener(HIGHLIGHTS_CHANGED_EVENT, load)
+    return () => window.removeEventListener(HIGHLIGHTS_CHANGED_EVENT, load)
+  }, [load])
 
   return { items, reload: load }
 }

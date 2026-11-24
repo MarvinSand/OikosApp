@@ -27,11 +27,12 @@ function expiresAtFor(key) {
 const fieldStyle = { width: '100%', padding: '11px 13px', borderRadius: 12, border: '1.5px solid var(--color-border)', backgroundColor: 'var(--color-bg)', fontFamily: 'Lora, serif', fontSize: 14, color: 'var(--color-text)', display: 'block', boxSizing: 'border-box' }
 const labelStyle = { display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', margin: '14px 0 6px' }
 
-export default function HighlightComposerSheet({ onClose, onCreated }) {
+export default function HighlightComposerSheet({ onClose, onCreated, preset = null }) {
   const { t } = useT()
   const { user } = useAuth()
   const { showToast } = useToast()
-  const [step, setStep] = useState('choose') // choose | update | event | prayer
+  // choose | update | event | prayer | post | community_post (mit preset direkt der Zielschritt)
+  const [step, setStep] = useState(preset?.kind || 'choose')
   const [saving, setSaving] = useState(false)
 
   const [title, setTitle] = useState('')
@@ -39,11 +40,11 @@ export default function HighlightComposerSheet({ onClose, onCreated }) {
   const [important, setImportant] = useState(false)
   const [expiry, setExpiry] = useState('7')
   const [options, setOptions] = useState(null) // Events / Gebete zur Auswahl
-  const [selected, setSelected] = useState(null)
+  const [selected, setSelected] = useState(preset?.refId || null)
 
   // Auswahl-Listen laden, sobald der Schritt gewählt ist
   useEffect(() => {
-    if (step !== 'event' && step !== 'prayer') return
+    if (preset || (step !== 'event' && step !== 'prayer')) return
     let cancelled = false
     setOptions(null)
     setSelected(null)
@@ -100,6 +101,8 @@ export default function HighlightComposerSheet({ onClose, onCreated }) {
     if (step === 'update') row.title = title.trim()
     if (step === 'event') row.activity_id = selected
     if (step === 'prayer') row.prayer_id = selected
+    if (step === 'post') row.post_id = selected
+    if (step === 'community_post') row.community_post_id = selected
     const { error } = await supabase.from('home_highlights').insert(row)
     setSaving(false)
     if (error) {
@@ -128,13 +131,13 @@ export default function HighlightComposerSheet({ onClose, onCreated }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--color-border)', margin: '0 auto 14px' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          {step !== 'choose' && (
+          {step !== 'choose' && !preset && (
             <button onClick={() => setStep('choose')} aria-label={t('Zurück')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 2, display: 'flex' }}>
               <ChevronLeft size={20} />
             </button>
           )}
           <h3 style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            {step === 'choose' ? t('Was möchtest du anzeigen?') : t(choices.find(c => c.key === step).label)}
+            {step === 'choose' ? t('Was möchtest du anzeigen?') : preset ? t('In „Aktuelles“ anzeigen') : t(choices.find(c => c.key === step).label)}
           </h3>
           <button onClick={onClose} aria-label={t('Schließen')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4, display: 'flex' }}>
             <X size={18} />
@@ -174,7 +177,17 @@ export default function HighlightComposerSheet({ onClose, onCreated }) {
           </>
         )}
 
-        {(step === 'event' || step === 'prayer') && (
+        {preset && (
+          <>
+            <div style={{ padding: '12px 14px', borderRadius: 12, border: '1.5px solid var(--color-accent)', background: 'var(--color-accent-light)', fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>
+              {preset.label}
+            </div>
+            <label style={labelStyle}>{t('Hinweis dazu (optional)')}</label>
+            <textarea value={body} onChange={e => setBody(e.target.value)} rows={2} maxLength={500} style={{ ...fieldStyle, resize: 'vertical' }} />
+          </>
+        )}
+
+        {!preset && (step === 'event' || step === 'prayer') && (
           <>
             {options === null && <p style={{ fontFamily: 'Lora, serif', fontSize: 13, color: 'var(--color-text-muted)' }}>{t('Lädt…')}</p>}
             {options && options.length === 0 && (

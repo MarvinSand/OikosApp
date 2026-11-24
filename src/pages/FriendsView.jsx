@@ -34,6 +34,7 @@ import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet
 import ModerationSheet from '../components/common/ModerationSheet'
 import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
 import ModerationHiddenNotice from '../components/moderation/ModerationHiddenNotice'
+import AdminHighlightMenuItem from '../components/moderation/AdminHighlightMenuItem'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../components/common/AnchoredMenu'
 import { useBlocks } from '../hooks/useBlocks'
@@ -1094,6 +1095,9 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
                       onDone={() => { /* parent may refetch */ }}
                     />
                   )}
+                  {post.is_public !== false && (
+                    <AdminHighlightMenuItem kind="post" refId={post.id} label={post.title || post.body} onClose={() => setShowMenu(false)} />
+                  )}
                 </AnchoredMenu>
               )}
             </>
@@ -1114,6 +1118,9 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
               </button>
               {showMenu && (
                 <AnchoredMenu anchorRef={postMenuBtnRef} onClose={() => setShowMenu(false)} minWidth={130}>
+                  {post.is_public !== false && (
+                    <AdminHighlightMenuItem kind="post" refId={post.id} label={post.title || post.body} onClose={() => setShowMenu(false)} />
+                  )}
                   <button
                     onClick={() => { setShowMenu(false); onDelete?.(post.id) }}
                     style={{ ...anchoredMenuItemStyle, color: '#C0392B' }}

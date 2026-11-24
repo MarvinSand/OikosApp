@@ -1,5 +1,13 @@
 // Englische Übersetzungen (home). Schlüssel = deutscher Originaltext.
 export default {
+  'Anhängen': 'Attach',
+  'In Aktuelles anzeigen': 'Show in Latest',
+  'Beitrag ansehen': 'View post',
+  'Zur Community': 'Go to community',
+  'Willkommen in deiner Region!': 'Welcome to your region!',
+  'Du bist jetzt in diesen Gruppen und kannst dich dort mit Geschwistern austauschen:': 'You are now in these groups and can chat with siblings there:',
+  'Du bist jetzt in dieser Gruppe und kannst dich dort mit Geschwistern austauschen:': 'You are now in this group and can chat with siblings there:',
+  'Super': 'Great',
   'wiederkehrend': 'recurring',
   'Aktuelles aus OIKOS': 'Latest from OIKOS',
   'Wichtig': 'Important',

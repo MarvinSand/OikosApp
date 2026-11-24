@@ -15,6 +15,7 @@ import YouVersionCallback from './pages/YouVersionCallback'
 import YouVersionHandoff from './pages/YouVersionHandoff'
 import LegalPage from './pages/LegalPage'
 import BottomNav from './components/layout/BottomNav'
+import GlobalHosts from './components/common/GlobalHosts'
 import { useKeyboardInset } from './hooks/useKeyboardInset'
 import SideNav from './components/layout/SideNav'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -212,6 +213,7 @@ function AppShellInner() {
       </div>
 
       <BottomNav />
+      <GlobalHosts />
     </div>
   )
 }
