@@ -146,45 +146,36 @@ const MARQUEE = [
 ]
 
 const TOPICS = [
-  { img: 'weltkarte', emoji: '📍', title: 'Die Weltkarte', text: 'Finde Geschwister, Hausgemeinden und Events in deiner Nähe. Deinen Standort steuerst du selbst.', alt: 'Eine Hand hält ein Smartphone mit der Weltkarte der App, goldene Lichtlinien führen über eine Stadt bei Nacht' },
-  { img: 'bibel', emoji: '📖', title: 'Bibelstudium', kind: 'event', text: 'Lest gemeinsam, markiert Verse, tauscht Gedanken aus und startet Bibelstudien mit Freunden.', alt: 'Fünf Freunde im Bibelkreis, eine Person zeigt die Bibel-Ansicht der App auf dem Smartphone' },
-  { img: 'haus', emoji: '🏠', title: 'Hausgemeinde', kind: 'gemeinde', text: 'Gründe oder finde Hauskreise: mit eigenem Chat, gemeinsamen Anliegen und Mitgliederübersicht.', alt: 'Hausgemeinde im Wohnzimmer, ein Mann zeigt die Community-Liste der App' },
-  { img: 'outreach', emoji: '🤝', title: 'Outreach & Evangelisation', kind: 'event', text: 'Plant Einsätze in eurer Stadt und teilt euren Glauben ganz natürlich: Zeugnisse, Bibelverse, Gespräche. So erreicht ihr Menschen dort, wo sie leben.', alt: 'Freiwillige sprechen in einer Fußgängerzone mit Passanten, eine Person zeigt die Karten-Ansicht der App' },
-  { img: 'lobpreis', emoji: '🎵', title: 'Lobpreis & Events', kind: 'event', text: 'Lobpreisabende, Gebetsabende, Sport und mehr: Erstelle Events und lade andere ein.', alt: 'Lobpreisabend im Freien unter Lichterketten, eine Person hält die App hoch' },
-  { img: 'gebet', emoji: '🙏', title: 'Gebet & Gebetskreise', kind: 'sibling', text: 'Teile Anliegen, bete mit, setzt euch Gebetsziele. Erhörte Gebete bleiben als Zeugnis erhalten.', alt: 'Eine Frau betet im Morgenlicht mit dem Smartphone an der Brust' },
+  { img: 'weltkarte', emoji: '📍', title: 'Die Weltkarte', text: 'Geschwister, Gemeinden und Events in deiner Nähe.', alt: 'Eine Hand hält ein Smartphone mit der Weltkarte der App, goldene Lichtlinien führen über eine Stadt bei Nacht' },
+  { img: 'bibel', emoji: '📖', title: 'Bibelstudium', kind: 'event', text: 'Gemeinsam lesen, Verse teilen.', alt: 'Fünf Freunde im Bibelkreis, eine Person zeigt die Bibel-Ansicht der App auf dem Smartphone' },
+  { img: 'haus', emoji: '🏠', title: 'Hausgemeinde', kind: 'gemeinde', text: 'Hauskreise gründen und finden.', alt: 'Hausgemeinde im Wohnzimmer, ein Mann zeigt die Community-Liste der App' },
+  { img: 'outreach', emoji: '🤝', title: 'Outreach & Evangelisation', kind: 'event', text: 'Einsätze planen, Glauben teilen.', alt: 'Freiwillige sprechen in einer Fußgängerzone mit Passanten, eine Person zeigt die Karten-Ansicht der App' },
+  { img: 'lobpreis', emoji: '🎵', title: 'Lobpreis & Events', kind: 'event', text: 'Events erstellen, andere einladen.', alt: 'Lobpreisabend im Freien unter Lichterketten, eine Person hält die App hoch' },
+  { img: 'gebet', emoji: '🙏', title: 'Gebet & Gebetskreise', kind: 'sibling', text: 'Anliegen teilen, gemeinsam beten.', alt: 'Eine Frau betet im Morgenlicht mit dem Smartphone an der Brust' },
 ]
 
 const PILLARS = [
-  {
-    icon: Network, title: 'Besser merken, wer zu dir gehört',
-    text: 'Auf deiner Oikos Map hältst du alle Menschen aus deinem Umfeld fest, mit Namen, Anliegen und ihrer Geschichte. Nichts geht im Alltag unter, und du siehst sofort, für wen du lange nicht gebetet hast.',
-  },
-  {
-    icon: HandHeart, title: 'Gezielt für sie beten',
-    text: 'Statt „irgendwie an alle zu denken“ betest du mit Namen und konkretem Anliegen: für Lisa, für Ben, für den Nachbarn von nebenan. Der Gebetsmodus führt dich Person für Person durch deine Liste.',
-  },
-  {
-    icon: Sparkles, title: 'Und in der geistlichen Welt etwas bewegen',
-    text: 'Gebet ist keine Floskel. Es öffnet Türen, die kein Argument öffnen kann. Wer für Menschen einsteht, bewegt etwas in der unsichtbaren Welt, lange bevor man es sieht.',
-  },
+  { icon: Network, title: 'Merken', text: 'Alle Menschen aus deinem Umfeld, mit Namen und Anliegen.' },
+  { icon: HandHeart, title: 'Gezielt beten', text: 'Person für Person, mit konkretem Anliegen.' },
+  { icon: Sparkles, title: 'Bewegen', text: 'Wer für Menschen einsteht, bewegt etwas.' },
 ]
 
 const FEATURES = [
-  { icon: Network, title: 'Oikos Map', text: 'Dein Umfeld auf einen Blick: Menschen, Orte und Verbindungen, farbig geordnet.', screen: '01-oikos-map' },
-  { icon: HandHeart, title: 'Gebete', text: 'Anliegen teilen, mitbeten, Gebetslisten und der geführte Gebetsmodus.', screen: '03-gebete' },
-  { icon: Route, title: 'Menschen begleiten', text: 'Anliegen, Story-Line und Impact-Stufen für jede Person.', screen: '05-menschen-begleiten' },
-  { icon: Globe, title: 'Weltkarte', text: 'Geschwister, Gemeinden und Events in deiner Nähe entdecken.', screen: '02-weltkarte' },
-  { icon: Users, title: 'Communities', text: 'Hauskreise und Gemeinden mit Chat, Anliegen und Mitgliedern.', screen: '06-communities' },
-  { icon: Newspaper, title: 'Feed', text: 'Zeugnisse, Bibelverse und Ermutigung teilen.', screen: '04-feed' },
-  { icon: ScrollText, title: 'Bekenntnisse', text: 'Gottes Wahrheit mit Bibelstellen regelmäßig aussprechen.', screen: '07-bekenntnisse' },
-  { icon: BookOpen, title: 'Bibel', text: 'Lesen, Verse markieren, Notizen machen und teilen.', screen: '08-bibel' },
-  { icon: MessageCircle, title: 'Chats', text: 'Direkt, in Communities oder in Gruppen für Aktivitäten.', screen: '09-chats' },
+  { icon: Network, title: 'Oikos Map', text: 'Dein Umfeld auf einen Blick.', screen: '01-oikos-map' },
+  { icon: HandHeart, title: 'Gebete', text: 'Mitbeten, Listen, Gebetsmodus.', screen: '03-gebete' },
+  { icon: Route, title: 'Menschen begleiten', text: 'Story-Line und Impact pro Person.', screen: '05-menschen-begleiten' },
+  { icon: Globe, title: 'Weltkarte', text: 'Geschwister und Events in deiner Nähe.', screen: '02-weltkarte' },
+  { icon: Users, title: 'Communities', text: 'Hauskreise mit Chat und Anliegen.', screen: '06-communities' },
+  { icon: Newspaper, title: 'Feed', text: 'Zeugnisse und Verse teilen.', screen: '04-feed' },
+  { icon: ScrollText, title: 'Bekenntnisse', text: 'Gottes Wahrheit aussprechen.', screen: '07-bekenntnisse' },
+  { icon: BookOpen, title: 'Bibel', text: 'Lesen, markieren, Notizen.', screen: '08-bibel' },
+  { icon: MessageCircle, title: 'Chats', text: 'Direkt, in Gruppen, in Communities.', screen: '09-chats' },
 ]
 
 const VALUES = [
-  { icon: ShieldCheck, title: 'Du entscheidest', text: 'Bei jedem Gebet, Beitrag und Standort bestimmst du selbst, wer ihn sehen darf.' },
-  { icon: HeartHandshake, title: 'Ein geschützter Raum', text: 'Respektvoller Umgang mit klaren Regeln. Melden und Blockieren sind überall möglich.' },
-  { icon: Sparkles, title: 'Kostenlos & werbefrei', text: 'Keine Werbung, kein Verkauf deiner Daten. Dein Konto lässt sich jederzeit löschen.' },
+  { icon: ShieldCheck, title: 'Du entscheidest', text: 'Du bestimmst, wer was sieht.' },
+  { icon: HeartHandshake, title: 'Geschützter Raum', text: 'Melden und Blockieren überall.' },
+  { icon: Sparkles, title: 'Kostenlos & werbefrei', text: 'Keine Werbung, keine Datenweitergabe.' },
 ]
 
 const LAYERS = [
@@ -193,7 +184,6 @@ const LAYERS = [
   { key: 'gemeinde', icon: Home, label: 'Gemeinden' },
 ]
 
-const MANIFEST = 'Stell dir vor, *niemand* in deinem Umfeld wird vergessen. Jeder Mensch, den Gott dir anvertraut hat, ist von *Gebet* umgeben. Und wo immer du bist, gibt es *Geschwister,* die mit dir glauben, beten und hoffen.'
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -310,7 +300,6 @@ function Pin({ emoji, pulse = false }) {
 
 export default function Landing() {
   const rootRef = useRef(null)
-  const manifestRef = useRef(null)
   const showcaseRef = useRef(null)
   const [scrolled, setScrolled] = useState(false)
   const [loginHref, setLoginHref] = useState(null)
@@ -327,13 +316,12 @@ export default function Landing() {
     return () => { document.title = prevTitle }
   }, [])
 
-  // Scroll: Header-Glas, Fortschrittsbalken, Parallax-Variable, Manifest-Wörter
+  // Scroll: Header-Glas, Fortschrittsbalken, Parallax-Variable
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
-    const words = manifestRef.current ? [...manifestRef.current.querySelectorAll('.w')] : []
-    const still = reduceMotion()
     let raf = 0
+    const still = reduceMotion()
     const update = () => {
       raf = 0
       const st = root.scrollTop
@@ -341,12 +329,6 @@ export default function Landing() {
       setScrolled(prev => (prev !== st > 24 ? st > 24 : prev))
       root.style.setProperty('--prog', (st / max).toFixed(4))
       if (!still) root.style.setProperty('--sy', String(Math.round(st)))
-      if (!words.length || still) return
-      const r = manifestRef.current.getBoundingClientRect()
-      const vh = root.clientHeight
-      const p = Math.min(1, Math.max(0, (vh * 0.82 - r.top) / (r.height + vh * 0.25)))
-      const lit = p * words.length * 1.15
-      words.forEach((w, i) => { w.style.opacity = String(Math.min(1, Math.max(0.18, lit - i + 0.4))) })
     }
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
     root.addEventListener('scroll', onScroll, { passive: true })
@@ -438,15 +420,14 @@ export default function Landing() {
                 Glaube, der <span className="lp-gold">verbindet.</span>
               </h1>
               <p className="lp-lead lp-rise" style={{ animationDelay: '260ms' }}>
-                Merke dir die Menschen, die Gott dir anvertraut hat, bete gezielt für sie, finde
-                Geschwister in deiner Nähe und erlebe, wie aus deinem Umfeld eine weltweite Familie wird.
+                Merke dir deine Menschen. Bete gezielt für sie. Finde Geschwister in deiner Nähe.
               </p>
               <div className="lp-cta lp-rise" style={{ animationDelay: '400ms' }}>
                 <Link to="/auth?mode=register" className="lp-btn lp-btn-primary lp-magnet" onPointerMove={magnet} onPointerLeave={unmagnet}>
                   Kostenlos starten <ArrowRight size={18} className="lp-arrow" aria-hidden="true" />
                 </Link>
                 <button type="button" className="lp-btn lp-btn-glass" onClick={() => scrollToId('oikos')}>
-                  Die Vision entdecken
+                  Oikos Map ansehen
                 </button>
               </div>
               <ul className="lp-avail lp-rise" style={{ animationDelay: '520ms' }} aria-label="Verfügbar auf">
@@ -465,7 +446,7 @@ export default function Landing() {
               />
             </div>
           </div>
-          <button type="button" className="lp-scroll" onClick={() => scrollToId('themen-band')} aria-label="Weiter nach unten">
+          <button type="button" className="lp-scroll" onClick={() => scrollToId('oikos')} aria-label="Weiter nach unten">
             <ChevronDown size={20} aria-hidden="true" />
           </button>
         </section>
@@ -483,24 +464,6 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* ── Manifest ──────────────────────────────────────── */}
-        <section id="manifest" className="lp-section lp-manifest scroll-mt-16" aria-label="Unsere Hoffnung">
-          <div className="lp-wrap text-center">
-            <p className="lp-eyebrow center">Unsere Hoffnung</p>
-            <p ref={manifestRef} className="lp-manifest-text">
-              {MANIFEST.split(' ').map((word, i) => {
-                const gold = word.startsWith('*')
-                const clean = word.replaceAll('*', '')
-                return (
-                  <span key={i}>
-                    <span className={`w ${gold ? 'lp-gold' : ''}`}>{clean}</span>{' '}
-                  </span>
-                )
-              })}
-            </p>
-          </div>
-        </section>
-
         {/* ── Was ist Oikos? + Gebet vermehrt sich (direkt unter „Unsere Hoffnung“) ── */}
         <section id="oikos" className="lp-section lp-prayer scroll-mt-16" aria-labelledby="oikos-title" style={{ paddingTop: 24 }}>
           <picture className="lp-prayer-media" aria-hidden="true">
@@ -510,19 +473,14 @@ export default function Landing() {
           <div className="lp-bigword" aria-hidden="true" style={{ transform: 'translate3d(calc(var(--sy, 0) * -0.12px), 0, 0)' }}>OIKOS · οἶκος · OIKOS</div>
           <div className="lp-wrap relative">
             <Reveal className="lp-prayer-head">
-              <p className="lp-eyebrow center">Was ist Oikos?</p>
+              <p className="lp-eyebrow center">Dein Oikos</p>
               <h2 id="oikos-title" className="lp-h2 mt-5">
-                Dein Umfeld. <span className="lp-gold">Dein Gebet.</span> Echte Wirkung.
+                Ein Gebet. <span className="lp-gold">Eine Bewegung.</span>
               </h2>
-              <p className="lp-lead mt-6">
-                „Oikos“ ist das griechische Wort für „Haus“: die Menschen, die zu deinem Leben gehören.
-                Familie, Freunde, Kollegen, Nachbarn. Menschen, die Gott dir ganz bewusst anvertraut hat.
-                Tippe auf eine Person und sieh, was geschieht: Wer zu Jesus findet, hat selbst ein Umfeld,
-                für das er betet. So wird aus einem Gebet eine Bewegung.
-              </p>
+              <p className="lp-lead mt-4">Tippe auf eine Person und sieh, was geschieht.</p>
             </Reveal>
 
-            <Reveal delay={100} className="mt-10">
+            <Reveal delay={100} className="lp-stage-wrap">
               <NearView className="lp-prayer-stage">
               <Suspense fallback={<div className="lp-prayer-stage" />}>
                 <PrayerField
@@ -560,14 +518,10 @@ export default function Landing() {
             </div>
 
             <Reveal delay={60}>
-              <div className="lp-verses">
+              <div className="lp-verses is-single">
                 <figure className="lp-verse">
                   <blockquote>„Des Gerechten Gebet vermag viel, wenn es ernstlich ist.“</blockquote>
                   <figcaption>Jakobus 5,16 (Lutherbibel)</figcaption>
-                </figure>
-                <figure className="lp-verse">
-                  <blockquote>„Und was du von mir gehört hast, das befiehl treuen Menschen an, die tüchtig sind, auch andere zu lehren.“</blockquote>
-                  <figcaption>2. Timotheus 2,2 (Lutherbibel)</figcaption>
                 </figure>
               </div>
             </Reveal>
@@ -587,11 +541,11 @@ export default function Landing() {
                 <h2 id="world-title" className="lp-h2 mt-5">
                   Eine Familie <span className="lp-gold">über alle Grenzen.</span>
                 </h2>
-                <p className="lp-lead mt-6">
-                  Ein Gebet in Frankfurt, ein Lobpreisabend in Nairobi, ein Morgengebet in Seoul.
-                  Überall auf der Welt glauben Menschen wie du. Oikos Connect macht sichtbar,
-                  dass wir zusammengehören.
-                </p>
+                <ul className="lp-worldchips" aria-label="Beispiele aus aller Welt">
+                  {[['🙏', 'Frankfurt', 'Gebetsabend'], ['🎵', 'Nairobi', 'Lobpreis'], ['📖', 'Seoul', 'Morgengebet'], ['🏠', 'São Paulo', 'Hauskreis']].map(([e, city, what]) => (
+                    <li key={city} className="lp-chipcard"><Pin emoji={e} /><span><b>{city}</b><i>{what}</i></span></li>
+                  ))}
+                </ul>
               </Reveal>
             </div>
           </div>
@@ -603,10 +557,6 @@ export default function Landing() {
                 <h2 id="discover-title" className="lp-h2 mt-5">
                   Entdecke, wer in deiner Nähe glaubt. <span className="lp-gold">Sechs Wege, Menschen zu verbinden.</span>
                 </h2>
-                <p className="lp-lead mt-6">
-                  Auf der Weltkarte findest du Geschwister, Hausgemeinden und Events. Wie genau dein eigener
-                  Standort sichtbar ist, bestimmst du selbst. Fahre über ein Thema und sieh, wo es auf der Karte lebt.
-                </p>
               </Reveal>
 
               <div className="lp-discover-grid">
@@ -740,15 +690,14 @@ export default function Landing() {
           <div className="lp-wrap">
             <Reveal className="max-w-3xl">
               <p className="lp-eyebrow">Loslegen</p>
-              <h2 id="download-title" className="lp-h2 mt-5">Überall dabei. Im Browser, auf dem iPhone und auf Android.</h2>
-              <p className="lp-lead mt-6">Ein Konto, eine Oikos Map, auf allen Geräten.</p>
+              <h2 id="download-title" className="lp-h2 mt-5">Überall dabei. <span className="lp-gold">Ein Konto, alle Geräte.</span></h2>
             </Reveal>
             <div className="lp-dl">
               <Reveal>
                 <div className="lp-card is-main">
                   <span className="lp-card-icon"><Monitor size={22} aria-hidden="true" /></span>
                   <h3>Web-App</h3>
-                  <p className="flex-1">Direkt im Browser, ohne Installation. Ideal am Laptop oder zum Ausprobieren.</p>
+                  <p className="flex-1">Direkt im Browser.</p>
                   <Link to="/auth?mode=register" className="lp-btn lp-btn-primary">
                     Jetzt starten <ArrowRight size={18} className="lp-arrow" aria-hidden="true" />
                   </Link>
@@ -758,7 +707,7 @@ export default function Landing() {
                 <div className="lp-card">
                   <span className="lp-card-icon"><Smartphone size={22} aria-hidden="true" /></span>
                   <h3>Android</h3>
-                  <p className="flex-1">Für Smartphones und Tablets, bei Google Play.</p>
+                  <p className="flex-1">Bei Google Play.</p>
                   {PLAY_STORE_URL ? (
                     <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-glass">
                       Bei Google Play laden<span className="sr-only"> (öffnet in neuem Tab)</span>
@@ -772,7 +721,7 @@ export default function Landing() {
                 <div className="lp-card">
                   <span className="lp-card-icon"><Smartphone size={22} aria-hidden="true" /></span>
                   <h3>iPhone</h3>
-                  <p className="flex-1">Für iPhone und iPad, im App Store.</p>
+                  <p className="flex-1">Im App Store.</p>
                   {APP_STORE_URL ? (
                     <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-glass">
                       Im App Store laden<span className="sr-only"> (öffnet in neuem Tab)</span>

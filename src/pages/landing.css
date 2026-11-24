@@ -760,3 +760,39 @@
 @keyframes lp-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes lp-pop { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .lp .lp-dialog-backdrop, .lp .lp-dialog { animation: none; } }
+
+/* ══════════ Weniger Text, mehr Bild (Nov. 2026) ══════════
+ * Oikos-Map direkt unter dem Hero, größer; Säulen/Karten nur noch als kurze Labels. */
+.lp .lp-prayer-head .lp-lead { font-size: clamp(1.05rem, 2.2vw, 1.3rem); }
+@media (min-width: 768px) {
+  .lp .lp-prayer-head { padding: 34px 48px 30px; max-width: 760px; }
+  .lp .lp-prayer-stage { max-width: 1240px; margin-left: auto; margin-right: auto; }
+}
+.lp .lp-pillars { gap: 10px; }
+.lp .lp-pillar { grid-template-columns: auto 1fr; align-items: center; gap: 16px; padding: 16px 20px 16px 16px; border-radius: 20px; }
+.lp .lp-pillar h3 { padding-right: 40px; font-size: 1.25rem; }
+.lp .lp-pillar p { margin-top: 3px; font-size: 14.5px; line-height: 1.45; }
+.lp .lp-pillar-num { top: 8px; font-size: 36px; }
+.lp .lp-oikos-grid { margin-top: 36px; gap: 28px; }
+@media (min-width: 1024px) { .lp .lp-oikos-grid { margin-top: 48px; gap: 56px; grid-template-columns: 0.8fr 1.2fr; } }
+.lp .lp-verses.is-single { grid-template-columns: 1fr; max-width: 760px; margin-top: 40px; }
+
+/* Weltweit: Orts-Chips statt Fließtext */
+.lp .lp-worldchips { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.lp .lp-worldchips .lp-chipcard { margin: 0; }
+
+/* Themen-Karten: nur Titel + eine kurze Zeile */
+.lp .lp-topic-body p { font-size: 14px; line-height: 1.4; }
+.lp .lp-prayer-head .lp-h2 { font-size: clamp(1.9rem, 4.6vw, 3rem); line-height: 1.1; }
+.lp .lp-stage-wrap { margin-top: 12px; }
+@media (min-width: 768px) {
+  .lp .lp-prayer-head { max-width: 860px; padding: 28px 44px 26px; }
+  .lp .lp-stage-wrap { margin-top: -28px; }
+  .lp .lp-prayer-stage { aspect-ratio: 16 / 9.2; }
+}
+@media (max-width: 767px) {
+  .lp .lp-prayer-media, .lp .lp-prayer-video { height: 240px; }
+  .lp .lp-prayer-head { margin-top: 84px; padding: 22px 20px 20px; }
+  .lp .lp-stage-wrap { margin-top: 0; }
+}
+.lp .lp-prayer { padding-bottom: 24px; }

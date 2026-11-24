@@ -584,7 +584,6 @@ export default function PrayerField({ className = '', backdrop = null }) {
         <li><b>{stats.reached}</b> Menschen im Umfeld</li>
         <li><b>{stats.gen}</b>. Generation</li>
       </ul>
-      <p className="lp-prayer-hint">Tippe auf eine Person, um für sie zu beten. Wer zum Glauben kommt, bekommt ein eigenes Umfeld.</p>
     </div>
   )
 }
