@@ -1,7 +1,7 @@
 // Englische Übersetzungen (home). Schlüssel = deutscher Originaltext.
 export default {
   'Anhängen': 'Attach',
-  'In Aktuelles anzeigen': 'Show in Latest',
+  'In Aktuelles anzeigen (Moderation)': 'Show in Latest (moderation)',
   'Beitrag ansehen': 'View post',
   'Zur Community': 'Go to community',
   'Willkommen in deiner Region!': 'Welcome to your region!',

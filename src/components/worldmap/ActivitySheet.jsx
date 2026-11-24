@@ -234,8 +234,8 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
               {isAppAdmin && activity.is_public !== false && (
                 <button
                   onClick={() => openHighlightComposer({ kind: 'event', refId: activity.id, label: activity.title })}
-                  aria-label={t('In Aktuelles anzeigen')}
-                  title={t('In Aktuelles anzeigen')}
+                  aria-label={t('In Aktuelles anzeigen (Moderation)')}
+                  title={t('In Aktuelles anzeigen (Moderation)')}
                   style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.accentDark, padding: 6, display: 'flex', borderRadius: 8 }}
                 >
                   <Megaphone size={18} />

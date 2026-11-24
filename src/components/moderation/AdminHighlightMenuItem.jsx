@@ -20,7 +20,7 @@ export default function AdminHighlightMenuItem({ kind, refId, label, onClose }) 
       }}
       style={anchoredMenuItemStyle}
     >
-      <Megaphone size={14} />{' '}{t('In Aktuelles anzeigen')}
+      <Megaphone size={14} />{' '}{t('In Aktuelles anzeigen (Moderation)')}
     </button>
   )
 }
