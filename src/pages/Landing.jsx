@@ -106,19 +106,19 @@ const IMG = '/landing/img/'
 const APP = '/landing/app/'
 const VID = '/landing/video/'
 
-const HERO_SCREENS = ['01-oikos-map', '03-gebete', '02-weltkarte', '06-communities', '08-bibel'].map((s, i) => ({
-  src: `${APP}${s}.webp`,
-  alt: ['Oikos Map der App', 'Gebete in der App', 'Weltkarte der App', 'Communities in der App', 'Bibel in der App'][i],
-}))
 
 // Schwebende Karten um das Hero-Handy: passend zur gerade gezeigten App-Ansicht
-// (gleiche Reihenfolge wie HERO_SCREENS). Je 3 Pin-Karten + 1 Avatar-Karte.
+// (gleiche Reihenfolge wie FEATURES). Je 3 Pin-Karten + 1 Avatar-Karte.
 const HERO_CARDS = [
   { pins: [['🧑‍🤝‍🧑', 'Dein Umfeld', '12 Menschen im Blick'], ['🔗', 'Verbindungen', 'Familie · Freunde'], ['🙏', 'Gebetsmodus', 'Für alle beten']], avs: [['L', '#FFD2B8'], ['B', '#BDF0DC'], ['M', '#D9C8FF']], avTitle: 'Lisa, Ben, Mama', avSub: 'heute im Gebet' },
   { pins: [['🙏', 'Gebetsmodus', 'Person für Person'], ['✅', 'Gebet erhört', 'Für Lisa'], ['📋', 'Gebetslisten', 'Familie · Freunde']], avs: [['A', '#BDF0DC'], ['K', '#D9C8FF'], ['S', '#FFE08A']], avTitle: '9 Personen', avSub: 'beten mit dir' },
+  { pins: [['🛤️', 'Story-Line', 'Jeder Schritt zählt'], ['📈', 'Impact', 'Stufe 3 erreicht'], ['💬', 'Anliegen', 'Neu für Ben']], avs: [['B', '#FFD2B8'], ['L', '#BDF0DC'], ['T', '#D9C8FF']], avTitle: 'Ben', avSub: 'wird begleitet' },
   { pins: [['🎵', 'Lobpreisabend', 'Heute · 19:30'], ['🏠', 'Hausgemeinde', 'in deiner Nähe'], ['📖', 'Bibelstudium', 'Do · 20:00']], avs: [['B', '#FFD2B8'], ['A', '#BDF0DC'], ['K', '#D9C8FF']], avTitle: 'Geschwister', avSub: 'in deiner Nähe' },
   { pins: [['🏠', 'Hauskreis', 'Frankfurt-Bornheim'], ['💬', 'Gruppenchat', '3 neue Nachrichten'], ['📅', 'Treffen', 'Jeden Mittwoch']], avs: [['J', '#FFE08A'], ['N', '#FFC9D6'], ['T', '#BFE3FF']], avTitle: '12 Mitglieder', avSub: 'in deiner Community' },
+  { pins: [['📰', 'Zeugnis', 'Gott hat gehandelt'], ['❤️', 'Ermutigung', '24 Reaktionen'], ['📤', 'Teilen', 'Im Feed oder Chat']], avs: [['M', '#FFD2B8'], ['P', '#BDF0DC'], ['C', '#D9C8FF']], avTitle: 'Neuer Beitrag', avSub: 'von Geschwistern' },
+  { pins: [['📜', 'Bekenntnis', 'Heute aussprechen'], ['📖', 'Bibelstelle', 'Römer 8,31'], ['🔁', 'Täglich', '7 Tage am Stück']], avs: [['H', '#FFE08A'], ['A', '#BDF0DC'], ['G', '#D9C8FF']], avTitle: 'Gottes Wahrheit', avSub: 'laut ausgesprochen' },
   { pins: [['📖', 'Psalm 23', 'Vers markiert'], ['📝', 'Meine Notiz', 'Ein Gedanke dazu'], ['📤', 'Teilen', 'Im Feed oder Chat']], avs: [['E', '#BDF0DC'], ['D', '#FFD2B8'], ['R', '#D9C8FF']], avTitle: 'Gemeinsam lesen', avSub: '5 Freunde dabei' },
+  { pins: [['💬', 'Direktnachricht', 'Neu von Lisa'], ['👥', 'Gruppenchat', 'Hauskreis'], ['🙏', 'Gebetsanliegen', 'Im Chat geteilt']], avs: [['L', '#FFD2B8'], ['F', '#BDF0DC'], ['W', '#D9C8FF']], avTitle: '3 neue', avSub: 'Nachrichten' },
 ]
 const HERO_SLOTS = ['lp-fc-a', 'lp-fc-b', 'lp-fc-c']
 const HERO_DEPTH = [90, 70, 120]
@@ -171,6 +171,8 @@ const FEATURES = [
   { icon: BookOpen, title: 'Bibel', text: 'Lesen, markieren, Notizen.', screen: '08-bibel' },
   { icon: MessageCircle, title: 'Chats', text: 'Direkt, in Gruppen, in Communities.', screen: '09-chats' },
 ]
+
+const FEATURE_SCREENS = FEATURES.map(f => ({ src: `${APP}${f.screen}.webp`, alt: `App-Ansicht: ${f.title}` }))
 
 const VALUES = [
   { icon: ShieldCheck, title: 'Du entscheidest', text: 'Du bestimmst, wer was sieht.' },
@@ -300,13 +302,13 @@ function Pin({ emoji, pulse = false }) {
 
 export default function Landing() {
   const rootRef = useRef(null)
-  const showcaseRef = useRef(null)
+  const tabsRef = useRef(null)
+  const resumeRef = useRef(0)
   const [scrolled, setScrolled] = useState(false)
   const [loginHref, setLoginHref] = useState(null)
   const closeLogin = useCallback(() => setLoginHref(null), [])
   const [kinds, setKinds] = useState({ sibling: true, event: true, gemeinde: true })
   const [focusKind, setFocusKind] = useState(null)
-  const [heroScreen, setHeroScreen] = useState(0)
   const [feature, setFeature] = useState(0)
   const [autoplay, setAutoplay] = useState(true)
 
@@ -336,29 +338,31 @@ export default function Landing() {
     return () => { root.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf) }
   }, [])
 
-  // Hero-Handy blättert durch die App
+  // Handy blättert von selbst durch die App-Ansichten; wählt jemand selbst, pausiert
+  // das, und nach 12 s ohne weitere Eingabe geht es automatisch weiter.
   useEffect(() => {
-    if (reduceMotion()) return
-    const t = setInterval(() => setHeroScreen(s => (s + 1) % HERO_SCREENS.length), 3600)
+    if (!autoplay || reduceMotion()) return
+    const t = setInterval(() => setFeature(f => (f + 1) % FEATURES.length), 3600)
     return () => clearInterval(t)
-  }, [])
-
-  // App-Showcase blättert von selbst weiter, solange niemand selbst wählt
-  useEffect(() => {
-    if (!autoplay || reduceMotion() || !showcaseRef.current) return
-    let timer = 0
-    const io = new IntersectionObserver(([e]) => {
-      clearInterval(timer)
-      if (e.isIntersecting) timer = setInterval(() => setFeature(f => (f + 1) % FEATURES.length), 4200)
-    }, { threshold: 0.35 })
-    io.observe(showcaseRef.current)
-    return () => { io.disconnect(); clearInterval(timer) }
   }, [autoplay])
+  useEffect(() => () => clearTimeout(resumeRef.current), [])
+
+  // aktiven Tab in der (mobil wischbaren) Leiste mittig halten
+  useEffect(() => {
+    const box = tabsRef.current
+    const el = box?.children[feature]
+    if (!box || !el || box.scrollWidth <= box.clientWidth) return
+    box.scrollTo({ left: el.offsetLeft - (box.clientWidth - el.clientWidth) / 2, behavior: reduceMotion() ? 'auto' : 'smooth' })
+  }, [feature])
 
   const scrollToId = useCallback((id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' })
   }, [])
-  const pickFeature = (i) => { setAutoplay(false); setFeature(i) }
+  const pickFeature = (i) => {
+    setAutoplay(false); setFeature(i)
+    clearTimeout(resumeRef.current)
+    resumeRef.current = setTimeout(() => setAutoplay(true), 12000)
+  }
 
   // Magnetische Buttons (nur mit Maus)
   const magnet = (e) => {
@@ -387,7 +391,7 @@ export default function Landing() {
             <span>Oikos Connect</span>
           </Link>
           <nav aria-label="Hauptnavigation" className="hidden lg:flex items-center gap-1">
-            {[['oikos', 'Was ist Oikos?'], ['themen', 'Themen'], ['weltweit', 'Weltweit'], ['app', 'Die App'], ['download', 'Download']].map(([id, label]) => (
+            {[['oikos', 'Was ist Oikos?'], ['themen', 'Themen'], ['weltweit', 'Weltweit'], ['download', 'Download']].map(([id, label]) => (
               <button key={id} type="button" className="lp-navlink" onClick={() => scrollToId(id)}>{label}</button>
             ))}
           </nav>
@@ -439,11 +443,33 @@ export default function Landing() {
             </div>
 
             <div className="lp-hero-phone lp-rise" style={{ animationDelay: '300ms' }}>
-              <Phone3D
-                screens={HERO_SCREENS}
-                active={heroScreen}
-                cards={heroCards(heroScreen)}
-              />
+              <div id="app-screen" role="tabpanel" aria-labelledby={`tab-${feature}`}>
+                <Phone3D
+                  screens={FEATURE_SCREENS}
+                  active={feature}
+                  cards={heroCards(feature)}
+                />
+              </div>
+              <div ref={tabsRef} className="lp-tabs lp-herotabs" role="tablist" aria-label="App-Ansichten">
+                {FEATURES.map((f, i) => {
+                  const Icon = f.icon
+                  return (
+                    <button
+                      key={f.title}
+                      type="button"
+                      role="tab"
+                      id={`tab-${i}`}
+                      aria-selected={feature === i}
+                      aria-controls="app-screen"
+                      className={`lp-tab ${feature === i ? 'is-active' : ''}`}
+                      onClick={() => pickFeature(i)}
+                    >
+                      <Icon size={16} aria-hidden="true" />
+                      <span className="lp-tab-title">{f.title}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
           <button type="button" className="lp-scroll" onClick={() => scrollToId('oikos')} aria-label="Weiter nach unten">
@@ -497,12 +523,6 @@ export default function Landing() {
             </Reveal>
 
             <div className="lp-oikos-grid">
-              <Reveal className="lp-oikos-visual">
-                <Tilt className="lp-photo-card" max={7}>
-                  <Photo name="oikos" alt="Ein junger Mann sitzt im Café, vor ihm ein Notizbuch mit Namen, und blickt auf die Oikos Map in der App" sizes="(min-width: 1024px) 440px, 90vw" />
-                  <span className="lp-photo-tag"><Network size={15} aria-hidden="true" /> Deine Oikos Map</span>
-                </Tilt>
-              </Reveal>
               <ol className="lp-pillars">
                 {PILLARS.map(({ icon: Icon, title, text }, i) => (
                   <Reveal as="li" key={title} delay={i * 110} className="lp-pillar">
@@ -611,54 +631,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ── App-Showcase mit 3D-Handy ────────────────────── */}
-        <section id="app" ref={showcaseRef} className="lp-section lp-showcase scroll-mt-16" aria-labelledby="app-title">
-          <div className="lp-wrap">
-            <Reveal className="max-w-3xl">
-              <p className="lp-eyebrow">Die App</p>
-              <h2 id="app-title" className="lp-h2 mt-5">Alles, was dein Glaubensalltag braucht. <span className="lp-gold">In einer App.</span></h2>
-            </Reveal>
-            <div className="lp-app mt-12 lg:mt-16">
-              <div className="min-w-0">
-                <div className="lp-tabs" role="tablist" aria-label="Funktionen">
-                  {FEATURES.map((f, i) => {
-                    const Icon = f.icon
-                    return (
-                      <button
-                        key={f.title}
-                        type="button"
-                        role="tab"
-                        id={`tab-${i}`}
-                        aria-selected={feature === i}
-                        aria-controls="app-screen"
-                        className={`lp-tab ${feature === i ? 'is-active' : ''}`}
-                        onClick={() => pickFeature(i)}
-                      >
-                        <Icon size={18} aria-hidden="true" />
-                        <span>
-                          <span className="lp-tab-title">{f.title}</span>
-                          <span className="lp-tab-text">{f.text}</span>
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-                <p className="lp-body lp-tab-mobile-text" aria-live="polite">{FEATURES[feature].text}</p>
-              </div>
-              <div id="app-screen" role="tabpanel" aria-labelledby={`tab-${feature}`}>
-                <Phone3D
-                  tiltMax={16}
-                  screens={FEATURES.map(f => ({ src: `${APP}${f.screen}.webp`, alt: `App-Ansicht: ${f.title}` }))}
-                  active={feature}
-                  cards={[
-                    { id: 'f', className: 'lp-fc-e', depth: 90, decorative: true, children: (<div className="lp-chipcard"><Pin emoji="✨" pulse /><span><b>{FEATURES[feature].title}</b><i>in Oikos Connect</i></span></div>) },
-                  ]}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* ── Werte ────────────────────────────────────────── */}
         <section className="lp-section" aria-labelledby="values-title" style={{ paddingTop: 40 }}>
           <div className="lp-wrap">
@@ -701,20 +673,6 @@ export default function Landing() {
               <Reveal delay={90}>
                 <div className="lp-card">
                   <span className="lp-card-icon"><Smartphone size={22} aria-hidden="true" /></span>
-                  <h3>Android</h3>
-                  <p className="flex-1">Bei Google Play.</p>
-                  {PLAY_STORE_URL ? (
-                    <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-glass">
-                      Bei Google Play laden<span className="sr-only"> (öffnet in neuem Tab)</span>
-                    </a>
-                  ) : (
-                    <span className="lp-btn lp-btn-glass lp-soon" aria-disabled="true">Bald bei Google Play</span>
-                  )}
-                </div>
-              </Reveal>
-              <Reveal delay={180}>
-                <div className="lp-card">
-                  <span className="lp-card-icon"><Smartphone size={22} aria-hidden="true" /></span>
                   <h3>iPhone</h3>
                   <p className="flex-1">Im App Store.</p>
                   {APP_STORE_URL ? (
@@ -723,6 +681,20 @@ export default function Landing() {
                     </a>
                   ) : (
                     <span className="lp-btn lp-btn-glass lp-soon" aria-disabled="true">Bald im App Store</span>
+                  )}
+                </div>
+              </Reveal>
+              <Reveal delay={180}>
+                <div className="lp-card">
+                  <span className="lp-card-icon"><Smartphone size={22} aria-hidden="true" /></span>
+                  <h3>Android</h3>
+                  <p className="flex-1">Bei Google Play.</p>
+                  {PLAY_STORE_URL ? (
+                    <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-glass">
+                      Bei Google Play laden<span className="sr-only"> (öffnet in neuem Tab)</span>
+                    </a>
+                  ) : (
+                    <span className="lp-btn lp-btn-glass lp-soon" aria-disabled="true">Bald bei Google Play</span>
                   )}
                 </div>
               </Reveal>

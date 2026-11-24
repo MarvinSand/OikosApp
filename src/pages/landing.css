@@ -796,3 +796,20 @@
   .lp .lp-stage-wrap { margin-top: 0; }
 }
 .lp .lp-prayer { padding-bottom: 24px; }
+
+/* ── „Die App“ im Hero: Handy mit Tab-Leiste darunter ───────────────────── */
+.lp .lp-hero-phone { flex-direction: column; align-items: center; }
+.lp .lp-herotabs { width: 100%; max-width: 620px; justify-content: flex-start; margin: 14px 0 0; padding: 4px 20px 6px; gap: 8px; position: relative; z-index: 3; }
+.lp .lp-herotabs .lp-tab { min-height: 40px; padding: 0 14px; font-size: 14px; gap: 8px; background: rgba(8, 14, 32, 0.6); }
+.lp .lp-herotabs .lp-tab.is-active { background: rgba(255, 255, 255, 0.16); color: #fff; }
+@media (min-width: 1024px) {
+  .lp .lp-herotabs { flex-direction: row; flex-wrap: wrap; justify-content: center; overflow: visible; margin: 18px 0 0; padding: 0; }
+}
+.lp.lp-lite .lp-herotabs .lp-tab { background: rgba(8, 14, 32, 0.94); }
+
+/* Oikos-Säulen ohne Foto: einspaltig, ab Desktop als Dreierreihe */
+.lp .lp-oikos-grid { display: block; margin-top: 32px; }
+@media (min-width: 1024px) {
+  .lp .lp-oikos-grid { margin-top: 44px; }
+  .lp .lp-pillars { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+}
