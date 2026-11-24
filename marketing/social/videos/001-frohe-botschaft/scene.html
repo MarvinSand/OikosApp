@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Video 001 · Die Frohe Botschaft</title>
+<link rel="stylesheet" href="../../brand/brand.css">
+<style>
+  html, body { margin: 0; background: #050a18; overflow: hidden; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #050a18; }
+  .bg { position: absolute; inset: 0; z-index: 0; opacity: 0; will-change: opacity, transform; }
+  #shade, #fx, #brandbar, #chap, #beats, #phoneWrap, #end { z-index: 2; }
+  .bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,10,24,.78) 0%, rgba(5,10,24,.55) 30%, rgba(5,10,24,.22) 55%, rgba(5,10,24,.35) 78%, rgba(5,10,24,.7) 100%); }
+  #fx { position: absolute; inset: 0; }
+  #brandbar { position: absolute; left: 0; right: 0; top: 150px; display: flex; justify-content: center; align-items: center; gap: 14px; font-weight: 700; font-size: 28px; letter-spacing: -.01em; opacity: .9; }
+  #brandbar img { width: 48px; height: 48px; border-radius: 13px; box-shadow: 0 6px 18px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.18); }
+  #brandbar b { color: var(--gold); }
+  #chap { position: absolute; left: 0; right: 0; top: 268px; text-align: center; font-size: 24px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: var(--gold); opacity: 0; }
+  #beats { position: absolute; left: 84px; right: 84px; top: 350px; }
+  .beat { position: absolute; left: 0; right: 0; top: 0; text-align: center; opacity: 0; }
+  .beat .t { font-family: var(--serif); font-weight: 600; font-size: 76px; line-height: 1.16; letter-spacing: -.015em; color: #fff; text-shadow: 0 3px 34px rgba(3,8,22,.7); text-wrap: balance; }
+  .beat.verse .t { font-style: italic; font-weight: 500; font-size: 56px; line-height: 1.22; }
+  .beat.prayer .t { font-style: italic; font-weight: 500; font-size: 62px; }
+  .beat .ref { margin-top: 30px; font-size: 27px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); text-shadow: 0 2px 20px rgba(3,8,22,.8); }
+  .w { display: inline-block; will-change: transform, opacity, filter; white-space: pre; }
+  .w.g { background: linear-gradient(100deg, var(--gold-light), var(--gold) 50%, var(--gold-2)); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; padding-right: .06em; }
+  #phoneWrap { position: absolute; left: 0; top: 0; opacity: 0; }
+  #phoneWrap .phone { --pw: 540px; left: 270px; top: 930px; }
+  #phoneWrap .screen img { position: absolute; inset: 0; opacity: 0; }
+  #end { position: absolute; left: 0; right: 0; top: 920px; text-align: center; opacity: 0; }
+  #end .ic { width: 168px; height: 168px; border-radius: 38px; box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 2px rgba(255,255,255,.2), 0 0 90px rgba(246,193,119,.35); }
+  #end .nm { font-family: var(--serif); font-weight: 600; font-size: 78px; letter-spacing: -.02em; margin-top: 30px; text-shadow: 0 3px 30px rgba(3,8,22,.7); }
+  #end .nm b { color: var(--gold); font-weight: 600; font-style: italic; }
+  #end .pill { height: 78px; font-size: 30px; padding: 0 44px; margin-top: 34px; box-shadow: 0 16px 50px rgba(0,0,0,.45); }
+  #end .hand { font-size: 52px; margin-top: 26px; transform: rotate(-2deg); display: block; text-shadow: 0 2px 20px rgba(3,8,22,.8); }
+  #fade { position: absolute; inset: 0; background: #050a18; opacity: 0; pointer-events: none; }
+  .grain { position: absolute; inset: -50%; pointer-events: none; opacity: .11; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgs"></div>
+  <div id="shade"></div>
+  <canvas id="fx" width="1080" height="1920"></canvas>
+  <div id="brandbar"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+  <div id="chap"></div>
+  <div id="beats"></div>
+  <div id="phoneWrap">
+    <div class="phone"><div class="screen" id="screens"></div></div>
+  </div>
+  <div id="end">
+    <img class="ic" src="../../brand/app-icon.png" alt="">
+    <div class="nm">Oikos <b>Connect</b></div>
+    <span class="pill gold">Jetzt kostenlos im App Store</span>
+    <span class="hand">One Family. One Mission. One Oikos.</span>
+  </div>
+  <div class="grain" id="grain"></div>
+  <div id="fade"></div>
+</div>
+
+<script>
+/* ═══════════════ Drehbuch ═══════════════
+   Zeiten in Sekunden. Verse: Lutherbibel 1912 (gemeinfrei, Schreibweise leicht modernisiert).
+   *Wort* = Goldhervorhebung. */
+const PH = '../../assets/photos/', SCR = '../../assets/screens/'
+const SCENES = [
+  { s: 0,  e: 6,  bg: 'hook-woman-916',    pos: '50% 50%' },
+  { s: 6,  e: 15, bg: 'oikos-houses-916',  pos: '50% 60%', chap: '1 · Gott liebt dich' },
+  { s: 15, e: 27, bg: 'morning-bible-916', pos: '45% 50%', chap: '2 · Das Problem' },
+  { s: 27, e: 44, bg: 'dawn-sky-916',      pos: '50% 70%', chap: '3 · Die Rettung' },
+  { s: 44, e: 56, bg: 'europe-night-916',  pos: '50% 50%', chap: '4 · Das Geschenk' },
+  { s: 56, e: 64, bg: 'hook-woman-916',    pos: '50% 50%', chap: '5 · Deine Antwort' },
+  { s: 64, e: 72, bg: 'oikos-houses-916',  pos: '50% 60%' },
+  { s: 72, e: 80, bg: 'family-hill-916',   pos: '50% 60%' },
+]
+const BEATS = [
+  { a: 0.5,  b: 3.0,  t: 'Wofür bin ich eigentlich hier?' },
+  { a: 3.3,  b: 5.8,  t: 'Die Antwort passt in *eine Minute*.' },
+
+  { a: 6.5,  b: 11.0, t: 'Es beginnt mit *Liebe*: Gott hat dich gewollt und kennt dich beim Namen.' },
+  { a: 11.3, b: 14.6, t: 'Du bist ihm *nicht egal*.' },
+
+  { a: 15.5, b: 18.3, t: 'Aber etwas ist *zerbrochen*.' },
+  { a: 18.6, b: 23.0, t: 'Wir machen Fehler. Die Bibel nennt das *Sünde*: Sie trennt uns von Gott.' },
+  { a: 23.3, b: 26.7, kind: 'verse', t: '„Es ist hier kein Unterschied: Sie sind allzumal Sünder.“', ref: 'Römer 3,23' },
+
+  { a: 27.5, b: 30.2, t: 'Aber Gott lässt uns *nicht allein*.' },
+  { a: 30.5, b: 34.5, t: 'Er schickte *Jesus*. Er starb am Kreuz – für dich.' },
+  { a: 34.8, b: 38.5, t: 'Am dritten Tag stand er *auf*. Der Tod hat nicht das letzte Wort.' },
+  { a: 38.8, b: 43.5, kind: 'verse', t: '„Gott preist seine Liebe gegen uns, dass Christus für uns gestorben ist, da wir noch Sünder waren.“', ref: 'Römer 5,8' },
+
+  { a: 44.5, b: 47.6, t: 'Du musst es dir nicht verdienen.' },
+  { a: 47.9, b: 51.0, t: 'Es ist ein *Geschenk*.' },
+  { a: 51.3, b: 55.6, kind: 'verse', t: '„Wie viele ihn aber aufnahmen, denen gab er Macht, Gottes Kinder zu werden.“', ref: 'Johannes 1,12' },
+
+  { a: 56.4, b: 59.0, t: 'Du kannst jetzt mit ihm reden:' },
+  { a: 59.3, b: 63.6, kind: 'prayer', t: '„Jesus, danke, dass du für mich gestorben bist. *Komm in mein Leben.*“' },
+
+  { a: 64.5, b: 67.8, t: 'Du musst den Weg *nicht allein* gehen.' },
+  { a: 68.1, b: 71.7, t: 'Mit *Oikos Connect* findest du Bibel, Gebet und Geschwister.' },
+
+  { a: 72.5, b: 81,   t: '*Gott liebt dich.* Das ist die Frohe Botschaft.' },
+]
+const APP_SCREENS = ['01-oikos-map', '03-gebete', '08-bibel', '02-weltkarte']
+const END_AT = 75.2        // Endkarte erscheint
+const TOTAL = 80           // Videolänge
+
+/* ═══════════════ Helfer ═══════════════ */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
+const ease = x => 1 - Math.pow(1 - clamp(x), 3)
+const eio = x => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2 }
+const GOLD = '246,193,119'
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+
+/* ═══════════════ DOM aufbauen ═══════════════ */
+const bgEls = SCENES.map(sc => {
+  const d = document.createElement('div'); d.className = 'bg'
+  d.innerHTML = `<img src="${PH}${sc.bg}.jpg" style="object-position:${sc.pos}" alt="">`
+  document.getElementById('bgs').appendChild(d); return d
+})
+const beatsEl = document.getElementById('beats')
+const beatEls = BEATS.map(b => {
+  const d = document.createElement('div'); d.className = 'beat' + (b.kind ? ' ' + b.kind : '')
+  let gold = false
+  const words = b.t.split(' ').map(tok => {
+    let g = gold, out = ''
+    for (const ch of tok) { if (ch === '*') { gold = !gold; if (gold) g = true } else out += ch }
+    return `<span class="w${g ? ' g' : ''}">${out} </span>`
+  }).join('')
+  d.innerHTML = `<div class="t">${words}</div>` + (b.ref ? `<div class="ref"><span class="w">${b.ref} · Luther 1912</span></div>` : '')
+  beatsEl.appendChild(d)
+  d._w = [...d.querySelectorAll('.w')]
+  return d
+})
+const screensEl = document.getElementById('screens')
+const screenImgs = APP_SCREENS.map(n => { const i = document.createElement('img'); i.src = `${SCR}${n}.png`; screensEl.appendChild(i); return i })
+const chapEl = document.getElementById('chap'), phoneWrap = document.getElementById('phoneWrap'), endEl = document.getElementById('end')
+const fadeEl = document.getElementById('fade'), grainEl = document.getElementById('grain'), brandbar = document.getElementById('brandbar')
+
+/* ═══════════════ Canvas-Effekte ═══════════════ */
+const cv = document.getElementById('fx'), cx = cv.getContext('2d')
+function glow(x, y, r, a, col = GOLD) {
+  const g = cx.createRadialGradient(x, y, 0, x, y, r)
+  g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`)
+  cx.fillStyle = g; cx.fillRect(x - r, y - r, 2 * r, 2 * r)
+}
+// Staub / Lichtpartikel, immer leicht im Bild
+const dust = (() => { const r = rng(7); return Array.from({ length: 46 }, () => ({ x: r() * 1080, sp: .012 + r() * .03, off: r(), sz: 2 + r() * 5, ph: r() * 6.28 })) })()
+function drawDust(t, k) {
+  for (const d of dust) {
+    const p = (t * d.sp + d.off) % 1, y = 1850 - p * 1800
+    const a = Math.sin(p * Math.PI) * (.35 + .25 * Math.sin(t * 1.3 + d.ph)) * k
+    const x = d.x + Math.sin(t * .4 + d.ph) * 26
+    glow(x, y, d.sz * 5, a * .55); cx.fillStyle = `rgba(255,236,200,${a})`; cx.beginPath(); cx.arc(x, y, d.sz * .6, 0, 6.3); cx.fill()
+  }
+}
+function heart(x, y, s, a) {
+  cx.save(); cx.translate(x, y); cx.scale(s, s); cx.globalAlpha = a
+  cx.beginPath(); cx.moveTo(0, 26); cx.bezierCurveTo(-60, -14, -34, -58, 0, -26); cx.bezierCurveTo(34, -58, 60, -14, 0, 26)
+  const g = cx.createLinearGradient(0, -50, 0, 30); g.addColorStop(0, '#ffe2b0'); g.addColorStop(1, '#ef8f4c')
+  cx.shadowColor = `rgba(${GOLD},.9)`; cx.shadowBlur = 36; cx.fillStyle = g; cx.fill(); cx.restore()
+}
+// S2 – Liebe: pulsierende Lichtringe + Herz
+function drawLove(t, a) {
+  const cxp = 540, cyp = 1230
+  glow(cxp, cyp, 480, .5 * a)
+  for (let k = 0; k < 4; k++) {
+    const p = ((t * .42 + k / 4) % 1), r = 60 + p * 480
+    cx.strokeStyle = `rgba(${GOLD},${(1 - p) * .55 * a})`; cx.lineWidth = 3 + (1 - p) * 4
+    cx.beginPath(); cx.arc(cxp, cyp, r, 0, 6.3); cx.stroke()
+  }
+  heart(cxp, cyp, 1.5 + .08 * Math.sin(t * 3.2), a)
+}
+// S3/S5 – Gott ↔ Du: Lücke (gap in px) bzw. wiederhergestellte Verbindung
+const GY = 1010, YY = 1440
+function godYou(t, a, gap, healed, warm) {
+  cx.save(); cx.globalAlpha = a
+  const m = (GY + YY) / 2 + 12, gx = 540
+  glow(gx, GY, 300, .55 * (.6 + .4 * warm))
+  // Linie
+  const top0 = GY + 62, bot1 = YY - 40
+  const topEnd = m - gap / 2, botStart = m + gap / 2
+  cx.lineCap = 'round'
+  cx.shadowColor = `rgba(${GOLD},${healed ? .95 : .6})`; cx.shadowBlur = healed ? 30 : 14
+  cx.strokeStyle = `rgba(255,226,176,${healed ? 1 : .9})`; cx.lineWidth = healed ? 9 : 7
+  cx.beginPath(); cx.moveTo(gx, top0); cx.lineTo(gx, topEnd); cx.stroke()
+  cx.shadowBlur = 0; cx.strokeStyle = healed ? 'rgba(255,226,176,1)' : 'rgba(150,170,205,.55)'
+  cx.beginPath(); cx.moveTo(gx, botStart); cx.lineTo(gx, bot1); cx.stroke()
+  if (healed) { // Lichtimpulse fließen von Gott zu dir
+    for (let k = 0; k < 6; k++) {
+      const p = (t * .32 + k / 6) % 1, y = top0 + p * (bot1 - top0)
+      glow(gx, y, 34, .9 * Math.sin(p * Math.PI)); cx.fillStyle = `rgba(255,244,220,${Math.sin(p * Math.PI)})`; cx.beginPath(); cx.arc(gx, y, 5, 0, 6.3); cx.fill()
+    }
+  }
+  // Gott
+  cx.shadowColor = `rgba(${GOLD},.9)`; cx.shadowBlur = 50
+  const g = cx.createRadialGradient(gx - 14, GY - 16, 4, gx, GY, 62); g.addColorStop(0, '#fff6e0'); g.addColorStop(1, '#f6c177')
+  cx.fillStyle = g; cx.beginPath(); cx.arc(gx, GY, 56, 0, 6.3); cx.fill(); cx.shadowBlur = 0
+  // Du
+  const youCol = healed ? '#ffe2b0' : '#9fb4d6'
+  if (healed) { cx.shadowColor = `rgba(${GOLD},.9)`; cx.shadowBlur = 40 }
+  cx.fillStyle = youCol; cx.beginPath(); cx.arc(gx, YY, 32, 0, 6.3); cx.fill(); cx.shadowBlur = 0
+  cx.font = '600 44px Lora'; cx.textBaseline = 'middle'; cx.fillStyle = 'rgba(255,255,255,.92)'
+  cx.textAlign = 'left'; cx.fillText('Gott', gx + 90, GY + 2); cx.fillText('Du', gx + 66, YY + 2)
+  cx.restore()
+}
+// S4 – Kreuz + Sonnenaufgang
+function drawCross(t, a) {
+  const L = t - 27                              // lokale Zeit
+  // Verdunkelung während Kreuzigung, dann Licht
+  const dark = clamp((L - 3.5) / 1.5) * (1 - ease((L - 7.8) / 2.2)) * .5
+  cx.fillStyle = `rgba(0,0,0,${dark * a})`; cx.fillRect(0, 0, 1080, 1920)
+  // Sonne geht auf (Auferstehung ab 34.8)
+  const sp = ease((t - 34.8) / 3.8)
+  if (sp > 0) {
+    const sy = 1560 - 470 * sp
+    glow(540, sy, 760, .75 * sp * a); glow(540, sy, 340, .9 * sp * a, '255,236,200')
+    cx.save(); cx.translate(540, sy); cx.rotate(t * .06)
+    for (let k = 0; k < 18; k++) {
+      cx.rotate(6.2832 / 18); const g = cx.createLinearGradient(0, 0, 0, -900)
+      g.addColorStop(0, `rgba(255,236,200,${.28 * sp * a})`); g.addColorStop(1, 'rgba(255,236,200,0)')
+      cx.fillStyle = g; cx.beginPath(); cx.moveTo(-14, 0); cx.lineTo(14, 0); cx.lineTo(60, -900); cx.lineTo(-60, -900); cx.fill()
+    }
+    cx.restore()
+  }
+  // Kreuz zeichnet sich (ab 30.5)
+  const cp = eio((t - 30.6) / 3.2), X = 540, Y = 1190
+  const strong = .6 + .4 * sp
+  cx.save(); cx.globalAlpha = a; cx.lineCap = 'round'
+  cx.strokeStyle = 'rgb(255,230,185)'; cx.lineWidth = 40
+  cx.shadowColor = `rgba(${GOLD},.95)`; cx.shadowBlur = 24 + 50 * strong
+  const v = clamp(cp * 1.5), h = clamp((cp - .5) * 2)
+  if (v > 0) { cx.beginPath(); cx.moveTo(X, Y - 270); cx.lineTo(X, Y - 270 + 540 * v); cx.stroke() }
+  if (h > 0) { cx.beginPath(); cx.moveTo(X - 170 * h, Y - 120); cx.lineTo(X + 170 * h, Y - 120); cx.stroke() }
+  cx.restore()
+}
+// S6 – Gebet: aufsteigende Lichter (zusätzlich zum Staub)
+function drawPrayer(t, a) { glow(540, 1500, 700, .35 * a) }
+
+/* ═══════════════ Zeit setzen ═══════════════ */
+function sceneAlpha(i, t) {
+  const sc = SCENES[i]
+  const fin = i === 0 ? 1 : ease((t - (sc.s - .5)) / 1)
+  const fout = i === SCENES.length - 1 ? 1 : 1 - ease((t - (sc.e - .5)) / 1)
+  return fin * fout
+}
+window.setTime = function (t) {
+  // Hintergründe + Kamerafahrt
+  SCENES.forEach((sc, i) => {
+    const a = sceneAlpha(i, t), p = clamp((t - sc.s + .5) / (sc.e - sc.s + 1))
+    bgEls[i].style.opacity = a
+    bgEls[i].style.transform = `scale(${1.04 + .09 * p}) translateY(${(-14 * p).toFixed(1)}px)`
+  })
+  // Kapitel-Label
+  let chap = '', ca = 0
+  SCENES.forEach((sc, i) => { if (sc.chap) { const a = sceneAlpha(i, t) * clamp((t - sc.s - .2) / .6); if (a > ca) { ca = a; chap = sc.chap } } })
+  chapEl.textContent = chap; chapEl.style.opacity = ca
+  // Beats mit Wort-für-Wort-Einblendung
+  BEATS.forEach((b, i) => {
+    const el = beatEls[i], u = t - b.a, x = clamp((t - b.b) / .5)
+    if (u < -.05 || x >= 1) { el.style.opacity = 0; return }
+    el.style.opacity = 1 - x
+    el.style.transform = `translateY(${-22 * ease(x)}px)`
+    el._w.forEach((w, k) => {
+      const wp = ease((u - k * (b.kind === 'verse' ? .075 : .1)) / .65)
+      w.style.opacity = wp; w.style.transform = `translateY(${(1 - wp) * 30}px)`; w.style.filter = `blur(${(1 - wp) * 9}px)`
+    })
+  })
+  // Canvas-Effekte
+  cx.clearRect(0, 0, 1080, 1920)
+  drawDust(t, 1)
+  const a2 = sceneAlpha(1, t); if (a2 > 0) drawLove(t, a2)
+  const a3 = sceneAlpha(2, t); if (a3 > 0) {
+    const gap = 112 * eio((t - 17.2) / 1.8) * clamp((t - 17.2) * 9)   // zerbricht bei ~17.2 s (nach dem Satz „etwas ist zerbrochen“ ab 15.5)
+    godYou(t, a3, 112 * eio((t - 16.4) / 2.2), false, 1 - .5 * ease((t - 16.4) / 2))
+  }
+  const a4 = sceneAlpha(3, t); if (a4 > 0) drawCross(t, a4)
+  const a5 = sceneAlpha(4, t); if (a5 > 0) {
+    const gap = 112 * (1 - eio((t - 46.2) / 2.6))
+    godYou(t, a5, gap, gap < 1, 1)
+  }
+  const a6 = sceneAlpha(5, t); if (a6 > 0) drawPrayer(t, a6)
+  // Handy (S7)
+  const a7 = sceneAlpha(6, t) * 1
+  const pin = ease((t - 64.2) / 1.1)
+  phoneWrap.style.opacity = a7 * pin
+  phoneWrap.style.transform = `translateY(${(1 - pin) * 140 + Math.sin(t * 1.1) * 7}px) rotate(${(-2 + Math.sin(t * .5) * .8).toFixed(2)}deg)`
+  const si = clamp(Math.floor((t - 64.6) / 1.85), 0, APP_SCREENS.length - 1)
+  screenImgs.forEach((im, k) => { const lt = (t - 64.6) - k * 1.85; im.style.opacity = k === 0 ? (lt < 1.85 ? 1 : 1 - ease((lt - 1.85) / .5)) : ease((lt + .45) / .5) * (k === APP_SCREENS.length - 1 ? 1 : (1 - ease((lt - 1.85) / .5))) })
+  // Endkarte
+  const ea = ease((t - END_AT) / .9)
+  endEl.style.opacity = ea; endEl.style.transform = `translateY(${(1 - ea) * 50}px)`
+  // Markenleiste: nur vor der Endkarte
+  brandbar.style.opacity = .9 * (1 - ease((t - 71.6) / .6))
+  // Filmkorn flackert, Schluss-Fade
+  grainEl.style.transform = `translate(${(t * 997 % 200) - 100}px, ${(t * 613 % 200) - 100}px)`
+  fadeEl.style.opacity = clamp((t - (TOTAL - .8)) / .8) + (1 - ease(t / .6)) * 1
+}
+Promise.all([document.fonts.ready, ...[...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r }))]).then(() => { window.setTime(0); window.__ready = true })
+</script>
+</body>
+</html>
