@@ -1,13 +1,13 @@
-# Post 001 · Vision + App-Launch – „In diesem Apfel steckt ein ganzer Wald“
+# Post 001 · Vision + App-Launch – „Aus 12 Menschen wurden über 2 Milliarden“
 
 **Ziel:** Vision von Jüngerschaft/Multiplikation vermitteln → Oikos Connect vorstellen → Challenge „3 Menschen · 7 Tage“.
 **Dateien:** `export/instagram/01–11.jpg` (1080×1350) · `export/tiktok/01–11.jpg` (1080×1920)
 
 | # | Slide | Inhalt |
 |---|-------|--------|
-| 1 | Hook | „In diesem Apfel steckt ein ganzer Wald.“ (Apfel mit leuchtenden Samen, Wald darunter) |
-| 2 | Jüngerschaft | Frucht, die wieder Frucht bringt (Joh 15,16), Baum → 3 → 9, guter Boden 30-/60-/100-fach (Mt 13,23) |
-| 3 | Wie schnell | Wachstumskurve: 1 Mensch/Jahr → 10 J: 1.024 · 20 J: 1 Mio. · 33 J: 8,6 Mrd. (Rechenbeispiel), in wenige viel Zeit und Gebet investieren |
+| 1 | Hook | „Aus 12 Menschen wurden über 2 Milliarden.“ Kreuz + 12 Jünger + wachsende Lichter, „Gottes Plan – er funktioniert wie ein Apfel“ |
+| 2 | Jüngerschaft = Apfel | Kern → Baum → Wald, „Jünger machen Jünger“, guter Boden 30-/60-/100-fach (Mt 13,23, Joh 15,16) |
+| 3 | Wie schnell | Wachstumskurve: 1 Mensch/Jahr → 10 J: 1.024 · 20 J: 1 Mio. · 33 J: 8,6 Mrd. (Rechenbeispiel), wie Jesus in wenige viel Zeit und Gebet investieren |
 | 4 | Oikos Map | Behalte im Blick, wer zu dir gehört |
 | 5 | Gebet | Bete gezielt. Mit Namen. |
 | 6 | Menschen begleiten | Story-Line & Impact-Stufen |
@@ -17,16 +17,16 @@
 | 10 | Werte | Kostenlos, werbefrei, du entscheidest, geschützter Raum |
 | 11 | CTA | Challenge: 3 Menschen · 7 Tage beten · „3“ kommentieren · App Store |
 
-**Fakten-Hinweis:** Mt 13,23 / Mk 4,20 nennen **30-, 60- und 100-fach** (nicht 130–160). Das Rechenbeispiel (Verdopplung pro Jahr) ist vereinfacht und als „Rechenbeispiel“ gekennzeichnet.
+**Fakten-Hinweis:** „über 2 Milliarden“ = Christen weltweit (gängige Schätzung, vor dem Posten kurz gegenprüfen). Mt 13,23 / Mk 4,20 nennen **30-, 60- und 100-fach** (nicht 130–160). Das Rechenbeispiel (Verdopplung pro Jahr) ist vereinfacht und als „Rechenbeispiel“ gekennzeichnet.
 
 ---
 
 ## Instagram (Karussell)
 
 ```
-In diesem Apfel steckt ein ganzer Wald. 🍎🌳
+Jesus hatte 12 Jünger. Heute glauben über 2 Milliarden Menschen an ihn. 🤯
 
-Ein Kern wird ein Baum. Der Baum trägt hunderte Äpfel. Jeder Apfel hat wieder Kerne – und so weiter. Genau so hat Jesus sich Jüngerschaft gedacht: Frucht, die wieder Frucht bringt (Johannes 15,16).
+Kein Zufall – das war Gottes Plan, und er funktioniert wie ein Apfel: Ein Kern wird ein Baum. Der Baum trägt hunderte Äpfel. Jeder Apfel hat wieder Kerne – und so weiter. Genau so hat Jesus sich Jüngerschaft gedacht: Frucht, die wieder Frucht bringt (Johannes 15,16).
 
 Guter Boden bringt 30-, 60- und 100-fach Frucht (Matthäus 13,23). Und das Rechenbeispiel zeigt, wie schnell das geht: Wenn jeder nur 1 Mensch pro Jahr begleitet – und der macht es genauso – sind es nach 33 Jahren theoretisch 8,6 Milliarden. Das Geheimnis: in wenige viel Zeit und viel Gebet investieren. So baut Gott sein Reich auf Erden.
 
@@ -55,8 +55,8 @@ Wer sind deine 3 Namen? Schreib nur die Anfangsbuchstaben – wir beten mit 🙏
 ```
 
 **Alternativtext** (je Bild):
-1. Ein aufgeschnittener Apfel mit leuchtenden goldenen Kernen, darunter ein Wald aus Apfelbäumen. Text: In diesem Apfel steckt ein ganzer Wald.
-2. Grafik: ein Baum, darunter 3 Bäume, darunter 9 Bäume. Text: Frucht, die wieder Frucht bringt. Guter Boden bringt 30-, 60- und 100-fach Frucht.
+1. Ein Kreuz in einem goldenen Kreis, 12 leuchtende Punkte darum, nach außen immer mehr Lichter. Text: Aus 12 Menschen wurden über 2 Milliarden.
+2. Grafik: Apfel mit Kernen, Pfeil, Baum mit Äpfeln, Pfeil, Wald. Text: Jüngerschaft ist wie ein Apfel – Jünger machen Jünger. Guter Boden bringt 30-, 60- und 100-fach Frucht.
 3. Wachstumskurve: 10 Jahre 1.024, 20 Jahre 1 Million, 33 Jahre 8,6 Milliarden. Text: Schneller, als du denkst.
 4. Smartphone mit der Oikos Map. Text: Behalte im Blick, wer zu dir gehört.
 5. Smartphone mit der Gebetsansicht. Text: Bete gezielt. Mit Namen.
@@ -77,12 +77,12 @@ Wer sind deine 3 Namen? Schreib nur die Anfangsbuchstaben – wir beten mit 🙏
 
 ## TikTok (Foto-Slideshow)
 
-**Titel:** `In diesem Apfel steckt ein ganzer Wald 🍎🌳`
+**Titel:** `Aus 12 Menschen wurden über 2 Milliarden 🤯`
 
 **Beschreibung:**
 
 ```
-So hat Jesus sich Jüngerschaft gedacht: Frucht, die wieder Frucht bringt 🌱 Such dir diese Woche 3 Menschen aus und bete 7 Tage für sie. Schreib „3“, wenn du dabei bist 🙏 Oikos Connect hilft dir dabei – kostenlos im App Store, Link in Bio.
+Jesus hatte 12 Jünger – heute glauben über 2 Milliarden an ihn. So funktioniert Gottes Plan: wie bei einem Apfel 🍎 Such dir diese Woche 3 Menschen aus und bete 7 Tage für sie. Schreib „3“, wenn du dabei bist 🙏 Oikos Connect hilft dir dabei – kostenlos im App Store, Link in Bio.
 
 #christentok #glaube #gebet #jesus #juengerschaft #oikosconnect #fürdich
 ```

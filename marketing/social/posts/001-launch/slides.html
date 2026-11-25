@@ -24,12 +24,15 @@
   .vswipe { position: absolute; z-index: 10; right: var(--pad-x); bottom: var(--safe-bottom); font-family: var(--hand); font-weight: 700; font-size: 44px; color: var(--gold-light); display: inline-flex; align-items: center; gap: 10px; text-shadow: 0 2px 20px rgba(3,8,22,.9); }
   [data-f="tt"] .vswipe { bottom: 440px; }
   /* V1 */
-  .v1 .bgglow { position: absolute; z-index: -2; left: 50%; top: 56%; width: 1100px; height: 1100px; margin: -550px 0 0 -550px; background: radial-gradient(circle, rgba(246,193,119,.5), rgba(239,143,76,.12) 45%, rgba(0,0,0,0) 70%); }
-  .v1 .forest { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; height: 520px; }
-  [data-f="tt"] .v1 .forest { height: 640px; }
-  .v1 .vfig { position: relative; z-index: 3; padding-bottom: 20px; }
-  .v1 .vfig svg { max-height: 780px; margin-bottom: -30px; transform: scale(1.12); filter: drop-shadow(0 30px 50px rgba(0,0,0,.55)); }
-  [data-f="tt"] .v1 .vfig svg { max-height: 820px; }
+  .v1 .bgglow { position: absolute; z-index: -2; left: 50%; top: 52%; width: 1200px; height: 1200px; margin: -600px 0 0 -600px; background: radial-gradient(circle, rgba(246,193,119,.34), rgba(239,143,76,.08) 45%, rgba(0,0,0,0) 70%); }
+  .v1 .vwrap { padding-bottom: 150px; }
+  [data-f="tt"] .v1 .vwrap { padding-bottom: 520px; }
+  .v1 .vfig { margin: 6px -30px 0; }
+  .v1 .vfig svg { transform: scale(1.32); transform-origin: 50% 52%; }
+  .pillrow { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 10px; color: var(--gold); font-size: 34px; }
+  .pillrow .pl { display: inline-flex; align-items: center; height: 72px; padding: 0 30px; border-radius: 999px; font-weight: 800; font-size: 29px; white-space: nowrap; }
+  .pillrow .a { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.3); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fff; }
+  .pillrow .b { background: linear-gradient(100deg, var(--gold-light), var(--gold) 50%, var(--gold-2)); color: #2a1503; box-shadow: 0 12px 36px rgba(246,193,119,.35); }
   /* V2 */
   .v2 .bg img { opacity: .4; object-position: center 60%; }
   .v2 .shade { background: linear-gradient(180deg, rgba(5,10,24,.85), rgba(5,10,24,.6) 50%, rgba(5,10,24,.9)); }
@@ -193,49 +196,47 @@
 </head>
 <body>
 <main class="deck">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7a59"/><stop offset="1" stop-color="#c1272d"/></linearGradient>
+  <radialGradient id="flesh" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#ffe9bd"/></radialGradient>
+  <radialGradient id="seed" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#fff3c9"/><stop offset="1" stop-color="#f0a53a"/></radialGradient>
+  <filter id="gl" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <symbol id="apple" viewBox="0 0 400 400">
+    <path d="M200 112 C 200 84 212 62 232 44" fill="none" stroke="#6b4423" stroke-width="10" stroke-linecap="round"/>
+    <path d="M222 70 C 250 40 296 44 306 62 C 286 90 244 92 222 70 Z" fill="#4fd18b" stroke="#2a8a5c" stroke-width="3"/>
+    <path d="M200 110 C 160 70 70 90 60 190 C 52 290 120 375 175 368 C 192 366 200 358 200 358 C 200 358 208 366 225 368 C 280 375 348 290 340 190 C 330 90 240 70 200 110 Z" fill="url(#skin)"/>
+    <path transform="translate(200 238) scale(.86) translate(-200 -238)" d="M200 110 C 160 70 70 90 60 190 C 52 290 120 375 175 368 C 192 366 200 358 200 358 C 200 358 208 366 225 368 C 280 375 348 290 340 190 C 330 90 240 70 200 110 Z" fill="url(#flesh)"/>
+    <path d="M200 252 m-52 -22 q52 -50 104 0 q8 40 -52 74 q-60 -34 -52 -74z" fill="#e6c795" opacity=".75"/>
+    <g filter="url(#gl)"><g fill="url(#seed)" stroke="#a8641a" stroke-width="2">
+      <path transform="translate(200 214) rotate(0)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
+      <path transform="translate(245 245) rotate(72)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
+      <path transform="translate(228 292) rotate(144)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
+      <path transform="translate(172 292) rotate(216)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
+      <path transform="translate(155 245) rotate(288)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/></g></g>
+  </symbol>
+</defs></svg>
 
-<!-- V1 · HOOK: Apfel → Wald ───────────────────────── -->
+
+<!-- V1 · HOOK: 12 Jünger → 2 Milliarden ─────────── -->
 <section class="slide v1">
   <div class="bg"></div>
   <div class="bgglow"></div>
-  <div class="forest" id="forest"></div>
   <header class="brandbar">
     <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
     <span class="counter"></span>
   </header>
   <div class="vwrap">
-    <span class="tag"><i data-icon="sparkles"></i>Stell dir vor</span>
-    <h1 class="vh h1">In diesem Apfel steckt ein <em>ganzer Wald.</em></h1>
-    <div class="vfig">
-      <svg viewBox="0 0 400 400" aria-hidden="true">
-        <defs>
-          <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7a59"/><stop offset="1" stop-color="#c1272d"/></linearGradient>
-          <radialGradient id="flesh" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#ffe9bd"/></radialGradient>
-          <radialGradient id="seed" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#fff3c9"/><stop offset="1" stop-color="#f0a53a"/></radialGradient>
-          <filter id="gl" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        </defs>
-        <path d="M200 112 C 200 84 212 62 232 44" fill="none" stroke="#6b4423" stroke-width="10" stroke-linecap="round"/>
-        <path d="M222 70 C 250 40 296 44 306 62 C 286 90 244 92 222 70 Z" fill="#4fd18b" stroke="#2a8a5c" stroke-width="3"/>
-        <path id="ap" d="M200 110 C 160 70 70 90 60 190 C 52 290 120 375 175 368 C 192 366 200 358 200 358 C 200 358 208 366 225 368 C 280 375 348 290 340 190 C 330 90 240 70 200 110 Z" fill="url(#skin)"/>
-        <path transform="translate(200 238) scale(.86) translate(-200 -238)" d="M200 110 C 160 70 70 90 60 190 C 52 290 120 375 175 368 C 192 366 200 358 200 358 C 200 358 208 366 225 368 C 280 375 348 290 340 190 C 330 90 240 70 200 110 Z" fill="url(#flesh)"/>
-        <path d="M200 252 m-52 -22 q52 -50 104 0 q8 40 -52 74 q-60 -34 -52 -74z" fill="#e6c795" opacity=".75"/>
-        <g filter="url(#gl)">
-          <g fill="url(#seed)" stroke="#a8641a" stroke-width="2">
-            <path transform="translate(200 214) rotate(0)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
-            <path transform="translate(245 245) rotate(72)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
-            <path transform="translate(228 292) rotate(144)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
-            <path transform="translate(172 292) rotate(216)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
-            <path transform="translate(155 245) rotate(288)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
-          </g>
-        </g>
-      </svg>
-    </div>
+    <span class="tag"><i data-icon="sparkles"></i>Jesus &amp; seine 12 Jünger</span>
+    <h1 class="vh h1">Aus 12 Menschen wurden über <em>2 Milliarden.</em></h1>
+    <p class="vsub">Kein Zufall – das war <b>Gottes Plan.</b> Und er funktioniert wie ein Apfel.</p>
+    <div class="vfig"><svg viewBox="0 0 920 860" aria-hidden="true" id="ring"></svg></div>
+    <div class="pillrow"><span class="pl a">12 Jünger</span><i data-icon="arrow-right" data-stroke="2.6"></i><span class="pl b">über 2 Milliarden Gläubige</span></div>
   </div>
-  <span class="vswipe">Wisch weiter <i data-icon="arrow-right" data-stroke="2.6"></i></span>
+  <span class="vswipe">Wie? <i data-icon="arrow-right" data-stroke="2.6"></i></span>
   <div class="grain"></div>
 </section>
 
-<!-- V2 · JÜNGERSCHAFT: Frucht, die Frucht bringt ─────── -->
+<!-- V2 · JÜNGERSCHAFT: Apfel-Prinzip ─────────────────── -->
 <section class="slide v2">
   <div class="bg"><img src="../../assets/photos/dawn-sky-916.jpg" alt=""></div>
   <div class="shade"></div>
@@ -245,15 +246,13 @@
     <span class="counter"></span>
   </header>
   <div class="vwrap">
-    <span class="eyebrow">Jüngerschaft</span>
-    <h2 class="vh m h2" style="margin-top:20px">Frucht, die wieder <em>Frucht bringt.</em></h2>
-    <p class="vsub">„…dass ihr hingeht und Frucht bringt und eure Frucht bleibt.“ <b>Johannes 15,16</b></p>
-    <div class="vfig">
-      <svg viewBox="0 0 920 470" aria-hidden="true" id="gen"></svg>
-    </div>
+    <span class="eyebrow">So hat Gott es gedacht</span>
+    <h2 class="vh m h2" style="margin-top:20px">Jüngerschaft ist wie ein <em>Apfel.</em></h2>
+    <p class="vsub">Aus einem Kern wird ein Baum. Der Baum trägt Äpfel mit neuen Kernen. <b>Jünger machen Jünger.</b></p>
+    <div class="vfig"><svg viewBox="0 0 920 470" aria-hidden="true" id="stage"></svg></div>
     <div class="glasscard soil">
       <div class="chips"><span class="chip"><small>×</small>30</span><span class="chip"><small>×</small>60</span><span class="chip"><small>×</small>100</span></div>
-      <p class="txt"><b>Guter Boden</b> bringt 30-, 60- und 100-fach Frucht.<span class="ref">Matthäus 13,23</span></p>
+      <p class="txt"><b>Guter Boden</b> bringt 30-, 60- und 100-fach Frucht.<span class="ref">Matthäus 13,23 · Johannes 15,16</span></p>
     </div>
   </div>
   <div class="grain"></div>
@@ -274,7 +273,7 @@
       <svg viewBox="0 0 920 520" aria-hidden="true" id="curve"></svg>
     </div>
     <p class="note">Rechenbeispiel: Jeder begleitet 1 Mensch pro Jahr – und der macht es genauso.</p>
-    <p class="key">Das Geheimnis: in <b>wenige</b> viel Zeit und Gebet investieren. So baut Gott sein Reich <em>auf Erden.</em></p>
+    <p class="key">Das Geheimnis: wie Jesus in <b>wenige</b> viel Zeit und Gebet investieren. So baut Gott sein Reich <em>auf Erden.</em></p>
   </div>
   <div class="grain"></div>
 </section>
@@ -504,30 +503,37 @@
     if (o.fruit) [[-14, -70], [18, -84], [-34, -46], [30, -48], [4, -52]].forEach(([cx, cy]) => el('circle', { cx, cy, r: 5.5, fill: o.fruit, filter: o.glow ? 'url(#fg)' : null }, gr))
     return gr
   }
-  // V1: Wald im Hintergrund
-  const f = document.getElementById('forest')
-  if (f) {
-    const svg = el('svg', { viewBox: '0 0 1080 520', width: '100%', height: '100%', preserveAspectRatio: 'xMidYMax slice' }, f)
-    const d = el('defs', {}, svg); const fl = el('filter', { id: 'fg', x: '-200%', y: '-200%', width: '500%', height: '500%' }, d); el('feGaussianBlur', { stdDeviation: 3, result: 'b' }, fl); const mg = el('feMerge', {}, fl); el('feMergeNode', { in: 'b' }, mg); el('feMergeNode', { in: 'SourceGraphic' }, mg)
-    const lg = el('linearGradient', { id: 'hz', x1: 0, y1: 0, x2: 0, y2: 1 }, d); el('stop', { offset: 0, 'stop-color': '#f6c177', 'stop-opacity': 0 }, lg); el('stop', { offset: 1, 'stop-color': '#f6c177', 'stop-opacity': .45 }, lg)
-    el('rect', { x: 0, y: 150, width: 1080, height: 370, fill: 'url(#hz)' }, svg)
-    const R = rng(21)
-    ;[{ y: 330, s: .95, n: 11, crown: '#1b3358', trunk: '#162a4a', op: .9 }, { y: 420, s: 1.25, n: 8, crown: '#10224a', trunk: '#0d1b3d', op: .95 }, { y: 540, s: 1.75, n: 6, crown: '#070f2a', trunk: '#050b20', fruit: '#f6c177', glow: 1 }].forEach(row => {
-      for (let i = 0; i < row.n; i++) tree(svg, (i + .3 + R() * .5) * (1080 / row.n), row.y + R() * 14, row.s * (.85 + R() * .35), row)
-    })
+  // V1: 12 Jünger → Millionen (Ringe aus Lichtpunkten)
+  const ring = document.getElementById('ring')
+  if (ring) {
+    const CX = 460, CY = 430, R = rng(5)
+    const d = el('defs', {}, ring)
+    const og = el('radialGradient', { id: 'orb', cx: .4, cy: .3, r: .9 }, d); el('stop', { offset: 0, 'stop-color': '#fff6e0' }, og); el('stop', { offset: 1, 'stop-color': '#f6c177' }, og)
+    const gf = el('filter', { id: 'rg', x: '-100%', y: '-100%', width: '300%', height: '300%' }, d); el('feGaussianBlur', { stdDeviation: 7, result: 'b' }, gf); const mg = el('feMerge', {}, gf); el('feMergeNode', { in: 'b' }, mg); el('feMergeNode', { in: 'SourceGraphic' }, mg)
+    const outer = []
+    ;[[235, 34, 4.2, .7], [305, 58, 4.6, .5], [370, 88, 5, .36], [425, 120, 5.4, .24]].forEach(([r, n, sz, op]) => { for (let i = 0; i < n; i++) { const an = (i / n) * 6.2832 + R() * .22, rr = r + (R() - .5) * 26; outer.push({ x: CX + Math.cos(an) * rr, y: CY + Math.sin(an) * rr, sz, op, an }) } })
+    const lines = el('g', { stroke: '#f6c177', 'stroke-width': 1.6, opacity: .35 }, ring)
+    const nodes = []; for (let k = 0; k < 12; k++) { const an = (k / 12) * 6.2832 - 1.5708; nodes.push({ x: CX + Math.cos(an) * 165, y: CY + Math.sin(an) * 165, an }) }
+    nodes.forEach(n => outer.filter(o => Math.abs(Math.atan2(Math.sin(o.an - n.an), Math.cos(o.an - n.an))) < .2 && o.op > .5).slice(0, 3).forEach(o => el('line', { x1: n.x, y1: n.y, x2: o.x, y2: o.y }, lines)))
+    outer.forEach(o => el('circle', { cx: o.x, cy: o.y, r: o.sz, fill: '#ffe2b0', opacity: o.op }, ring))
+    const sp = el('g', { stroke: '#f6c177', 'stroke-width': 3, opacity: .75 }, ring); nodes.forEach(n => el('line', { x1: CX, y1: CY, x2: n.x, y2: n.y }, sp))
+    nodes.forEach(n => el('circle', { cx: n.x, cy: n.y, r: 27, fill: 'url(#orb)', stroke: '#2a1503', 'stroke-width': 5, filter: 'url(#rg)' }, ring))
+    el('circle', { cx: CX, cy: CY, r: 78, fill: 'url(#orb)', filter: 'url(#rg)' }, ring)
+    const cr = el('g', { fill: '#2a1503' }, ring); el('rect', { x: CX - 11, y: CY - 48, width: 22, height: 96, rx: 5 }, cr); el('rect', { x: CX - 33, y: CY - 22, width: 66, height: 22, rx: 5 }, cr)
   }
-  // V2: Generationen 1 → 3 → 9
-  const gen = document.getElementById('gen')
-  if (gen) {
-    const d = el('defs', {}, gen); const lg = el('linearGradient', { id: 'cr', x1: 0, y1: 0, x2: 0, y2: 1 }, d); el('stop', { offset: 0, 'stop-color': '#8ae6a6' }, lg); el('stop', { offset: 1, 'stop-color': '#2fa46a' }, lg)
-    const rows = [{ y: 70, xs: [460], s: 1.0 }, { y: 235, xs: [230, 460, 690], s: .8 }, { y: 400, xs: [60, 160, 260, 360, 460, 560, 660, 760, 860], s: .55 }]
-    const links = el('g', { fill: 'none', stroke: '#f6c177', 'stroke-width': 3.5, 'stroke-linecap': 'round', opacity: .85 }, gen)
-    rows[1].xs.forEach(x => el('path', { d: `M460 ${rows[0].y + 16} C 460 ${rows[0].y + 80} ${x} ${rows[1].y - 90} ${x} ${rows[1].y - 52}` }, links))
-    rows[2].xs.forEach((x, i) => { const px = rows[1].xs[Math.floor(i / 3)]; el('path', { d: `M${px} ${rows[1].y + 14} C ${px} ${rows[1].y + 70} ${x} ${rows[2].y - 70} ${x} ${rows[2].y - 40}` }, links) })
-    rows.forEach(r => r.xs.forEach(x => tree(gen, x, r.y, r.s, { crown: 'url(#cr)', trunk: '#9a6a36', fruit: '#ff6b5a', shine: 1 })))
-    const t = (txt, x, y, sz, col, fam) => { const e = el('text', { x, y, 'font-size': sz, fill: col, 'font-family': fam || 'Inter', 'font-weight': 800, 'text-anchor': 'middle' }, gen); e.textContent = txt }
-    t('Du', 590, 78, 34, '#ffe2b0', 'Lora'); t('3', 340, 244, 34, '#ffe2b0', 'Lora'); t('9', 40, 340, 0, '#fff')
-    t('…und immer so weiter', 460, 462, 38, '#ffe2b0', 'Caveat')
+  // V2: Kern → Baum → Wald
+  const stg = document.getElementById('stage')
+  if (stg) {
+    const d = el('defs', {}, stg); const lg = el('linearGradient', { id: 'cr', x1: 0, y1: 0, x2: 0, y2: 1 }, d); el('stop', { offset: 0, 'stop-color': '#8ae6a6' }, lg); el('stop', { offset: 1, 'stop-color': '#2fa46a' }, lg)
+    const arrow = (x1, x2, y) => { const g = el('g', { stroke: '#f6c177', 'stroke-width': 7, 'stroke-linecap': 'round', fill: 'none' }, stg); el('path', { d: `M${x1} ${y} L${x2} ${y} M${x2 - 22} ${y - 20} L${x2} ${y} L${x2 - 22} ${y + 20}` }, g) }
+    const use = el('use', { href: '#apple', x: 20, y: 70, width: 250, height: 250 }, stg)
+    arrow(285, 345, 215)
+    tree(stg, 470, 300, 1.55, { crown: 'url(#cr)', trunk: '#9a6a36', fruit: '#ff6b5a', shine: 1 })
+    arrow(595, 655, 215)
+    ;[[700, 300, .85], [840, 300, .85], [770, 262, .7], [735, 215, .5], [845, 215, .5]].sort((p, q) => p[1] - q[1]).forEach(([x, y, s]) => tree(stg, x, y, s, { crown: 'url(#cr)', trunk: '#9a6a36', fruit: '#ff6b5a', shine: 1 }))
+    const t = (txt, x, y) => { const e = el('text', { x, y, 'font-size': 44, fill: '#ffe2b0', 'font-family': 'Caveat', 'font-weight': 700, 'text-anchor': 'middle' }, stg); e.textContent = txt }
+    t('1 Apfel, viele Kerne', 145, 372); t('1 Baum, viele Äpfel', 470, 372); t('ein ganzer Wald', 775, 372)
+    const e = el('text', { x: 460, y: 440, 'font-size': 40, fill: '#fff', 'font-family': 'Inter', 'font-weight': 800, 'text-anchor': 'middle', 'letter-spacing': 3 }, stg); e.textContent = 'JÜNGER MACHEN JÜNGER'
   }
   // V3: Wachstumskurve
   const cv = document.getElementById('curve')
