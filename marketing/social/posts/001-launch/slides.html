@@ -7,37 +7,48 @@
 <script src="../../brand/icons.js"></script>
 <script src="../../brand/deck.js"></script>
 <style>
-  /* ═════════ Slide 1 · Hook ═════════ */
-  .s1 .shade { background: linear-gradient(180deg, rgba(5,10,24,.82) 0%, rgba(5,10,24,.5) 30%, rgba(5,10,24,0) 50%, rgba(5,10,24,0) 70%, rgba(5,10,24,.7) 100%); }
-  .s1 .content { position: absolute; left: var(--pad-x); right: var(--pad-x); top: 178px; }
-  .s1 .h1 { margin-top: 30px; font-size: 88px; }
-  [data-f="tt"] .s1 .content { top: 300px; }
-  [data-f="tt"] .s1 .h1 { font-size: 104px; margin-top: 36px; }
+  /* ═════════ Slide 1 · Hook (Frage, die man nicht überlesen kann) ═════════ */
+  .s1 .bg img { transform: translateY(170px) scale(1.1); transform-origin: 50% 100%; }
+  .s1 .shade { background: linear-gradient(180deg, rgba(5,10,24,.94) 0%, rgba(5,10,24,.78) 34%, rgba(5,10,24,.15) 58%, rgba(5,10,24,0) 70%, rgba(5,10,24,.75) 100%); }
+  .s1 .content { position: absolute; left: var(--pad-x); right: var(--pad-x); top: 168px; }
+  .s1 .tag { display: inline-flex; align-items: center; gap: 12px; height: 56px; padding: 0 26px; border-radius: 999px; background: linear-gradient(100deg, var(--gold-light), var(--gold) 50%, var(--gold-2)); color: #2a1503; font-weight: 800; font-size: 24px; letter-spacing: .08em; text-transform: uppercase; transform: rotate(-2deg); box-shadow: 0 14px 40px rgba(246,193,119,.35); }
+  .s1 .h1 { margin-top: 34px; font-size: 92px; line-height: 1.02; letter-spacing: -.028em; }
+  .s1 .h1 .mark { position: relative; white-space: nowrap; }
+  .s1 .h1 .mark::after { content: ''; position: absolute; left: -1%; right: -1%; bottom: .03em; height: .075em; border-radius: 99px; background: linear-gradient(90deg, var(--gold-light), var(--gold-2)); transform: rotate(-1.2deg); }
+  .s1 .side { margin-top: 30px; font-family: var(--hand); font-weight: 700; font-size: 52px; line-height: 1.05; color: var(--gold-light); transform: rotate(-2deg); transform-origin: left; text-shadow: 0 2px 24px rgba(3,8,22,.8); }
+  .s1 .swipe-big { position: absolute; z-index: 10; right: var(--pad-x); bottom: var(--safe-bottom); display: inline-flex; align-items: center; gap: 14px; height: 76px; padding: 0 20px 0 34px; border-radius: 999px; background: rgba(255,255,255,.96); color: #0b1330; font-weight: 800; font-size: 28px; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
+  .s1 .swipe-big i { width: 48px; height: 48px; border-radius: 50%; background: var(--ink); color: var(--gold); font-size: 26px; }
+  [data-f="tt"] .s1 .bg img { transform: translateY(260px) scale(1.1); }
+  [data-f="tt"] .s1 .content { top: 290px; }
+  [data-f="tt"] .s1 .h1 { font-size: 106px; }
+  [data-f="tt"] .s1 .side { font-size: 58px; }
+  [data-f="tt"] .s1 .swipe-big { bottom: 430px; }
+  [data-f="tt"] .s1 .shade { background: linear-gradient(180deg, rgba(5,10,24,.94) 0%, rgba(5,10,24,.78) 36%, rgba(5,10,24,.1) 56%, rgba(5,10,24,0) 70%, rgba(5,10,24,.55) 100%); }
 
-  /* ═════════ Slide 2 · Was ist Oikos? ═════════ */
-  .s2 .bg img { object-position: center bottom; }
-  .s2 .shade { background:
-      linear-gradient(180deg, rgba(5,10,24,.7) 0%, rgba(5,10,24,.25) 32%, rgba(5,10,24,0) 42%, rgba(5,10,24,0) 60%, rgba(5,10,24,.78) 74%, rgba(5,10,24,.96) 90%, rgba(5,10,24,.98) 100%); }
-  .s2 .top { position: absolute; left: var(--pad-x); right: var(--pad-x); top: 150px; text-align: center; }
-  .s2 .greek { font-family: 'Greek Serif', var(--serif); font-weight: 500; font-size: 176px; line-height: 1.05; margin-top: 6px; }
-  .s2 .greek span { background: linear-gradient(100deg, var(--gold-light), var(--gold) 45%, var(--gold-2)); -webkit-background-clip: text; background-clip: text; color: transparent; padding: 0 .06em; }
-  .s2 .means { font-family: var(--serif); font-style: italic; font-size: 34px; color: var(--muted); margin-top: -2px; }
-  .s2 .means b { font-style: normal; color: var(--text); font-weight: 600; }
-  .s2 .bottom { position: absolute; left: var(--pad-x); right: var(--pad-x); bottom: 70px; text-align: center; }
-  .s2 .bottom .h2 { font-size: 52px; line-height: 1.12; }
-  .s2 .bottom .lead { margin-bottom: 22px; font-size: 29px; color: #d6deec; text-shadow: 0 2px 18px rgba(3,8,22,.9); }
-  .s2 .bottom .h2 { text-shadow: 0 2px 24px rgba(3,8,22,.8); }
-  .s2 .chips { display: flex; justify-content: center; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
-  .s2 .chips .pill { height: 50px; font-size: 20px; padding: 0 20px; }
-  .s2 .chips .pill i { color: var(--gold); font-size: 22px; }
-  [data-f="tt"] .s2 .top { top: 290px; }
-  [data-f="tt"] .s2 .greek { font-size: 190px; }
-  [data-f="tt"] .s2 .means { font-size: 40px; }
-  [data-f="tt"] .s2 .bottom { bottom: auto; top: 640px; }
-  [data-f="tt"] .s2 .bottom .h2 { font-size: 60px; }
-  [data-f="tt"] .s2 .bottom .lead { font-size: 33px; }
-  [data-f="tt"] .s2 .shade { background:
-      linear-gradient(180deg, rgba(5,10,24,.8) 0%, rgba(5,10,24,.55) 38%, rgba(5,10,24,.5) 46%, rgba(5,10,24,0) 56%, rgba(5,10,24,0) 76%, rgba(5,10,24,.55) 100%); }
+  /* ═════════ Slide 2 · Dein Oikos (Mini-Karte mit Namen) ═════════ */
+  .s2 .bg img { object-position: center bottom; opacity: .5; }
+  .s2 .shade { background: radial-gradient(70% 55% at 50% 52%, rgba(5,10,24,.35), rgba(5,10,24,.9) 75%); }
+  .s2 .glow.gold { width: 900px; height: 900px; left: 90px; top: 320px; opacity: .55; }
+  .s2 .head { position: absolute; z-index: 6; left: var(--pad-x); right: var(--pad-x); top: 150px; text-align: center; }
+  .s2 .head .h1 { font-size: 100px; margin-top: 14px; }
+  .s2 .head .greek-line { margin-top: 14px; font-family: var(--serif); font-style: italic; font-size: 32px; color: var(--muted); }
+  .s2 .head .greek-line b { font-family: 'Greek Serif', var(--serif); font-style: normal; font-weight: 500; font-size: 40px; color: var(--gold); padding-right: 6px; }
+  .s2 .map { position: absolute; z-index: 5; left: 110px; top: 340px; width: 860px; height: 860px; transform: scale(.88); transform-origin: 50% 50%; }
+  .s2 .map svg { position: absolute; inset: 0; overflow: visible; }
+  .s2 .you { position: absolute; left: 50%; top: 50%; width: 200px; height: 200px; margin: -100px 0 0 -100px; border-radius: 50%; display: grid; place-items: center; font-family: var(--serif); font-weight: 700; font-size: 62px; color: #2a1503; background: radial-gradient(circle at 35% 30%, #fff3d6, var(--gold) 55%, var(--gold-2)); box-shadow: 0 0 0 10px rgba(246,193,119,.22), 0 0 90px rgba(246,193,119,.65); }
+  .s2 .node { position: absolute; width: 128px; margin-left: -64px; margin-top: -64px; text-align: center; }
+  .s2 .node .av { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 50px; color: #fff; box-shadow: 0 0 0 5px rgba(255,255,255,.9), 0 16px 40px rgba(0,0,0,.5); }
+  .s2 .node .nm { margin-top: 12px; font-size: 27px; font-weight: 700; white-space: nowrap; text-shadow: 0 2px 16px rgba(3,8,22,.95); }
+  .s2 .node.empty .av { background: rgba(255,255,255,.07); box-shadow: none; border: 5px dashed rgba(255,255,255,.55); color: var(--gold); font-size: 66px; font-family: var(--serif); }
+  .s2 .node.empty .nm { color: var(--gold-light); font-family: var(--hand); font-size: 40px; font-weight: 700; margin-top: 6px; }
+  .s2 .foot-note { position: absolute; z-index: 6; left: var(--pad-x); right: var(--pad-x); bottom: 58px; text-align: center; }
+  .s2 .foot-note .lead { font-size: 30px; color: #d6deec; text-shadow: 0 2px 18px rgba(3,8,22,.9); }
+  [data-f="tt"] .s2 .head { top: 290px; }
+  [data-f="tt"] .s2 .head .h1 { font-size: 108px; }
+  [data-f="tt"] .s2 .map { top: 530px; }
+  [data-f="tt"] .s2 .glow.gold { top: 510px; }
+  [data-f="tt"] .s2 .foot-note { bottom: auto; top: 1440px; }
+  [data-f="tt"] .s2 .foot-note .lead { font-size: 32px; }
 
   /* ═════════ Feature-Slides: gemeinsamer Hintergrund ═════════ */
   .feat .bg img { object-position: center bottom; opacity: .95; }
@@ -189,38 +200,50 @@
     <span class="counter"></span>
   </header>
   <div class="content">
-    <span class="pill"><span class="dot"></span>Neu · Jetzt im App Store</span>
-    <h1 class="h1 shadow-text">Was, wenn dein Gebet eine <em>Bewegung</em> startet?</h1>
+    <span class="tag"><i data-icon="sparkles"></i>Ehrliche Frage</span>
+    <h1 class="h1 shadow-text">Wann hast du zuletzt für jemanden <span class="mark"><em>mit Namen</em></span> gebetet?</h1>
+    <p class="side">Und nein, „für alle“ zählt nicht 😉</p>
   </div>
-  <footer class="foot">
-    <span>oikosconnect.net</span>
-    <span class="swipe">Wisch weiter <i data-icon="arrow-right" data-stroke="2.4"></i></span>
-  </footer>
+  <span class="swipe-big">Die Antwort <i data-icon="arrow-right" data-stroke="2.6"></i></span>
   <div class="grain"></div>
 </section>
 
-<!-- 2 · WAS IST OIKOS ────────────────────────────────── -->
+<!-- 2 · DEIN OIKOS ───────────────────────────────────── -->
 <section class="slide s2">
   <div class="bg"><img data-src="../../assets/photos/oikos-houses-{r}.jpg" alt=""></div>
   <div class="shade"></div>
+  <div class="glow gold"></div>
   <header class="brandbar">
     <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
     <span class="counter"></span>
   </header>
-  <div class="top">
-    <span class="eyebrow center">Was ist Oikos?</span>
-    <div class="greek"><span>οἶκος</span></div>
-    <p class="means">griechisch für <b>„Haus“</b></p>
+  <div class="head">
+    <span class="eyebrow center">Die Idee dahinter</span>
+    <h1 class="h1 shadow-text">Das ist dein <em>Oikos.</em></h1>
+    <p class="greek-line"><b>οἶκος</b> = griechisch für „Haus“</p>
   </div>
-  <div class="bottom">
-    <p class="lead">Die Menschen, die zu deinem Leben gehören:</p>
-    <h2 class="h2">Menschen, die Gott dir ganz bewusst <em>anvertraut</em> hat.</h2>
-    <div class="chips">
-      <span class="pill"><i data-icon="heart"></i>Familie</span>
-      <span class="pill"><i data-icon="users"></i>Freunde</span>
-      <span class="pill"><i data-icon="briefcase"></i>Kollegen</span>
-      <span class="pill"><i data-icon="house"></i>Nachbarn</span>
-    </div>
+  <div class="map">
+    <svg viewBox="0 0 860 860" aria-hidden="true">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe2b0"/><stop offset="1" stop-color="#ef8f4c"/></linearGradient></defs>
+      <circle cx="430" cy="430" r="260" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
+      <circle cx="430" cy="430" r="385" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2"/>
+      <line x1="430" y1="430" x2="430" y2="100" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
+      <line x1="430" y1="430" x2="720" y2="260" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
+      <line x1="430" y1="430" x2="730" y2="580" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
+      <line x1="430" y1="430" x2="430" y2="765" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
+      <line x1="430" y1="430" x2="130" y2="590" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
+      <line x1="430" y1="430" x2="140" y2="250" stroke="url(#g)" stroke-width="5" stroke-linecap="round" stroke-dasharray="4 16" opacity=".6"/>
+    </svg>
+    <div class="you">Du</div>
+    <div class="node " style="left:430px;top:100px"><div class="av" style="background:linear-gradient(135deg,#f472b6,#db2777)">M</div><div class="nm">Mama</div></div>
+    <div class="node " style="left:720px;top:260px"><div class="av" style="background:linear-gradient(135deg,#fb923c,#ea580c)">L</div><div class="nm">Lisa</div></div>
+    <div class="node " style="left:730px;top:580px"><div class="av" style="background:linear-gradient(135deg,#60a5fa,#2563eb)">B</div><div class="nm">Ben</div></div>
+    <div class="node " style="left:430px;top:765px"><div class="av" style="background:linear-gradient(135deg,#34d399,#059669)">O</div><div class="nm">Opa</div></div>
+    <div class="node " style="left:130px;top:590px"><div class="av" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">T</div><div class="nm">Nachbar Tom</div></div>
+    <div class="node empty" style="left:140px;top:250px"><div class="av" style="">?</div><div class="nm">Wer noch?</div></div>
+  </div>
+  <div class="foot-note">
+    <p class="lead">Menschen, die Gott dir <b>ganz bewusst anvertraut</b> hat. Wer steht bei dir im Kreis?</p>
   </div>
   <div class="grain"></div>
 </section>

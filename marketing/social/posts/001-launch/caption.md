@@ -1,12 +1,12 @@
-# Post 001 · Launch – „Was, wenn dein Gebet eine Bewegung startet?“
+# Post 001 · Launch – „Wann hast du zuletzt für jemanden mit Namen gebetet?“
 
 **Ziel:** Oikos Connect vorstellen, App-Store-Downloads, Saves & Shares.
 **Dateien:** `export/instagram/01–10.jpg` (1080×1350) · `export/tiktok/01–10.jpg` (1080×1920)
 
 | # | Slide | Inhalt |
 |---|-------|--------|
-| 1 | Hook | „Was, wenn dein Gebet eine Bewegung startet?“ |
-| 2 | Was ist Oikos? | οἶκος = „Haus“: Menschen, die Gott dir anvertraut hat |
+| 1 | Hook | „Wann hast du zuletzt für jemanden mit Namen gebetet?“ (+ „für alle zählt nicht“) |
+| 2 | Dein Oikos | Mini-Karte mit Namen (Mama, Lisa, Ben …), οἶκος = „Haus“, „Wer steht bei dir im Kreis?“ |
 | 3 | Oikos Map | Behalte im Blick, wer zu dir gehört |
 | 4 | Gebet | Bete gezielt. Mit Namen. (Gebetsmodus) |
 | 5 | Menschen begleiten | Story-Line & Impact-Stufen |
@@ -23,7 +23,7 @@
 **Caption** (die erste Zeile ist alles, was vor „mehr“ sichtbar ist):
 
 ```
-Was, wenn dein Gebet eine Bewegung startet? 🙏✨
+Wann hast du zuletzt für jemanden MIT NAMEN gebetet? 🙏 (Und nein: „für alle“ zählt nicht 😉)
 
 Wir haben Oikos Connect gebaut – eine App, die deinen Glauben mit deinem Alltag verbindet.
 
@@ -47,15 +47,15 @@ Schick diesen Post jemandem, mit dem du betest 🤍
 #oikosconnect #glaube #gebet #jesus #christlich #hauskreis #gemeinde #christlicheapp
 ```
 
-**Erster Kommentar (selbst posten & anpinnen)** – bringt Kommentare, die der Algorithmus belohnt:
+**Erster Kommentar (selbst posten & anpinnen)** – bringt Kommentare, die der Algorithmus belohnt (passt zu Slide 2, „Wer noch?“):
 
 ```
 Für wen betest du gerade? Schreib nur den Anfangsbuchstaben – wir beten mit 🙏
 ```
 
 **Alternativtext** (Erweiterte Einstellungen → Alternativtext, je Bild):
-1. Junge Frau betet bei Sonnenaufgang auf einem Dach, Smartphone an der Brust. Text: Was, wenn dein Gebet eine Bewegung startet?
-2. Wohnviertel in der Abenddämmerung, goldene Lichtbögen verbinden die Häuser. Text: Oikos ist griechisch für Haus – Menschen, die Gott dir anvertraut hat.
+1. Junge Frau betet bei Sonnenaufgang auf einem Dach, Smartphone an der Brust. Text: Wann hast du zuletzt für jemanden mit Namen gebetet?
+2. Grafik: In der Mitte „Du“, verbunden mit Mama, Lisa, Ben, Opa und Nachbar Tom, ein Kreis bleibt leer. Text: Das ist dein Oikos – Menschen, die Gott dir anvertraut hat.
 3. Smartphone mit der Oikos Map. Text: Behalte im Blick, wer zu dir gehört.
 4. Smartphone mit der Gebetsansicht. Text: Bete gezielt. Mit Namen.
 5. Smartphone mit Personenprofil und Story-Line. Text: Begleite Menschen auf ihrem Weg.
@@ -75,7 +75,7 @@ Für wen betest du gerade? Schreib nur den Anfangsbuchstaben – wir beten mit �
 
 ## TikTok (Foto-Slideshow)
 
-**Titel** (max. 90 Zeichen): `Was, wenn dein Gebet eine Bewegung startet? 🙏`
+**Titel** (max. 90 Zeichen): `Wann hast du zuletzt für jemanden mit Namen gebetet? 🙏`
 
 **Beschreibung:**
 
