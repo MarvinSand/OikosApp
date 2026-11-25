@@ -2,7 +2,7 @@
 // Rendert ein Code-Video (videos/<name>/scene.html mit window.setTime(t)) zu MP4.
 //   node marketing/social/render-video.cjs 001-frohe-botschaft            → komplettes Video
 //   node marketing/social/render-video.cjs 001-frohe-botschaft --stills 3,20,40   → nur Standbilder (Kontrolle)
-// Optionen: --fps 30  --workers 4  --duration 80
+// Optionen: --fps 30  --workers 4  --duration 80  --page cover.html (anderes HTML im Video-Ordner, z. B. für Cover)
 // Ausgabe: videos/<name>/out/video.mp4 (mit audio.wav, falls vorhanden) + video-silent.mp4
 const http = require('http'), fs = require('fs'), path = require('path'), os = require('os')
 const { spawnSync } = require('child_process')
@@ -12,9 +12,9 @@ const ROOT = __dirname
 const name = process.argv[2]
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d }
 const fps = +arg('fps', 30), workers = +arg('workers', 4), duration = +arg('duration', 80)
-const stills = arg('stills', null)
+const stills = arg('stills', null), pageName = arg('page', 'scene.html')
 const dir = path.join(ROOT, 'videos', name)
-if (!name || !fs.existsSync(path.join(dir, 'scene.html'))) { console.error('Aufruf: node render-video.cjs <ordner> [--stills 1,2,3]'); process.exit(1) }
+if (!name || !fs.existsSync(path.join(dir, pageName))) { console.error('Aufruf: node render-video.cjs <ordner> [--stills 1,2,3]'); process.exit(1) }
 const out = path.join(dir, 'out'); fs.mkdirSync(out, { recursive: true })
 
 const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2' }
@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => {
 async function open(browser, port) {
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 })
   page.on('pageerror', e => console.log('PAGEERROR', e.message))
-  await page.goto(`http://127.0.0.1:${port}/videos/${name}/scene.html`)
+  await page.goto(`http://127.0.0.1:${port}/videos/${name}/${pageName}`)
   await page.waitForFunction('window.__ready === true', null, { timeout: 30000 })
   return page
 }
