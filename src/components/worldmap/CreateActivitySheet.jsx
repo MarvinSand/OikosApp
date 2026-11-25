@@ -18,6 +18,7 @@ import { RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../
 import CustomDatesEditor, { datesToIso, hasInvalidSlot } from './CustomDatesEditor'
 import EventImagesEditor from './EventImagesEditor'
 import DescriptionField from './DescriptionField'
+import EventAvatarPicker from './EventAvatarPicker'
 
 const C = {
   accent: 'var(--color-accent)',
@@ -177,6 +178,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
     customTitle: '',
     description: '',
     image_urls: [],
+    avatar_url: null,
     location_name: '',
     latitude: null,
     longitude: null,
@@ -347,6 +349,7 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
       activity_emoji: resolvedEmoji,
       description: form.description.trim() || null,
       image_urls: form.image_urls,
+      avatar_url: form.avatar_url || null,
       location_name: (form.location_name.trim() || locationLabel || null),
       latitude: form.latitude,
       longitude: form.longitude,
@@ -615,6 +618,9 @@ export default function CreateActivitySheet({ myProfile, onClose, onSubmit }) {
         {/* ─── Schritt: Infos (optional) ─── */}
         {step === 'info' && (
           <div>
+            <div style={{ marginBottom: 18 }}>
+              <EventAvatarPicker url={form.avatar_url} emoji={resolvedEmoji} onChange={v => set('avatar_url', v)} C={C} />
+            </div>
             <label style={lbl}>{t('Infos (optional)')}</label>
             <DescriptionField value={form.description} onChange={v => set('description', v)} rows={4} C={C} inputStyle={inp} />
             <EventImagesEditor urls={form.image_urls} onChange={v => set('image_urls', v)} C={C} />

@@ -10,6 +10,7 @@ import { useT, getLang } from '../../i18n'
 const locale = () => (getLang() === 'en' ? 'en-US' : 'de-DE')
 import CustomDatesEditor, { datesToIso, hasInvalidSlot } from './CustomDatesEditor'
 import EventImagesEditor from './EventImagesEditor'
+import EventAvatarPicker from './EventAvatarPicker'
 import DescriptionField from './DescriptionField'
 import LinkifiedText from '../common/LinkifiedText'
 import { customSlots, nextOccurrenceRange, formatRecurrenceLabel, isRecurring, RECURRENCE_FREQ_OPTIONS, WEEKDAY_OPTIONS, intervalUnitLabel } from '../../lib/recurrence'
@@ -220,9 +221,11 @@ export default function ActivitySheet({ activity, currentUserId, onClose, onJoin
             <div style={{
               width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
               background: C.accentLight, border: `2px solid ${C.accent}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, overflow: 'hidden',
             }}>
-              {activity.activity_emoji || '📍'}
+              {activity.avatar_url
+                ? <img src={activity.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : (activity.activity_emoji || '📍')}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 17, fontWeight: 700, color: C.text, margin: 0 }}>
@@ -453,6 +456,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
   const [emoji, setEmoji] = useState(activity.activity_emoji || '📍')
   const [description, setDescription] = useState(activity.description || '')
   const [imageUrls, setImageUrls] = useState(activity.image_urls || [])
+  const [avatarUrl, setAvatarUrl] = useState(activity.avatar_url || null)
   const [startsAt, setStartsAt] = useState(toLocalInput(activity.starts_at))
   const [endsAt, setEndsAt] = useState(toLocalInput(activity.ends_at))
   const [recurrenceFreq, setRecurrenceFreq] = useState(activity.recurrence_freq || null)
@@ -495,6 +499,7 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
       activity_emoji: emoji || '📍',
       description: description.trim() || null,
       image_urls: imageUrls,
+      avatar_url: avatarUrl || null,
       starts_at: startsAt ? new Date(startsAt).toISOString() : null,
       ends_at: endsAt ? new Date(endsAt).toISOString() : null,
       recurrence_freq: recurrenceFreq || null,
@@ -537,6 +542,10 @@ function EditActivityPanel({ activity, onSave, onCancel }) {
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 16px' }} />
         <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: '0 0 16px' }}>{t('Event bearbeiten')}</p>
+
+        <div style={{ marginBottom: 14 }}>
+          <EventAvatarPicker url={avatarUrl} emoji={emoji} onChange={setAvatarUrl} C={C} />
+        </div>
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
           <div style={{ flexShrink: 0 }}>

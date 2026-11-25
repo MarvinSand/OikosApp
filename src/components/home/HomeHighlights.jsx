@@ -119,8 +119,10 @@ function HighlightCard({ item, isAdmin, onRemove, navigate }) {
           <span style={kindLabel}>{t('Event')}</span>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <div style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, backgroundColor: 'var(--color-accent-light)', border: '1.5px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
-            {item.emoji || '📅'}
+          <div style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, backgroundColor: 'var(--color-accent-light)', border: '1.5px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, overflow: 'hidden' }}>
+            {item.avatar_url
+              ? <img src={item.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : (item.emoji || '📅')}
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ ...titleStyle, marginBottom: 2 }}>{item.title}</p>

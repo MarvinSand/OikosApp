@@ -634,7 +634,9 @@ function EventRow({ activity, onClick }) {
         background: C.bgSec, border: `2px solid ${C.accent}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19,
       }}>
-        {activity.activity_emoji || '📍'}
+        {activity.avatar_url
+          ? <img src={activity.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+          : (activity.activity_emoji || '📍')}
         {recurring && (
           <span style={{
             position: 'absolute', bottom: -3, right: -3, width: 17, height: 17, borderRadius: '50%',

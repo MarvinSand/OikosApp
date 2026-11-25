@@ -26,6 +26,8 @@ function describe(item, t) {
         title: d.title || t('Event'),
         subtitle: t('Event'),
         emoji: d.activity_emoji || '📅',
+        image: d.avatar_url || null,
+        square: !!d.avatar_url,
       }
     case 'gemeinde':
       return {

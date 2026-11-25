@@ -103,7 +103,7 @@ function buildUserPinElement(user, { isOwn = false, zoom } = {}) {
 }
 
 // participants = array of { profile: { avatar_url, full_name } }
-function buildActivityPinElement(emoji, participants, { zoom } = {}) {
+function buildActivityPinElement(emoji, participants, { zoom, avatarUrl } = {}) {
   const size = 58
   const radius = '34%'  // abgerundetes Quadrat (squircle)
 
@@ -126,7 +126,16 @@ function buildActivityPinElement(emoji, participants, { zoom } = {}) {
   // Event-Quadrat selbst – schlägt wie ein Herzschlag
   const square = document.createElement('div')
   square.style.cssText = `position:absolute;inset:4px;border-radius:${radius};background:${C.accent};border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(90,200,250,0.7);font-size:24px;transform-origin:50% 50%;animation:eventPinBeat 1.2s ease-in-out infinite;`
-  square.textContent = emoji || '📍'
+  if (avatarUrl) {
+    square.style.overflow = 'hidden'
+    const pic = document.createElement('img')
+    pic.src = avatarUrl
+    pic.referrerPolicy = 'no-referrer'
+    pic.style.cssText = 'width:100%;height:100%;object-fit:cover;'
+    square.appendChild(pic)
+  } else {
+    square.textContent = emoji || '📍'
+  }
   scaleLayer.appendChild(square)
   wrap.appendChild(scaleLayer)
 
@@ -340,7 +349,7 @@ function useCombinedClusterer({ map, users, activities, gemeinden, oikosPeople, 
     }) : []
 
     const actMarkers = showEvents ? activities.map(a => {
-      const content = buildActivityPinElement(a.activity_emoji, a.participants || [], { zoom: zoomRef.current })
+      const content = buildActivityPinElement(a.activity_emoji, a.participants || [], { zoom: zoomRef.current, avatarUrl: a.avatar_url })
       content.dataset.pinType = 'activity'
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
         position: { lat: a.latitude, lng: a.longitude },
