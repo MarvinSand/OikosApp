@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Stil-Beispiele (reiner Code)</title>
+<link rel="stylesheet" href="../../brand/brand.css">
+<script src="../../brand/icons.js"></script>
+<script src="../../brand/deck.js"></script>
+<style>
+  .lbl { position: absolute; z-index: 30; left: 0; right: 0; bottom: 0; padding: 26px 40px 34px; background: rgba(0,0,0,.72); color: #fff; font: 800 34px Inter; letter-spacing: .02em; }
+  .lbl small { display: block; font: 600 24px Inter; color: #f6c177; margin-top: 4px; }
+
+  /* 1 · Kinetic Typography */
+  .k { background: #07070b; }
+  .k .wrap { position: absolute; left: 70px; right: 70px; top: 300px; }
+  .k .w { display: block; font: 900 150px/0.95 Inter; letter-spacing: -.045em; color: #fff; text-transform: uppercase; }
+  .k .w.s { font-size: 96px; color: #8a8aa0; }
+  .k .w.hl { display: inline-block; background: #f6c177; color: #07070b; padding: 0 22px; transform: rotate(-2deg); margin: 14px 0; box-shadow: 14px 14px 0 #ef8f4c; }
+  .k .w.blur { filter: blur(3px); opacity: .5; transform: translateX(30px); }
+  .k .cap { position: absolute; left: 70px; right: 70px; top: 1240px; font: 800 52px Inter; color: #fff; }
+  .k .cap b { color: #07070b; background: #ffe2b0; padding: 0 10px; border-radius: 8px; }
+  .k .bar { position: absolute; left: 70px; right: 70px; top: 200px; height: 10px; border-radius: 5px; background: rgba(255,255,255,.15); }
+  .k .bar i { display: block; width: 18%; height: 100%; border-radius: 5px; background: #f6c177; }
+
+  /* 2 · Chat mit Gott */
+  .c { background: linear-gradient(180deg, #0d1326, #050812); }
+  .c .head { position: absolute; left: 0; right: 0; top: 170px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .c .av { width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #fff3d6, #f6c177 55%, #ef8f4c); box-shadow: 0 0 60px rgba(246,193,119,.6); color: #2a1503; font: 700 64px Lora; }
+  .c .nm { font: 700 40px Inter; color: #fff; } .c .st { font: 500 26px Inter; color: #8fa0c0; margin-top: -6px; }
+  .c .msgs { position: absolute; left: 50px; right: 50px; top: 470px; display: flex; flex-direction: column; gap: 22px; }
+  .c .m { max-width: 78%; padding: 26px 32px; border-radius: 40px; font: 500 40px/1.3 Inter; }
+  .c .me { align-self: flex-end; background: #2f7cf6; color: #fff; border-bottom-right-radius: 12px; }
+  .c .god { align-self: flex-start; background: #1d2540; color: #f4f6fb; border-bottom-left-radius: 12px; border: 1px solid rgba(246,193,119,.35); }
+  .c .god b { color: #f6c177; }
+  .c .typing { align-self: flex-start; background: #1d2540; border-radius: 40px; padding: 26px 34px; display: flex; gap: 12px; }
+  .c .typing i { width: 16px; height: 16px; border-radius: 50%; background: #8fa0c0; display: block; }
+  .c .typing i:nth-child(2) { opacity: .6 } .c .typing i:nth-child(3) { opacity: .3 }
+  .c .seen { align-self: flex-end; font: 500 24px Inter; color: #6f7e9c; margin-top: -10px; }
+
+  /* 3 · Whiteboard */
+  .wb { background: #fbfbf7; }
+  .wb .t { position: absolute; left: 60px; right: 60px; top: 200px; font: 700 104px/1 Caveat; color: #1b1b1b; transform: rotate(-1.5deg); }
+  .wb .t u { text-decoration: none; background: linear-gradient(transparent 62%, #ffd84d 62%); padding: 0 6px; }
+  .wb svg { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+
+  /* 4 · Papierschnitt */
+  .pc { background: linear-gradient(180deg, #1c2a5a 0%, #3e3a78 45%, #f2a65a 100%); }
+  .pc .t { position: absolute; left: 70px; right: 70px; top: 220px; text-align: center; font: 700 86px/1.08 Lora; color: #fff8ea; text-shadow: 0 6px 0 rgba(0,0,0,.18); }
+  .pc .t em { color: #ffd27a; }
+  .pc svg { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+</style>
+</head>
+<body>
+<main class="deck">
+
+<section class="slide k">
+  <div class="bar"><i></i></div>
+  <div class="wrap">
+    <span class="w s">Wenn es Gott gibt –</span>
+    <span class="w">warum</span>
+    <span class="w blur">gibt es</span>
+    <span class="w">so viel</span>
+    <span class="w hl">Leid?</span>
+  </div>
+  <div class="cap">Die Antwort hat mit <b>Liebe</b> zu tun.</div>
+  <div class="lbl">A · Kinetic Typography<small>Nur Text in Bewegung, harte Schnitte im Beat · reiner Code · 0 Credits</small></div>
+</section>
+
+<section class="slide c">
+  <div class="head"><div class="av">✝</div><div class="nm">Gott</div><div class="st">online</div></div>
+  <div class="msgs">
+    <div class="m me">Wenn es dich gibt …</div>
+    <div class="m me">warum lässt du so viel Leid zu? 😔</div>
+    <div class="seen">Gelesen</div>
+    <div class="m god">Ich habe es <b>nie</b> gewollt.</div>
+    <div class="m god">Darf ich dir erzählen, wie alles angefangen hat?</div>
+    <div class="typing"><i></i><i></i><i></i></div>
+  </div>
+  <div class="lbl">B · „Chat mit Gott“<small>Nachrichten tippen sich, Ping-Sound · reiner Code · 0 Credits</small></div>
+</section>
+
+<section class="slide wb">
+  <div class="t">Warum lässt Gott <u>Leid</u> zu?</div>
+  <svg viewBox="0 0 1080 1920">
+    <defs><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="6"/></filter></defs>
+    <g filter="url(#rough)" fill="none" stroke="#1b1b1b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M200 720 q60 -70 130 -30 q40 -60 110 -20 q70 0 60 70 q40 50 -20 80 h-260 q-70 -40 -20 -100z"/>
+      <path d="M240 870 l-20 60 M300 870 l-20 60 M360 870 l-20 60 M420 870 l-20 60"/>
+      <circle cx="330" cy="1030" r="42"/><path d="M330 1072 v120 M330 1110 l-55 50 M330 1110 l55 50 M330 1192 l-45 85 M330 1192 l45 85"/>
+      <path d="M318 1022 h4 M342 1022 h4 M314 1050 q16 -12 32 0"/>
+      <path d="M520 1080 q90 -40 170 0" /><path d="M670 1060 l24 22 -32 12"/>
+      <path d="M760 960 c-50 -60 -140 -20 -100 60 c20 40 100 90 100 90 c0 0 80 -50 100 -90 c40 -80 -50 -120 -100 -60z" stroke="#e63946"/>
+      <ellipse cx="560" cy="1460" rx="330" ry="110" stroke="#2f7cf6"/>
+    </g>
+    <text x="560" y="1480" text-anchor="middle" font-family="Caveat" font-weight="700" font-size="84" fill="#2f7cf6">Liebe braucht Freiheit</text>
+    <text x="760" y="1190" text-anchor="middle" font-family="Caveat" font-weight="700" font-size="58" fill="#e63946">nie Gottes Plan</text>
+  </svg>
+  <div class="lbl">C · Whiteboard-Skizze<small>Zeichnung entsteht Strich für Strich, wie live erklärt · reiner Code · 0 Credits</small></div>
+</section>
+
+<section class="slide pc">
+  <div class="t">Wenn es Gott gibt – warum so viel <em>Leid?</em></div>
+  <svg viewBox="0 0 1080 1920">
+    <defs><filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#000" flood-opacity=".28"/></filter>
+      <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe7a8" stop-opacity=".9"/><stop offset="1" stop-color="#ffe7a8" stop-opacity="0"/></linearGradient></defs>
+    <polygon points="610,560 700,560 900,1500 360,1500" fill="url(#beam)" opacity=".55"/>
+    <g filter="url(#sh)">
+      <ellipse cx="300" cy="650" rx="190" ry="70" fill="#5d6aa8"/><ellipse cx="420" cy="620" rx="150" ry="80" fill="#6c79b8"/>
+      <ellipse cx="840" cy="560" rx="200" ry="70" fill="#5d6aa8"/><ellipse cx="730" cy="600" rx="140" ry="70" fill="#6c79b8"/>
+      <circle cx="655" cy="560" r="70" fill="#ffd27a"/>
+      <path d="M0 1350 Q270 1180 540 1300 T1080 1260 V1920 H0Z" fill="#2c3f7a"/>
+      <path d="M0 1480 Q300 1350 600 1450 T1080 1400 V1920 H0Z" fill="#23356a"/>
+      <path d="M0 1620 Q360 1520 720 1600 T1080 1560 V1920 H0Z" fill="#1a2752"/>
+      <rect x="520" y="1440" width="260" height="22" rx="8" fill="#a26a3e"/><rect x="540" y="1462" width="16" height="70" fill="#7d4f2c"/><rect x="744" y="1462" width="16" height="70" fill="#7d4f2c"/>
+      <circle cx="640" cy="1330" r="34" fill="#fff1dc"/><path d="M612 1368 h56 l14 80 h-84z" fill="#e07a5f"/>
+    </g>
+    <g stroke="#cfe0ff" stroke-width="5" stroke-linecap="round" opacity=".6">
+      <path d="M200 760 l-14 50 M260 790 l-14 50 M330 760 l-14 50 M400 800 l-14 50 M800 700 l-14 50 M880 740 l-14 50"/>
+    </g>
+  </svg>
+  <div class="lbl">D · Papierschnitt / Flat<small>Ebenen mit Schatten, Parallax-Bewegung · reiner Code · 0 Credits</small></div>
+</section>
+
+</main>
+</body>
+</html>
