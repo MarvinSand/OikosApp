@@ -1,4 +1,4 @@
-# Serie: „Warum lässt Gott Leid zu?“ – 2 Shorts (je ca. 75–80 s)
+# Serie: „Warum lässt Gott Leid zu?“ – 2 Shorts (je ca. 80–90 s)
 
 Format: 9:16 (TikTok, Reels, YouTube Shorts) · Stil: Comic-Stickman wie Video 002 · Sprecher: Arthur oder eigene Stimme
 Bibelzitate: Luther 1912 (gemeinfrei) oder – wo schwer verständlich – sinngemäß in einfacher Sprache mit „vgl.“. Sprechtempo ca. 2,4 Wörter/s. Die Zeitspalte ist ein Richtwert – beim Vertonen wird nach der echten Sprachlänge getaktet.
@@ -19,7 +19,7 @@ Bibelzitate: Luther 1912 (gemeinfrei) oder – wo schwer verständlich – sinng
 
 ---
 
-## Teil 1 – „Warum lässt Gott Leid zu?“ (~80 s, funktioniert auch allein)
+## Teil 1 – „Warum lässt Gott Leid zu?“ (~85 s, funktioniert auch allein)
 
 | Zeit | Sprecher | Bild / Text auf dem Screen |
 |---|---|---|
@@ -40,7 +40,7 @@ Bibelzitate: Luther 1912 (gemeinfrei) oder – wo schwer verständlich – sinng
 
 ---
 
-## Teil 2 – „Was hat Gott gegen das Leid getan?“ (~78 s)
+## Teil 2 – „Was hat Gott gegen das Leid getan?“ (~82 s)
 
 | Zeit | Sprecher | Bild / Text auf dem Screen |
 |---|---|---|
