@@ -39,6 +39,29 @@ function computeExpiresAt(data) {
   return null
 }
 
+// Eine Gemeinde mit mehreren Treffpunkten erscheint pro Standort als eigener Pin/
+// Listeneintrag – alle zeigen auf dieselbe Community (gleiche `id`). `pinKey`
+// unterscheidet die Einträge (Haupt-Standort = id).
+function expandGemeindeLocations(gems) {
+  const out = []
+  for (const { locations, ...g } of gems || []) {
+    out.push({ ...g, pinKey: g.id })
+    for (const loc of locations || []) {
+      if (loc.latitude == null || loc.longitude == null) continue
+      out.push({
+        ...g,
+        pinKey: `${g.id}:${loc.id}`,
+        location_label: loc.label || null,
+        address: loc.address || g.address,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        meeting_info: loc.meeting_info || g.meeting_info,
+      })
+    }
+  }
+  return out
+}
+
 // Gecachte Aktivitäten ohne die inzwischen abgelaufenen
 function withoutExpired(acts) {
   const now = Date.now()
@@ -88,7 +111,7 @@ export function useWorldMap() {
         // public.communities Lesen für alle (is_public = true), siehe phase58b.
         supabase
           .from('communities')
-          .select('id, name, description, avatar_url, address, latitude, longitude, meeting_info')
+          .select('id, name, description, avatar_url, address, latitude, longitude, meeting_info, locations:community_locations(id, label, address, latitude, longitude, meeting_info)')
           .eq('community_type', 'gemeinde')
           .eq('is_public', true)
           .not('latitude', 'is', null)
@@ -99,12 +122,13 @@ export function useWorldMap() {
       if (!profile) return
       setMyProfile(profile)
       setActivities(acts || [])
-      setGemeinden(gems || [])
+      const expandedGems = expandGemeindeLocations(gems)
+      setGemeinden(expandedGems)
       setVisibleUsers(worldMapUsers || [])
       writeCache(user.id, 'worldMap', {
         myProfile: profile,
         activities: acts || [],
-        gemeinden: gems || [],
+        gemeinden: expandedGems,
         visibleUsers: worldMapUsers || [],
       })
     } finally {
@@ -300,6 +324,7 @@ export function useWorldMap() {
   const myActivities = activities.filter(a => a.author_id === user?.id)
 
   return {
+    reload: loadData,
     visibleUsers,
     activities,
     gemeinden,

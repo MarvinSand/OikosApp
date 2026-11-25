@@ -137,6 +137,9 @@ export default function GemeindePinSheet({ gemeinde, onClose }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 17, fontWeight: 700, color: C.text, margin: 0 }}>{gemeinde.name}</p>
+            {gemeinde.location_label && (
+              <p style={{ fontSize: 12, color: C.accentDark, fontWeight: 600, margin: '5px 0 0' }}>{gemeinde.location_label}</p>
+            )}
             {gemeinde.address && (
               <p style={{ fontSize: 12, color: C.textSec, margin: '5px 0 0' }}>📍 {gemeinde.address}</p>
             )}

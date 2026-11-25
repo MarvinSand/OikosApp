@@ -96,7 +96,9 @@ export function RequestJoinSheet({ community, onClose, onSent }) {
 }
 
 // ─── CreateCommunitySheet ────────────────────────────────────
-export function CreateCommunitySheet({ onClose }) {
+// initialType: 'gemeinde' startet direkt im Gemeinde-Formular (z. B. von der Weltkarte);
+// onCreated(community) ersetzt die Weiterleitung zur Community; layer = z-index (z. B. über der Weltkarte).
+export function CreateCommunitySheet({ onClose, initialType = 'group', onCreated, layer }) {
   const { t } = useT()
   const navigate = useNavigate()
   const { createCommunity } = useCommunities()
@@ -104,8 +106,8 @@ export function CreateCommunitySheet({ onClose }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   // Zugang: 'private' (nur Code) | 'open' (öffentlich) | 'request' (öffentlich, mit Anfrage)
-  const [access, setAccess] = useState('private')
-  const [communityType, setCommunityType] = useState('group')
+  const [access, setAccess] = useState(initialType === 'gemeinde' ? 'request' : 'private')
+  const [communityType, setCommunityType] = useState(initialType)
   const [location, setLocation] = useState(null)
   const [meetingInfo, setMeetingInfo] = useState('')
   const [saving, setSaving] = useState(false)
@@ -128,7 +130,8 @@ export function CreateCommunitySheet({ onClose }) {
       })
       showToast(isGemeinde ? t('Gemeinde erstellt ✓') : t('Community erstellt ✓'))
       onClose()
-      navigate(`/community/${community.id}`)
+      if (onCreated) onCreated(community)
+      else navigate(`/community/${community.id}`)
     } catch (e) {
       showToast(e?.message || t('Fehler beim Erstellen'), 'error')
     } finally {
@@ -140,8 +143,8 @@ export function CreateCommunitySheet({ onClose }) {
   // Track → `position: fixed` säße sonst halb außerhalb des Bildschirms).
   return (
     <BodyPortal>
-      <div onClick={onClose} className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 transition-opacity" />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
+      <div onClick={onClose} className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 transition-opacity" style={layer ? { zIndex: layer } : undefined} />
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface rounded-t-[32px] z-50 pt-4 px-6 max-h-[90vh] overflow-y-auto shadow-glass animate-[sheetSlideUp_0.3s_ease-out]" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))', ...(layer ? { zIndex: layer + 1 } : {}) }}>
         <div style={sheetHandle} />
         <h3 style={sheetTitleStyle}>{isGemeinde ? t('Gemeinde erstellen') : t('Community erstellen')}</h3>
 

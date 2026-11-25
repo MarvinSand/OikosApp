@@ -4,6 +4,11 @@
 
 **Jeder Bild-Upload** (Avatar, Feed, Chat, Community, Events, Karten-Hintergrund, alles Neue) läuft vor `storage.upload` durch `compressImage()` aus `src/lib/image.js` (Richtwerte: Avatare/Community-Logo 400 px, alles andere max. 1080 px, Qualität 0,6–0,8, WebP/JPEG). Nie Originaldateien hochladen – Speicher/DB sollen klein und die App schnell bleiben. Bei neuen Upload-Stellen immer mitprüfen (`grep -rn "\.upload(" src`). Stand Nov. 2026: alle 7 Upload-Stellen komprimieren.
 
+## Gemeinden: Erstellen auf der Karte & mehrere Standorte (Nov. 2026, phase107)
+
+- Weltkarte → Tab „Gemeinden“ hat den Button „Gemeinde erstellen“ (`MapDrawer` → `onCreateGemeinde`, lazy `CreateCommunitySheet` mit `initialType="gemeinde"`, `layer` = z-index über der Karte, `onCreated` lädt die Karte neu statt zur Community zu navigieren).
+- **Mehrere Standorte, gleiche Community:** Haupt-Standort bleibt in `communities` (address/latitude/longitude/meeting_info), weitere Treffpunkte in `community_locations` (RLS: lesen wer die Community lesen darf, schreiben nur `is_community_admin`). `useWorldMap` bettet sie ein und **expandiert** pro Standort einen eigenen Eintrag der `gemeinden`-Liste (gleiche `id`, eindeutiger `pinKey`, `location_label`) → Pins/Liste/Cluster funktionieren unverändert; React-Keys für Gemeinden immer `pinKey || id`. Pflege: `CommunityLocationsEditor.jsx` in den Community-Einstellungen (nur Gemeinden, Admins, speichert direkt). `phase107` ist live eingespielt.
+
 ## Events mit einzelnen Terminen (Nov. 2026, phase104)
 
 - Wiederholung „Einzelne Termine“ (`recurrence_freq='custom'`): `starts_at` = erster Termin, `world_map_activities.recurrence_dates timestamptz[]` = weitere Termine; Dauer je Termin = `ends_at − starts_at`. Das Event (Chat, Teilnehmer) bleibt, im Bearbeiten-Sheet kommen nur Termine hinzu/fallen weg (`CustomDatesEditor.jsx`). `nextOccurrence`/`customDates` in `lib/recurrence.js`; `expires_at` = letzter Termin + Dauer + 1 h (`computeExpiresAt`). `get_home_highlights()` liefert `recurrence_dates` mit. Seit `phase106` ist `recurrence_dates` **jsonb** `[{start, end}]` (jeder Einzeltermin mit eigenem Beginn + Ende; `customSlots`/`nextOccurrenceRange` in `lib/recurrence.js`; ältere String-Einträge werden toleriert). Alle drei Migrationen (104–106) sind live eingespielt.

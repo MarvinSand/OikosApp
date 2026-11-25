@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader, Polyline } from '@react-google-maps/api'
 import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer'
@@ -14,6 +14,7 @@ import UserPinSheet from './UserPinSheet'
 import ActivitySheet from './ActivitySheet'
 import CreateActivitySheet from './CreateActivitySheet'
 import GemeindePinSheet from './GemeindePinSheet'
+const CreateCommunitySheet = lazy(() => import('../community/CommunitySheets').then(m => ({ default: m.CreateCommunitySheet })))
 import LocationSettingsSheet from './LocationSettingsSheet'
 import OikosPersonPinSheet from './OikosPersonPinSheet'
 import ClusterListSheet from './ClusterListSheet'
@@ -447,7 +448,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const {
     visibleUsers, activities, gemeinden, myProfile,
     loading, createActivity, joinActivity, joinActivityChat, leaveActivity, deleteActivity, updateActivity,
-    updateLocationVisibility, updateLocationSettings,
+    updateLocationVisibility, updateLocationSettings, reload: reloadWorldMap,
   } = useWorldMap()
 
   const { isLoaded, loadError } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS)
@@ -465,6 +466,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
   const openedFromListRef = useRef(false)
   const [reopenListKey, setReopenListKey] = useState(0)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
+  const [showCreateGemeinde, setShowCreateGemeinde] = useState(false)
   // Sichtbare Höhe des Weltkarte-Drawers über der Nav (Kopf allein im
   // eingeklappten Zustand, mehr beim Hochziehen) - der rechte Button-Stapel
   // (Standort/Event hosten) hängt daran, damit er beim Aufziehen mitwandert
@@ -921,6 +923,7 @@ export default function WorldMapView({ onNavigateToProfile }) {
           reopenListKey={reopenListKey}
           onVisibleHeightChange={setDrawerLift}
           onCreateEvent={() => setShowCreateSheet(true)}
+          onCreateGemeinde={() => setShowCreateGemeinde(true)}
           onSelectUser={(u) => { focusOn(u.latitude, u.longitude); openedFromListRef.current = true; setSelectedUser(u) }}
           onSelectActivity={(a) => { focusOn(a.latitude, a.longitude); openedFromListRef.current = true; setSelectedActivity(a) }}
           onSelectGemeinde={(g) => { focusOn(g.latitude, g.longitude); openedFromListRef.current = true; setSelectedGemeinde(g) }}
@@ -973,6 +976,20 @@ export default function WorldMapView({ onNavigateToProfile }) {
           }}
         />
       )}
+      {showCreateGemeinde && (
+        <Suspense fallback={null}>
+          <CreateCommunitySheet
+            initialType="gemeinde"
+            layer={10000}
+            onClose={() => setShowCreateGemeinde(false)}
+            onCreated={async (c) => {
+              await reloadWorldMap()
+              if (c?.latitude != null && c?.longitude != null) focusOn(c.latitude, c.longitude)
+            }}
+          />
+        </Suspense>
+      )}
+
       {showCreateSheet && (
         <CreateActivitySheet
           myProfile={myProfile}

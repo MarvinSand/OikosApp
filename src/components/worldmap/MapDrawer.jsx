@@ -69,7 +69,7 @@ export default function MapDrawer({
   users, activities, gemeinden = [], myProfile, hasOwnLocation,
   radiusKm, onRadiusChange,
   onSelectUser, onSelectActivity, onSelectGemeinde, reopenListKey,
-  onCreateEvent, onVisibleHeightChange,
+  onCreateEvent, onCreateGemeinde, onVisibleHeightChange,
 }) {
   const { t } = useT()
   // 'closed' = nur Kopf sichtbar · 'half' = + Suchleiste (Tap auf Geschwister/
@@ -442,6 +442,20 @@ export default function MapDrawer({
           {radiusKm != null && hasOwnLocation ? ` ${t('im Umkreis von {n} km', { n: radiusKm })}` : ''}
         </p>
 
+        {tab === 'gemeinden' && onCreateGemeinde && (
+          <button
+            onClick={() => { setLevel('closed'); onCreateGemeinde() }}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '10px 14px', borderRadius: 12, border: 'none',
+              background: C.accent, color: '#fff', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', marginBottom: 10,
+            }}
+          >
+            <Plus size={16} /> {t('Gemeinde erstellen')}
+          </button>
+        )}
+
         {tab === 'events' && (
           <button
             onClick={() => { setLevel('closed'); onCreateEvent() }}
@@ -477,7 +491,7 @@ export default function MapDrawer({
             ))
           : tab === 'gemeinden'
             ? list.map(g => (
-                <GemeindeRow key={g.id} gemeinde={g} onClick={() => { setLevel('closed'); onSelectGemeinde(g) }} />
+                <GemeindeRow key={g.pinKey || g.id} gemeinde={g} onClick={() => { setLevel('closed'); onSelectGemeinde(g) }} />
               ))
             : list.map(a => (
                 <EventRow key={a.id} activity={a} onClick={() => { setLevel('closed'); onSelectActivity(a) }} />
@@ -579,7 +593,7 @@ function GemeindeRow({ gemeinde, onClick }) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {gemeinde.name}
+          {gemeinde.name}{gemeinde.location_label ? ` · ${gemeinde.location_label}` : ''}
         </p>
         {gemeinde.address && (
           <p style={{ fontSize: 12, color: C.textTer, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>

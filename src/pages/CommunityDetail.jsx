@@ -32,6 +32,7 @@ import { useModerationDeleted } from '../lib/moderationState'
 import { useIsAppAdmin } from '../hooks/useIsAppAdmin'
 import { useT, tr, getLang } from '../i18n'
 const AddressAutocomplete = lazy(() => import('../components/common/AddressAutocomplete'))
+import CommunityLocationsEditor from '../components/community/CommunityLocationsEditor'
 // Teilen-Sheets aus dem 1:1-Chat (Gebetsanliegen, Bibelvers) – erst beim Öffnen laden
 const PrayerAttachSheet = lazy(() => import('./ConversationView').then(m => ({ default: m.PrayerAttachSheet })))
 const BibleVerseModal = lazy(() => import('./ConversationView').then(m => ({ default: m.BibleVerseModal })))
@@ -1135,6 +1136,7 @@ function SettingsSheet({
                   <label className="font-serif text-sm font-semibold text-dark-muted mb-1.5 block">{t('Treffzeit')}</label>
                   <input type="text" value={meetingInfo} onChange={e => setMeetingInfo(e.target.value.slice(0, 120))} placeholder={t('z.B. Wöchentlich, Mittwoch 19 Uhr')} className="w-full bg-bg border-[1.5px] border-warm-3 rounded-xl px-4 py-2.5 font-serif text-[15px] focus:outline-none focus:border-warm-1" />
                 </div>
+                <CommunityLocationsEditor communityId={community.id} />
               </>
             )}
 
