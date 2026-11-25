@@ -7,48 +7,51 @@
 <script src="../../brand/icons.js"></script>
 <script src="../../brand/deck.js"></script>
 <style>
-  /* ═════════ Slide 1 · Hook (Frage, die man nicht überlesen kann) ═════════ */
-  .s1 .bg img { transform: translateY(170px) scale(1.1); transform-origin: 50% 100%; }
-  .s1 .shade { background: linear-gradient(180deg, rgba(5,10,24,.94) 0%, rgba(5,10,24,.78) 34%, rgba(5,10,24,.15) 58%, rgba(5,10,24,0) 70%, rgba(5,10,24,.75) 100%); }
-  .s1 .content { position: absolute; left: var(--pad-x); right: var(--pad-x); top: 168px; }
-  .s1 .tag { display: inline-flex; align-items: center; gap: 12px; height: 56px; padding: 0 26px; border-radius: 999px; background: linear-gradient(100deg, var(--gold-light), var(--gold) 50%, var(--gold-2)); color: #2a1503; font-weight: 800; font-size: 24px; letter-spacing: .08em; text-transform: uppercase; transform: rotate(-2deg); box-shadow: 0 14px 40px rgba(246,193,119,.35); }
-  .s1 .h1 { margin-top: 34px; font-size: 92px; line-height: 1.02; letter-spacing: -.028em; }
-  .s1 .h1 .mark { position: relative; white-space: nowrap; }
-  .s1 .h1 .mark::after { content: ''; position: absolute; left: -1%; right: -1%; bottom: .03em; height: .075em; border-radius: 99px; background: linear-gradient(90deg, var(--gold-light), var(--gold-2)); transform: rotate(-1.2deg); }
-  .s1 .side { margin-top: 30px; font-family: var(--hand); font-weight: 700; font-size: 52px; line-height: 1.05; color: var(--gold-light); transform: rotate(-2deg); transform-origin: left; text-shadow: 0 2px 24px rgba(3,8,22,.8); }
-  .s1 .swipe-big { position: absolute; z-index: 10; right: var(--pad-x); bottom: var(--safe-bottom); display: inline-flex; align-items: center; gap: 14px; height: 76px; padding: 0 20px 0 34px; border-radius: 999px; background: rgba(255,255,255,.96); color: #0b1330; font-weight: 800; font-size: 28px; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
-  .s1 .swipe-big i { width: 48px; height: 48px; border-radius: 50%; background: var(--ink); color: var(--gold); font-size: 26px; }
-  [data-f="tt"] .s1 .bg img { transform: translateY(260px) scale(1.1); }
-  [data-f="tt"] .s1 .content { top: 290px; }
-  [data-f="tt"] .s1 .h1 { font-size: 106px; }
-  [data-f="tt"] .s1 .side { font-size: 58px; }
-  [data-f="tt"] .s1 .swipe-big { bottom: 430px; }
-  [data-f="tt"] .s1 .shade { background: linear-gradient(180deg, rgba(5,10,24,.94) 0%, rgba(5,10,24,.78) 36%, rgba(5,10,24,.1) 56%, rgba(5,10,24,0) 70%, rgba(5,10,24,.55) 100%); }
-
-  /* ═════════ Slide 2 · Dein Oikos (Mini-Karte mit Namen) ═════════ */
-  .s2 .bg img { object-position: center bottom; opacity: .5; }
-  .s2 .shade { background: radial-gradient(70% 55% at 50% 52%, rgba(5,10,24,.35), rgba(5,10,24,.9) 75%); }
-  .s2 .glow.gold { width: 900px; height: 900px; left: 90px; top: 320px; opacity: .55; }
-  .s2 .head { position: absolute; z-index: 6; left: var(--pad-x); right: var(--pad-x); top: 150px; text-align: center; }
-  .s2 .head .h1 { font-size: 100px; margin-top: 14px; }
-  .s2 .head .greek-line { margin-top: 14px; font-family: var(--serif); font-style: italic; font-size: 32px; color: var(--muted); }
-  .s2 .head .greek-line b { font-family: 'Greek Serif', var(--serif); font-style: normal; font-weight: 500; font-size: 40px; color: var(--gold); padding-right: 6px; }
-  .s2 .map { position: absolute; z-index: 5; left: 110px; top: 340px; width: 860px; height: 860px; transform: scale(.88); transform-origin: 50% 50%; }
-  .s2 .map svg { position: absolute; inset: 0; overflow: visible; }
-  .s2 .you { position: absolute; left: 50%; top: 50%; width: 200px; height: 200px; margin: -100px 0 0 -100px; border-radius: 50%; display: grid; place-items: center; font-family: var(--serif); font-weight: 700; font-size: 62px; color: #2a1503; background: radial-gradient(circle at 35% 30%, #fff3d6, var(--gold) 55%, var(--gold-2)); box-shadow: 0 0 0 10px rgba(246,193,119,.22), 0 0 90px rgba(246,193,119,.65); }
-  .s2 .node { position: absolute; width: 128px; margin-left: -64px; margin-top: -64px; text-align: center; }
-  .s2 .node .av { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 50px; color: #fff; box-shadow: 0 0 0 5px rgba(255,255,255,.9), 0 16px 40px rgba(0,0,0,.5); }
-  .s2 .node .nm { margin-top: 12px; font-size: 27px; font-weight: 700; white-space: nowrap; text-shadow: 0 2px 16px rgba(3,8,22,.95); }
-  .s2 .node.empty .av { background: rgba(255,255,255,.07); box-shadow: none; border: 5px dashed rgba(255,255,255,.55); color: var(--gold); font-size: 66px; font-family: var(--serif); }
-  .s2 .node.empty .nm { color: var(--gold-light); font-family: var(--hand); font-size: 40px; font-weight: 700; margin-top: 6px; }
-  .s2 .foot-note { position: absolute; z-index: 6; left: var(--pad-x); right: var(--pad-x); bottom: 58px; text-align: center; }
-  .s2 .foot-note .lead { font-size: 30px; color: #d6deec; text-shadow: 0 2px 18px rgba(3,8,22,.9); }
-  [data-f="tt"] .s2 .head { top: 290px; }
-  [data-f="tt"] .s2 .head .h1 { font-size: 108px; }
-  [data-f="tt"] .s2 .map { top: 530px; }
-  [data-f="tt"] .s2 .glow.gold { top: 510px; }
-  [data-f="tt"] .s2 .foot-note { bottom: auto; top: 1440px; }
-  [data-f="tt"] .s2 .foot-note .lead { font-size: 32px; }
+  /* ═════════ Vision-Slides V1–V3 (Apfel → Wald · Jüngerschaft · Wachstum) ═════════ */
+  :root { --vtop: 168px; --vbot: 70px; }
+  [data-f="tt"] { --vtop: 290px; --vbot: 430px; }
+  .vwrap { position: absolute; z-index: 6; inset: 0; padding: var(--vtop) var(--pad-x) var(--vbot); display: flex; flex-direction: column; }
+  .tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 12px; height: 56px; padding: 0 26px; border-radius: 999px; background: linear-gradient(100deg, var(--gold-light), var(--gold) 50%, var(--gold-2)); color: #2a1503; font-weight: 800; font-size: 23px; letter-spacing: .08em; text-transform: uppercase; transform: rotate(-2deg); box-shadow: 0 14px 40px rgba(246,193,119,.35); }
+  .vh { margin-top: 28px; font-size: 94px; line-height: 1.03; letter-spacing: -.028em; text-shadow: 0 3px 34px rgba(3,8,22,.7); }
+  [data-f="tt"] .vh { font-size: 104px; }
+  .vh.m { font-size: 80px; }
+  [data-f="tt"] .vh.m { font-size: 90px; }
+  .vsub { margin-top: 18px; font-family: var(--serif); font-style: italic; font-size: 29px; line-height: 1.35; color: var(--muted); }
+  .vsub b { color: var(--text); font-style: normal; font-weight: 600; }
+  .vfig { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  .vfig svg { width: 100%; height: 100%; overflow: visible; }
+  .glasscard { padding: 26px 32px; border-radius: 28px; background: linear-gradient(160deg, rgba(16,26,56,.82), rgba(16,26,56,.62)); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 24px 60px rgba(2,6,20,.45), inset 0 1px 0 rgba(255,255,255,.18); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .vswipe { position: absolute; z-index: 10; right: var(--pad-x); bottom: var(--safe-bottom); font-family: var(--hand); font-weight: 700; font-size: 44px; color: var(--gold-light); display: inline-flex; align-items: center; gap: 10px; text-shadow: 0 2px 20px rgba(3,8,22,.9); }
+  [data-f="tt"] .vswipe { bottom: 440px; }
+  /* V1 */
+  .v1 .bgglow { position: absolute; z-index: -2; left: 50%; top: 56%; width: 1100px; height: 1100px; margin: -550px 0 0 -550px; background: radial-gradient(circle, rgba(246,193,119,.5), rgba(239,143,76,.12) 45%, rgba(0,0,0,0) 70%); }
+  .v1 .forest { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; height: 520px; }
+  [data-f="tt"] .v1 .forest { height: 640px; }
+  .v1 .vfig { position: relative; z-index: 3; padding-bottom: 20px; }
+  .v1 .vfig svg { max-height: 780px; margin-bottom: -30px; transform: scale(1.12); filter: drop-shadow(0 30px 50px rgba(0,0,0,.55)); }
+  [data-f="tt"] .v1 .vfig svg { max-height: 820px; }
+  /* V2 */
+  .v2 .bg img { opacity: .4; object-position: center 60%; }
+  .v2 .shade { background: linear-gradient(180deg, rgba(5,10,24,.85), rgba(5,10,24,.6) 50%, rgba(5,10,24,.9)); }
+  .v2 .soil { display: flex; align-items: center; gap: 22px; }
+  .v2 .soil .chips { display: flex; gap: 10px; flex: none; }
+  .v2 .soil .chip { min-width: 112px; height: 76px; border-radius: 20px; display: grid; place-items: center; font-weight: 800; font-size: 38px; color: #2a1503; background: linear-gradient(100deg, var(--gold-light), var(--gold) 55%, var(--gold-2)); box-shadow: 0 10px 30px rgba(246,193,119,.3); }
+  .v2 .soil .chip small { font-size: .55em; font-weight: 700; margin-right: 2px; opacity: .75; }
+  .v2 .soil .txt { font-size: 25px; line-height: 1.3; color: var(--muted); }
+  .v2 .soil .txt b { color: var(--text); }
+  .v2 .soil .ref { display: block; margin-top: 6px; color: var(--gold); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: 18px; }
+  /* V3 */
+  .v3 .bg img { opacity: .38; object-position: center 35%; }
+  .v3 .shade { background: linear-gradient(180deg, rgba(5,10,24,.9), rgba(5,10,24,.55) 45%, rgba(5,10,24,.92)); }
+  .v3 .note { margin-top: 10px; text-align: center; font-size: 21px; color: rgba(255,255,255,.6); font-weight: 600; letter-spacing: .02em; }
+  .v3 .key { font-size: 30px; line-height: 1.3; text-align: center; color: var(--muted); margin-top: 18px; }
+  .v3 .key b { color: var(--text); }
+  .v3 .key em { font-family: var(--serif); font-style: italic; font-weight: 600; color: var(--gold); }
+  /* Challenge-Karte auf dem letzten Slide */
+  .s10 .challenge { margin: 26px auto 0; max-width: 880px; padding: 24px 32px; text-align: center; background: linear-gradient(160deg, rgba(16,26,56,.82), rgba(16,26,56,.6)); }
+  .s10 .challenge .ct { font-size: 20px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); }
+  .s10 .challenge .cs { margin-top: 10px; font-size: 31px; line-height: 1.3; color: #dbe3f1; }
+  .s10 .challenge .cs b { color: #fff; }
 
   /* ═════════ Feature-Slides: gemeinsamer Hintergrund ═════════ */
   .feat .bg img { object-position: center bottom; opacity: .95; }
@@ -191,59 +194,87 @@
 <body>
 <main class="deck">
 
-<!-- 1 · HOOK ─────────────────────────────────────────── -->
-<section class="slide s1">
-  <div class="bg"><img data-src="../../assets/photos/hook-woman-{r}.jpg" alt=""></div>
-  <div class="shade"></div>
+<!-- V1 · HOOK: Apfel → Wald ───────────────────────── -->
+<section class="slide v1">
+  <div class="bg"></div>
+  <div class="bgglow"></div>
+  <div class="forest" id="forest"></div>
   <header class="brandbar">
     <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
     <span class="counter"></span>
   </header>
-  <div class="content">
-    <span class="tag"><i data-icon="sparkles"></i>Ehrliche Frage</span>
-    <h1 class="h1 shadow-text">Wann hast du zuletzt für jemanden <span class="mark"><em>mit Namen</em></span> gebetet?</h1>
-    <p class="side">Und nein, „für alle“ zählt nicht 😉</p>
+  <div class="vwrap">
+    <span class="tag"><i data-icon="sparkles"></i>Stell dir vor</span>
+    <h1 class="vh h1">In diesem Apfel steckt ein <em>ganzer Wald.</em></h1>
+    <div class="vfig">
+      <svg viewBox="0 0 400 400" aria-hidden="true">
+        <defs>
+          <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7a59"/><stop offset="1" stop-color="#c1272d"/></linearGradient>
+          <radialGradient id="flesh" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#ffe9bd"/></radialGradient>
+          <radialGradient id="seed" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#fff3c9"/><stop offset="1" stop-color="#f0a53a"/></radialGradient>
+          <filter id="gl" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <path d="M200 112 C 200 84 212 62 232 44" fill="none" stroke="#6b4423" stroke-width="10" stroke-linecap="round"/>
+        <path d="M222 70 C 250 40 296 44 306 62 C 286 90 244 92 222 70 Z" fill="#4fd18b" stroke="#2a8a5c" stroke-width="3"/>
+        <path id="ap" d="M200 110 C 160 70 70 90 60 190 C 52 290 120 375 175 368 C 192 366 200 358 200 358 C 200 358 208 366 225 368 C 280 375 348 290 340 190 C 330 90 240 70 200 110 Z" fill="url(#skin)"/>
+        <path transform="translate(200 238) scale(.86) translate(-200 -238)" d="M200 110 C 160 70 70 90 60 190 C 52 290 120 375 175 368 C 192 366 200 358 200 358 C 200 358 208 366 225 368 C 280 375 348 290 340 190 C 330 90 240 70 200 110 Z" fill="url(#flesh)"/>
+        <path d="M200 252 m-52 -22 q52 -50 104 0 q8 40 -52 74 q-60 -34 -52 -74z" fill="#e6c795" opacity=".75"/>
+        <g filter="url(#gl)">
+          <g fill="url(#seed)" stroke="#a8641a" stroke-width="2">
+            <path transform="translate(200 214) rotate(0)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
+            <path transform="translate(245 245) rotate(72)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
+            <path transform="translate(228 292) rotate(144)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
+            <path transform="translate(172 292) rotate(216)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
+            <path transform="translate(155 245) rotate(288)" d="M0 -26 C 14 -8 14 14 0 26 C -14 14 -14 -8 0 -26Z"/>
+          </g>
+        </g>
+      </svg>
+    </div>
   </div>
-  <span class="swipe-big">Die Antwort <i data-icon="arrow-right" data-stroke="2.6"></i></span>
+  <span class="vswipe">Wisch weiter <i data-icon="arrow-right" data-stroke="2.6"></i></span>
   <div class="grain"></div>
 </section>
 
-<!-- 2 · DEIN OIKOS ───────────────────────────────────── -->
-<section class="slide s2">
-  <div class="bg"><img data-src="../../assets/photos/oikos-houses-{r}.jpg" alt=""></div>
+<!-- V2 · JÜNGERSCHAFT: Frucht, die Frucht bringt ─────── -->
+<section class="slide v2">
+  <div class="bg"><img src="../../assets/photos/dawn-sky-916.jpg" alt=""></div>
   <div class="shade"></div>
-  <div class="glow gold"></div>
+  <div class="glow gold" style="width:800px;height:800px;left:140px;top:420px;opacity:.5"></div>
   <header class="brandbar">
     <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
     <span class="counter"></span>
   </header>
-  <div class="head">
-    <span class="eyebrow center">Die Idee dahinter</span>
-    <h1 class="h1 shadow-text">Das ist dein <em>Oikos.</em></h1>
-    <p class="greek-line"><b>οἶκος</b> = griechisch für „Haus“</p>
+  <div class="vwrap">
+    <span class="eyebrow">Jüngerschaft</span>
+    <h2 class="vh m h2" style="margin-top:20px">Frucht, die wieder <em>Frucht bringt.</em></h2>
+    <p class="vsub">„…dass ihr hingeht und Frucht bringt und eure Frucht bleibt.“ <b>Johannes 15,16</b></p>
+    <div class="vfig">
+      <svg viewBox="0 0 920 470" aria-hidden="true" id="gen"></svg>
+    </div>
+    <div class="glasscard soil">
+      <div class="chips"><span class="chip"><small>×</small>30</span><span class="chip"><small>×</small>60</span><span class="chip"><small>×</small>100</span></div>
+      <p class="txt"><b>Guter Boden</b> bringt 30-, 60- und 100-fach Frucht.<span class="ref">Matthäus 13,23</span></p>
+    </div>
   </div>
-  <div class="map">
-    <svg viewBox="0 0 860 860" aria-hidden="true">
-      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe2b0"/><stop offset="1" stop-color="#ef8f4c"/></linearGradient></defs>
-      <circle cx="430" cy="430" r="260" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
-      <circle cx="430" cy="430" r="385" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2"/>
-      <line x1="430" y1="430" x2="430" y2="100" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
-      <line x1="430" y1="430" x2="720" y2="260" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
-      <line x1="430" y1="430" x2="730" y2="580" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
-      <line x1="430" y1="430" x2="430" y2="765" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
-      <line x1="430" y1="430" x2="130" y2="590" stroke="url(#g)" stroke-width="5" stroke-linecap="round" />
-      <line x1="430" y1="430" x2="140" y2="250" stroke="url(#g)" stroke-width="5" stroke-linecap="round" stroke-dasharray="4 16" opacity=".6"/>
-    </svg>
-    <div class="you">Du</div>
-    <div class="node " style="left:430px;top:100px"><div class="av" style="background:linear-gradient(135deg,#f472b6,#db2777)">M</div><div class="nm">Mama</div></div>
-    <div class="node " style="left:720px;top:260px"><div class="av" style="background:linear-gradient(135deg,#fb923c,#ea580c)">L</div><div class="nm">Lisa</div></div>
-    <div class="node " style="left:730px;top:580px"><div class="av" style="background:linear-gradient(135deg,#60a5fa,#2563eb)">B</div><div class="nm">Ben</div></div>
-    <div class="node " style="left:430px;top:765px"><div class="av" style="background:linear-gradient(135deg,#34d399,#059669)">O</div><div class="nm">Opa</div></div>
-    <div class="node " style="left:130px;top:590px"><div class="av" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">T</div><div class="nm">Nachbar Tom</div></div>
-    <div class="node empty" style="left:140px;top:250px"><div class="av" style="">?</div><div class="nm">Wer noch?</div></div>
-  </div>
-  <div class="foot-note">
-    <p class="lead">Menschen, die Gott dir <b>ganz bewusst anvertraut</b> hat. Wer steht bei dir im Kreis?</p>
+  <div class="grain"></div>
+</section>
+
+<!-- V3 · WIE SCHNELL: Wachstumskurve ─────────────────── -->
+<section class="slide v3">
+  <div class="bg"><img data-src="../../assets/photos/europe-night-{r}.jpg" alt=""></div>
+  <div class="shade"></div>
+  <header class="brandbar">
+    <div class="brand"><img src="../../brand/app-icon.png" alt=""><span>Oikos <b>Connect</b></span></div>
+    <span class="counter"></span>
+  </header>
+  <div class="vwrap">
+    <span class="eyebrow">Das Reich Gottes wächst</span>
+    <h2 class="vh m h2" style="margin-top:20px">Schneller, als du <em>denkst.</em></h2>
+    <div class="vfig">
+      <svg viewBox="0 0 920 520" aria-hidden="true" id="curve"></svg>
+    </div>
+    <p class="note">Rechenbeispiel: Jeder begleitet 1 Mensch pro Jahr – und der macht es genauso.</p>
+    <p class="key">Das Geheimnis: in <b>wenige</b> viel Zeit und Gebet investieren. So baut Gott sein Reich <em>auf Erden.</em></p>
   </div>
   <div class="grain"></div>
 </section>
@@ -438,7 +469,10 @@
   <div class="content">
     <span class="hand">One Family. One Mission. One Oikos.</span>
     <h1 class="h1 shadow-text">Werde Teil der <em>Familie.</em></h1>
-    <p class="lead shadow-text">Oikos Connect ist <b>kostenlos</b> – lade die App jetzt herunter.</p>
+    <div class="challenge glass">
+      <div class="ct">Deine Challenge diese Woche</div>
+      <div class="cs"><b>3 Menschen</b> aussuchen · <b>7 Tage</b> jeden Tag für sie beten · und sehen, was Gott vorbereitet hat</div>
+    </div>
   </div>
   <div class="ctas">
     <div class="row1">
@@ -450,11 +484,73 @@
       <span><i data-icon="monitor"></i>Web-App</span>
       <span><i data-icon="smartphone"></i>Android – bald</span>
     </div>
-    <div class="share">Schick das jemandem, mit dem du betest <span class="emoji" style="font-size:30px">🙏</span></div>
+    <div class="share">Schreib „3“ in die Kommentare, wenn du dabei bist <span class="emoji" style="font-size:30px">🙏</span></div>
   </div>
   <div class="grain"></div>
 </section>
 
 </main>
+<script>
+(function () {
+  const NS = 'http://www.w3.org/2000/svg'
+  const el = (n, a, p) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e }
+  function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+  // Baum-Zeichner (Krone aus 3 Kreisen + Stamm); sil = Silhouette
+  function tree(g, x, y, s, o) {
+    const gr = el('g', { transform: `translate(${x} ${y}) scale(${s})`, opacity: o.op ?? 1 }, g)
+    el('rect', { x: -8, y: -30, width: 16, height: 52, rx: 4, fill: o.trunk }, gr)
+    ;[[0, -78, 40], [-28, -50, 30], [28, -50, 30]].forEach(([cx, cy, r]) => el('circle', { cx, cy, r, fill: o.crown }, gr))
+    if (o.shine) el('circle', { cx: -12, cy: -92, r: 14, fill: 'rgba(255,255,255,.25)' }, gr)
+    if (o.fruit) [[-14, -70], [18, -84], [-34, -46], [30, -48], [4, -52]].forEach(([cx, cy]) => el('circle', { cx, cy, r: 5.5, fill: o.fruit, filter: o.glow ? 'url(#fg)' : null }, gr))
+    return gr
+  }
+  // V1: Wald im Hintergrund
+  const f = document.getElementById('forest')
+  if (f) {
+    const svg = el('svg', { viewBox: '0 0 1080 520', width: '100%', height: '100%', preserveAspectRatio: 'xMidYMax slice' }, f)
+    const d = el('defs', {}, svg); const fl = el('filter', { id: 'fg', x: '-200%', y: '-200%', width: '500%', height: '500%' }, d); el('feGaussianBlur', { stdDeviation: 3, result: 'b' }, fl); const mg = el('feMerge', {}, fl); el('feMergeNode', { in: 'b' }, mg); el('feMergeNode', { in: 'SourceGraphic' }, mg)
+    const lg = el('linearGradient', { id: 'hz', x1: 0, y1: 0, x2: 0, y2: 1 }, d); el('stop', { offset: 0, 'stop-color': '#f6c177', 'stop-opacity': 0 }, lg); el('stop', { offset: 1, 'stop-color': '#f6c177', 'stop-opacity': .45 }, lg)
+    el('rect', { x: 0, y: 150, width: 1080, height: 370, fill: 'url(#hz)' }, svg)
+    const R = rng(21)
+    ;[{ y: 330, s: .95, n: 11, crown: '#1b3358', trunk: '#162a4a', op: .9 }, { y: 420, s: 1.25, n: 8, crown: '#10224a', trunk: '#0d1b3d', op: .95 }, { y: 540, s: 1.75, n: 6, crown: '#070f2a', trunk: '#050b20', fruit: '#f6c177', glow: 1 }].forEach(row => {
+      for (let i = 0; i < row.n; i++) tree(svg, (i + .3 + R() * .5) * (1080 / row.n), row.y + R() * 14, row.s * (.85 + R() * .35), row)
+    })
+  }
+  // V2: Generationen 1 → 3 → 9
+  const gen = document.getElementById('gen')
+  if (gen) {
+    const d = el('defs', {}, gen); const lg = el('linearGradient', { id: 'cr', x1: 0, y1: 0, x2: 0, y2: 1 }, d); el('stop', { offset: 0, 'stop-color': '#8ae6a6' }, lg); el('stop', { offset: 1, 'stop-color': '#2fa46a' }, lg)
+    const rows = [{ y: 70, xs: [460], s: 1.0 }, { y: 235, xs: [230, 460, 690], s: .8 }, { y: 400, xs: [60, 160, 260, 360, 460, 560, 660, 760, 860], s: .55 }]
+    const links = el('g', { fill: 'none', stroke: '#f6c177', 'stroke-width': 3.5, 'stroke-linecap': 'round', opacity: .85 }, gen)
+    rows[1].xs.forEach(x => el('path', { d: `M460 ${rows[0].y + 16} C 460 ${rows[0].y + 80} ${x} ${rows[1].y - 90} ${x} ${rows[1].y - 52}` }, links))
+    rows[2].xs.forEach((x, i) => { const px = rows[1].xs[Math.floor(i / 3)]; el('path', { d: `M${px} ${rows[1].y + 14} C ${px} ${rows[1].y + 70} ${x} ${rows[2].y - 70} ${x} ${rows[2].y - 40}` }, links) })
+    rows.forEach(r => r.xs.forEach(x => tree(gen, x, r.y, r.s, { crown: 'url(#cr)', trunk: '#9a6a36', fruit: '#ff6b5a', shine: 1 })))
+    const t = (txt, x, y, sz, col, fam) => { const e = el('text', { x, y, 'font-size': sz, fill: col, 'font-family': fam || 'Inter', 'font-weight': 800, 'text-anchor': 'middle' }, gen); e.textContent = txt }
+    t('Du', 590, 78, 34, '#ffe2b0', 'Lora'); t('3', 340, 244, 34, '#ffe2b0', 'Lora'); t('9', 40, 340, 0, '#fff')
+    t('…und immer so weiter', 460, 462, 38, '#ffe2b0', 'Caveat')
+  }
+  // V3: Wachstumskurve
+  const cv = document.getElementById('curve')
+  if (cv) {
+    const d = el('defs', {}, cv); const lg = el('linearGradient', { id: 'cg', x1: 0, y1: 1, x2: 1, y2: 0 }, d); el('stop', { offset: 0, 'stop-color': '#ef8f4c' }, lg); el('stop', { offset: 1, 'stop-color': '#ffe2b0' }, lg)
+    const fl = el('filter', { id: 'cglow', x: '-20%', y: '-20%', width: '140%', height: '140%' }, d); el('feGaussianBlur', { stdDeviation: 8, result: 'b' }, fl); const mg = el('feMerge', {}, fl); el('feMergeNode', { in: 'b' }, mg); el('feMergeNode', { in: 'SourceGraphic' }, mg)
+    const X0 = 50, X1 = 870, Y0 = 470, Y1 = 50, k = 6.2
+    const P = u => [X0 + (X1 - X0) * u, Y0 - (Y0 - Y1) * (Math.exp(k * u) - 1) / (Math.exp(k) - 1)]
+    el('line', { x1: X0, y1: Y0, x2: X1 + 20, y2: Y0, stroke: 'rgba(255,255,255,.3)', 'stroke-width': 3 }, cv)
+    let dd = ''; for (let i = 0; i <= 80; i++) { const [x, y] = P(i / 80); dd += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1) }
+    el('path', { d: dd + `L${X1} ${Y0} L${X0} ${Y0}Z`, fill: 'rgba(246,193,119,.12)' }, cv)
+    el('path', { d: dd, fill: 'none', stroke: 'url(#cg)', 'stroke-width': 10, 'stroke-linecap': 'round', filter: 'url(#cglow)' }, cv)
+    const pts = [[10 / 33, '10 Jahre', '1.024', 'end', -22], [20 / 33, '20 Jahre', '1 Million', 'end', -22], [1, '33 Jahre', '8,6 Milliarden', 'end', -22]]
+    pts.forEach(([u, a, b, anc]) => {
+      const [x, y] = P(u); el('line', { x1: x, y1: y, x2: x, y2: Y0, stroke: 'rgba(255,255,255,.25)', 'stroke-width': 2, 'stroke-dasharray': '6 8' }, cv)
+      el('circle', { cx: x, cy: y, r: 15, fill: '#ffe2b0', stroke: '#14110f', 'stroke-width': 5, filter: 'url(#cglow)' }, cv)
+      const bx = u > .9 ? x - 20 : x - 26
+      const t1 = el('text', { x: bx, y: y - 62, 'text-anchor': 'end', 'font-family': 'Lora', 'font-weight': 700, 'font-size': 52, fill: '#fff' }, cv); t1.textContent = b
+      const t2 = el('text', { x: bx, y: y - 26, 'text-anchor': 'end', 'font-family': 'Inter', 'font-weight': 700, 'font-size': 26, fill: '#f6c177', 'letter-spacing': 3 }, cv); t2.textContent = a.toUpperCase()
+    })
+    const t0 = el('text', { x: X0 + 8, y: Y0 + 44, 'font-family': 'Caveat', 'font-weight': 700, 'font-size': 40, fill: '#ffe2b0' }, cv); t0.textContent = '1 Mensch fängt an'
+  }
+})()
+</script>
 </body>
 </html>
