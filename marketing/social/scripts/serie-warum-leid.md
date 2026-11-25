@@ -1,7 +1,7 @@
-# Serie: „Warum lässt Gott Leid zu?“ – 4 Shorts (je ca. 70–85 s)
+# Serie: „Warum lässt Gott Leid zu?“ – 4 Shorts (je ca. 80–100 s)
 
 Format: 9:16 (TikTok, Reels, YouTube Shorts) · Stil: Comic-Stickman wie Video 002 · Sprecher: Arthur oder eigene Stimme
-Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 Wörter/s → ~190–220 Wörter ≈ 75–85 s.
+Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo (Arthur) ca. 2,4 Wörter/s. Die Zeitspalte ist ein Richtwert – beim Vertonen wird nach der echten Sprachlänge getaktet.
 
 ## Die Tricks, die in jedem Skript stecken
 
@@ -21,7 +21,7 @@ Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 W�
 
 ---
 
-## Teil 1 – „Leid war nie Gottes Plan“ (~75 s)
+## Teil 1 – „Leid war nie Gottes Plan“ (~90 s)
 
 **Ziel:** Die Frage ernst nehmen, Vertrauen aufbauen, Gottes ursprünglichen Plan zeigen. Cliffhanger: der eine Satz, der alles zerstört hat.
 
@@ -44,7 +44,7 @@ Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 W�
 
 ---
 
-## Teil 2 – „Liebe braucht Freiheit“ (~85 s)
+## Teil 2 – „Liebe braucht Freiheit“ (~100 s)
 
 **Ziel:** Freier Wille, die Lüge im Garten, warum die Welt zerbrochen ist – und der Einwand „Gott wusste es doch“.
 
@@ -67,7 +67,7 @@ Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 W�
 
 ---
 
-## Teil 3 – „Warum gute Taten nicht reichen“ (~80 s)
+## Teil 3 – „Warum gute Taten nicht reichen“ (~100 s)
 
 **Ziel:** Gerechtigkeit verständlich machen (Richter-Bild) und den Twist: Der Richter trägt die Strafe selbst.
 
