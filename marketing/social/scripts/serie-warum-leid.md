@@ -1,123 +1,66 @@
-# Serie: „Warum lässt Gott Leid zu?“ – 4 Shorts (je ca. 80–100 s)
+# Serie: „Warum lässt Gott Leid zu?“ – 2 Shorts (je ca. 65–70 s)
 
 Format: 9:16 (TikTok, Reels, YouTube Shorts) · Stil: Comic-Stickman wie Video 002 · Sprecher: Arthur oder eigene Stimme
-Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo (Arthur) ca. 2,4 Wörter/s. Die Zeitspalte ist ein Richtwert – beim Vertonen wird nach der echten Sprachlänge getaktet.
+Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 Wörter/s. Die Zeitspalte ist ein Richtwert – beim Vertonen wird nach der echten Sprachlänge getaktet.
 
-## Die Tricks, die in jedem Skript stecken
+**Prinzip:** Ein Gedanke pro Satz, keine Füllwörter, jedes Bild trägt die halbe Erklärung. Teil 1 beantwortet „Warum gibt es Leid?“, Teil 2 „Was hat Gott dagegen getan?“. Jeder Teil funktioniert auch allein.
 
-| Trick | Wie wir ihn einsetzen |
+## Die Tricks in beiden Skripten
+
+| Trick | Umsetzung |
 |---|---|
-| **Hook in 2 Sekunden** | Erster Satz = die Frage/der Konflikt selbst, kein „Hallo“, kein Logo. Text knallt sofort ins Bild. |
-| **Open Loop** | Früh ein Versprechen geben („gleich zeige ich dir…“, „das letzte Bild…“), das erst am Ende eingelöst wird. |
-| **Einwand vorwegnehmen** | „Jetzt denkst du vielleicht…“ – der Zuschauer fühlt sich verstanden und bleibt. |
-| **Musterbruch alle 3–5 s** | Szenenwechsel, Zoom, Stille, Sound-Effekt, Text-Slam. Nie zwei ruhige Szenen hintereinander. |
-| **Du-Ansprache + konkrete Bilder** | Roboter, Gericht, Garten, Grab – Bilder statt Theologie-Begriffe. |
-| **Emotion vor Erklärung** | Erst Mitgefühl/Spannung, dann die Erklärung – sonst wird nicht zugehört. |
-| **Payoff + Cliffhanger** | Jede Folge beantwortet ihre Frage, öffnet aber die nächste („Das kommt in Teil 3“). |
-| **Leichter CTA** | Ein Wort kommentieren („Frage“, „Gebet“) – niedrige Hürde, pusht den Algorithmus. |
-| **Serien-Badge** | Oben klein „Teil 1/4“ + Fortschrittsbalken → Leute wollen die Serie komplett sehen. |
-
-**Ton:** ehrlich, warm, nicht belehrend. Wir sagen „die Antwort, die ich in der Bibel finde“ statt „die Antwort ist“. Niemand, der leidet, wird beschuldigt.
+| **Hook in 2 s** | Erster Satz = der Konflikt selbst. Kein Intro, kein Logo. |
+| **Open Loop** | Früh versprechen („anders, als du denkst“, „etwas, das kein Gericht kennt“), am Ende einlösen. |
+| **Einwand vorwegnehmen** | „Aber Gott wusste das doch!“ – Zuschauer fühlt sich verstanden. |
+| **Musterbruch alle 3–4 s** | Bildwechsel, Text-Slam, Stille, Sound-Effekt. |
+| **Interaktion** | Ja/Nein-Frage beim Richter, Kommentar-Wort am Ende. |
+| **App als nächster Schritt** | Nicht als Werbung, sondern als Antwort auf „Und was mache ich jetzt?“ – echter Screen, 6–8 s. |
+| **Cliffhanger** | Teil 1 endet mit der Frage, die Teil 2 beantwortet. |
 
 ---
 
-## Teil 1 – „Leid war nie Gottes Plan“ (~90 s)
-
-**Ziel:** Die Frage ernst nehmen, Vertrauen aufbauen, Gottes ursprünglichen Plan zeigen. Cliffhanger: der eine Satz, der alles zerstört hat.
+## Teil 1 – „Warum lässt Gott Leid zu?“ (~67 s)
 
 | Zeit | Sprecher | Bild / Text auf dem Screen |
 |---|---|---|
-| 0:00 | „Wenn es Gott wirklich gibt … warum gibt es dann so viel Leid?“ | Schwarz. Text knallt Wort für Wort rein. Dumpfer Schlag. |
-| 0:04 | „Wenn du gerade selbst etwas Schweres durchmachst: Das tut mir leid. Und genau deshalb verdient diese Frage eine ehrliche Antwort.“ | Stickman sitzt allein, Regenwolke über ihm. |
-| 0:12 | „Bleib bis zum Ende. Denn die Antwort, die ich in der Bibel finde, beginnt nicht mit Leid. Sie beginnt mit einem Garten.“ | Wolke zieht weg → Schnitt auf grünen Garten, Sonne. **Open Loop.** |
-| 0:19 | „Stell dir eine Welt vor, in der niemand einsam ist. Niemand lügt. Niemand sich beweisen muss.“ | Stickmen lachen zusammen, Tiere, Blumen. |
-| 0:26 | „So hat Gott den Menschen geschaffen: nach seinem Ebenbild. Für eine echte, lebendige Beziehung mit ihm.“ | Goldener Lichtstrahl von oben auf zwei Stickmen. Text: *1. Mose 1,27* |
-| 0:33 | „Und jetzt kommt das Entscheidende: Die ersten Menschen waren jeden Moment zu hundert Prozent von Gottes Liebe erfüllt. Ohne etwas dafür leisten zu müssen.“ | „Akku“-Grafik im Stickman: 100 %, golden. |
-| 0:42 | „Weißt du, was passiert, wenn du komplett erfüllt bist? Du musst nichts mehr für dich holen. Du kannst dich ganz auf die anderen konzentrieren.“ | Stickman reicht Apfel weiter, hilft anderen. **Frage an den Zuschauer.** |
-| 0:50 | „Jeder liebt jeden. Jeder trägt Gott in die Welt. Das war der Plan: Himmel auf Erden.“ | Text-Slam: **HIMMEL AUF ERDEN** |
-| 0:56 | „Die Bibel sagt: Gott sah an alles, was er gemacht hatte – und siehe, es war sehr gut.“ | Vers-Karte: „…und siehe da, es war sehr gut.“ *1. Mose 1,31* |
-| 1:02 | „Leid war nie Gottes Plan. *Nie.*“ | Stille. Dann splittert das Bild wie Glas. **Musterbruch.** |
-| 1:06 | „Aber warum ist die Welt dann heute so kaputt? Ein einziger Satz hat alles verändert. Den zeige ich dir in Teil 2.“ | Schatten flüstert unleserlich. Text: „Teil 2 →“ **Cliffhanger.** |
-| 1:13 | „Folg, damit du ihn nicht verpasst. Und schreib mir: Was ist für dich die schwerste Frage an Gott?“ | Endkarte, Folgen-Button-Animation. |
+| 0:00 | „Wenn es Gott gibt – warum gibt es dann so viel Leid? Die Antwort hat mit Liebe zu tun. Und sie ist anders, als du denkst.“ | Schwarz, Text knallt Wort für Wort rein. Dumpfer Schlag. **Hook + Open Loop.** |
+| 0:07 | „Am Anfang gab es kein Leid. Gott schuf uns für eine Beziehung mit ihm – zu hundert Prozent erfüllt von seiner Liebe.“ | Garten, goldenes Licht auf zwei Stickmen. „Akku“ im Herz: 100 %. *1. Mose 1,27* |
+| 0:15 | „Und wer erfüllt ist, muss nichts für sich holen. Er kann andere lieben. Das war Gottes Plan: Himmel auf Erden.“ | Stickmen teilen, helfen, lachen. Text-Slam: **HIMMEL AUF ERDEN** |
+| 0:22 | „Aber Gott wollte keine Roboter. Liebe ohne freie Wahl ist keine Liebe. Also gab er uns einen freien Willen.“ | Roboter sagt „ICH LIEBE DICH“ → zerfällt in Zahnräder. Weggabelung. |
+| 0:30 | „Und wir haben eine Lüge geglaubt: ‚Gott hält dir etwas vor. Hol es dir selbst.‘“ | Musik bricht ab. Schatten flüstert, Text in Rot. *vgl. 1. Mose 3* **Musterbruch.** |
+| 0:36 | „Seitdem ist die Verbindung zu Gott zerbrochen – und mit ihr die Welt. Wir füllen die Leere mit Geld, Macht und Anerkennung. Oft auf Kosten anderer. Daher kommt so viel Leid.“ | Akku wird rot und leer. Riss durch die Erde. Schnelle Schnitte: Geld, Likes, Streit. *Römer 8,22* |
+| 0:46 | „Das heißt nicht, dass du persönlich schuld bist, wenn du leidest. Aber die Welt ist nicht mehr, wie Gott sie wollte.“ | Weinender Stickman, sanfte Musik. *Johannes 9,3* |
+| 0:52 | „‚Aber Gott wusste das doch!‘ Ja. Wie Eltern, die wissen, dass ihr Kind sie verletzen wird – und es trotzdem lieben. Liebe ist das Risiko wert.“ | Stickman mit großem „?“ → Eltern halten Baby, Herz. **Einwand vorwegnehmen.** |
+| 1:00 | „Und Leid musst du nicht allein tragen. In Oikos Connect teilst du dein Anliegen – und Christen beten mit dir.“ | **APP-MOMENT (6 s):** Handy mit echtem Screen `10-startseite` – Karte „Meistbewegtes Gebet heute: *Heilung für Mama* · 38 Interaktionen · Mitbeten“. Kleines Badge „Kostenlos im App Store“. |
+| 1:06 | „Aber was hat Gott selbst gegen das Leid getan? Das ist die eigentliche Antwort. Teil 2.“ | Text: „Teil 2 →“, Folgen-Button. **Cliffhanger.** |
 
-**Caption-Hook:** „Warum lässt Gott Leid zu? Die Antwort beginnt nicht da, wo du denkst. (Teil 1/4)“
+**Wörter:** ca. 165 · **Caption:** „Warum lässt Gott Leid zu? Die Antwort hat mit Liebe zu tun. (Teil 1/2)“ · **Kommentar anpinnen:** „Was ist deine schwerste Frage an Gott?“
 
 ---
 
-## Teil 2 – „Liebe braucht Freiheit“ (~100 s)
-
-**Ziel:** Freier Wille, die Lüge im Garten, warum die Welt zerbrochen ist – und der Einwand „Gott wusste es doch“.
+## Teil 2 – „Was hat Gott gegen das Leid getan?“ (~68 s)
 
 | Zeit | Sprecher | Bild / Text auf dem Screen |
 |---|---|---|
-| 0:00 | „Stell dir vor, du baust einen Roboter. Jeden Morgen sagt er: ‚Ich liebe dich.‘ Würdest du dich geliebt fühlen?“ | Roboter-Stickman mit Sprechblase „ICH LIEBE DICH“ (mechanische Stimme-SFX). |
-| 0:07 | „Wahrscheinlich nicht. Denn er hat keine Wahl. Und Liebe ohne Wahl ist keine Liebe.“ | Roboter zerfällt in Zahnräder. Text: **LIEBE BRAUCHT FREIHEIT** |
-| 0:13 | „Genau deshalb hat Gott uns keinen Code gegeben, sondern einen freien Willen. Er wollte Menschen, die ihn lieben, weil sie sich dafür *entscheiden*.“ | Stickman an einer Weggabelung, zwei Pfeile. |
-| 0:21 | „Aber Freiheit hat ein Risiko. Und dieses Risiko kam in Form einer Lüge.“ | Musik bricht ab. Bildschirm dunkel. **Musterbruch.** |
-| 0:27 | „Die Lüge lautete: ‚Gott hält dir etwas vor. Du musst es dir selbst holen.‘“ | Schatten flüstert, Text erscheint in Rot. *vgl. 1. Mose 3* |
-| 0:34 | „Die Menschen haben ihr geglaubt. Sie haben aufgehört, Gott zu vertrauen – und angefangen, sich selbst zu versorgen. Die Bibel nennt das Sünde.“ | Der 100-%-Akku leert sich, wird rot. |
-| 0:43 | „Seitdem versuchen wir, die Leere selbst zu füllen: mit Geld, Anerkennung, Macht. Oft auf Kosten anderer. Daraus wächst so viel Leid.“ | Schnelle Schnitte: Geldstapel, Likes, Streit. |
-| 0:51 | „Und nicht nur wir sind betroffen: Die Bibel sagt, die ganze Schöpfung ist mit zerbrochen. Darum gibt es auch Krankheit und Katastrophen.“ | Riss geht durch die Erde. *Römer 8,22* |
-| 0:58 | „Wichtig: Das heißt nicht, dass jemand, der leidet, selbst schuld ist. Das hat Jesus selbst klargestellt.“ | Text: *Johannes 9,3* – sanfte Musik. |
-| 1:04 | „Jetzt denkst du vielleicht: Moment. Gott weiß doch alles. Er wusste, dass das passiert. Warum hat er es trotzdem getan?“ | Stickman mit großem „?“. **Einwand vorwegnehmen.** |
-| 1:11 | „Frag Eltern. Sie wissen, dass ihr Kind sie irgendwann verletzen wird. Und trotzdem entscheiden sie sich für dieses Kind. Weil Liebe das Risiko wert ist.“ | Eltern-Stickmen halten Baby, Herz. |
-| 1:19 | „Gott ist das Risiko der Liebe eingegangen. Aber er hat uns nicht allein damit gelassen. Wie er alles wieder in Ordnung bringt – das kommt in Teil 3.“ | Text: „Teil 3 →“ **Cliffhanger.** Folgen-Button. |
+| 0:00 | „Ein Mörder sagt vor Gericht: ‚Aber ich habe hunderttausend Euro gespendet!‘ Würdest du ihn freisprechen?“ | Gerichtssaal-Comic, Hammer-SFX. Buttons **JA / NEIN**, Countdown. **Hook + Interaktion.** |
+| 0:07 | „Nein. Das wäre ungerecht. Genauso bei Gott: Gute Taten löschen Schuld nicht aus. Die Bibel sagt: Der Tod ist der Sünde Sold.“ | Kisten „gute Taten“ kippen um. Vers-Karte *Römer 6,23* |
+| 0:16 | „Aber jetzt passiert etwas, das kein Gericht der Welt kennt.“ | Stille. Zoom auf den Richter. **Open Loop.** |
+| 0:19 | „Der Richter steht auf, legt seine Robe ab – und nimmt die Strafe selbst auf sich.“ | Richter steigt herab, Hand auf die Schulter des Angeklagten. Musik steigt. |
+| 0:25 | „Das hat Gott getan. In Jesus wurde er Mensch. Ohne Schuld. Deshalb konnte nur er unsere Strafe tragen.“ | Licht kommt vom Himmel auf die Erde, Kreuz zeichnet sich. *Johannes 1,14* |
+| 0:33 | „Und er hat nicht von oben zugeschaut. Jesus kannte Hunger, Verrat und Schmerz. Am Grab seines Freundes hat er geweint.“ | Comic-Panels: allein, verraten. Jesus weint am Grab. *Johannes 11,35* |
+| 0:42 | „Am Kreuz trug er alles. Am dritten Tag stand er auf. Leid hat nicht das letzte Wort – eines Tages wischt Gott alle Tränen ab.“ | Kreuz → Sonnenaufgang, Text-Slam **ER LEBT**. Vers-Karte *Offenbarung 21,4* |
+| 0:52 | „Wo ist Gott im Leid? Mittendrin. Und er stellt dir Menschen an die Seite.“ | Jesus kniet neben dem Weinenden aus Teil 1, Hand auf der Schulter. |
+| 0:57 | „Mit Oikos Connect findest du Christen in deiner Nähe – Hauskreise, Gemeinden, Menschen, die mit dir beten.“ | **APP-MOMENT (7 s):** Handy mit echtem Screen `02-weltkarte`, Pins ploppen auf, Chips „Geschwister · Events · Gemeinden“. Badge „Kostenlos im App Store“. |
+| 1:04 | „Der Freispruch ist ein Geschenk. Du musst ihn nur annehmen. Schreib ‚Ja‘, wenn du mehr wissen willst.“ | Stempel „FREIGESPROCHEN“, Endkarte mit App-Icon, „Link in Bio“. |
 
-**Caption-Hook:** „Liebe ohne Freiheit ist keine Liebe. Und genau da beginnt das Problem. (Teil 2/4)“
-
----
-
-## Teil 3 – „Warum gute Taten nicht reichen“ (~100 s)
-
-**Ziel:** Gerechtigkeit verständlich machen (Richter-Bild) und den Twist: Der Richter trägt die Strafe selbst.
-
-| Zeit | Sprecher | Bild / Text auf dem Screen |
-|---|---|---|
-| 0:00 | „Ein Mann steht vor Gericht. Er hat einen Menschen getötet. Und er sagt: ‚Aber ich habe hunderttausend Euro gespendet!‘“ | Gerichtssaal-Comic, Hammer-SFX. |
-| 0:08 | „Würdest du ihn freisprechen?“ | Zwei Buttons: **JA / NEIN**, Countdown 3-2-1. **Interaktion.** |
-| 0:11 | „Natürlich nicht. Ein Richter, der so urteilt, wäre ungerecht. Die Familie des Opfers würde zu Recht sagen: Das darf nicht sein.“ | Familie mit traurigen Gesichtern. |
-| 0:19 | „Und jetzt der Teil, den viele nicht hören wollen: Genau so denken die meisten über Gott. ‚Ich bin doch ein guter Mensch. Das wird schon reichen.‘“ | Stickman stapelt „gute Taten“-Kisten. |
-| 0:28 | „Aber die Bibel sagt: Der Tod ist der Sünde Sold. Schon eine einzige Lüge trennt uns von einem heiligen Gott.“ | Vers-Karte *Römer 6,23* · *Jakobus 2,10* |
-| 0:36 | „Gute Taten löschen Schuld nicht aus. Genauso wenig, wie eine Spende einen Mord ungeschehen macht.“ | Kisten-Turm kippt um. |
-| 0:42 | „Klingt hoffnungslos? Bleib dran. Denn jetzt passiert etwas, das in keinem Gericht der Welt vorkommt.“ | Stille, Zoom auf den Richter. **Open Loop.** |
-| 0:48 | „Der Richter steht auf. Er legt seine Robe ab. Er stellt sich neben den Angeklagten – und sagt: ‚Ich nehme die Strafe auf mich.‘“ | Richter kommt runter, Hand auf Schulter. Musik steigt. |
-| 0:57 | „Genau das hat Gott getan. In Jesus wurde Gott Mensch. Er war der Einzige, der nie gesündigt hat – und deshalb der Einzige, der unsere Strafe tragen konnte.“ | Kreuz zeichnet sich, goldenes Licht. |
-| 1:06 | „Gerecht, weil die Schuld bezahlt ist. Liebend, weil er selbst bezahlt hat.“ | Text-Slam: **GERECHT. + LIEBEND.** |
-| 1:11 | „Er starb am Kreuz und ist am dritten Tag auferstanden. Und jetzt ist der Freispruch ein Geschenk – für jeden, der ihn annimmt.“ | Stempel „FREIGESPROCHEN“. *Epheser 2,8* |
-| 1:19 | „Wenn das neu für dich ist: Schreib ‚Frage‘ in die Kommentare – ich beantworte sie dir. Und Teil 4 zeigt dir, wo Gott ist, wenn es weh tut.“ | Endkarte „Teil 4 →“ |
-
-**Caption-Hook:** „Würdest du ihn freisprechen? Deine Antwort sagt viel über Gott. (Teil 3/4)“
-
----
-
-## Teil 4 – „Wo ist Gott im Leid? Mittendrin.“ (~80 s)
-
-**Ziel:** Emotionaler Abschluss: Gott leidet mit (Kreuz), Leid hat nicht das letzte Wort (Auferstehung), Einladung zum Gebet.
-
-| Zeit | Sprecher | Bild / Text auf dem Screen |
-|---|---|---|
-| 0:00 | „Wo war Gott, als du ihn am meisten gebraucht hast?“ | Schwarz, Text tippt sich, Herzschlag-SFX. |
-| 0:05 | „Viele stellen sich Gott vor wie jemanden, der weit weg auf einem Thron sitzt und unserem Leid zuschaut.“ | Ferner Thron in den Wolken, kleiner Stickman unten. |
-| 0:12 | „In den nächsten 60 Sekunden zeige ich dir, warum das nicht stimmt. Und das letzte Bild wird dich vielleicht berühren.“ | Text: „Das letzte Bild →“ **Open Loop + Zeitversprechen.** |
-| 0:19 | „Gott ist nicht oben geblieben. Er ist Mensch geworden. Mitten hinein in unsere kaputte Welt.“ | Licht kommt vom Thron runter auf die Erde. *Johannes 1,14* |
-| 0:26 | „Jesus kannte Hunger. Er kannte Einsamkeit. Seine Freunde haben ihn verraten und im Stich gelassen.“ | Schnelle Comic-Panels. |
-| 0:34 | „Als sein Freund Lazarus starb, stand Jesus am Grab. Und er hat geweint.“ | Stickman mit Heiligenschein weint am Grab. Stille. *Johannes 11,35* |
-| 0:41 | „Gott weint mit. Er kennt Schmerz nicht vom Hörensagen – sondern von innen.“ | Text: **GOTT WEINT MIT.** |
-| 0:47 | „Am Kreuz hat er alles getragen. ‚Er trug unsre Krankheit und lud auf sich unsre Schmerzen.‘“ | Kreuz, Vers-Karte *Jesaja 53,4* |
-| 0:55 | „Aber die Geschichte endet nicht am Kreuz. Am dritten Tag ist er auferstanden. Das heißt: Leid hat nicht das letzte Wort.“ | Sonnenaufgang, Musik wird hell. **Musterbruch.** |
-| 1:03 | „Die Bibel verspricht: Eines Tages wird Gott alle Tränen abwischen. Und der Tod wird nicht mehr sein.“ | Vers-Karte *Offenbarung 21,4* |
-| 1:10 | „Wo ist Gott im Leid? Nicht weit weg. Mittendrin. Direkt neben dir.“ | **Das letzte Bild:** Jesus kniet neben dem weinenden Stickman vom Anfang, Hand auf der Schulter. |
-| 1:17 | „Wenn du gerade etwas Schweres trägst: Schreib ‚Gebet‘ in die Kommentare. Wir beten für dich.“ | Endkarte, sanftes Licht. (optional klein: Oikos Connect) |
-
-**Caption-Hook:** „Wo war Gott, als du ihn gebraucht hast? Schau bis zum letzten Bild. (Teil 4/4)“
+**Wörter:** ca. 165 · **Caption:** „Würdest du ihn freisprechen? Was Gott gegen das Leid getan hat. (Teil 2/2)“ · **Kommentar anpinnen:** „Schreib ‚Ja‘ – ich schreib dir persönlich.“
 
 ---
 
 ## Produktions-Hinweise
 
-- **Untertitel:** Wort für Wort, groß, mittig-oben (TikTok-Sicherheitszonen: oben 150, unten 400, rechts 130 px frei).
-- **Serien-Wiedererkennung:** gleicher Intro-Sound (dumpfer Schlag), Badge „Teil x/4“, gleiche Farben, Fortschrittsbalken.
-- **Schnitt-Rhythmus:** neues Bild spätestens alle 4 s; Stille gezielt nur an 1–2 Stellen pro Video (wirkt dann umso stärker).
-- **Posting:** Teil 1–4 an vier aufeinanderfolgenden Tagen; in jeder Caption auf die vorherigen Teile verlinken (Playlist auf TikTok/YouTube anlegen).
-- **Kommentare:** Auf „Frage“/„Gebet“-Kommentare antworten – gern per Video-Antwort (eigenes Short-Format).
-- **App-Bezug:** bewusst nur leicht (Endkarte Teil 4). Die Serie soll zuerst Vertrauen und Reichweite aufbauen.
+- **Untertitel:** Wort für Wort, groß, oben-mittig (TikTok-Sicherheitszonen: oben 150, unten 400, rechts 130 px frei).
+- **Wiedererkennung:** gleicher Intro-Schlag, Badge „Teil x/2“, Fortschrittsbalken.
+- **App-Moment:** echter Screen im Comic-Handy (wie in Video 002), Musik bleibt, Stimme wird nicht leiser – wirkt wie ein Teil der Geschichte, nicht wie Werbung.
+- **Posting:** Teil 1 und Teil 2 an zwei aufeinanderfolgenden Tagen; in Teil 2 auf Teil 1 verlinken (Playlist anlegen).
+- **Kommentare:** Auf „Ja“/Fragen persönlich antworten oder per Video-Antwort.
