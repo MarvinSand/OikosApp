@@ -46,4 +46,4 @@ node marketing/social/render-video.cjs 00X-name --page cover.html --stills 0 && 
 Text nur in y 240–1680 und ≤ 960 px breit; 3:4-Ausschnitt gegenprüfen.
 
 ## Git
-`.gitignore` in `videos/` deckt `audio.wav`, `out/still-*.jpg`, `voice/*.mp3`, `voice/*-fast.wav`. Fertige MP4s und `cover.jpg` committen (`git add -f` für `out/cover.jpg`).
+`.gitignore` pro Video-Ordner (beim Kopieren mitnehmen) deckt `audio.wav`, `out/still-*.jpg`, `voice/*.mp3`, `voice/*-fast.wav`. Fertige MP4s und `cover.jpg` committen (`git add -f` für `out/cover.jpg`).
