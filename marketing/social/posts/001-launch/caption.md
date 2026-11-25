@@ -8,12 +8,12 @@
 | 1 | Hook | „Aus 12 Menschen wurden über 2 Milliarden.“ Kreuz + 12 Jünger + wachsende Lichter, „Gottes Plan – er funktioniert wie ein Apfel“ |
 | 2 | Jüngerschaft = Apfel | Kern → Baum → Wald, „Jünger machen Jünger“, guter Boden 30-/60-/100-fach (Mt 13,23, Joh 15,16) |
 | 3 | Wie schnell | Wachstumskurve: 1 Mensch/Jahr → 10 J: 1.024 · 20 J: 1 Mio. · 33 J: 8,6 Mrd. (Rechenbeispiel), wie Jesus in wenige viel Zeit und Gebet investieren |
-| 4 | Oikos Map | Behalte im Blick, wer zu dir gehört |
-| 5 | Gebet | Bete gezielt. Mit Namen. |
-| 6 | Menschen begleiten | Story-Line & Impact-Stufen |
-| 7 | Weltkarte | Geschwister, Gemeinden, Events in deiner Nähe |
-| 8 | Communities & Chats | Gemeinsam statt allein |
-| 9 | Und noch mehr | Bibel · Feed · Bekenntnisse · Gebetsziele |
+| 4 | Dein erster Schritt · Oikos Map | „Fang klein an: 3 Menschen.“ + **Challenge-Banner: 3 Menschen · 7 Tage · jeden Tag beten** |
+| 5 | Jeden Tag · Gebet | „7 Tage. Mit Namen.“ Gebetsmodus, „Tag 3 von 7“ |
+| 6 | Begleitung | „Aus Gebet wird Begleitung.“ Story-Line & Impact-Stufen |
+| 7 | Weltkarte | „Finde Geschwister, die mitgehen.“ Jüngerschaft wächst gemeinsam |
+| 8 | Communities & Chats | „Gemeinsam wird aus Bäumen ein Wald.“ |
+| 9 | Was dich wachsen lässt | Bibel · Feed · Bekenntnisse · Gebetsziele |
 | 10 | Werte | Kostenlos, werbefrei, du entscheidest, geschützter Raum |
 | 11 | CTA | Challenge: 3 Menschen · 7 Tage beten · „3“ kommentieren · App Store |
 
@@ -58,12 +58,12 @@ Wer sind deine 3 Namen? Schreib nur die Anfangsbuchstaben – wir beten mit 🙏
 1. Ein Kreuz in einem goldenen Kreis, 12 leuchtende Punkte darum, nach außen immer mehr Lichter. Text: Aus 12 Menschen wurden über 2 Milliarden.
 2. Grafik: Apfel mit Kernen, Pfeil, Baum mit Äpfeln, Pfeil, Wald. Text: Jüngerschaft ist wie ein Apfel – Jünger machen Jünger. Guter Boden bringt 30-, 60- und 100-fach Frucht.
 3. Wachstumskurve: 10 Jahre 1.024, 20 Jahre 1 Million, 33 Jahre 8,6 Milliarden. Text: Schneller, als du denkst.
-4. Smartphone mit der Oikos Map. Text: Behalte im Blick, wer zu dir gehört.
-5. Smartphone mit der Gebetsansicht. Text: Bete gezielt. Mit Namen.
-6. Smartphone mit Personenprofil und Story-Line. Text: Begleite Menschen auf ihrem Weg.
-7. Smartphone mit der Weltkarte über einer nächtlichen Erde. Text: Finde Geschwister in deiner Nähe.
-8. Zwei Smartphones mit Communities und Chats. Text: Gemeinsam statt allein.
-9. Vier Kacheln: Bibel, Feed, Bekenntnisse, Gebetsziele. Text: Alles für deinen Glaubensalltag.
+4. Smartphone mit der Oikos Map. Text: Fang klein an: 3 Menschen. Banner: Deine Challenge – 3 Menschen, 7 Tage, jeden Tag für sie beten.
+5. Smartphone mit der Gebetsansicht, Karte „Tag 3 von 7“. Text: 7 Tage. Mit Namen.
+6. Smartphone mit Personenprofil und Story-Line. Text: Aus Gebet wird Begleitung.
+7. Smartphone mit der Weltkarte über einer nächtlichen Erde. Text: Finde Geschwister, die mitgehen.
+8. Zwei Smartphones mit Communities und Chats. Text: Gemeinsam wird aus Bäumen ein Wald.
+9. Vier Kacheln: Bibel, Feed, Bekenntnisse, Gebetsziele. Text: Alles, was dich im Glauben wachsen lässt.
 10. Junger Mann liest am Fenster in der Bibel. Text: Ein Ort, an dem du aufatmen kannst.
 11. Freunde Arm in Arm bei Sonnenaufgang. Text: Werde Teil der Familie. Challenge: 3 Menschen, 7 Tage beten.
 

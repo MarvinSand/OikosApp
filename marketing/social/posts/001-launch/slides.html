@@ -50,6 +50,12 @@
   .v3 .key { font-size: 30px; line-height: 1.3; text-align: center; color: var(--muted); margin-top: 18px; }
   .v3 .key b { color: var(--text); }
   .v3 .key em { font-family: var(--serif); font-style: italic; font-weight: 600; color: var(--gold); }
+  /* Challenge-Banner (Slide 4) */
+  .cta-banner { position: absolute; z-index: 9; left: 56px; right: 56px; bottom: 54px; display: flex; align-items: center; gap: 22px; padding: 22px 30px; border-radius: 30px; background: linear-gradient(100deg, #ffe2b0, #f6c177 50%, #ef8f4c); color: #2a1503; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+  .cta-banner .fl { flex: none; width: 76px; height: 76px; border-radius: 22px; background: #2a1503; display: grid; place-items: center; font-size: 42px; }
+  .cta-banner .t1 { font-size: 20px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; opacity: .75; }
+  .cta-banner .t2 { margin-top: 4px; font-size: 31px; font-weight: 800; line-height: 1.2; }
+  [data-f="tt"] .cta-banner { bottom: auto; top: 724px; }
   /* Challenge-Karte auf dem letzten Slide */
   .s10 .challenge { margin: 26px auto 0; max-width: 880px; padding: 24px 32px; text-align: center; background: linear-gradient(160deg, rgba(16,26,56,.82), rgba(16,26,56,.6)); }
   .s10 .challenge .ct { font-size: 20px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); }
@@ -79,8 +85,8 @@
   [data-f="tt"] .s3 .copy .h2 { font-size: var(--h2); }
   [data-f="tt"] .s3 .copy .lead { font-size: var(--lead); }
   [data-f="tt"] .s3 .phone { --pw: 600px; right: auto; left: 240px; top: 840px; transform: rotate(2deg); }
-  [data-f="tt"] .s3 .f1 { left: 56px; top: 1010px; }
-  [data-f="tt"] .s3 .f2 { left: 586px; top: 742px; }
+  [data-f="tt"] .s3 .f1 { left: 56px; top: 1270px; }
+  [data-f="tt"] .s3 .f2 { left: 560px; top: 930px; }
   [data-f="tt"] .s3 .glow.gold { width: 900px; height: 900px; right: -100px; top: 900px; }
 
   /* Slide 4 · Gebete */
@@ -288,9 +294,9 @@
     <span class="counter"></span>
   </header>
   <div class="copy">
-    <span class="eyebrow"><span class="num">01</span>Oikos Map</span>
-    <h2 class="h2">Behalte im Blick, <em>wer zu dir gehört.</em></h2>
-    <p class="lead">Halte die Menschen deines Umfelds fest – mit <b>Namen, Anliegen und ihrer Geschichte.</b></p>
+    <span class="eyebrow"><span class="num">01</span>Dein erster Schritt</span>
+    <h2 class="h2">Fang klein an: <em>3 Menschen.</em></h2>
+    <p class="lead">Such dir <b>3 Menschen aus deinem Umfeld</b> aus und halte sie auf deiner Oikos Map fest – mit Namen, Anliegen und Geschichte.</p>
   </div>
   <div class="phone"><div class="screen"><img src="../../assets/screens/01-oikos-map.png" alt=""></div></div>
   <div class="float glass f1">
@@ -300,6 +306,10 @@
   <div class="float glass f2">
     <span class="ic gold"><i data-icon="bell"></i></span>
     <div><div class="t">Für Tom beten?</div><div class="s">Seit 12 Tagen kein Gebet</div></div>
+  </div>
+  <div class="cta-banner">
+    <span class="fl"><span class="emoji">🔥</span></span>
+    <div><div class="t1">Deine Challenge</div><div class="t2">3 Menschen · 7 Tage · jeden Tag für sie beten</div></div>
   </div>
   <div class="grain"></div>
 </section>
@@ -314,14 +324,14 @@
     <span class="counter"></span>
   </header>
   <div class="copy">
-    <span class="eyebrow"><span class="num">02</span>Gebet</span>
-    <h2 class="h2">Bete gezielt. <em>Mit Namen.</em></h2>
-    <p class="lead">Teile Anliegen, bete mit – und lass dich im <b>Gebetsmodus</b> Person für Person durch deine Liste führen.</p>
+    <span class="eyebrow"><span class="num">02</span>Jeden Tag</span>
+    <h2 class="h2">7 Tage. <em>Mit Namen.</em></h2>
+    <p class="lead">Der <b>Gebetsmodus</b> führt dich Person für Person durch deine Liste – so bleibst du konstant dran.</p>
   </div>
   <div class="phone"><div class="screen"><img src="../../assets/screens/03-gebete.png" alt=""></div></div>
   <div class="float glass f1">
     <span class="ic gold"><span class="emoji" style="font-size:28px">🙏</span></span>
-    <div><div class="t">9 Personen beten mit</div><div class="s">14 Gebete · zuletzt vor 2 Std.</div></div>
+    <div><div class="t">Tag 3 von 7</div><div class="s">3 Menschen · du bleibst dran</div></div>
   </div>
   <div class="float glass f2">
     <span class="ic"><i data-icon="play"></i></span>
@@ -341,8 +351,8 @@
   </header>
   <div class="copy">
     <span class="eyebrow"><span class="num">03</span>Menschen begleiten</span>
-    <h2 class="h2">Begleite Menschen <em>auf ihrem Weg.</em></h2>
-    <p class="lead">Anliegen, Story-Line und Impact-Stufen: Halte fest, <b>was Gott in ihrem Leben tut.</b></p>
+    <h2 class="h2">Aus Gebet wird <em>Begleitung.</em></h2>
+    <p class="lead">Halte Anliegen und Story-Line fest und sieh, <b>was Gott in ihrem Leben tut</b> – Schritt für Schritt.</p>
   </div>
   <div class="phone"><div class="screen"><img src="../../assets/screens/05-menschen-begleiten.png" alt=""></div></div>
   <div class="story glass">
@@ -366,8 +376,8 @@
   </header>
   <div class="copy">
     <span class="eyebrow"><span class="num">04</span>Weltkarte</span>
-    <h2 class="h2 shadow-text">Finde Geschwister <em>in deiner Nähe.</em></h2>
-    <p class="lead shadow-text">Gemeinden, Hauskreise, Bibelstudien und Events auf einer Karte. <b>Deinen Standort steuerst du selbst.</b></p>
+    <h2 class="h2 shadow-text">Finde Geschwister, <em>die mitgehen.</em></h2>
+    <p class="lead shadow-text">Jüngerschaft wächst gemeinsam: Gemeinden, Hauskreise &amp; Events in deiner Nähe. <b>Deinen Standort steuerst du selbst.</b></p>
   </div>
   <div class="phone"><div class="screen"><img src="../../assets/screens/02-weltkarte.png" alt=""></div></div>
   <span class="pill sky c1"><i data-icon="users"></i>Geschwister</span>
@@ -387,8 +397,8 @@
   </header>
   <div class="copy">
     <span class="eyebrow"><span class="num">05</span>Communities &amp; Chats</span>
-    <h2 class="h2">Gemeinsam <em>statt allein.</em></h2>
-    <p class="lead">Hauskreise und Gemeinden mit eigenem Chat, Gebetsanliegen und Events – <b>verbunden auch unter der Woche.</b></p>
+    <h2 class="h2">Gemeinsam wird aus Bäumen <em>ein Wald.</em></h2>
+    <p class="lead">Hauskreise und Gemeinden mit Chat, Gebetsanliegen und Events – <b>hier wächst Jüngerschaft.</b></p>
   </div>
   <div class="phone p1"><div class="screen"><img src="../../assets/screens/06-communities.png" alt=""></div></div>
   <div class="phone p2"><div class="screen"><img src="../../assets/screens/09-chats.png" alt=""></div></div>
@@ -409,8 +419,8 @@
     <span class="counter"></span>
   </header>
   <div class="copy">
-    <span class="eyebrow">Und noch mehr</span>
-    <h2 class="h2">Alles für deinen <em>Glaubensalltag.</em></h2>
+    <span class="eyebrow">Was dich wachsen lässt</span>
+    <h2 class="h2">Alles, was dich im Glauben <em>wachsen lässt.</em></h2>
   </div>
   <div class="grid">
     <div class="tile glass">
