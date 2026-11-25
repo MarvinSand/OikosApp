@@ -1,4 +1,4 @@
-# Serie: „Warum lässt Gott Leid zu?“ – 2 Shorts (je ca. 65–70 s)
+# Serie: „Warum lässt Gott Leid zu?“ – 2 Shorts (je ca. 70–75 s)
 
 Format: 9:16 (TikTok, Reels, YouTube Shorts) · Stil: Comic-Stickman wie Video 002 · Sprecher: Arthur oder eigene Stimme
 Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 Wörter/s. Die Zeitspalte ist ein Richtwert – beim Vertonen wird nach der echten Sprachlänge getaktet.
@@ -19,7 +19,7 @@ Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 W�
 
 ---
 
-## Teil 1 – „Warum lässt Gott Leid zu?“ (~67 s)
+## Teil 1 – „Warum lässt Gott Leid zu?“ (~72 s)
 
 | Zeit | Sprecher | Bild / Text auf dem Screen |
 |---|---|---|
@@ -34,11 +34,11 @@ Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 W�
 | 1:00 | „Und Leid musst du nicht allein tragen: In Oikos Connect beten Christen für dein Anliegen.“ | **APP-MOMENT (6 s):** Handy mit echtem Screen `10-startseite` – Karte „Meistbewegtes Gebet heute: *Heilung für Mama* · 38 Interaktionen · Mitbeten“. Kleines Badge „Kostenlos im App Store“. |
 | 1:06 | „Aber was hat Gott selbst gegen das Leid getan? Teil 2.“ | Text: „Teil 2 →“, Folgen-Button. **Cliffhanger.** |
 
-**Wörter:** ca. 165 · **Caption:** „Warum lässt Gott Leid zu? Die Antwort hat mit Liebe zu tun. (Teil 1/2)“ · **Kommentar anpinnen:** „Was ist deine schwerste Frage an Gott?“
+**Wörter:** ca. 175 · **Caption:** „Warum lässt Gott Leid zu? Die Antwort hat mit Liebe zu tun. (Teil 1/2)“ · **Kommentar anpinnen:** „Was ist deine schwerste Frage an Gott?“
 
 ---
 
-## Teil 2 – „Was hat Gott gegen das Leid getan?“ (~68 s)
+## Teil 2 – „Was hat Gott gegen das Leid getan?“ (~72 s)
 
 | Zeit | Sprecher | Bild / Text auf dem Screen |
 |---|---|---|
@@ -53,7 +53,7 @@ Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 W�
 | 0:57 | „Mit Oikos Connect findest du Christen in deiner Nähe – Hauskreise, Gemeinden, Menschen, die mit dir beten.“ | **APP-MOMENT (7 s):** Handy mit echtem Screen `02-weltkarte`, Pins ploppen auf, Chips „Geschwister · Events · Gemeinden“. Badge „Kostenlos im App Store“. |
 | 1:04 | „Der Freispruch ist ein Geschenk. Du musst ihn nur annehmen. Schreib ‚Ja‘, wenn du mehr wissen willst.“ | Stempel „FREIGESPROCHEN“, Endkarte mit App-Icon, „Link in Bio“. |
 
-**Wörter:** ca. 165 · **Caption:** „Würdest du ihn freisprechen? Was Gott gegen das Leid getan hat. (Teil 2/2)“ · **Kommentar anpinnen:** „Schreib ‚Ja‘ – ich schreib dir persönlich.“
+**Wörter:** ca. 175 · **Caption:** „Würdest du ihn freisprechen? Was Gott gegen das Leid getan hat. (Teil 2/2)“ · **Kommentar anpinnen:** „Schreib ‚Ja‘ – ich schreib dir persönlich.“
 
 ---
 
