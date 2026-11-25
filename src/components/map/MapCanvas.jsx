@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { isDark } from './MapBackgroundSheet'
 import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../i18n'
@@ -37,6 +38,8 @@ const EMPTY_ARR = []
 
 export default function MapCanvas({
   userName,
+  centerName = null,
+  centerColor = null,
   people,
   connections = EMPTY_ARR,
   overlayData = EMPTY_ARR,
@@ -932,6 +935,19 @@ export default function MapCanvas({
       if (found) return found
     }
     return null
+  }
+
+  // Eigener Name in der Mitte: bis zu 3 Zeilen à ≤ 10 Zeichen, lange Wörter gekürzt
+  function wrapCenterName(name) {
+    const words = String(name).trim().split(/\s+/).filter(Boolean).map(w => (w.length > 10 ? w.slice(0, 9) + '…' : w))
+    const lines = []
+    for (const w of words) {
+      const last = lines[lines.length - 1]
+      if (last && (last + ' ' + w).length <= 10) lines[lines.length - 1] = last + ' ' + w
+      else lines.push(w)
+    }
+    if (lines.length > 3) { lines.length = 3; lines[2] = lines[2].replace(/…?$/, '…') }
+    return lines.length ? lines : ['?']
   }
 
   function shortName(name) {
@@ -2032,17 +2048,21 @@ export default function MapCanvas({
         })}
 
         {/* Zentrum – User */}
-        <circle cx={cx} cy={cy} r={userR} fill="var(--color-warm-1)" />
+        <circle cx={cx} cy={cy} r={userR} fill={centerColor || 'var(--color-warm-1)'} />
         <text
           x={cx} y={cy}
           textAnchor="middle"
-          dy="0.35em"
-          fill="var(--color-bg)"
+          fill={centerColor ? (isDark(centerColor) ? '#FFFFFF' : '#111111') : 'var(--color-bg)'}
           fontSize={13}
           fontFamily="Lora, Georgia, serif"
           fontWeight="600"
         >
-          {shortName(userName)}
+          {(() => {
+            const lines = centerName ? wrapCenterName(centerName) : [shortName(userName)]
+            return lines.map((line, i) => (
+              <tspan key={i} x={cx} dy={i === 0 ? `${0.35 - (lines.length - 1) * 0.55}em` : '1.1em'}>{line}</tspan>
+            ))
+          })()}
         </text>
 
         {/* Center-to-place lines (start at edge of center circle, like person lines) */}

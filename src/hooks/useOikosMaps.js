@@ -215,7 +215,7 @@ export function useOikosMaps({ initialMapId = null, skipLoad = false } = {}) {
   async function updateMap(mapId, updates) {
     // Name/Sichtbarkeit der Systemkarte sind fest (privat, „Meine Geschwister in Christus")
     // (nur der Hintergrund darf auch bei der Systemkarte geändert werden)
-    const onlyBackground = Object.keys(updates).every(k => k === 'bg_color' || k === 'bg_image_url')
+    const onlyBackground = Object.keys(updates).every(k => ['bg_color', 'bg_image_url', 'center_name', 'center_color'].includes(k))
     if (!onlyBackground && maps.find(m => m.id === mapId)?.kind === 'siblings') return maps.find(m => m.id === mapId)
     const { data, error } = await supabase
       .from('oikos_maps')

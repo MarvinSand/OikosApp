@@ -93,6 +93,8 @@ export default function PublicMapView() {
       <div style={{ flex: 1, minHeight: 0, padding: 8, overflow: 'hidden', position: 'relative', ...mapBackgroundStyle(map) }}>
         <MapCanvas
           userName={ownerName}
+          centerName={map?.center_name}
+          centerColor={map?.center_color}
           people={people}
           connections={isSiblingsMap ? [...connections, ...siblingsGraph.connections] : connections}
           places={isSiblingsMap ? [...places, ...siblingsCommunities.virtualPlaces] : places}

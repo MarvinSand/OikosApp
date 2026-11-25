@@ -849,6 +849,8 @@ export default function MapView({ hideWorldMapToggle = false, initialMapId = nul
               key={activeMapId}
               bannerTop={114 - shiftUp}
               userName={userName}
+              centerName={activeMap?.center_name}
+              centerColor={activeMap?.center_color}
               people={people}
               connections={canvasConnections}
               overlayData={canvasOverlayData}

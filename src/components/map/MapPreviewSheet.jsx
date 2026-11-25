@@ -41,7 +41,7 @@ export default function MapPreviewSheet({ userId, initialMapId, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
-  const { people, connections, places, placeConnections, ownerName, loading } = usePublicMap(userId, selectedMapId)
+  const { map: previewMap, people, connections, places, placeConnections, ownerName, loading } = usePublicMap(userId, selectedMapId)
 
   function handleFullscreen() {
     onClose()
@@ -138,6 +138,8 @@ export default function MapPreviewSheet({ userId, initialMapId, onClose }) {
           ) : (
             <MapCanvas
               userName={ownerName}
+              centerName={previewMap?.center_name}
+              centerColor={previewMap?.center_color}
               people={people}
               connections={connections}
               places={places}

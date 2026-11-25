@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { X, Trash2 } from 'lucide-react'
+import { X, Trash2, Check } from 'lucide-react'
 import { useFriendships } from '../../hooks/useFriendships'
 import { useCommunities } from '../../hooks/useCommunities'
 import { useToast } from '../../context/ToastContext'
 import { useT } from '../../i18n'
-import { MapBackgroundControls } from './MapBackgroundSheet'
+import { MapBackgroundControls, isDark } from './MapBackgroundSheet'
 
 const VISIBILITY_OPTIONS = [
   { value: 'private',          icon: '🔒', label: 'Nur ich' },
@@ -13,6 +13,86 @@ const VISIBILITY_OPTIONS = [
   { value: 'specific_exclude', icon: '🚫', label: 'Alle außer...' },
   { value: 'community',        icon: '🏘', label: 'Nur eine Community' },
 ]
+
+// Mitte der Map: Name (statt Nutzername) und Farbe – wird sofort gespeichert
+const CENTER_SWATCHES = [
+  '#000000', '#2B3A4F', '#3A5F8A', '#5AC8FA', '#34A853',
+  '#F5A623', '#E8574B', '#E8618C', '#9B59B6', '#FFFFFF',
+]
+
+function CenterControls({ map, updateMap }) {
+  const { t } = useT()
+  const { showToast } = useToast()
+  const [centerName, setCenterName] = useState(map.center_name || '')
+
+  async function save(updates) {
+    try { await updateMap(map.id, updates) } catch { showToast(t('Fehler beim Speichern'), 'error') }
+  }
+  function commitName() {
+    const next = centerName.trim() || null
+    if (next !== (map.center_name || null)) save({ center_name: next })
+  }
+  const hasCustom = !!(map.center_name || map.center_color)
+
+  return (
+    <div>
+      <label style={lbl}>{t('Name in der Mitte')}</label>
+      <input
+        type="text"
+        value={centerName}
+        maxLength={40}
+        onChange={e => setCenterName(e.target.value)}
+        onBlur={commitName}
+        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+        placeholder={t('Standard: dein Name')}
+        style={inp}
+      />
+      <label style={{ ...lbl, marginTop: 14 }}>{t('Farbe der Mitte')}</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+        {CENTER_SWATCHES.map(c => {
+          const active = map.center_color?.toLowerCase() === c.toLowerCase()
+          return (
+            <button
+              key={c}
+              onClick={() => save({ center_color: c })}
+              aria-label={c}
+              style={{
+                width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', padding: 0, backgroundColor: c,
+                border: active ? '3px solid var(--color-accent)' : '1.5px solid rgba(128,128,128,0.4)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {active && <Check size={16} color={isDark(c) ? '#fff' : '#111'} />}
+            </button>
+          )
+        })}
+        <label
+          style={{
+            width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', overflow: 'hidden', position: 'relative',
+            border: '1.5px solid rgba(128,128,128,0.4)',
+            background: 'conic-gradient(#f66, #fc6, #6f6, #6cf, #96f, #f6c, #f66)',
+          }}
+          title={t('Eigene Farbe')}
+        >
+          <input
+            type="color"
+            value={map.center_color || '#000000'}
+            onChange={e => save({ center_color: e.target.value.toUpperCase() })}
+            style={{ position: 'absolute', inset: -8, width: 60, height: 60, opacity: 0, cursor: 'pointer' }}
+          />
+        </label>
+      </div>
+      {hasCustom && (
+        <button
+          onClick={() => { setCenterName(''); save({ center_name: null, center_color: null }) }}
+          style={{ border: '1.5px solid var(--color-warm-3)', background: 'none', borderRadius: 12, padding: '10px 14px', cursor: 'pointer', color: 'var(--color-text-muted)', fontFamily: 'Lora, serif', fontSize: 13 }}
+        >
+          {t('Auf Standard zurücksetzen')}
+        </button>
+      )}
+    </div>
+  )
+}
 
 export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose }) {
   const { t } = useT()
@@ -206,6 +286,11 @@ export default function MapSettingsSheet({ map, updateMap, deleteMap, onClose })
         >
           {saving ? t('Speichere…') : t('Speichern')}
         </button>
+
+        {/* Mitte (wird sofort gespeichert, unabhängig vom Speichern-Knopf) */}
+        <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '24px 0 16px' }} />
+        <p style={sectionLabel}>{t('Mitte der Map')}</p>
+        <CenterControls map={map} updateMap={updateMap} />
 
         {/* Hintergrund (wird sofort gespeichert, unabhängig vom Speichern-Knopf) */}
         <div style={{ height: 1, backgroundColor: 'var(--color-warm-3)', margin: '24px 0 16px' }} />

@@ -16,7 +16,7 @@ const SWATCHES = [
   '#D9F0F5', '#DCE9FB', '#E9E1F7', '#F7DCEB', '#2B3A4F', '#14181F',
 ]
 
-function isDark(hex) {
+export function isDark(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex || '')
   if (!m) return false
   const n = parseInt(m[1], 16)

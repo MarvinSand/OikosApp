@@ -4,6 +4,10 @@
 
 **Jeder Bild-Upload** (Avatar, Feed, Chat, Community, Events, Karten-Hintergrund, alles Neue) läuft vor `storage.upload` durch `compressImage()` aus `src/lib/image.js` (Richtwerte: Avatare/Community-Logo 400 px, alles andere max. 1080 px, Qualität 0,6–0,8, WebP/JPEG). Nie Originaldateien hochladen – Speicher/DB sollen klein und die App schnell bleiben. Bei neuen Upload-Stellen immer mitprüfen (`grep -rn "\.upload(" src`). Stand Nov. 2026: alle 7 Upload-Stellen komprimieren.
 
+## Oikos Map: Name & Farbe der Mitte (Nov. 2026, phase109)
+
+- `oikos_maps.center_name` (≤ 40 Zeichen) und `center_color` (`#RRGGBB`) – beides optional, Standard = Nutzername + `--color-warm-1`. Einstellbar in den Map-Einstellungen (`CenterControls` in `MapSettingsSheet.jsx`, speichert sofort, auch bei der Systemkarte erlaubt: `updateMap` zählt die Felder wie den Hintergrund). `MapCanvas` bekommt `centerName`/`centerColor` (Name bricht auf bis zu 3 Zeilen um, Schriftfarbe automatisch per `isDark`); gesetzt in `MapView`, `PublicMapView`, `MapPreviewSheet` (`usePublicMap` lädt die Spalten mit). `phase109` ist live eingespielt.
+
 ## Gemeinden: Erstellen auf der Karte & mehrere Standorte (Nov. 2026, phase107)
 
 - Weltkarte → Tab „Gemeinden“ hat den Button „Gemeinde erstellen“ (`MapDrawer` → `onCreateGemeinde`, lazy `CreateCommunitySheet` mit `initialType="gemeinde"`, `layer` = z-index über der Karte, `onCreated` lädt die Karte neu statt zur Community zu navigieren).
