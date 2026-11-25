@@ -23,16 +23,16 @@ Bibelzitate auf dem Bildschirm: Luther 1912 (gemeinfrei). Sprechtempo ca. 2,4 W�
 
 | Zeit | Sprecher | Bild / Text auf dem Screen |
 |---|---|---|
-| 0:00 | „Wenn es Gott gibt – warum gibt es dann so viel Leid? Die Antwort hat mit Liebe zu tun. Und sie ist anders, als du denkst.“ | Schwarz, Text knallt Wort für Wort rein. Dumpfer Schlag. **Hook + Open Loop.** |
-| 0:07 | „Am Anfang gab es kein Leid. Gott schuf uns für eine Beziehung mit ihm – zu hundert Prozent erfüllt von seiner Liebe.“ | Garten, goldenes Licht auf zwei Stickmen. „Akku“ im Herz: 100 %. *1. Mose 1,27* |
-| 0:15 | „Und wer erfüllt ist, muss nichts für sich holen. Er kann andere lieben. Das war Gottes Plan: Himmel auf Erden.“ | Stickmen teilen, helfen, lachen. Text-Slam: **HIMMEL AUF ERDEN** |
-| 0:22 | „Aber Gott wollte keine Roboter. Liebe ohne freie Wahl ist keine Liebe. Also gab er uns einen freien Willen.“ | Roboter sagt „ICH LIEBE DICH“ → zerfällt in Zahnräder. Weggabelung. |
+| 0:00 | „Wenn es Gott gibt – warum gibt es dann so viel Leid? Die Antwort hat mit Liebe zu tun.“ | Schwarz, Text knallt Wort für Wort rein. Dumpfer Schlag. **Hook + Open Loop.** |
+| 0:07 | „Am Anfang gab es kein Leid. Gott schuf uns für eine Beziehung mit ihm – ganz erfüllt von seiner Liebe.“ | Garten, goldenes Licht auf zwei Stickmen. „Akku“ im Herz: 100 %. *1. Mose 1,27* |
+| 0:15 | „Wer erfüllt ist, kann andere lieben. Das war der Plan: Himmel auf Erden.“ | Stickmen teilen, helfen, lachen. Text-Slam: **HIMMEL AUF ERDEN** |
+| 0:22 | „Aber Gott wollte keine Roboter. Liebe braucht Freiheit. Also gab er uns einen freien Willen.“ | Roboter sagt „ICH LIEBE DICH“ → zerfällt in Zahnräder. Weggabelung. |
 | 0:30 | „Und wir haben eine Lüge geglaubt: ‚Gott hält dir etwas vor. Hol es dir selbst.‘“ | Musik bricht ab. Schatten flüstert, Text in Rot. *vgl. 1. Mose 3* **Musterbruch.** |
-| 0:36 | „Seitdem ist die Verbindung zu Gott zerbrochen – und mit ihr die Welt. Wir füllen die Leere mit Geld, Macht und Anerkennung. Oft auf Kosten anderer. Daher kommt so viel Leid.“ | Akku wird rot und leer. Riss durch die Erde. Schnelle Schnitte: Geld, Likes, Streit. *Römer 8,22* |
-| 0:46 | „Das heißt nicht, dass du persönlich schuld bist, wenn du leidest. Aber die Welt ist nicht mehr, wie Gott sie wollte.“ | Weinender Stickman, sanfte Musik. *Johannes 9,3* |
-| 0:52 | „‚Aber Gott wusste das doch!‘ Ja. Wie Eltern, die wissen, dass ihr Kind sie verletzen wird – und es trotzdem lieben. Liebe ist das Risiko wert.“ | Stickman mit großem „?“ → Eltern halten Baby, Herz. **Einwand vorwegnehmen.** |
-| 1:00 | „Und Leid musst du nicht allein tragen. In Oikos Connect teilst du dein Anliegen – und Christen beten mit dir.“ | **APP-MOMENT (6 s):** Handy mit echtem Screen `10-startseite` – Karte „Meistbewegtes Gebet heute: *Heilung für Mama* · 38 Interaktionen · Mitbeten“. Kleines Badge „Kostenlos im App Store“. |
-| 1:06 | „Aber was hat Gott selbst gegen das Leid getan? Das ist die eigentliche Antwort. Teil 2.“ | Text: „Teil 2 →“, Folgen-Button. **Cliffhanger.** |
+| 0:36 | „Seitdem ist die Verbindung zu Gott zerbrochen – und mit ihr die Welt. Wir füllen die Leere mit Geld, Macht und Anerkennung. Daher kommt so viel Leid.“ | Akku wird rot und leer. Riss durch die Erde. Schnelle Schnitte: Geld, Likes, Streit. *Römer 8,22* |
+| 0:46 | „Nicht, weil du persönlich schuld bist. Sondern weil die Welt nicht mehr ist, wie Gott sie wollte.“ | Weinender Stickman, sanfte Musik. *Johannes 9,3* |
+| 0:52 | „‚Aber Gott wusste das doch!‘ Ja. Wie Eltern, die wissen, dass ihr Kind sie verletzen wird – und es trotzdem lieben.“ | Stickman mit großem „?“ → Eltern halten Baby, Herz. **Einwand vorwegnehmen.** |
+| 1:00 | „Und Leid musst du nicht allein tragen: In Oikos Connect beten Christen für dein Anliegen.“ | **APP-MOMENT (6 s):** Handy mit echtem Screen `10-startseite` – Karte „Meistbewegtes Gebet heute: *Heilung für Mama* · 38 Interaktionen · Mitbeten“. Kleines Badge „Kostenlos im App Store“. |
+| 1:06 | „Aber was hat Gott selbst gegen das Leid getan? Teil 2.“ | Text: „Teil 2 →“, Folgen-Button. **Cliffhanger.** |
 
 **Wörter:** ca. 165 · **Caption:** „Warum lässt Gott Leid zu? Die Antwort hat mit Liebe zu tun. (Teil 1/2)“ · **Kommentar anpinnen:** „Was ist deine schwerste Frage an Gott?“
 
