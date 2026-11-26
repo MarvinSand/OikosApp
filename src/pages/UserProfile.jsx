@@ -20,7 +20,7 @@ import ProfileListOverlay from '../components/feed/ProfileListOverlay'
 
 // Für alle eingeloggten Nutzer lesbare Profilspalten (private Felder wie
 // Adresse, Koordinaten, Geburtstag, YouVersion-E-Mail sind ausgenommen).
-const PUBLIC_PROFILE_COLUMNS = 'id, username, full_name, avatar_url, bio, bio_text, show_bio, is_christian, gender, created_at, map_is_public, discipleship_stage, show_on_world_map, has_location, last_active_at, show_last_active, show_birthday, church_name, show_church, city, show_city, country, youversion_connected'
+const PUBLIC_PROFILE_COLUMNS = 'id, username, full_name, avatar_url, bio, bio_text, show_bio, is_christian, gender, created_at, map_is_public, discipleship_stage, show_on_world_map, has_location, last_active_at, show_last_active, show_birthday, church_name, show_church, city, show_city, country, youversion_connected, dm_siblings_only'
 
 // Zuletzt geladene fremde Profile (nur öffentliche Spalten) – damit der Kopf
 // beim erneuten Öffnen sofort steht, während im Hintergrund aktualisiert wird.
@@ -191,7 +191,13 @@ export default function UserProfile() {
       if (error) throw error
       navigate(`/chat/${convId}`)
     } catch (e) {
-      showToast(e?.message?.includes('user_blocked') ? t('Chat nicht möglich – einer von euch hat den anderen blockiert') : t('Fehler beim Öffnen des Chats'), 'error')
+      const msg = e?.message || ''
+      showToast(
+        msg.includes('user_blocked') ? t('Chat nicht möglich – einer von euch hat den anderen blockiert')
+          : msg.includes('dm_restricted') ? t('Diese Person nimmt Nachrichten nur von Geschwistern an')
+          : t('Fehler beim Öffnen des Chats'),
+        'error'
+      )
     } finally {
       setChatLoading(false)
     }
@@ -227,6 +233,8 @@ export default function UserProfile() {
   }
 
   const status = (!friendActed && bootMeta?.friendship?.status) || getFriendshipStatus(targetId)
+  // Direktnachrichten: standardmäßig an alle, außer die Person erlaubt nur Geschwister
+  const canMessage = status === 'friends' || !profile?.dm_siblings_only
   const hasNotifPrefs = prefs.notify_prayer_requests || prefs.notify_feed_posts || prefs.notify_oikos_entries || prefs.notify_prayers_for_oikos || prefs.notify_storyline_entries
 
   function dismissBanner() {
@@ -363,7 +371,7 @@ export default function UserProfile() {
           <p style={{ fontSize: 13, color: '#8D6E63', margin: '0 0 12px' }}>
             {t('Schreib ihm/ihr eine Nachricht')}
           </p>
-          {status === 'friends' && (
+          {canMessage && (
             <button onClick={handleStartChat} disabled={chatLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, border: 'none', backgroundColor: '#F9A825', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <MessageCircle size={14} /> {t('Gratulieren')}
             </button>
@@ -476,7 +484,7 @@ export default function UserProfile() {
         {/* Action buttons */}
         <div className="flex items-center gap-2" style={{ marginTop: 14 }}>
           <FriendButton />
-          {status === 'friends' && (
+          {canMessage && (
             <button
               onClick={handleStartChat}
               disabled={chatLoading}

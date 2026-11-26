@@ -4,6 +4,11 @@
 
 **Jeder Bild-Upload** (Avatar, Feed, Chat, Community, Events, Karten-Hintergrund, alles Neue) läuft vor `storage.upload` durch `compressImage()` aus `src/lib/image.js` (Richtwerte: Avatare/Community-Logo 400 px, alles andere max. 1080 px, Qualität 0,6–0,8, WebP/JPEG). Nie Originaldateien hochladen – Speicher/DB sollen klein und die App schnell bleiben. Bei neuen Upload-Stellen immer mitprüfen (`grep -rn "\.upload(" src`). Stand Nov. 2026: alle 7 Upload-Stellen komprimieren.
 
+## Direktnachrichten für alle & Zurückwischen (Nov. 2026, phase109)
+
+- **DM-Datenschutz:** Standard = jeder darf jedem schreiben (auch ohne Freundschaft). `profiles.dm_siblings_only` (Einstellungen → Datenschutz → „Nur Geschwister dürfen mir schreiben“) beschränkt auf akzeptierte Freundschaften: `can_message_user()`, `start_direct_chat` wirft `dm_restricted`, zusätzlich restriktive INSERT-Policy auf `messages` (Antworten bleiben erlaubt, wenn die geschützte Person selbst schon geschrieben hat). Profil zeigt „Nachricht“ bei Freunden oder wenn die Person nicht eingeschränkt hat. `phase109` ist live eingespielt.
+- **Zurückwischen:** `hooks/useSwipeBack.js` – Element folgt dem Finger (links/rechts), gleitet raus, dann `onBack`; `transform` nur während der Geste. In `App.jsx` am Seiten-Container für alle Routen mit Zurück-Pfeil (`allowsSwipeBack`: nicht Tab-Seiten, nicht Karten-Zeichenflächen); `resetKey = location.key`. Eigene Overlays rufen den Hook mit ihrer Wurzel auf (`ConnectionsOverlay`, `ProfileListOverlay`). Opt-out per `data-no-swipe-back`. Eingabefelder, horizontale Scroller und `position: fixed`-Sheets starten keine Geste.
+
 ## Gemeinden: Erstellen auf der Karte & mehrere Standorte (Nov. 2026, phase107)
 
 - Weltkarte → Tab „Gemeinden“ hat den Button „Gemeinde erstellen“ (`MapDrawer` → `onCreateGemeinde`, lazy `CreateCommunitySheet` mit `initialType="gemeinde"`, `layer` = z-index über der Karte, `onCreated` lädt die Karte neu statt zur Community zu navigieren).

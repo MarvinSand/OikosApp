@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom'
-import { useEffect, lazy, Suspense } from 'react'
+import { useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
+import { useSwipeBack } from './hooks/useSwipeBack'
 import { useAuth, getCurrentUser } from './hooks/useAuth'
 import { isPrayerFeedRoute } from './lib/prayerFeedRoute'
 import { pathFromScan } from './lib/qrLinks'
@@ -148,8 +149,29 @@ function NativeYouVersionReturn() {
   return null
 }
 
+// Seiten mit Zurück-Pfeil: dort darf man auch zurückwischen. Tab-Seiten und die
+// Karten-Zeichenflächen (eigene Pan-Gesten) sind ausgenommen.
+const NO_SWIPE_BACK_PATHS = new Set(['/', '/worldmap', '/prayers', '/bible', '/chat', '/chats', '/friends', '/profile'])
+function allowsSwipeBack(pathname) {
+  if (NO_SWIPE_BACK_PATHS.has(pathname)) return false
+  if (pathname.startsWith('/map/') || pathname.startsWith('/join/')) return false
+  if (/^\/user\/[^/]+\/map\//.test(pathname)) return false
+  return true
+}
+
 function AppShellInner() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const contentRef = useRef(null)
+  useSwipeBack(
+    contentRef,
+    useCallback(() => {
+      // Wie der Zurück-Pfeil; ohne App-interne Historie (Direktlink) zur Startseite.
+      if ((window.history.state?.idx ?? 0) > 0) navigate(-1)
+      else navigate('/', { replace: true })
+    }, [navigate]),
+    { enabled: allowsSwipeBack(location.pathname), resetKey: location.key },
+  )
   useNativeLinkHandler()
   useNativePushRegistration()
   useKeyboardInset()
@@ -173,6 +195,7 @@ function AppShellInner() {
       <SideNav />
 
       <div
+        ref={contentRef}
         className={`flex-1 min-h-0 min-w-0 hide-scrollbar ${
           isFullScreenRoute ? 'overflow-clip' : 'overflow-y-auto mobile-nav-padding'
         }`}
