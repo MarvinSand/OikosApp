@@ -76,7 +76,7 @@ export default function UserProfile() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { showToast } = useToast()
-  const { getFriendshipStatus, getFriendship, sendRequest, acceptRequest, declineRequest } = useFriendships()
+  const { getFriendshipStatus, getFriendship, sendRequest, withdrawRequest, acceptRequest } = useFriendships()
   const {
     maps, posts, reposts, prayerRequests, connectionsCount, publicCommunities,
     loading: tabsLoading, bootMeta, reactToPost, toggleRepost, removeBookmark, markBookmarked,
@@ -216,7 +216,7 @@ export default function UserProfile() {
         if (fid) { await acceptRequest(fid); showToast(t('Verbunden ✓')) }
       } else if (status === 'sent') {
         const fid = getFriendship(targetId)?.id || bootMeta?.friendship?.id
-        if (fid) { await declineRequest(fid); showToast(t('Anfrage zurückgezogen')) }
+        if (fid) { await withdrawRequest(fid); showToast(t('Anfrage zurückgezogen')) }
       }
       setFriendActed(true)
     } catch (e) {
