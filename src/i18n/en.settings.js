@@ -69,6 +69,12 @@ export default {
   'Änderungen speichern': 'Save changes',
   'Weltkarte & Standort findest du jetzt unter „Profil bearbeiten".': 'You can now find the world map & location under "Edit profile".',
   'Darstellung': 'Appearance',
+  'Nachrichten': 'Messages',
+  'Nur Geschwister dürfen mir schreiben': 'Only siblings can message me',
+  'Aus: Jeder kann dir eine Direktnachricht senden. An: Nur verbundene Geschwister.': 'Off: anyone can send you a direct message. On: only connected siblings.',
+  'Nur Geschwister dürfen dir schreiben ✓': 'Only siblings can message you ✓',
+  'Alle dürfen dir schreiben ✓': 'Everyone can message you ✓',
+  'Diese Person nimmt Nachrichten nur von Geschwistern an': 'This person only accepts messages from siblings',
 
   // ── Einstellungen: Modals ──
   'Bist du sicher?': 'Are you sure?',

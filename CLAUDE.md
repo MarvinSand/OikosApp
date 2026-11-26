@@ -8,6 +8,11 @@
 
 - `oikos_maps.center_name` (≤ 40 Zeichen) und `center_color` (`#RRGGBB`) – beides optional, Standard = Nutzername + `--color-warm-1`. Einstellbar in den Map-Einstellungen (`CenterControls` in `MapSettingsSheet.jsx`, speichert sofort, auch bei der Systemkarte erlaubt: `updateMap` zählt die Felder wie den Hintergrund). `MapCanvas` bekommt `centerName`/`centerColor` (Name bricht auf bis zu 3 Zeilen um, Schriftfarbe automatisch per `isDark`); gesetzt in `MapView`, `PublicMapView`, `MapPreviewSheet` (`usePublicMap` lädt die Spalten mit). `phase109` ist live eingespielt.
 
+## Direktnachrichten für alle & Zurückwischen (Nov. 2026, phase109)
+
+- **DM-Datenschutz:** Standard = jeder darf jedem schreiben (auch ohne Freundschaft). `profiles.dm_siblings_only` (Einstellungen → Datenschutz → „Nur Geschwister dürfen mir schreiben“) beschränkt auf akzeptierte Freundschaften: `can_message_user()`, `start_direct_chat` wirft `dm_restricted`, zusätzlich restriktive INSERT-Policy auf `messages` (Antworten bleiben erlaubt, wenn die geschützte Person selbst schon geschrieben hat). Profil zeigt „Nachricht“ bei Freunden oder wenn die Person nicht eingeschränkt hat. `phase109` ist live eingespielt.
+- **Zurückwischen:** `hooks/useSwipeBack.js` – Element folgt dem Finger (links/rechts), gleitet raus, dann `onBack`; `transform` nur während der Geste. In `App.jsx` am Seiten-Container für alle Routen mit Zurück-Pfeil (`allowsSwipeBack`: nicht Tab-Seiten, nicht Karten-Zeichenflächen); `resetKey = location.key`. Eigene Overlays rufen den Hook mit ihrer Wurzel auf (`ConnectionsOverlay`, `ProfileListOverlay`). Opt-out per `data-no-swipe-back`. Eingabefelder, horizontale Scroller und `position: fixed`-Sheets starten keine Geste.
+
 ## Gemeinden: Erstellen auf der Karte & mehrere Standorte (Nov. 2026, phase107)
 
 - Weltkarte → Tab „Gemeinden“ hat den Button „Gemeinde erstellen“ (`MapDrawer` → `onCreateGemeinde`, lazy `CreateCommunitySheet` mit `initialType="gemeinde"`, `layer` = z-index über der Karte, `onCreated` lädt die Karte neu statt zur Community zu navigieren).

@@ -3,7 +3,7 @@ import PageHeader from '../components/layout/PageHeader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, MailWarning, User, ShieldCheck, Shield, ChevronRight,
-  Moon, Globe, KeyRound, Camera, BookMarked, Ban, FileText, Lock, Mail,
+  Moon, Globe, MessageCircle, KeyRound, Camera, BookMarked, Ban, FileText, Lock, Mail,
 } from 'lucide-react'
 import { LEGAL, TERMS_PATH, PRIVACY_PATH, IMPRINT_PATH } from '../lib/legal'
 import { supabase } from '../lib/supabase'
@@ -444,6 +444,7 @@ export default function SettingsView() {
 
   // Datenschutz-Toggles
   const [showOnMap, setShowOnMap] = useState(false)
+  const [dmSiblingsOnly, setDmSiblingsOnly] = useState(false)
   const [locValue, setLocValue] = useState(null)
   const [savingLoc, setSavingLoc] = useState(false)
 
@@ -503,6 +504,25 @@ export default function SettingsView() {
       else showToast(t('Fehler beim Speichern'), 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Direktnachrichten: Standard = jeder darf schreiben; Schalter = nur Geschwister
+  useEffect(() => {
+    if (!user?.id) return
+    supabase.from('profiles').select('dm_siblings_only').eq('id', user.id).maybeSingle()
+      .then(({ data }) => setDmSiblingsOnly(!!data?.dm_siblings_only))
+  }, [user?.id])
+
+  async function handleToggleDm() {
+    const next = !dmSiblingsOnly
+    setDmSiblingsOnly(next)
+    try {
+      await updateProfile({ dm_siblings_only: next })
+      showToast(next ? t('Nur Geschwister dürfen dir schreiben ✓') : t('Alle dürfen dir schreiben ✓'))
+    } catch {
+      setDmSiblingsOnly(!next)
+      showToast(t('Fehler beim Speichern'), 'error')
     }
   }
 
@@ -851,6 +871,18 @@ export default function SettingsView() {
           <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: '0 0 16px', lineHeight: 1.5 }}>
             {t('Weltkarte & Standort findest du jetzt unter „Profil bearbeiten".')}
           </p>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>
+            {t('Nachrichten')}
+          </h3>
+          <div style={{ marginBottom: 22 }}>
+            <SettingToggle
+              icon={MessageCircle}
+              title={t('Nur Geschwister dürfen mir schreiben')}
+              desc={t('Aus: Jeder kann dir eine Direktnachricht senden. An: Nur verbundene Geschwister.')}
+              checked={dmSiblingsOnly}
+              onChange={handleToggleDm}
+            />
+          </div>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>
             {t('Darstellung')}
           </h3>

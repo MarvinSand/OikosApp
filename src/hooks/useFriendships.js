@@ -89,11 +89,22 @@ export function useFriendships() {
   }
 
   async function sendRequest(userId) {
+    // Übrig gebliebene „declined"-Zeile (früher beim Zurückziehen gesetzt) blockiert
+    // sonst den Unique-Key requester_id+addressee_id → vorher entfernen.
+    await supabase.from('friendships').delete()
+      .eq('requester_id', user.id).eq('addressee_id', userId).eq('status', 'declined')
     const { error } = await supabase
       .from('friendships')
       .insert({ requester_id: user.id, addressee_id: userId })
     if (error) throw error
     await load()
+  }
+
+  // Eigene Anfrage zurückziehen: Zeile löschen (nicht auf „declined" setzen),
+  // damit später erneut angefragt werden kann.
+  async function withdrawRequest(friendshipId) {
+    setAllFriendships(prev => prev.filter(f => f.id !== friendshipId))
+    await supabase.from('friendships').delete().eq('id', friendshipId)
   }
 
   async function acceptRequest(friendshipId) {
@@ -114,6 +125,6 @@ export function useFriendships() {
   return {
     friends, pendingReceived, pendingSent, loading,
     getFriendshipStatus, getFriendship,
-    searchUsers, sendRequest, acceptRequest, declineRequest, removeFriend,
+    searchUsers, sendRequest, withdrawRequest, acceptRequest, declineRequest, removeFriend,
   }
 }
