@@ -139,13 +139,13 @@ export default function FeedPostSheet({
   const [category, setCategory] = useState(initialCategory)
   const [title, setTitle] = useState(initialTitle)
   const [body, setBody] = useState(() => initialVerse
-    ? insertVerseIntoText(initialBody ? `${initialBody}\n\n` : '', initialVerse, { quote: true })
+    ? insertVerseIntoText(initialBody ? `${initialBody}\n\n` : '', initialVerse, { quote: false })
     : initialBody)
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   // Mehrere Stellen: { att, quote } – ein Zitat steht als Text direkt hinter dem Stellennamen im Beitrag.
-  const [verses, setVerses] = useState(() => initialVerse ? [{ att: initialVerse, quote: true }] : [])
+  const [verses, setVerses] = useState(() => initialVerse ? [{ att: initialVerse, quote: false }] : [])
   const [showVersePicker, setShowVersePicker] = useState(false)
   const fileRef = useRef(null)
   const bodyRef = useRef(null)
@@ -154,8 +154,8 @@ export default function FeedPostSheet({
   // Bibelstelle (und – wenn gewählt – das Zitat direkt dahinter) an der Cursorposition einfügen.
   function attachVerse(att) {
     if (verses.some(v => v.att.referenceLabel === att.referenceLabel)) return
-    setVerses(prev => [...prev, { att, quote: true }])
-    setBody(prev => insertVerseIntoText(prev, att, { quote: true, pos: cursorRef.current ?? prev.length }).slice(0, MAX_BODY))
+    setVerses(prev => [...prev, { att, quote: false }])
+    setBody(prev => insertVerseIntoText(prev, att, { quote: false, pos: cursorRef.current ?? prev.length }).slice(0, MAX_BODY))
   }
 
   function toggleQuote(i) {
