@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
-import { verseFieldsFromAttachment } from '../lib/bibleLink'
+import { verseFieldsFromAttachment, verseFieldsFromAttachments } from '../lib/bibleLink'
 import { readCache, writeCache } from '../lib/swrCache'
 
 export function usePersonalPrayer() {
@@ -44,7 +44,7 @@ export function usePersonalPrayer() {
     setLoading(false)
   }
 
-  async function createRequest({ title, description, visibility, visibility_user_ids = [], visibility_community_id = null, category = null, bibleVerseRef = null }) {
+  async function createRequest({ title, description, visibility, visibility_user_ids = [], visibility_community_id = null, category = null, bibleVerseRef = null, bibleVerses = null }) {
     const { data, error } = await supabase
       .from('personal_prayer_requests')
       .insert({
@@ -52,7 +52,7 @@ export function usePersonalPrayer() {
         visibility_user_ids: visibility_user_ids.length > 0 ? visibility_user_ids : null,
         visibility_community_id: visibility_community_id || null,
         category: category || null,
-        ...verseFieldsFromAttachment(bibleVerseRef),
+        ...(bibleVerses?.length ? verseFieldsFromAttachments(bibleVerses) : verseFieldsFromAttachment(bibleVerseRef)),
       })
       .select()
       .single()

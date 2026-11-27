@@ -20,6 +20,7 @@ import OikosFilterSheet from '../components/prayer/OikosFilterSheet'
 import { useOikosFilterSource } from '../hooks/useOikosFilterSource'
 import { KIND_OIKOS, KIND_PERSONAL } from '../lib/prayerModel'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
+import { insertVerseIntoText, setVerseQuoteInText, removeVerseFromText } from '../lib/bibleLink'
 import VersePickerSheet from '../components/bible/VersePickerSheet'
 import BodyPortal from '../components/common/BodyPortal'
 import { useT, tr } from '../i18n'
@@ -118,9 +119,28 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
   const [goalTarget, setGoalTarget] = useState('')
   const [goalCustom, setGoalCustom] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [verse, setVerse] = useState(null)
-  const [quoteVerse, setQuoteVerse] = useState(true)
+  // Mehrere Stellen: { att, quote } – ein Zitat steht als Text direkt hinter dem Stellennamen im Gebet.
+  const [verses, setVerses] = useState([])
   const [showVersePicker, setShowVersePicker] = useState(false)
+  const textRef = useRef(null)
+  const cursorRef = useRef(null) // letzte Cursorposition (der Picker ist ein Vollbild-Overlay)
+
+  function attachVerse(att) {
+    if (verses.some(v => v.att.referenceLabel === att.referenceLabel)) return
+    setVerses(prev => [...prev, { att, quote: false }])
+    setText(prev => insertVerseIntoText(prev, att, { quote: false, pos: cursorRef.current ?? prev.length }))
+  }
+  function toggleQuote(i) {
+    const v = verses[i]
+    const quote = !v.quote
+    setVerses(prev => prev.map((x, j) => j === i ? { ...x, quote } : x))
+    setText(prev => setVerseQuoteInText(prev, v.att, quote))
+  }
+  function detachVerse(i) {
+    const v = verses[i]
+    setVerses(prev => prev.filter((_, j) => j !== i))
+    setText(prev => removeVerseFromText(prev, v.att))
+  }
 
   const isCustomGoalType = goalType === 'custom'
   const goalTargetNum = parseInt(goalTarget, 10)
@@ -146,7 +166,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
         category,
         visibility_community_id: visibility === 'community' ? selectedCommunity : null,
         visibility_user_ids: visibility === 'specific' ? selectedSiblings : [],
-        bibleVerseRef: verse ? { ...verse, verseText: quoteVerse ? verse.verseText : null } : null,
+        bibleVerses: verses.map(v => v.att),
       })
       if (goalEnabled && goalOk) {
         await onCreateGoal({
@@ -200,28 +220,33 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
               style={{ ...field, fontWeight: 600, marginBottom: 8 }}
             />
             <textarea
+              ref={textRef}
               value={text}
-              onChange={e => setText(e.target.value)}
+              onChange={e => { cursorRef.current = e.target.selectionStart; setText(e.target.value) }}
+              onSelect={e => { cursorRef.current = e.target.selectionStart }}
+              onBlur={e => { cursorRef.current = e.target.selectionStart }}
               placeholder={t('Schreibe dein Anliegen…')}
               rows={4}
               style={{ ...field, lineHeight: 1.6, resize: 'vertical' }}
             />
 
-            {/* Bibelstelle verknüpfen */}
-            {verse ? (
-              <div style={{ marginTop: 10 }}>
-                <BibleReferenceChip attachment={verse} variant="block" showVerse={quoteVerse} onRemove={() => setVerse(null)} />
+            {/* Bibelstellen: Name (und Zitat) stehen im Text; blau + antippbar im Gebet */}
+            {verses.map((v, i) => (
+              <div key={v.att.referenceLabel} style={{ marginTop: 10 }}>
+                <BibleReferenceChip attachment={v.att} variant="block" showVerse={false} onRemove={() => detachVerse(i)} />
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                  <input type="checkbox" checked={quoteVerse} onChange={e => setQuoteVerse(e.target.checked)} style={{ accentColor: 'var(--color-accent)' }} />{t('Vers im Gebet zitieren')}</label>
+                  <input type="checkbox" checked={v.quote} onChange={() => toggleQuote(i)} style={{ accentColor: 'var(--color-accent)' }} />{t('Vers im Gebet zitieren')}</label>
+                <p style={{ margin: '2px 0 0 26px', fontSize: 11, color: 'var(--color-text-tertiary)', lineHeight: 1.4 }}>
+                  {v.quote ? t('Der Vers wird im Text direkt hinter der Stelle zitiert.') : t('Der Vers erscheint erst, wenn jemand auf die blaue Stelle im Text tippt.')}
+                </p>
               </div>
-            ) : (
-              <button onClick={() => setShowVersePicker(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginTop: 10, width: '100%' }}
-              >
-                <span style={{ fontSize: 16 }}>📖</span>
-                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{t('Bibelstelle verknüpfen')}</span>
-              </button>
-            )}
+            ))}
+            <button onClick={() => setShowVersePicker(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginTop: 10, width: '100%' }}
+            >
+              <span style={{ fontSize: 16 }}>📖</span>
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{verses.length ? t('Weitere Bibelstelle hinzufügen') : t('Bibelstelle verknüpfen')}</span>
+            </button>
 
             {/* 2) Kategorie */}
             <p style={secTitle}>{t('2 · Kategorie')}</p>
@@ -314,7 +339,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
               {text.trim() && <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{text.trim()}</p>}
             </div>
             <SummaryRow label={t('Kategorie')} value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
-            <SummaryRow label={t('Bibelstelle')} value={verse ? verse.referenceLabel : '—'} />
+            <SummaryRow label={t('Bibelstelle')} value={verses.length ? verses.map(v => v.att.referenceLabel).join(', ') : '—'} />
             <SummaryRow label={t('Gebetsziel')} value={!goalEnabled || !goalOk ? tr('Keins') : isCustomGoalType ? goalCustom.trim() : `${goalTarget} ${goalTypeObj?.label}`} />
             <SummaryRow label={t('Sichtbarkeit')} value={
               visibility === 'community'
@@ -337,7 +362,7 @@ function CreatePrayerSheet({ onClose, onCreate, onCreateGoal, onDone }) {
       {showVersePicker && (
         <VersePickerSheet
           onClose={() => setShowVersePicker(false)}
-          onSelect={(att) => { setVerse(att); setShowVersePicker(false) }}
+          onSelect={(att) => { attachVerse(att); setShowVersePicker(false) }}
         />
       )}
     </div>
@@ -535,10 +560,10 @@ export default function Prayers() {
     ampel: null,
   }))
 
-  async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids, bibleVerseRef }) {
+  async function handleCreate({ title, description, visibility, category, visibility_community_id, visibility_user_ids, bibleVerseRef, bibleVerses }) {
     // Fehler werden absichtlich NICHT geschluckt – das Sheet zeigt die echte
     // Ursache an, damit ein nicht gepostetes Gebet sichtbar/diagnostizierbar wird.
-    const created = await createRequest({ title, description, visibility, category, visibility_community_id, visibility_user_ids, bibleVerseRef })
+    const created = await createRequest({ title, description, visibility, category, visibility_community_id, visibility_user_ids, bibleVerseRef, bibleVerses })
     reload()
     return created
   }

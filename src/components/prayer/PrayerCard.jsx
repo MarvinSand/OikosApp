@@ -13,6 +13,7 @@ import CommentInput from './CommentInput'
 import { useToast } from '../../context/ToastContext'
 import { summarizeLogs } from '../../hooks/usePrayerEngagement'
 import BibleReferenceChip from '../bible/BibleReferenceChip'
+import VerseInlineText, { verseBlocks } from '../bible/VerseInlineText'
 import ModerationSheet from '../common/ModerationSheet'
 import AnchoredMenu, { anchoredMenuItemStyle } from '../common/AnchoredMenu'
 import AdminContentMenuItems from '../moderation/AdminContentMenuItems'
@@ -317,7 +318,7 @@ export default function PrayerCard({
         {desc && (
           <div style={{ marginBottom: 4 }}>
             <p style={{ fontFamily: 'Lora, serif', fontSize: 14.5, color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>
-              {expanded ? desc : shortDesc}
+              <VerseInlineText text={expanded ? desc : shortDesc} attachments={prayer.bibleVerses} />
             </p>
             {desc.length > 120 && (
               <button onClick={() => setExpanded(v => !v)} style={linkBtn}>
@@ -328,9 +329,9 @@ export default function PrayerCard({
         )}
 
         {/* Verknüpfte Bibelstelle */}
-        {prayer.bibleVerse && (
-          <BibleReferenceChip attachment={prayer.bibleVerse} variant="block" openAsSheet />
-        )}
+        {verseBlocks(prayer.raw, desc).map(att => (
+          <BibleReferenceChip key={att.referenceLabel} attachment={att} variant="block" openAsSheet />
+        ))}
 
         {/* Herkunft: für wen / aus welcher Map / von wem – bzw. Community */}
         {context && (

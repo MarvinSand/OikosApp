@@ -8,7 +8,7 @@
 // normalisierten Objekt – so sehen Gebete überall gleich aus, egal woher sie
 // kommen.
 
-import { verseAttachmentFromRow } from './bibleLink'
+import { verseAttachmentFromRow, versesFromRow } from './bibleLink'
 import { tr, getLang } from '../i18n'
 
 export const KIND_OIKOS = 'oikos'
@@ -85,6 +85,7 @@ export function normalizePrayer(row, { kind = null, source = null } = {}) {
     // Nur personal_prayer_requests hat Bibel-Spalten; für prayer_requests
     // liefert verseAttachmentFromRow() zuverlässig null.
     bibleVerse: verseAttachmentFromRow(row),
+    bibleVerses: versesFromRow(row),
     raw: row,
   }
 }

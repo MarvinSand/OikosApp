@@ -19,11 +19,11 @@ export function textHasVerseLabel(text, attachment) {
 // Blöcke unter dem Beitrag: alte Beiträge mit Zitat-Block wie bisher; sonst nur
 // Stellen, die nicht als blauer Link im Text stehen (Fallback, z. B. wenn der
 // Name aus dem Text gelöscht wurde).
-export function verseBlocks(post) {
+export function verseBlocks(post, body = post?.body) {
   const verses = versesFromRow(post)
   if (!verses.length) return []
   const legacy = !(Array.isArray(post.bible_verses) && post.bible_verses.length)
-  return verses.filter(v => (legacy && v.verseText) || !textHasVerseLabel(post.body, v))
+  return verses.filter(v => (legacy && v.verseText) || !textHasVerseLabel(body, v))
 }
 
 export default function VerseInlineText({ text, attachments }) {
