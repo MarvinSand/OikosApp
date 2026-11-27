@@ -667,6 +667,8 @@ export default {
   'Was möchtest du teilen?': 'What would you like to share?',
   'Bild hinzufügen': 'Add image',
   'Vers im Beitrag zitieren': 'Quote verse in post',
+  'Der Vers steht direkt unter dem Beitrag.': 'The verse is shown right below the post.',
+  'Der Vers erscheint erst, wenn jemand auf die blaue Stelle im Text tippt.': 'The verse only appears when someone taps the blue reference in the text.',
   '3 · Wer soll es sehen?': '3 · Who should see it?',
   'Wird geteilt…': 'Sharing…',
   'Beitrag teilen': 'Share post',

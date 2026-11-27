@@ -11,6 +11,7 @@ import CommentCard from '../components/feed/CommentCard'
 import FeedCardFrame from '../components/feed/FeedCardFrame'
 import { COMMENT_SELECT, attachCommentEngagement } from '../lib/commentEngagement'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
+import VerseInlineText, { showVerseBlock } from '../components/bible/VerseInlineText'
 import { verseAttachmentFromRow } from '../lib/bibleLink'
 import { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 import { useT, tr, getLang } from '../i18n'
@@ -281,13 +282,13 @@ export default function FeedPostView() {
             {post.title && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 8px' }}>{post.title}</p>
             )}
-            {post.bible_reference && (
+            {showVerseBlock(post) && (
               <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" openAsSheet />
             )}
             {post.type === 'photo' && post.photo_url && (
               <img src={post.photo_url} alt="" style={{ width: '100%', maxHeight: 360, objectFit: 'cover', borderRadius: 12, marginBottom: 10, display: 'block' }} />
             )}
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text)', margin: 0, lineHeight: 1.7 }}>{post.body}</p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text)', margin: 0, lineHeight: 1.7 }}><VerseInlineText text={post.body} attachment={verseAttachmentFromRow(post)} /></p>
           </div>
 
           {/* Engagement */}

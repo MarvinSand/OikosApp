@@ -143,6 +143,30 @@ export default function FeedPostSheet({
   const [quoteVerse, setQuoteVerse] = useState(true)
   const [showVersePicker, setShowVersePicker] = useState(false)
   const fileRef = useRef(null)
+  const bodyRef = useRef(null)
+  const cursorRef = useRef(null) // letzte Cursorposition im Textfeld (Picker ist ein Vollbild-Overlay)
+
+  // Bibelstelle als Text an der Cursorposition einfügen – im Beitrag wird sie blau und antippbar.
+  function attachVerse(att) {
+    setVerse(att)
+    const label = att.referenceLabel
+    setBody(prev => {
+      if (!label || prev.includes(label)) return prev
+      const pos = Math.min(cursorRef.current ?? prev.length, prev.length)
+      const before = prev.slice(0, pos)
+      const after = prev.slice(pos)
+      const lead = before && !/\s$/.test(before) ? ' ' : ''
+      const trail = after && !/^\s/.test(after) ? ' ' : ''
+      const next = before + lead + label + trail + after
+      return next.length <= 1000 ? next : prev
+    })
+  }
+
+  function detachVerse() {
+    const label = verse?.referenceLabel
+    setVerse(null)
+    if (label) setBody(prev => prev.split(label).join('').replace(/[ \t]{2,}/g, ' '))
+  }
 
   useEffect(() => {
     if (!photoFile) { setPhotoPreview(null); return }
@@ -205,8 +229,11 @@ export default function FeedPostSheet({
               style={{ ...fField, fontWeight: 600, marginBottom: 8 }}
             />
             <textarea
+              ref={bodyRef}
               value={body}
-              onChange={e => setBody(e.target.value.slice(0, 1000))}
+              onChange={e => { cursorRef.current = e.target.selectionStart; setBody(e.target.value.slice(0, 1000)) }}
+              onSelect={e => { cursorRef.current = e.target.selectionStart }}
+              onBlur={e => { cursorRef.current = e.target.selectionStart }}
               placeholder={t('Was möchtest du teilen?')}
               rows={4}
               style={{ ...fField, lineHeight: 1.6, resize: 'vertical' }}
@@ -235,9 +262,12 @@ export default function FeedPostSheet({
             {/* Bibelstelle verknüpfen */}
             {verse ? (
               <div style={{ marginTop: 10 }}>
-                <BibleReferenceChip attachment={verse} variant="block" showVerse={quoteVerse} onRemove={() => setVerse(null)} />
+                <BibleReferenceChip attachment={verse} variant="block" showVerse={quoteVerse} onRemove={detachVerse} />
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                   <input type="checkbox" checked={quoteVerse} onChange={e => setQuoteVerse(e.target.checked)} style={{ accentColor: 'var(--color-accent)' }} />{t('Vers im Beitrag zitieren')}</label>
+                <p style={{ margin: '2px 0 0 26px', fontSize: 11, color: 'var(--color-text-tertiary)', lineHeight: 1.4 }}>
+                  {quoteVerse ? t('Der Vers steht direkt unter dem Beitrag.') : t('Der Vers erscheint erst, wenn jemand auf die blaue Stelle im Text tippt.')}
+                </p>
               </div>
             ) : (
               <button onClick={() => setShowVersePicker(true)}
@@ -341,7 +371,7 @@ export default function FeedPostSheet({
       {showVersePicker && (
         <VersePickerSheet
           onClose={() => setShowVersePicker(false)}
-          onSelect={(att) => { setVerse(att); setShowVersePicker(false) }}
+          onSelect={(att) => { attachVerse(att); setShowVersePicker(false) }}
         />
       )}
     </div>
