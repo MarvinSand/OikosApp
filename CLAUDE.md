@@ -274,10 +274,11 @@ git push -u origin temp-fix:main
 
 ## Supabase Migrations ausführen
 
-1. Supabase Dashboard öffnen → SQL Editor
-2. Inhalt der `.sql`-Datei einfügen
-3. "Run" klicken
-4. Alle Phase-Migrations sind idempotent (können mehrfach ausgeführt werden)
+**Dauerregel (Nov. 2026): Claude spielt Migrationen selbst über den Supabase-MCP ein** (`apply_migration`, Projekt „OIKOS APP“) – nicht mehr den Nutzer bitten, sie im SQL-Editor auszuführen. Ablauf:
+1. Datei `supabase/phaseNNN_….sql` im Repo anlegen (idempotent: `if not exists`, `create or replace`, `drop policy if exists`) **und** per `apply_migration` live einspielen – Migration vor dem Client-Code, der die Spalte/Funktion braucht.
+2. Live prüfen (`information_schema`/`pg_proc`/`pg_policies`), bei neuen RLS-Policies einen Test-Insert als `authenticated` (mit `rollback`) machen und `query_logs` (postgres) auf Fehler ansehen.
+3. In `CLAUDE.md` „live eingespielt“ vermerken. DDL nie parallel absetzen; `DROP FUNCTION/TRIGGER` hing per MCP schon (Timeout) → `create or replace`/neuer Name.
+Der SQL-Editor bleibt nur Fallback.
 
 ---
 
