@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { scrollContainerToBottom, scrollContainerToElement } from '../lib/scroll'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Plus, SendHorizontal, X, Smile, CornerUpLeft, Forward, Copy, Pin, Trash2, PinOff, ChevronUp, Camera, Eye, Flag } from 'lucide-react'
@@ -843,109 +843,20 @@ export function PrayerAttachSheet({ onClose, onSelect }) {
 }
 
 // ─── Bible Verse Modal ────────────────────────────────────────
+// Wie überall (Bekenntnis, Posts, Gebete): Stelle über den Bibel-Picker wählen
+// (Buch → Kapitel → Verse antippen) statt Referenz und Text von Hand einzutippen.
+const VersePickerSheet = lazy(() => import('../components/bible/VersePickerSheet'))
+
 export function BibleVerseModal({ onClose, onSend }) {
-  const { t } = useT()
-  const [reference, setReference] = useState('')
-  const [verseText, setVerseText] = useState('')
-
-  function handleSend() {
-    if (!reference.trim() || !verseText.trim()) return
-    onSend(reference.trim(), verseText.trim())
-    onClose()
-  }
-
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 90, backgroundColor: 'rgba(58,46,36,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-      <div style={{
-        backgroundColor: 'var(--color-white)',
-        borderRadius: 20,
-        padding: '24px 20px',
-        width: '100%',
-        maxWidth: 380,
-        boxShadow: '0 8px 32px rgba(58,46,36,0.15)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{t('Bibelvers teilen')}</h3>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }}>
-            <X size={18} />
-          </button>
-        </div>
-
-        <label style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('Stelle (z.B. Johannes 3,16)')}</label>
-        <input
-          autoFocus
-          type="text"
-          value={reference}
-          onChange={e => setReference(e.target.value)}
-          placeholder={t('z.B. Römer 8,28')}
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            borderRadius: 10,
-            border: '1.5px solid var(--color-warm-3)',
-            backgroundColor: 'var(--color-bg)',
-            fontFamily: 'Lora, serif',
-            fontSize: 14,
-            color: 'var(--color-text)',
-            display: 'block',
-            marginBottom: 14,
-          }}
+    // Eigener Stacking-Kontext über Eingabeleiste/Nav (VersePickerSheet ist z-40).
+    <div style={{ position: 'fixed', inset: 0, zIndex: 90 }}>
+      <Suspense fallback={null}>
+        <VersePickerSheet
+          onClose={onClose}
+          onSelect={(att) => { onSend(att.referenceLabel, att.verseText); onClose() }}
         />
-
-        <label style={{ display: 'block', fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('Vers')}</label>
-        <textarea
-          value={verseText}
-          onChange={e => setVerseText(e.target.value)}
-          placeholder={t('Vers eingeben…')}
-          rows={4}
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            borderRadius: 10,
-            border: '1.5px solid var(--color-warm-3)',
-            backgroundColor: 'var(--color-bg)',
-            fontFamily: 'Lora, serif',
-            fontSize: 14,
-            color: 'var(--color-text)',
-            display: 'block',
-            resize: 'none',
-            marginBottom: 18,
-          }}
-        />
-
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: '12px 0',
-              borderRadius: 12,
-              border: '1.5px solid var(--color-warm-3)',
-              background: 'none',
-              fontFamily: 'Lora, serif',
-              fontSize: 14,
-              cursor: 'pointer',
-              color: 'var(--color-text-muted)',
-            }}
-          >{t('Abbrechen')}</button>
-          <button
-            onClick={handleSend}
-            disabled={!reference.trim() || !verseText.trim()}
-            style={{
-              flex: 1,
-              padding: '12px 0',
-              borderRadius: 12,
-              border: 'none',
-              backgroundColor: reference.trim() && verseText.trim() ? 'var(--color-warm-1)' : 'var(--color-warm-3)',
-              color: 'var(--color-bg)',
-              fontFamily: 'Lora, serif',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: reference.trim() && verseText.trim() ? 'pointer' : 'not-allowed',
-            }}
-          >{t('Teilen')}</button>
-        </div>
-      </div>
+      </Suspense>
     </div>
   )
 }

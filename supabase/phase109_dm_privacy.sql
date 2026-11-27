@@ -72,23 +72,5 @@ begin
 end;
 $function$;
 
--- Auch bestehende Chats: keine Nachrichten an Personen mit „nur Geschwister",
--- außer sie haben dort selbst schon geschrieben.
-drop policy if exists "Direct messages respect dm_siblings_only" on public.messages;
-create policy "Direct messages respect dm_siblings_only"
-  on public.messages as restrictive for insert to authenticated
-  with check (
-    not exists (
-      select 1
-      from public.conversations c
-      join public.conversation_members cm on cm.conversation_id = c.id
-      where c.id = messages.conversation_id
-        and c.type = 'direct'
-        and cm.user_id <> (select auth.uid())
-        and not public.can_message_user(cm.user_id)
-        and not exists (
-          select 1 from public.messages m
-          where m.conversation_id = c.id and m.sender_id = cm.user_id
-        )
-    )
-  );
+-- Die restriktive INSERT-Policy auf messages steht in phase110 (die erste Fassung
+-- hier fragte messages in der eigenen Policy ab → „infinite recursion“).
