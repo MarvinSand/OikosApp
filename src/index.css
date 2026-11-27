@@ -61,6 +61,7 @@
     --color-bubble-own:            #000000;   /* own = high-contrast ink */
     --color-bubble-own-text:       #FFFFFF;
     --color-bubble-own-text-muted: rgba(255,255,255,0.74);
+    --color-bubble-own-link:       #5AC8FA;   /* Link-Blau auf dunkler eigener Blase */
     --color-bubble-own-border:     transparent;
     --color-bubble-other:          #FFFFFF;   /* incoming = surface */
     --color-bubble-other-text:     #000000;
@@ -122,6 +123,7 @@
     --color-bubble-own:            #FFFFFF;   /* own = bright surface on black */
     --color-bubble-own-text:       #000000;
     --color-bubble-own-text-muted: rgba(0,0,0,0.60);
+    --color-bubble-own-link:       #0A84FF;   /* Link-Blau auf heller eigener Blase */
     --color-bubble-own-border:     transparent;
     --color-bubble-other:          #1C1C1E;   /* incoming = elevated surface */
     --color-bubble-other-text:     #FFFFFF;

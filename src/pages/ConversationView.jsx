@@ -9,6 +9,8 @@ import { useChat } from '../hooks/useChat'
 import { useConversations } from '../hooks/useConversations'
 import { useToast } from '../context/ToastContext'
 import { useT, tr, getLang } from '../i18n'
+import { buildBibleLink } from '../lib/bibleLink'
+import { parseReferenceQuery } from '../lib/bibleBooks'
 
 // ─── Helpers ─────────────────────────────────────────────────
 function formatDaySeparator(isoString) {
@@ -227,18 +229,47 @@ function PrayerCard({ msg, isOwn, user, showToast }) {
 }
 
 // ─── Bible Verse Card ─────────────────────────────────────────
+// Stellenname ist ein blauer Link: Tippen öffnet die Bibel an der Stelle (mit
+// Kontext). Neue Nachrichten tragen book/chapter/verse strukturiert; ältere nur
+// die Stellenangabe als Text → dann wird sie geparst.
+function bibleLinkOf(msg) {
+  if (msg.bible_book && msg.bible_chapter != null) {
+    return buildBibleLink({
+      bibleId: msg.bible_id, book: msg.bible_book, chapter: msg.bible_chapter,
+      verseStart: msg.bible_verse_start, verseEnd: msg.bible_verse_end,
+    })
+  }
+  const parsed = parseReferenceQuery(msg.bible_verse_reference)
+  return parsed ? buildBibleLink(parsed) : null
+}
+
 function BibleVerseCard({ msg, isOwn }) {
+  const navigate = useNavigate()
+  const to = bibleLinkOf(msg)
+  const linkColor = isOwn ? 'var(--color-bubble-own-link)' : 'var(--color-accent-dark)'
   return (
     <div style={{ minWidth: 0 }}>
-      <p style={{
-        fontFamily: 'Lora, serif',
-        fontSize: 13,
-        fontWeight: 700,
-        color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)',
-        margin: '0 0 4px 0',
-      }}>
+      {msg.text && (
+        <p style={{
+          fontFamily: 'Lora, serif', fontSize: 14.5, margin: '0 0 8px 0', lineHeight: 1.45,
+          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          color: isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-bubble-other-text)',
+        }}>{msg.text}</p>
+      )}
+      <button
+        type="button"
+        disabled={!to}
+        onClick={e => { e.stopPropagation(); if (to) navigate(to) }}
+        style={{
+          display: 'block', border: 'none', background: 'none', padding: 0, margin: '0 0 4px 0',
+          textAlign: 'left', cursor: to ? 'pointer' : 'default',
+          fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 700,
+          color: to ? linkColor : (isOwn ? 'var(--color-bubble-own-text)' : 'var(--color-text)'),
+          textDecoration: to ? 'underline' : 'none', textUnderlineOffset: 3,
+        }}
+      >
         📖 {msg.bible_verse_reference}
-      </p>
+      </button>
       <p style={{
         fontFamily: 'Lora, serif',
         fontSize: 13,
@@ -854,7 +885,7 @@ export function BibleVerseModal({ onClose, onSend }) {
       <Suspense fallback={null}>
         <VersePickerSheet
           onClose={onClose}
-          onSelect={(att) => { onSend(att.referenceLabel, att.verseText); onClose() }}
+          onSelect={(att) => { onSend(att); onClose() }}
         />
       </Suspense>
     </div>
@@ -978,6 +1009,35 @@ function ForwardSheet({ onClose, onSubmit, currentConversationId }) {
 }
 
 // ─── Reply preview above input ────────────────────────────────
+function VerseComposerPreview({ att, onRemove }) {
+  const { t } = useT()
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '8px 12px',
+      borderBottom: '1px solid var(--color-warm-3)',
+      backgroundColor: 'var(--color-bg-secondary)',
+    }}>
+      <div style={{ flex: 1, minWidth: 0, borderLeft: '2px solid var(--color-accent)', paddingLeft: 8 }}>
+        <p style={{ margin: 0, fontFamily: 'Lora, serif', fontSize: 12, fontWeight: 700, color: 'var(--color-accent-dark)' }}>📖 {att.referenceLabel}</p>
+        {att.verseText && (
+          <p style={{
+            margin: '1px 0 0', fontFamily: 'Lora, serif', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-muted)',
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          }}>{att.verseText}</p>
+        )}
+      </div>
+      <button onClick={onRemove} aria-label={t('Vers entfernen')} style={{
+        width: 26, height: 26, borderRadius: '50%', border: 'none',
+        background: 'var(--color-warm-3)', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <X size={13} />
+      </button>
+    </div>
+  )
+}
+
 function ReplyComposerPreview({ msg, onCancel }) {
   const { t } = useT()
   if (!msg) return null
@@ -1073,7 +1133,7 @@ function EmojiPicker({ onSelect }) {
 }
 
 // ─── Input Bar ────────────────────────────────────────────────
-function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyTo, onCancelReply, initialText = '' }) {
+function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyTo, onCancelReply, initialText = '', verseDraft = null, onRemoveVerse }) {
   const { t } = useT()
   const [text, setText] = useState(initialText)
   const [showAttach, setShowAttach] = useState(false)
@@ -1097,7 +1157,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
   }
 
   function handleSend() {
-    if (!text.trim()) return
+    if (!text.trim() && !verseDraft) return
     onSend(text)
     setText('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
@@ -1146,6 +1206,9 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
     <div className="chat-input-bar" style={{ backgroundColor: 'var(--color-white)', borderTop: '1px solid var(--color-warm-3)' }}>
       {/* Reply preview */}
       {replyTo && <ReplyComposerPreview msg={replyTo} onCancel={onCancelReply} />}
+
+      {/* Angehängter Bibelvers: über dem Nachrichtenfeld; Text optional dazu */}
+      {verseDraft && <VerseComposerPreview att={verseDraft} onRemove={onRemoveVerse} />}
 
       {/* Emoji picker */}
       {showEmoji && <EmojiPicker onSelect={insertEmoji} />}
@@ -1209,7 +1272,7 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
           onKeyDown={handleKeyDown}
           onClick={handleTextareaClick}
           onKeyUp={handleTextareaKeyUp}
-          placeholder={t('Nachricht schreiben...')}
+          placeholder={verseDraft ? t('Text zum Vers (optional)…') : t('Nachricht schreiben...')}
           rows={1}
           style={{
             flex: 1, padding: '8px 12px', borderRadius: 18,
@@ -1236,12 +1299,12 @@ function InputBar({ onSend, onOpenPrayer, onOpenVerse, onOpenPhotoPicker, replyT
         {/* Send button */}
         <button
           onClick={handleSend}
-          disabled={!text.trim()}
+          disabled={!text.trim() && !verseDraft}
           style={{
             width: 36, height: 36, borderRadius: '50%', border: 'none',
             backgroundColor: 'transparent',
-            color: text.trim() ? 'var(--color-warm-1)' : 'var(--color-text-light)',
-            cursor: text.trim() ? 'pointer' : 'not-allowed',
+            color: (text.trim() || verseDraft) ? 'var(--color-warm-1)' : 'var(--color-text-light)',
+            cursor: (text.trim() || verseDraft) ? 'pointer' : 'not-allowed',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}
         >
@@ -1300,6 +1363,7 @@ export default function ConversationView() {
   const [infoLoading, setInfoLoading] = useState(true)
   const [showPrayer, setShowPrayer] = useState(false)
   const [showVerse, setShowVerse] = useState(false)
+  const [verseDraft, setVerseDraft] = useState(null)
   const [viewerPhoto, setViewerPhoto] = useState(null) // { msg, url }
   const [photoDraft, setPhotoDraft] = useState(null) // { file, url }
   const [photoViewOnce, setPhotoViewOnce] = useState(true) // standardmäßig: einmal ansehen
@@ -1450,7 +1514,14 @@ export default function ConversationView() {
     isAtBottomRef.current = true
     const opts = replyTo ? { replyToId: replyTo.id } : {}
     setReplyTo(null)
-    await sendMessage(text, opts)
+    if (verseDraft) {
+      // Vers (mit optionalem Text) als eine Nachricht senden
+      const att = verseDraft
+      setVerseDraft(null)
+      try { await sendBibleVerse(att, text) } catch { showToast(t('Senden fehlgeschlagen'), 'error') }
+    } else {
+      await sendMessage(text, opts)
+    }
     setTimeout(() => {
       scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }, 50)
@@ -1460,14 +1531,6 @@ export default function ConversationView() {
     setShowPrayer(false)
     isAtBottomRef.current = true
     await sendPrayerRequest(item.id, item.title, item.description, true)
-    setTimeout(() => {
-      scrollContainerToBottom(messagesContainerRef.current, 'smooth')
-    }, 50)
-  }
-
-  async function handleSendVerse(reference, verseText) {
-    isAtBottomRef.current = true
-    await sendBibleVerse(reference, verseText)
     setTimeout(() => {
       scrollContainerToBottom(messagesContainerRef.current, 'smooth')
     }, 50)
@@ -1705,6 +1768,8 @@ export default function ConversationView() {
         onSend={handleSend}
         onOpenPrayer={() => setShowPrayer(true)}
         onOpenVerse={() => setShowVerse(true)}
+        verseDraft={verseDraft}
+        onRemoveVerse={() => setVerseDraft(null)}
         onOpenPhotoPicker={() => photoInputRef.current?.click()}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
@@ -1828,7 +1893,7 @@ export default function ConversationView() {
       {showVerse && (
         <BibleVerseModal
           onClose={() => setShowVerse(false)}
-          onSend={handleSendVerse}
+          onSend={att => setVerseDraft(att)}
         />
       )}
 

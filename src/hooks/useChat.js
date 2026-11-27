@@ -4,7 +4,7 @@ import { compressImage } from '../lib/image'
 import { useAuth } from './useAuth'
 
 const PAGE_SIZE = 50
-const MSG_SELECT = 'id, conversation_id, sender_id, type, text, bible_verse_reference, bible_verse_text, personal_prayer_request_id, prayer_request_id, is_deleted, created_at, reply_to_id, forwarded_from_id, is_pinned, pinned_at, image_path, is_view_once, viewed_at, join_request_id'
+const MSG_SELECT = 'id, conversation_id, sender_id, type, text, bible_verse_reference, bible_verse_text, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end, personal_prayer_request_id, prayer_request_id, is_deleted, created_at, reply_to_id, forwarded_from_id, is_pinned, pinned_at, image_path, is_view_once, viewed_at, join_request_id'
 
 async function attachProfiles(messages) {
   if (!messages || messages.length === 0) return messages
@@ -110,7 +110,8 @@ export function useChat(conversationId) {
               m._optimistic &&
               m.sender_id === newMsg.sender_id &&
               m.text === newMsg.text &&
-              m.type === newMsg.type
+              m.type === newMsg.type &&
+              m.bible_verse_reference === newMsg.bible_verse_reference
             )
             if (tempIdx !== -1) {
               const next = [...prev]
@@ -244,15 +245,41 @@ export function useChat(conversationId) {
     await supabase.from('messages').insert(insertData)
   }
 
-  async function sendBibleVerse(reference, verseText) {
-    if (!user || !conversationId) return
-    await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_id: user.id,
+  // att = VerseAttachment { bibleId, book, chapter, verseStart, verseEnd, referenceLabel, verseText }
+  // caption = optionaler Begleittext (messages.text)
+  async function sendBibleVerse(att, caption = '') {
+    if (!user || !conversationId || !att) return
+    const fields = {
       type: 'bible_verse',
-      bible_verse_reference: reference,
-      bible_verse_text: verseText,
-    })
+      text: caption.trim() || null,
+      bible_verse_reference: att.referenceLabel,
+      bible_verse_text: att.verseText,
+      bible_id: att.bibleId != null ? String(att.bibleId) : null,
+      bible_book: att.book ?? null,
+      bible_chapter: att.chapter ?? null,
+      bible_verse_start: att.verseStart ?? null,
+      bible_verse_end: att.verseEnd ?? null,
+    }
+    // Optimistisch anzeigen (wie Text-Nachrichten) – sonst erscheint der Vers erst,
+    // wenn das Realtime-Event ankommt, und wirkt wie „nicht gesendet".
+    const tempId = `temp-${Date.now()}`
+    setMessages(prev => [...prev, {
+      id: tempId, _optimistic: true, conversation_id: conversationId, sender_id: user.id,
+      ...fields, is_deleted: false, created_at: new Date().toISOString(), profiles: null, reactions: [],
+    }])
+    const { data, error } = await supabase.from('messages')
+      .insert({ conversation_id: conversationId, sender_id: user.id, ...fields })
+      .select(MSG_SELECT).single()
+    if (!error && data) {
+      setMessages(prev => {
+        // Realtime kann die echte Nachricht schon eingefügt haben → Optimistische nur entfernen.
+        if (prev.some(m => m.id === data.id)) return prev.filter(m => m.id !== tempId)
+        return prev.map(m => m.id === tempId ? { ...data, profiles: null, reactions: [] } : m)
+      })
+    } else {
+      setMessages(prev => prev.filter(m => m.id !== tempId))
+      throw error || new Error('send failed')
+    }
   }
 
   async function deleteMessage(id) {
@@ -390,6 +417,11 @@ export function useChat(conversationId) {
       text: sourceMsg.text || null,
       bible_verse_reference: sourceMsg.bible_verse_reference || null,
       bible_verse_text: sourceMsg.bible_verse_text || null,
+      bible_id: sourceMsg.bible_id || null,
+      bible_book: sourceMsg.bible_book || null,
+      bible_chapter: sourceMsg.bible_chapter ?? null,
+      bible_verse_start: sourceMsg.bible_verse_start ?? null,
+      bible_verse_end: sourceMsg.bible_verse_end ?? null,
       forwarded_from_id: sourceMsg.id,
     }))
     await supabase.from('messages').insert(rows)

@@ -1449,8 +1449,8 @@ export default function CommunityDetail() {
     scrollChatDown()
   }
 
-  async function handleSendVerse(reference, verseText) {
-    await sendBibleVerse(reference, verseText)
+  async function handleSendVerse(att) {
+    await sendBibleVerse(att)
     scrollChatDown()
   }
 

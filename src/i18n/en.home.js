@@ -284,6 +284,8 @@ export default {
   '📖 Bibelvers teilen': '📖 Share Bible verse',
   '📷 Foto senden': '📷 Send photo',
   'Nachricht schreiben...': 'Write message...',
+  'Text zum Vers (optional)…': 'Text with the verse (optional)…',
+  'Senden fehlgeschlagen': 'Sending failed',
   'Foto konnte nicht gesendet werden': 'Photo could not be sent',
   'Moderation (Admins)': 'Moderation (admins)',
   'Nachricht nicht geladen': 'Message not loaded',
