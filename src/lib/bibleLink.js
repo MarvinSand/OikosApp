@@ -79,3 +79,76 @@ export function verseAttachmentFromRow(row) {
     verseText: row.bible_verse ?? null,
   }
 }
+
+// ── Mehrere Stellen pro Beitrag (feed_posts.bible_verses) ───────────────────
+
+// Alle Stellen eines Beitrags als VerseAttachment[] – neue Beiträge aus
+// bible_verses, ältere aus den Einzel-Spalten (dann inkl. verseText = Zitat-Block).
+export function versesFromRow(row) {
+  if (Array.isArray(row?.bible_verses) && row.bible_verses.length) {
+    return row.bible_verses.filter(v => v?.referenceLabel).map(v => ({
+      bibleId: v.bibleId ?? null, book: v.book ?? null, chapter: v.chapter ?? null,
+      verseStart: v.verseStart ?? null, verseEnd: v.verseEnd ?? null,
+      referenceLabel: v.referenceLabel, verseText: null,
+    }))
+  }
+  const single = verseAttachmentFromRow(row)
+  return single ? [single] : []
+}
+
+// Insert-Felder für mehrere Stellen: bible_verses (ohne Zitat – das steht im Text)
+// plus die alten Einzel-Spalten mit der ersten Stelle.
+export function verseFieldsFromAttachments(atts) {
+  if (!atts?.length) return {}
+  return {
+    bible_verses: atts.map(a => ({
+      bibleId: a.bibleId != null ? String(a.bibleId) : null,
+      book: a.book ?? null, chapter: a.chapter ?? null,
+      verseStart: a.verseStart ?? null, verseEnd: a.verseEnd ?? null,
+      referenceLabel: a.referenceLabel,
+    })),
+    ...verseFieldsFromAttachment({ ...atts[0], verseText: null }),
+  }
+}
+
+// ── Stelle + Zitat im Beitragstext ───────────────────────────────────────────
+// Zitat steht direkt hinter dem Stellennamen: „Johannes 3,16 „Denn also …““.
+export function verseQuote(att) {
+  const t = String(att?.verseText || '').replace(/[„“”"]/g, '').replace(/\s+/g, ' ').trim()
+  return t ? `„${t}“` : ''
+}
+
+// Stelle (und optional Zitat) an Position pos in den Text einfügen. Ist die
+// Stelle schon enthalten, wird nur das Zitat ergänzt/entfernt.
+export function insertVerseIntoText(body, att, { quote = false, pos = null } = {}) {
+  const label = att.referenceLabel
+  if (!label) return body
+  if (body.includes(label)) return setVerseQuoteInText(body, att, quote)
+  const at = Math.min(pos ?? body.length, body.length)
+  const before = body.slice(0, at)
+  const after = body.slice(at)
+  const q = quote ? verseQuote(att) : ''
+  const lead = before && !/\s$/.test(before) ? ' ' : ''
+  const trail = after && !/^\s/.test(after) ? ' ' : ''
+  return before + lead + label + (q ? ` ${q}` : '') + trail + after
+}
+
+export function setVerseQuoteInText(body, att, on) {
+  const label = att.referenceLabel
+  const q = verseQuote(att)
+  const i = body.indexOf(label)
+  if (i === -1 || !q) return body
+  const end = i + label.length
+  const has = body.startsWith(` ${q}`, end)
+  if (on && !has) return body.slice(0, end) + ` ${q}` + body.slice(end)
+  if (!on && has) return body.slice(0, end) + body.slice(end + 1 + q.length)
+  return body
+}
+
+export function removeVerseFromText(body, att) {
+  const label = att.referenceLabel
+  if (!label) return body
+  let out = setVerseQuoteInText(body, att, false)
+  out = out.split(label).join('')
+  return out.replace(/[ \t]{2,}/g, ' ')
+}

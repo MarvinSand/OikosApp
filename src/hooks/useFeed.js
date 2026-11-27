@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { compressImage } from '../lib/image'
-import { verseFieldsFromAttachment } from '../lib/bibleLink'
+import { verseFieldsFromAttachment, verseFieldsFromAttachments } from '../lib/bibleLink'
 import { readCache, writeCache } from '../lib/swrCache'
 
 const PAGE_SIZE = 20
 
 export const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
-  bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end,
+  bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end, bible_verses,
   is_public, visibility_mode,
   visibility_user_ids, excluded_user_ids, view_count, bookmark_count, created_at, updated_at, moderation_hidden_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
@@ -272,6 +272,7 @@ export function useFeed(filter = 'all') {
  *   visibilityUserIds: array (used when visibilityMode = 'specific_include')
  *   excludedUserIds: array (always applied for filtering)
  *   photoFile: optional File object → uploaded to feed-photos bucket
+ *   bibleVerses: optional VerseAttachment[] (mehrere Stellen, Vorrang vor bibleVerseRef)
  *   bibleVerseRef: optional VerseAttachment (aus src/lib/bibleLink.js) - hat
  *     Vorrang vor den alten bibleReference/bibleVerse-Freitextparametern.
  */
@@ -287,6 +288,7 @@ export async function createFeedPost(userId, {
   bibleReference = null,
   bibleVerse = null,
   bibleVerseRef = null,
+  bibleVerses = null,
 }) {
   // Step 1: optional photo upload to Supabase Storage
   let photo_url = null
@@ -311,7 +313,9 @@ export async function createFeedPost(userId, {
     sonstiges:   'text',
   })[category] || 'text'
 
-  const verseFields = bibleVerseRef
+  const verseFields = bibleVerses?.length
+    ? verseFieldsFromAttachments(bibleVerses)
+    : bibleVerseRef
     ? verseFieldsFromAttachment(bibleVerseRef)
     : { bible_reference: bibleReference, bible_verse: bibleVerse }
 

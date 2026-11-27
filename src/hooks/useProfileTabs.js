@@ -5,7 +5,7 @@ import { readCache, writeCache } from '../lib/swrCache'
 
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
-  bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end,
+  bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end, bible_verses,
   is_public, visibility_mode,
   visibility_user_ids, excluded_user_ids, view_count, bookmark_count, created_at,
   moderation_hidden_at,

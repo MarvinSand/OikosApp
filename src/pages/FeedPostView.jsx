@@ -11,8 +11,8 @@ import CommentCard from '../components/feed/CommentCard'
 import FeedCardFrame from '../components/feed/FeedCardFrame'
 import { COMMENT_SELECT, attachCommentEngagement } from '../lib/commentEngagement'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
-import VerseInlineText, { showVerseBlock } from '../components/bible/VerseInlineText'
-import { verseAttachmentFromRow } from '../lib/bibleLink'
+import VerseInlineText, { verseBlocks } from '../components/bible/VerseInlineText'
+import { versesFromRow } from '../lib/bibleLink'
 import { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 import { useT, tr, getLang } from '../i18n'
 
@@ -57,7 +57,7 @@ function UserAvatar({ profile, size = 36 }) {
 
 const POST_SELECT = `
   id, author_id, type, category, title, body, photo_url,
-  bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end,
+  bible_reference, bible_verse, bible_id, bible_book, bible_chapter, bible_verse_start, bible_verse_end, bible_verses,
   is_public, view_count, bookmark_count, created_at,
   profiles:author_id(id, full_name, username, avatar_url, is_christian)
 `
@@ -282,13 +282,13 @@ export default function FeedPostView() {
             {post.title && (
               <p style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 8px' }}>{post.title}</p>
             )}
-            {showVerseBlock(post) && (
-              <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" openAsSheet />
-            )}
+            {verseBlocks(post).map(att => (
+              <BibleReferenceChip key={att.referenceLabel} attachment={att} variant="block" openAsSheet />
+            ))}
             {post.type === 'photo' && post.photo_url && (
               <img src={post.photo_url} alt="" style={{ width: '100%', maxHeight: 360, objectFit: 'cover', borderRadius: 12, marginBottom: 10, display: 'block' }} />
             )}
-            <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text)', margin: 0, lineHeight: 1.7 }}><VerseInlineText text={post.body} attachment={verseAttachmentFromRow(post)} /></p>
+            <p style={{ fontFamily: 'Lora, serif', fontSize: 15, color: 'var(--color-text)', margin: 0, lineHeight: 1.7 }}><VerseInlineText text={post.body} attachments={versesFromRow(post)} /></p>
           </div>
 
           {/* Engagement */}

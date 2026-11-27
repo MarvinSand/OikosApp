@@ -29,8 +29,8 @@ import ExpandableSearch from '../components/common/ExpandableSearch'
 import { EMPTY_DATE_FILTER, matchesDateFilter, isDateFilterActive } from '../lib/dateFilter'
 import { CreateCommunitySheet, JoinCommunityModal, RequestJoinSheet } from '../components/community/CommunitySheets'
 import BibleReferenceChip from '../components/bible/BibleReferenceChip'
-import VerseInlineText, { showVerseBlock } from '../components/bible/VerseInlineText'
-import { verseAttachmentFromRow } from '../lib/bibleLink'
+import VerseInlineText, { verseBlocks } from '../components/bible/VerseInlineText'
+import { versesFromRow } from '../lib/bibleLink'
 import FeedPostSheet, { FEED_CATEGORIES } from '../components/feed/FeedPostSheet'
 import ModerationSheet from '../components/common/ModerationSheet'
 import AdminContentMenuItems from '../components/moderation/AdminContentMenuItems'
@@ -1143,16 +1143,16 @@ export function PostCard({ post, currentUserId, onReact, onDelete, onClick, onRe
           <p style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>{post.title}</p>
         )}
 
-        {showVerseBlock(post) && (
-          <BibleReferenceChip attachment={verseAttachmentFromRow(post)} variant="block" openAsSheet />
-        )}
+        {verseBlocks(post).map(att => (
+          <BibleReferenceChip key={att.referenceLabel} attachment={att} variant="block" openAsSheet />
+        ))}
 
         {post.type === 'photo' && post.photo_url && (
           <img src={post.photo_url} alt="" loading="lazy" decoding="async" style={{ width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 10, marginBottom: 8, display: 'block' }} />
         )}
 
         <p style={{ fontFamily: 'Lora, serif', color: 'var(--color-text)', margin: 0, lineHeight: 1.6, fontSize: post.type === 'question' ? 15 : 14, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
-          <VerseInlineText text={displayBody} attachment={verseAttachmentFromRow(post)} />
+          <VerseInlineText text={displayBody} attachments={versesFromRow(post)} />
         </p>
         {bodyLong && (
           <button

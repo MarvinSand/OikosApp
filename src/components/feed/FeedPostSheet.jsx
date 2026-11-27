@@ -5,6 +5,7 @@ import { useCommunities } from '../../hooks/useCommunities'
 import { supabase } from '../../lib/supabase'
 import BibleReferenceChip from '../bible/BibleReferenceChip'
 import VersePickerSheet from '../bible/VersePickerSheet'
+import { insertVerseIntoText, setVerseQuoteInText, removeVerseFromText } from '../../lib/bibleLink'
 import { useT, tr } from '../../i18n'
 
 export const FEED_CATEGORIES = [
@@ -123,6 +124,8 @@ function FeedSummaryRow({ label, value }) {
   )
 }
 
+const MAX_BODY = 2000
+
 export default function FeedPostSheet({
   onClose, onSubmit,
   initialBody = '', initialTitle = '', initialCategory = null, initialVerse = null,
@@ -135,37 +138,37 @@ export default function FeedPostSheet({
   const [visibilityUserIds, setVisibilityUserIds] = useState([])
   const [category, setCategory] = useState(initialCategory)
   const [title, setTitle] = useState(initialTitle)
-  const [body, setBody] = useState(initialBody)
+  const [body, setBody] = useState(() => initialVerse
+    ? insertVerseIntoText(initialBody ? `${initialBody}\n\n` : '', initialVerse, { quote: true })
+    : initialBody)
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const [verse, setVerse] = useState(initialVerse)
-  const [quoteVerse, setQuoteVerse] = useState(true)
+  // Mehrere Stellen: { att, quote } – ein Zitat steht als Text direkt hinter dem Stellennamen im Beitrag.
+  const [verses, setVerses] = useState(() => initialVerse ? [{ att: initialVerse, quote: true }] : [])
   const [showVersePicker, setShowVersePicker] = useState(false)
   const fileRef = useRef(null)
   const bodyRef = useRef(null)
   const cursorRef = useRef(null) // letzte Cursorposition im Textfeld (Picker ist ein Vollbild-Overlay)
 
-  // Bibelstelle als Text an der Cursorposition einfügen – im Beitrag wird sie blau und antippbar.
+  // Bibelstelle (und – wenn gewählt – das Zitat direkt dahinter) an der Cursorposition einfügen.
   function attachVerse(att) {
-    setVerse(att)
-    const label = att.referenceLabel
-    setBody(prev => {
-      if (!label || prev.includes(label)) return prev
-      const pos = Math.min(cursorRef.current ?? prev.length, prev.length)
-      const before = prev.slice(0, pos)
-      const after = prev.slice(pos)
-      const lead = before && !/\s$/.test(before) ? ' ' : ''
-      const trail = after && !/^\s/.test(after) ? ' ' : ''
-      const next = before + lead + label + trail + after
-      return next.length <= 1000 ? next : prev
-    })
+    if (verses.some(v => v.att.referenceLabel === att.referenceLabel)) return
+    setVerses(prev => [...prev, { att, quote: true }])
+    setBody(prev => insertVerseIntoText(prev, att, { quote: true, pos: cursorRef.current ?? prev.length }).slice(0, MAX_BODY))
   }
 
-  function detachVerse() {
-    const label = verse?.referenceLabel
-    setVerse(null)
-    if (label) setBody(prev => prev.split(label).join('').replace(/[ \t]{2,}/g, ' '))
+  function toggleQuote(i) {
+    const v = verses[i]
+    const quote = !v.quote
+    setVerses(prev => prev.map((x, j) => j === i ? { ...x, quote } : x))
+    setBody(prev => setVerseQuoteInText(prev, v.att, quote).slice(0, MAX_BODY))
+  }
+
+  function detachVerse(i) {
+    const v = verses[i]
+    setVerses(prev => prev.filter((_, j) => j !== i))
+    setBody(prev => removeVerseFromText(prev, v.att))
   }
 
   useEffect(() => {
@@ -195,7 +198,7 @@ export default function FeedPostSheet({
         visibilityUserIds,
         excludedUserIds: [],
         photoFile,
-        bibleVerseRef: verse ? { ...verse, verseText: quoteVerse ? verse.verseText : null } : null,
+        bibleVerses: verses.map(v => v.att),
       })
     } finally {
       setSubmitting(false)
@@ -231,14 +234,14 @@ export default function FeedPostSheet({
             <textarea
               ref={bodyRef}
               value={body}
-              onChange={e => { cursorRef.current = e.target.selectionStart; setBody(e.target.value.slice(0, 1000)) }}
+              onChange={e => { cursorRef.current = e.target.selectionStart; setBody(e.target.value.slice(0, MAX_BODY)) }}
               onSelect={e => { cursorRef.current = e.target.selectionStart }}
               onBlur={e => { cursorRef.current = e.target.selectionStart }}
               placeholder={t('Was möchtest du teilen?')}
               rows={4}
               style={{ ...fField, lineHeight: 1.6, resize: 'vertical' }}
             />
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: body.length > 900 ? 'var(--color-error)' : 'var(--color-text-tertiary)', textAlign: 'right' }}>{body.length}/1000</p>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: body.length > MAX_BODY - 100 ? 'var(--color-error)' : 'var(--color-text-tertiary)', textAlign: 'right' }}>{body.length}/{MAX_BODY}</p>
 
             {/* Bild-Vorschau */}
             {photoPreview && (
@@ -259,24 +262,23 @@ export default function FeedPostSheet({
             </button>
             <input ref={fileRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = '' }} style={{ display: 'none' }} />
 
-            {/* Bibelstelle verknüpfen */}
-            {verse ? (
-              <div style={{ marginTop: 10 }}>
-                <BibleReferenceChip attachment={verse} variant="block" showVerse={quoteVerse} onRemove={detachVerse} />
+            {/* Bibelstellen: Name (und Zitat) stehen im Text; blau + antippbar im Beitrag */}
+            {verses.map((v, i) => (
+              <div key={v.att.referenceLabel} style={{ marginTop: 10 }}>
+                <BibleReferenceChip attachment={v.att} variant="block" showVerse={false} onRemove={() => detachVerse(i)} />
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                  <input type="checkbox" checked={quoteVerse} onChange={e => setQuoteVerse(e.target.checked)} style={{ accentColor: 'var(--color-accent)' }} />{t('Vers im Beitrag zitieren')}</label>
+                  <input type="checkbox" checked={v.quote} onChange={() => toggleQuote(i)} style={{ accentColor: 'var(--color-accent)' }} />{t('Vers im Beitrag zitieren')}</label>
                 <p style={{ margin: '2px 0 0 26px', fontSize: 11, color: 'var(--color-text-tertiary)', lineHeight: 1.4 }}>
-                  {quoteVerse ? t('Der Vers steht direkt unter dem Beitrag.') : t('Der Vers erscheint erst, wenn jemand auf die blaue Stelle im Text tippt.')}
+                  {v.quote ? t('Der Vers wird im Text direkt hinter der Stelle zitiert.') : t('Der Vers erscheint erst, wenn jemand auf die blaue Stelle im Text tippt.')}
                 </p>
               </div>
-            ) : (
-              <button onClick={() => setShowVersePicker(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginTop: 10, width: '100%' }}
-              >
-                <span style={{ fontSize: 16 }}>📖</span>
-                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{t('Bibelstelle verknüpfen')}</span>
-              </button>
-            )}
+            ))}
+            <button onClick={() => setShowVersePicker(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px dashed var(--color-border)', background: 'var(--color-bg-secondary)', cursor: 'pointer', marginTop: 10, width: '100%' }}
+            >
+              <span style={{ fontSize: 16 }}>📖</span>
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{verses.length ? t('Weitere Bibelstelle hinzufügen') : t('Bibelstelle verknüpfen')}</span>
+            </button>
 
             {/* 2) Kategorie */}
             <p style={fSecTitle}>{t('2 · Kategorie')}</p>
@@ -348,7 +350,7 @@ export default function FeedPostSheet({
               {photoPreview && <img src={photoPreview} alt="" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 10, marginTop: 10, display: 'block' }} />}
             </div>
             <FeedSummaryRow label={t('Kategorie')} value={catObj ? `${catObj.emoji} ${catObj.label}` : '—'} />
-            <FeedSummaryRow label={t('Bibelstelle')} value={verse ? verse.referenceLabel : '—'} />
+            <FeedSummaryRow label={t('Bibelstelle')} value={verses.length ? verses.map(v => v.att.referenceLabel).join(', ') : '—'} />
             <FeedSummaryRow label={t('Sichtbarkeit')} value={
               visibility === 'communities'
                 ? t('{label} · {n} ausgewählt', { label: visObj?.label, n: communityIds.length })
